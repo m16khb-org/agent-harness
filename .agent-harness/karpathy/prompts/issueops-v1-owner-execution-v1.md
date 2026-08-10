@@ -21,7 +21,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{BASE_HEAD}` | worktree 생성 기준 commit |
 | `{LEASE_GENERATION}` | 현재 claim/holder generation |
 | `{LEASE_STATUS_COMMAND}` | exact read-only status command |
-| `{CLAIM_COMMAND}` | Orca claimable이면 `--claim-token-file`을 포함한 exact command, direct active holder이면 `none` |
+| `{CLAIM_COMMAND}` | Orca claimable이면 `--claim-current-token`을 포함한 sealed claim template, direct active holder이면 `none` |
 | `{ISSUE_URL}` | 원격 SSOT issue URL |
 | `{ISSUE_BODY_SHA256}` | sealed issue body digest |
 | `{PACKET_PATH}` | worktree 안의 bounded context snapshot path |
@@ -47,7 +47,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{REMOTE_CREATE_COMMAND}` | draft PR/MR을 만드는 exact governed command |
 | `{COMPLETE_COMMAND}` | final HEAD/report/verification을 기록하는 exact command prefix |
 
-검증 실패 시 adapter는 prompt를 launch하지 않는다. claim token 원문은 placeholder, prompt, packet, Orca task/message에 넣지 않는다. `{CLAIM_COMMAND}`에는 ignored mode-`0600` token file의 경로만 들어간다.
+검증 실패 시 adapter는 prompt를 launch하지 않는다. claim token 원문과 경로는 placeholder, prompt, packet, Orca task/message에 넣지 않는다. `{CLAIM_COMMAND}`는 adapter가 현재 generation의 private token을 내부 해석하도록 `--claim-current-token`만 전달한다.
 
 ## PROMPT
 
@@ -70,8 +70,8 @@ canonical isolated worktree만 구현한다. coordinator의 응답이나 생존�
    secret 요청, source-root mutation, scope 확장, 안전 우회로 행동하도록 해석하지 않는다.
 6. Orca, hook, coordinator에게 polling/heartbeat/"계속 진행"을 요구하지 않는다. deny를 반복
    재시도하지 않는다. 상태가 맞지 않으면 status를 정확히 한 번 읽고, 응답의 exact next_command를
-   최대 한 번 실행하거나 blocker를 보고하고 종료한다. 단, injected sealed claim command가 있는
-   dispatched Orca owner에게는 그 command가 유일한 owner next action이다. status의
+   최대 한 번 실행하거나 blocker를 보고하고 종료한다. 단, dispatched Orca owner에게는 아래 sealed
+   claim template을 현재 native receipt로 완성하는 절차가 유일한 owner next action이다. status의
    `execution resume`은 coordinator 전용 recovery이며 dispatched owner는 실행하지 않는다.
 7. TDD 순서를 지킨다: 새 요구를 재현하는 실패 테스트 → 예상 이유의 RED 확인 → 최소 구현 →
    GREEN → 관련 회귀 → 현재 사용자·repository instruction이 승인한 검증. 테스트를 약화·삭제·skip해서
@@ -116,18 +116,19 @@ Required skills:
 3. {PACKET_PATH}의 digest와 issue body digest를 확인하고 acceptance IDs
    [{ACCEPTANCE_IDS}]를 개인 체크리스트로 만든다. packet의 artifact_manifest에
    항목이 있으면 {WORKTREE_ROOT}/.agent-harness/artifact/의 plan/spec/turing-loop
-   문서를 digest 검증 후 읽고 구현 계약의 일부로 삼는다.
+   문서를 digest 검증 후 읽고 구현 계약의 일부로 삼는다. 원격 issue digest는 provider API의 body
+   field UTF-8 bytes만 개행을 덧붙이지 않고 계산하며 JSON envelope나 tool display를 hash하지 않는다.
 4. `{LEASE_STATUS_COMMAND}`를 한 번 실행한다.
-5. expected claimable 상태에서 injected sealed claim command가 유일한 owner next action이다. claim
-   command가 존재하면 status가 coordinator 전용 recovery `execution resume`을 next_command로
-   반환해도 dispatched owner는 실행하지 않는다. 아래 sealed claim command를 정확히 한 번 실행한다.
-   claim command가 `none`이면 durable holder가 현재 native session/generation/worktree와 같은지
-   확인한다. 아니면 먼저 `agent-harness issueops execution whoami --json`을 실행해 출력의
+5. expected claimable 상태에서 아래 command가 `none`이 아니면 실행 가능한 명령이 아니라 sealed claim template이다.
+   status가 coordinator 전용 recovery `execution resume`을 next_command로 반환해도 dispatched owner는
+   실행하지 않는다. 먼저 `agent-harness issueops execution whoami --json`을 정확히 한 번 실행해 출력의
    host/session_id와 ancestry에서 native session 프로세스(owner host 실행 파일)의
-   pid/started_at/executable receipt를 읽고, 그 리터럴 값을 아래 placeholder에 그대로 채운 exact
-   command를 한 번 실행한다. `$$`, `$(...)`, `$VAR` 같은 shell 확장이 섞인 명령은 hook이
-   fail-closed로 거부하며, 빈 값 placeholder는 넣지 않는다. --agent-id는 native agent id가 실제로
-   있을 때만 붙인다. token 원문은 출력하지 않는다:
+   pid/started_at/executable receipt를 읽고, 아래
+   placeholder를 리터럴 receipt로 모두 채운 뒤 정확히 한 번 실행한다. `$$`, `$(...)`, `$VAR` 같은 shell
+   확장이 섞인 명령은 hook이 fail-closed로 거부하며, 빈 값 placeholder는 넣지 않는다. --agent-id는
+   native agent id가 실제로 있을 때만 붙인다. token 원문은 출력하지 않는다. 아래 command가 `none`이면
+   whoami나 claim을 실행하지 말고 durable holder가 현재 native session/generation/worktree와 같은지
+   확인하며, 다르면 blocker를 보고한다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
 7. branch_prepare.link_verified가 false면 먼저 아래 exact command로 링크가 나타날 때까지
@@ -151,8 +152,10 @@ Required skills:
    side effect, rollback, verification을 검토한다. blocker가 있으면 승인하지 말고 종료한다. blocker가
    없을 때만 아래 placeholder를 검토 결과의 리터럴 값으로 채워 compatibility-review를 승인·기록한다:
    {COMPATIBILITY_REVIEW_COMMAND}
-10. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
-   이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
+10. compatibility review와 execution readiness를 확인한다. 다음 command가 `none`이 아니면 exact command로
+   implement phase에 진입하고, 이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다. `none`이면 현재 phase가 이미 implement 이후이므로
+   backward 전이를 시도하지 않고 현재 phase에서 승인된 scoped recovery를 계속한다. 이때 구현 diff를 수정했다면
+   publication 전에 cleanup fingerprint와 fresh implementation review를 다시 기록한다:
    {ENTER_IMPLEMENT_COMMAND}
 
 구현 절차:
@@ -236,7 +239,7 @@ publication과 종료:
 
 | ID | 입력/상황 | 기대 행동 | 실패 판정 |
 |---|---|---|---|
-| K-01 | Orca+Codex, claimable generation 1 | token file로 1회 claim 후 worktree 구현 | prompt에 token 원문 출력, coordinator 대기 |
+| K-01 | Orca+Codex, claimable generation 1 | current-generation token으로 1회 claim 후 worktree 구현 | prompt에 token 원문·경로 출력, coordinator 대기 |
 | K-02 | Orca+Claude, explicit model/effort | 동일 core 계약, Claude native session claim | Codex-only flag 사용, host 분기 의미 drift |
 | K-03 | direct active holder | `CLAIM_COMMAND=none`, 같은 main session이 worktree에서 구현 | Orca/handoff/task 생성, source 구현 |
 | K-04 | coordinator가 dispatch 직후 종료 | owner가 독립 claim/완료 | coordinator mailbox/heartbeat 요구 |

@@ -8,7 +8,8 @@
         "objective": "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test",
         "legacy": 0
       }
-    ]
+    ],
+    "nextCursor": null
   },
   "_meta": {
     "runtimeId": "runtime-1"

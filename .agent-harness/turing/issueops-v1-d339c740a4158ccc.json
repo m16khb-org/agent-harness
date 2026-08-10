@@ -1,0 +1,97 @@
+{
+  "lifecycle": "io-138656f44f63",
+  "mode": "orca",
+  "branch": "446-legacy-utc-timestamp",
+  "base_head": "1d80f3678e531e2b69ebe3a41b8b4ec3e249b3e7",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestParseTaskCompletedAtPreservesRFC3339NanoBehavior",
+      "command": "go test -v ./internal/adapter/operationalhealth -run '^TestParseTaskCompletedAtPreservesRFC3339NanoBehavior$' -count=1",
+      "result": "PASS: existing RFC3339Nano parsing, including its established surrounding-whitespace behavior, remains unchanged."
+    },
+    "AC-02": {
+      "test": "TestParseTaskCompletedAtParsesLegacyUTC",
+      "red_command": "go test -v ./internal/adapter/operationalhealth -run '^TestParseTaskCompletedAtParsesLegacyUTC$' -count=1",
+      "red_result": "FAIL: RFC3339Nano parsing rejected 2026-08-03 22:35:17 because it lacks T and timezone fields.",
+      "green_command": "go test -v ./internal/adapter/operationalhealth -run 'TestParseTaskCompletedAt' -count=1",
+      "green_result": "PASS: 2026-08-03 22:35:17 parses as 2026-08-03T22:35:17Z."
+    },
+    "AC-03": {
+      "test": "TestParseTaskCompletedAtRejectsUnsupportedLegacyFormats",
+      "red_command": "go test -v ./internal/adapter/operationalhealth -run '^TestParseTaskCompletedAtRejectsUnsupportedLegacyFormats$' -count=1",
+      "red_result": "FAIL: Go's layout parser accepted fractional legacy seconds with both dot and comma separators.",
+      "green_command": "go test -v ./internal/adapter/operationalhealth -run 'Timestamp|CompletedAt|LegacyUTC' -count=1",
+      "green_result": "PASS: slash dates, timezone-suffixed input, fractional seconds, and surrounding whitespace on the legacy layout are rejected."
+    },
+    "AC-04": {
+      "commands": [
+        "go test -v ./internal/adapter/operationalhealth -run 'Timestamp|CompletedAt|LegacyUTC' -count=1",
+        "go test -race ./internal/adapter/operationalhealth -run 'Timestamp|CompletedAt|LegacyUTC' -count=1",
+        "git diff --check"
+      ],
+      "result": "PASS"
+    },
+    "AC-05": {
+      "evidence": ".agent-harness/turing/issueops-v1-d339c740a4158ccc.json",
+      "completion": "The generation-fenced completion receipt is recorded after draft PR creation and remote read-back."
+    }
+  },
+  "verification": [
+    {
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'Timestamp|CompletedAt|LegacyUTC' -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./internal/adapter/operationalhealth -run 'Timestamp|CompletedAt|LegacyUTC' -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "ai_slop_clean": {
+    "scope": "The two owned timestamp files and this required evidence report.",
+    "result": "PASS: one RFC3339Nano attempt and one exact UTC fallback with a length guard; no compatibility shim, duplicate branch, or comment noise remains."
+  },
+  "shannon": {
+    "diff_inventory": {
+      "tracked": [
+        "internal/adapter/operationalhealth/task_timestamp.go",
+        "internal/adapter/operationalhealth/task_timestamp_test.go"
+      ],
+      "untracked": [
+        ".agent-harness/turing/issueops-v1-d339c740a4158ccc.json"
+      ]
+    },
+    "snr": {
+      "before": 1.0,
+      "after": 1.0,
+      "signal_lines": 37,
+      "noise_lines": 0,
+      "result": "PASS: the baseline is already the 1.00 ceiling, so no behavior-preserving cleanup can improve it."
+    },
+    "entropy": {
+      "functions_over_6_branches": 0,
+      "functions_over_12_branches": 0,
+      "result": "PASS"
+    },
+    "redundancy": {
+      "duplicate_blocks": 0,
+      "result": "PASS"
+    },
+    "channel_overhead": {
+      "files_over_50_percent": 0,
+      "result": "PASS"
+    },
+    "heuristic_caveat": "The line-based SNR and branch-count metrics are approximate; targeted behavior tests provide the binding correctness evidence."
+  },
+  "implementation_review": {
+    "first_verdict": "revise",
+    "finding": "Go ParseInLocation accepts fractional seconds for this layout unless the fallback enforces the exact input length.",
+    "response": "Added dot and comma fractional-second RED cases, then added the minimal length guard before the UTC fallback.",
+    "fresh_review_required": true
+  },
+  "cleanup_receipt": "none spawned",
+  "status": "verified_pending_fresh_review"
+}

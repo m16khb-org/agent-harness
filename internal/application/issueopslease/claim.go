@@ -15,6 +15,7 @@ type ClaimRequest struct {
 	Ancestry            []leasedomain.ProcessReceipt
 	CWD                 string
 	TokenFile           string
+	ClaimCurrentToken   bool
 	IssueBodySHA256     string
 	ContextPacketSHA256 string
 }
@@ -51,7 +52,7 @@ func (s *ClaimService) Claim(ctx context.Context, request ClaimRequest) (ClaimRe
 		return ClaimResult{ID: request.ID}, err
 	}
 	after, err := s.repository.Claim(ctx, ClaimRepositoryRequest{
-		ID: request.ID, Generation: request.Generation, Actor: actor, CWD: request.CWD, TokenFile: request.TokenFile, ValidateRecord: validate, Clock: s.clock,
+		ID: request.ID, Generation: request.Generation, Actor: actor, CWD: request.CWD, TokenFile: request.TokenFile, ClaimCurrentToken: request.ClaimCurrentToken, ValidateRecord: validate, Clock: s.clock,
 	})
 	if err != nil {
 		return ClaimResult{ID: request.ID}, err

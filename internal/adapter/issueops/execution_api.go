@@ -41,7 +41,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			return ExecutionResult{OK: false, ID: req.ID}, ErrClaimHandlerUnavailable
 		}
 		return deps.Claim(ctx, stateRoot, ExecutionClaimRequest{
-			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD, TokenFile: req.TokenFile,
+			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD, TokenFile: req.TokenFile, ClaimCurrentToken: req.ClaimCurrentToken,
 			IssueBodySHA256: req.IssueBodySHA256, ContextPacketSHA256: req.ContextPacketSHA256,
 		}, ExecutionClaimDependencies{ReadIssue: deps.ReadIssue})
 	case ExecutionActionRelease:

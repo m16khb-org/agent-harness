@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -18,17 +19,17 @@ import (
 )
 
 type OrcaInventory interface {
+	port.OrcaRunInventoryReader
 	Available() bool
 	Status(context.Context) (port.OrcaStatus, error)
 	ResolveRepo(context.Context, string) (port.OrcaRepo, error)
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 	ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
-	ListAllTasks(context.Context) ([]port.OrcaTask, error)
-	ListDispatchedTasks(context.Context) ([]port.OrcaTask, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
-	ListGates(context.Context) ([]port.OrcaGate, error)
 	InboxPresence(context.Context) (port.OrcaInboxPresence, error)
 }
+
+var _ port.OrcaRunInventoryReader = (OrcaInventory)(nil)
 
 type GitRunner interface {
 	Run(context.Context, string, ...string) ([]byte, error)
@@ -102,9 +103,38 @@ func (collector Collector) Collect(ctx context.Context, repo string) corehealth.
 		addProblem(&snapshot, "repo", "repo_invalid", "requested repository path is empty")
 		return snapshot
 	}
-	collector.collectGit(ctx, &snapshot)
 	_, orcaOwned := collector.collectIssueOps(&snapshot)
-	collector.collectOrca(ctx, &snapshot, orcaOwned)
+	gitSnapshot := corehealth.Snapshot{RepoRoot: repo}
+	orcaSnapshot := corehealth.Snapshot{RepoRoot: repo, Messages: corehealth.MessagePresence{Empty: true}}
+	var reads sync.WaitGroup
+	reads.Add(2)
+	go func() {
+		defer reads.Done()
+		collector.collectGit(ctx, &gitSnapshot)
+	}()
+	go func() {
+		defer reads.Done()
+		collector.collectOrca(ctx, &orcaSnapshot, orcaOwned)
+	}()
+	reads.Wait()
+
+	snapshot.CanonicalBranch = gitSnapshot.CanonicalBranch
+	snapshot.SourceHead = gitSnapshot.SourceHead
+	snapshot.SourceClean = gitSnapshot.SourceClean
+	snapshot.GitWorktrees = gitSnapshot.GitWorktrees
+	snapshot.LocalRefs = gitSnapshot.LocalRefs
+	snapshot.RemoteRefs = gitSnapshot.RemoteRefs
+	snapshot.OrcaObserved = orcaSnapshot.OrcaObserved
+	snapshot.OrcaRuntimeID = orcaSnapshot.OrcaRuntimeID
+	snapshot.OrcaRepoID = orcaSnapshot.OrcaRepoID
+	snapshot.OrcaWorktrees = orcaSnapshot.OrcaWorktrees
+	snapshot.Terminals = orcaSnapshot.Terminals
+	snapshot.Tasks = orcaSnapshot.Tasks
+	snapshot.Dispatches = orcaSnapshot.Dispatches
+	snapshot.Gates = orcaSnapshot.Gates
+	snapshot.Messages = orcaSnapshot.Messages
+	snapshot.InventoryProblems = append(snapshot.InventoryProblems, gitSnapshot.InventoryProblems...)
+	snapshot.InventoryProblems = append(snapshot.InventoryProblems, orcaSnapshot.InventoryProblems...)
 	sortSnapshot(&snapshot)
 	return snapshot
 }
@@ -312,8 +342,45 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	tasks, err := collector.Orca.ListAllTasks(ctx)
+	runs, err := collector.Orca.ListRunInventory(ctx)
 	if err != nil {
+		addProblem(snapshot, "orca_runs", "orca_runs_failed", "Orca Run inventory failed")
+		return
+	}
+	if strings.TrimSpace(runs.RuntimeID) != snapshot.OrcaRuntimeID {
+		addProblem(snapshot, "orca_runs", "orca_run_runtime_mismatch", "Run snapshot runtime identity does not match")
+		return
+	}
+	for _, run := range runs.Runs {
+		if strings.TrimSpace(run.RuntimeID) != snapshot.OrcaRuntimeID || strings.TrimSpace(run.ID) == "" {
+			addProblem(snapshot, "orca_runs", "orca_run_identity_mismatch", "Run snapshot identity is incomplete or mismatched")
+			return
+		}
+	}
+
+	var tasks []port.OrcaTask
+	var dispatched []port.OrcaTask
+	var gates []port.OrcaGate
+	var tasksErr error
+	var dispatchedErr error
+	var gatesErr error
+	var readers sync.WaitGroup
+	readers.Add(3)
+	go func() {
+		defer readers.Done()
+		tasks, tasksErr = collector.Orca.ListAllTasksFromRuns(ctx, runs)
+	}()
+	go func() {
+		defer readers.Done()
+		dispatched, dispatchedErr = collector.Orca.ListDispatchedTasksFromRuns(ctx, runs)
+	}()
+	go func() {
+		defer readers.Done()
+		gates, gatesErr = collector.Orca.ListGatesFromRuns(ctx, runs)
+	}()
+	readers.Wait()
+
+	if tasksErr != nil {
 		addProblem(snapshot, "orca_tasks", "orca_tasks_failed", "Orca task inventory failed")
 	} else {
 		for _, value := range tasks {
@@ -322,7 +389,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 				addProblem(snapshot, "orca_tasks", "orca_task_runtime_mismatch", "task "+task.ID+" runtime identity does not match")
 			}
 			if strings.TrimSpace(value.CompletedAt) != "" {
-				parsed, parseErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(value.CompletedAt))
+				parsed, parseErr := parseTaskCompletedAt(value.CompletedAt)
 				if parseErr != nil {
 					addProblem(snapshot, "orca_tasks", "orca_task_timestamp_invalid", "task "+task.ID+" has an invalid completion timestamp")
 				} else {
@@ -333,8 +400,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	dispatched, err := collector.Orca.ListDispatchedTasks(ctx)
-	if err != nil {
+	if dispatchedErr != nil {
 		addProblem(snapshot, "orca_dispatches", "orca_dispatched_tasks_failed", "Orca dispatched-task inventory failed")
 	} else {
 		dispatchedCounts := make(map[string]int, len(dispatched))
@@ -380,8 +446,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	gates, err := collector.Orca.ListGates(ctx)
-	if err != nil {
+	if gatesErr != nil {
 		addProblem(snapshot, "orca_gates", "orca_gates_failed", "Orca gate inventory failed")
 	} else {
 		for _, value := range gates {

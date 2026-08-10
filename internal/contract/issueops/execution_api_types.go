@@ -41,7 +41,8 @@ type ExecutionClaimRequest struct {
 	Generation          uint64      `json:"generation"`
 	Actor               NativeActor `json:"actor"`
 	CWD                 string      `json:"cwd"`
-	TokenFile           string      `json:"claim_token_file"`
+	TokenFile           string      `json:"claim_token_file,omitempty"`
+	ClaimCurrentToken   bool        `json:"claim_current_token,omitempty"`
 	IssueBodySHA256     string      `json:"issue_body_sha256,omitempty"`
 	ContextPacketSHA256 string      `json:"context_packet_sha256,omitempty"`
 }

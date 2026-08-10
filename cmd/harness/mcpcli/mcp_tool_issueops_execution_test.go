@@ -147,6 +147,18 @@ func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
 	}
 }
 
+func TestExecutionActionRequestFromMCPMapsCurrentClaimToken(t *testing.T) {
+	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
+		"action": "claim", "id": "io-aaaaaaaaaaaa", "claim_current_token": true,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !req.ClaimCurrentToken || req.TokenFile != "" {
+		t.Fatalf("MCP current-token claim request drifted: %#v", req)
+	}
+}
+
 func TestExecutionActionRequestFromMCPMapsResume(t *testing.T) {
 	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
 		"action": "resume", "id": "io-aaaaaaaaaaaa",

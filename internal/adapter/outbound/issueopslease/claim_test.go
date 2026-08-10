@@ -44,6 +44,50 @@ func TestSQLiteClaimTransaction(t *testing.T) {
 	}
 }
 
+func TestSQLiteClaimResolvesCurrentGenerationTokenInternally(t *testing.T) {
+	token := "claim-token"
+	actor := leasecontract.Actor{Host: "codex", SessionID: "claim-session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "2026-07-30T00:00:00Z", Executable: "/usr/bin/codex"}}
+	record := claimableRecord(t, actor, token)
+	store := newClaimStore(t, record)
+	path := writeClaimToken(t, record, token)
+	result, err := NewSQLiteRepository(store).Claim(context.Background(), leaseapp.ClaimRepositoryRequest{
+		ID: record.ID, Generation: record.Execution.Lease.Generation,
+		Actor:             leasedomain.Actor{Host: actor.Host, SessionID: actor.SessionID, Process: &leasedomain.ProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}},
+		CWD:               record.Execution.Workspace.Root,
+		ClaimCurrentToken: true,
+		Clock:             fixedClaimClock{at: time.Date(2026, 7, 30, 0, 0, 1, 0, time.UTC)},
+		ValidateRecord:    func(leaseapp.Record) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Execution.Lease.Status != "active" || result.Execution.Lease.Holder == nil {
+		t.Fatalf("claim result=%+v", result)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("current-generation token was not consumed: %v", err)
+	}
+}
+
+func TestSQLiteClaimRejectsAmbiguousTokenSelectors(t *testing.T) {
+	token := "claim-token"
+	actor := leasecontract.Actor{Host: "codex", SessionID: "claim-session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "2026-07-30T00:00:00Z", Executable: "/usr/bin/codex"}}
+	record := claimableRecord(t, actor, token)
+	path := writeClaimToken(t, record, token)
+	_, err := NewSQLiteRepository(newClaimStore(t, record)).Claim(context.Background(), leaseapp.ClaimRepositoryRequest{
+		ID: record.ID, Generation: record.Execution.Lease.Generation,
+		Actor:             leasedomain.Actor{Host: actor.Host, SessionID: actor.SessionID, Process: &leasedomain.ProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}},
+		CWD:               record.Execution.Workspace.Root,
+		TokenFile:         path,
+		ClaimCurrentToken: true,
+		Clock:             fixedClaimClock{at: time.Date(2026, 7, 30, 0, 0, 1, 0, time.UTC)},
+		ValidateRecord:    func(leaseapp.Record) error { return nil },
+	})
+	if err == nil || !strings.Contains(err.Error(), "exactly one claim token selector") {
+		t.Fatalf("ambiguous selector error=%v", err)
+	}
+}
+
 func TestSQLiteClaimRejectsUnpreparedExecution(t *testing.T) {
 	record := claimableRecord(t, leasecontract.Actor{}, "claim-token")
 	record.Execution = nil

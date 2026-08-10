@@ -78,5 +78,7 @@ func issueOpsChildTerminal(entry issueops.IssueOpsChildStatusEntry, _ issueops.I
 }
 
 func issueOpsChildDropped(entry issueops.IssueOpsChildStatusEntry) bool {
-	return strings.TrimSpace(entry.ValidationVerdict) == "dropped"
+	return strings.TrimSpace(entry.ValidationVerdict) == "dropped" &&
+		len(strings.TrimSpace(entry.ValidationReason)) >= 10 &&
+		strings.TrimSpace(entry.ValidatedAt) != ""
 }

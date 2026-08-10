@@ -95,7 +95,7 @@ func TestClientProbeTreatsUnrelatedOpaqueRunAsValidInventory(t *testing.T) {
 		"ok":true,
 		"result":{"runs":[
 			{"id":"run_legacy_local","objective":"Legacy orchestration state (inspect only)","legacy":1}
-		]},
+		],"nextCursor":null},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
 
@@ -161,16 +161,12 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 		"result":{"runs":[
 			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"},
 			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b"}
-		]},
+		],"nextCursor":null},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
 	for _, runID := range []string{"run_a", "run_b"} {
 		command := "orca orchestration task-list --brief --run " + runID + " --json"
-		runner.responses[command] = CommandOutput{Stdout: []byte(`{
-			"ok":true,
-			"result":{"tasks":[{"id":"task-shared","status":"ready"}],"count":1},
-			"_meta":{"runtimeId":"runtime-1"}
-		}`)}
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"` + runID + `","tasks":[{"id":"task-shared","status":"ready"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 	}
 
 	got, err := NewClient(runner).ListAllTasks(context.Background())
@@ -189,16 +185,12 @@ func TestClientTaskInventoryReadsOpaqueRunRowsUniformly(t *testing.T) {
 		"result":{"runs":[
 			{"id":"run_legacy_local","objective":"retired orchestration state"},
 			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"}
-		]},
+		],"nextCursor":null},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
 	for _, runID := range []string{"run_a", "run_legacy_local"} {
 		command := "orca orchestration task-list --brief --run " + runID + " --json"
-		runner.responses[command] = CommandOutput{Stdout: []byte(`{
-			"ok":true,
-			"result":{"tasks":[],"count":0},
-			"_meta":{"runtimeId":"runtime-1"}
-		}`)}
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"` + runID + `","tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
 	}
 
 	got, err := NewClient(runner).ListAllTasks(context.Background())

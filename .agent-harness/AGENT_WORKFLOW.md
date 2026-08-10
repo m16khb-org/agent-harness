@@ -52,7 +52,7 @@ IssueOps 자동 루프는 missing gate를 읽고 해당 state owner command를 �
 
 `issueops execution prepare`를 confirm한 뒤에는 반환된 canonical path를 `HARNESS_EXPECTED_WORKTREE`에 반영한다. 이후 편집은 그 절대경로, `git -C "$HARNESS_EXPECTED_WORKTREE"`, worktree-rooted CodeGraph/`rg`/test 명령으로 수행하고, source checkout과 worktree의 `git status --short`를 따로 확인한다.
 
-선택적 Orca 실행은 `issueops execution prepare --mode auto|direct|orca`로 선택한다. Preview와 confirm 요청은 `--confirm` 외에는 동일해야 한다. Orca가 첫 external mutation 전에 absent/unready이면 `auto`는 direct를 선택한다. Orca가 선택되면 private issue/context packet과 fully rendered prompt를 봉인하고 fresh native owner를 launch한다. Owner는 status가 렌더한 `issueops execution claim` 명령에서 token file과 두 digest를 검증한 뒤에만 쓴다. 외부 mutation 전에는 pending intent를 durable state에 먼저 저장하며, 모호한 결과는 create를 재시도하거나 direct로 전환하지 않고 `issueops execution reconcile`로 정확히 하나의 결과를 확인한다. 구현, 검증, generation-fenced PR/MR 생성, `issueops execution complete`는 active holder가 canonical worktree에서 수행한다. Complete는 `done`과 lease release를 원자적으로 기록하며 merge와 cleanup은 하지 않는다.
+선택적 Orca 실행은 `issueops execution prepare --mode auto|direct|orca`로 선택한다. Preview와 confirm 요청은 `--confirm` 외에는 동일해야 한다. Orca가 첫 external mutation 전에 absent/unready이면 `auto`는 direct를 선택한다. Orca가 선택되면 private issue/context packet과 fully rendered prompt를 봉인하고 fresh native owner를 launch한다. Owner는 status가 렌더한 `issueops execution claim --claim-current-token` 명령에서 두 digest를 검증한 뒤에만 쓴다. CLI가 현재 generation의 private token path를 내부에서 결정하므로 token path나 값은 owner prompt에 넣지 않는다. 외부 mutation 전에는 pending intent를 durable state에 먼저 저장하며, 모호한 결과는 create를 재시도하거나 direct로 전환하지 않고 `issueops execution reconcile`로 정확히 하나의 결과를 확인한다. 구현, 검증, generation-fenced PR/MR 생성, `issueops execution complete`는 active holder가 canonical worktree에서 수행한다. Complete는 `done`과 lease release를 원자적으로 기록하며 merge와 cleanup은 하지 않는다.
 
 완료된 execution을 새 generation과 새 HEAD로 복구할 때는 status/preview가 제공한 typed reseed만 사용한다. Completion-bearing reseed는 이전 영수증을 append-only `completion_history`로 보존하고 current completion, done phase, HEAD-bound proof를 같은 CAS에서 재개 상태로 바꾼다. Future completion receipt는 generation을 직접 stamp한다. Generation이 없는 legacy receipt는 현재 lease나 timestamp로 origin을 추론하지 말고 durable incident evidence로 확인한 `--completion-generation N`을 preview와 reseed에 동일하게 전달한다. 누락·충돌은 mutation 전에 fail-closed한다. 새 owner는 status의 exact `resume`/`claim`을 실행하고 `implement`부터 AI-slop, implementation review, `pr`, completion까지 정상 순방향 gate를 다시 통과한다. History는 감사 기록이지 현재 generation의 retry evidence가 아니며 state 파일 수동 편집으로 제거하지 않는다.
 
@@ -107,7 +107,7 @@ record the matching provider/issue identity and exact base SHA first, prepare
 the local-only Orca branch, then create and record the linked branch before
 plan linkage and implementation. Direct mode grants the calling native session
 generation 1; Orca mode launches one owner that verifies the sealed
-issue/context digests and consumes the private claim-token file.
+issue/context digests and asks the CLI to consume the current-generation private token.
 The active holder performs planning, implementation, publication, and
 completion from the canonical worktree. The source main worktree remains
 available before, during, and after execution for unrelated work.

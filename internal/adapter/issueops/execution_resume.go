@@ -130,7 +130,7 @@ func validateExecutionResumePacket(record issueops.IssueOpsRecord, issueDigest, 
 	if packet.SchemaVersion != issueops.IssueOpsSchemaVersion || packet.LifecycleID != record.ID || packet.Mode != record.Execution.Mode ||
 		!samePath(packet.SourceRoot, record.Execution.Workspace.SourceRoot) || !samePath(packet.WorktreeRoot, record.Execution.Workspace.Root) ||
 		packet.Branch != record.Execution.Workspace.Branch || packet.BaseHead != record.Execution.Workspace.BaseHead ||
-		packet.LeaseGeneration != generation || packet.ClaimTokenFile != claimTokenPath(record) || packet.Issue.URL != record.IssueURL {
+		packet.LeaseGeneration != generation || packet.Issue.URL != record.IssueURL {
 		return fmt.Errorf("sealed context packet execution identity mismatch: packet_generation=%d expected_generation=%d", packet.LeaseGeneration, generation)
 	}
 	if packet.Issue.BodySHA256 != issueDigest {
@@ -261,10 +261,10 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record issu
 	return persisted, payload, err
 }
 
-func ExecutionResumeNextCommand(id string, generation uint64, claimTokenPath, issueBodySHA256, contextPacketSHA256 string) string {
+func ExecutionResumeNextCommand(id string, generation uint64, _ string, issueBodySHA256, contextPacketSHA256 string) string {
 	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
 		" --generation " + strconv.FormatUint(generation, 10) +
-		" --claim-token-file " + quoteExecutionOwnerArg(claimTokenPath) +
+		" --claim-current-token" +
 		" --issue-body-sha256 " + issueBodySHA256 +
 		" --context-packet-sha256 " + contextPacketSHA256
 }

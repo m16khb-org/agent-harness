@@ -502,7 +502,7 @@ func writerlessNextCommand(snapshot preparationcontract.Snapshot) string {
 		if execution.Mode == preparationcontract.ModeOrca {
 			return "agent-harness issueops execution resume --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --confirm"
 		}
-		return "agent-harness issueops execution claim --id " + quoteArg(record.ID) + " --generation " + strconv.FormatUint(generation, 10) + " --claim-token-file " + quoteArg(snapshot.ClaimTokenPath)
+		return "agent-harness issueops execution claim --id " + quoteArg(record.ID) + " --generation " + strconv.FormatUint(generation, 10) + " --claim-current-token"
 	case "released":
 		return "agent-harness issueops execution replace --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --preview"
 	case "revoking":

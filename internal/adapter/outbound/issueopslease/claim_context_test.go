@@ -71,7 +71,7 @@ func newSealedClaimContext(t *testing.T, issueURL, issueBody string, artifact []
 		SchemaVersion: leasecontract.SchemaVersion, LifecycleID: record.ID, Mode: "orca",
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		Branch: record.Execution.Workspace.Branch, BaseHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record),
+		LeaseGeneration:  record.Execution.Lease.Generation,
 		Issue:            claimPacketIssue{URL: record.IssueURL, Body: issueBody, BodySHA256: issueDigest},
 		ArtifactManifest: map[string]string{"plan": claimDigest(artifact)},
 	}

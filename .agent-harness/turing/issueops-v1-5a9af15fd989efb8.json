@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "io-af912dd12588",
+  "mode": "orca",
+  "worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/447-run-inventory-client",
+  "branch": "447-run-inventory-client",
+  "base_head": "1d80f3678e531e2b69ebe3a41b8b4ec3e249b3e7",
+  "tdd": {
+    "red": {
+      "command": "go test -v ./internal/adapter/orca -run 'TestClientRunInventory' -count=1",
+      "result": "fail",
+      "evidence": "Client did not yet implement ListRunInventory, ListAllTasksFromRuns, ListDispatchedTasksFromRuns, or ListGatesFromRuns."
+    },
+    "green": {
+      "command": "go test -v ./internal/adapter/orca -run 'TestClientRunInventory|TestClientProbeRequiresRunScopedGateCapability' -count=1",
+      "result": "pass"
+    }
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "tests": [
+        "TestClientRunInventoryReaderUsesExactPerRunQueries",
+        "TestClientRunInventoryRejectsZeroRunRuntimeMismatch"
+      ],
+      "command": "go test -v ./internal/adapter/orca -count=1",
+      "result": "pass",
+      "evidence": "The reader snapshots status and Runs, then uses exact per-Run task and gate argv; a zero-Run snapshot with a changed runtime fails closed."
+    },
+    {
+      "id": "AC-02",
+      "tests": [
+        "TestClientRunInventoryReadersLimitConcurrencyToEight",
+        "TestClientRunInventoryReaderReturnsLowestRunIndexError"
+      ],
+      "command": "go test -race ./internal/adapter/orca -count=1",
+      "result": "pass",
+      "evidence": "All three readers use at most eight workers and consume indexed result and error slots in Run order."
+    },
+    {
+      "id": "AC-03",
+      "tests": [
+        "TestClientRunInventoryReaderUsesExactPerRunQueries"
+      ],
+      "command": "go test -v ./internal/adapter/orca -count=1",
+      "result": "pass",
+      "evidence": "The dispatched reader issues task-list --status dispatched --run <RunID> --json for every snapshot Run."
+    },
+    {
+      "id": "AC-04",
+      "tests": [
+        "TestClientRunInventoryReaderFailsClosed",
+        "TestClientRunInventoryReaderReturnsLowestRunIndexError"
+      ],
+      "command": "go test -v ./internal/adapter/orca -count=1",
+      "result": "pass",
+      "evidence": "Duplicate Run and gate identities, malformed inventory identity, returned count mismatch, runtime drift, task Run mismatch, and read errors are rejected."
+    },
+    {
+      "id": "AC-05",
+      "tests": [
+        "TestClientRunInventoryReaderUsesExactPerRunQueries",
+        "TestClientRunInventoryReadersLimitConcurrencyToEight"
+      ],
+      "command": "go test -v ./internal/adapter/orca -count=1; go test -race ./internal/adapter/orca -count=1; git diff --check",
+      "result": "pass"
+    },
+    {
+      "id": "AC-06",
+      "tests": [
+        "TestClientProbeRequiresRunScopedGateCapability"
+      ],
+      "command": "go test ./internal/architecture -count=1",
+      "result": "pass",
+      "evidence": "Probe requires gate-list --help to advertise both --run and --json; architecture imports remain valid."
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test -v ./internal/adapter/orca -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "go test -race ./internal/adapter/orca -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "go test ./internal/architecture -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ]
+}

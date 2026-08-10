@@ -84,7 +84,6 @@ type claimContextPacket struct {
 	Branch           string            `json:"branch"`
 	BaseHead         string            `json:"base_head"`
 	LeaseGeneration  uint64            `json:"lease_generation"`
-	ClaimTokenFile   string            `json:"claim_token_file"`
 	Issue            claimPacketIssue  `json:"issue"`
 	ArtifactManifest map[string]string `json:"artifact_manifest"`
 }
@@ -116,7 +115,7 @@ func validateClaimPacket(record leasecontract.Record, issueDigest, packetDigest 
 		!(FilesystemPathMatcher{}).Matches(packet.SourceRoot, execution.Workspace.SourceRoot) ||
 		!(FilesystemPathMatcher{}).Matches(packet.WorktreeRoot, execution.Workspace.Root) ||
 		packet.Branch != execution.Workspace.Branch || packet.BaseHead != execution.Workspace.BaseHead ||
-		packet.LeaseGeneration != execution.Lease.Generation || packet.ClaimTokenFile != claimTokenPath(record) || packet.Issue.URL != record.IssueURL {
+		packet.LeaseGeneration != execution.Lease.Generation || packet.Issue.URL != record.IssueURL {
 		return fmt.Errorf("sealed context packet execution identity mismatch: packet_generation=%d expected_generation=%d", packet.LeaseGeneration, execution.Lease.Generation)
 	}
 	if packet.Issue.BodySHA256 != issueDigest {

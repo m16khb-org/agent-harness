@@ -14,6 +14,9 @@ func TestExecutionReseedCLIMapsCompletionGeneration(t *testing.T) {
 		"replace", "--id", "io-aaaaaaaaaaaa", "--expected-generation", "5",
 		"--completion-generation", "4", "--inventory-fingerprint", "inventory",
 		"--reason", "functional HEAD moved", "--reseed", "--confirm", "--json",
+		"--host", "codex", "--session-id", "test-session", "--session-pid", "1",
+		"--session-started-at", "2026-08-01T00:00:00Z", "--session-executable", "/usr/bin/codex",
+		"--cwd", stateRoot,
 	}, Deps{
 		StateRoot: func() string { return stateRoot },
 		Reseed: func(_ context.Context, gotRoot string, request issueops.ExecutionReseedRequest) (issueops.ExecutionReplaceResult, error) {

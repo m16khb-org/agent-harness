@@ -2,6 +2,8 @@ import contextlib
 import importlib.util
 import io
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -463,6 +465,129 @@ class StabilityAuditScriptTest(unittest.TestCase):
         self.assertEqual(detail["summary"], {"failed_step": "go test"})
         self.assertEqual(detail["stderr_tail"], "self-verify diagnostic")
         self.assertIn('"ok": false', detail["stdout_tail"])
+
+
+def _child_program():
+    return r'''
+import json
+import sys
+import time
+
+mode = sys.argv[1]
+if mode == "premature_eof":
+    raise SystemExit(0)
+if mode == "timeout":
+    time.sleep(10)
+    raise SystemExit(0)
+
+pending_ids = []
+for line in sys.stdin:
+    request = json.loads(line)
+    if "id" not in request:
+        continue
+    if mode == "reordered":
+        pending_ids.append(request["id"])
+        if len(pending_ids) == 2:
+            for response_id in reversed(pending_ids):
+                print(json.dumps({"jsonrpc": "2.0", "id": response_id, "result": {}}), flush=True)
+    elif mode == "malformed":
+        print("not-json", flush=True)
+    elif mode == "duplicate":
+        response = json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}})
+        print(response, flush=True)
+        print(response, flush=True)
+    elif mode == "missing":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"] + 100, "result": {}}), flush=True)
+    elif mode == "error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32603, "message": "boom"}}), flush=True)
+    elif mode == "bare_id":
+        print(json.dumps({"id": request["id"]}), flush=True)
+    elif mode == "wrong_version":
+        print(json.dumps({"jsonrpc": "1.0", "id": request["id"], "result": {}}), flush=True)
+    elif mode == "both_result_and_error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}, "error": {"code": -32603, "message": "boom"}}), flush=True)
+    elif mode == "neither_result_nor_error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"]}), flush=True)
+    elif mode == "non_object":
+        print(json.dumps([]), flush=True)
+    elif mode == "error_not_object":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": []}), flush=True)
+    elif mode == "error_bool_code":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": True, "message": "boom"}}), flush=True)
+    elif mode == "error_nonstring_message":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32603, "message": 1}}), flush=True)
+    else:
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}}), flush=True)
+'''
+
+
+class MCPJSONRPCProcessTest(unittest.TestCase):
+    def test_waits_for_responses_before_closing_stdin_and_rejects_bad_transcripts(self) -> None:
+        audit = load_audit_module()
+        calls = [
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        ]
+        processes = []
+        popen = subprocess.Popen
+
+        def track_process(*args, **kwargs):
+            process = popen(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        with mock.patch.object(audit.subprocess, "Popen", side_effect=track_process):
+            for mode, want_ok, want_problem, want_ids in [
+                ("success", True, "", [1, 2]),
+                ("reordered", True, "", [2, 1]),
+                ("premature_eof", False, "missing_ids", None),
+                ("malformed", False, "malformed_lines", None),
+                ("duplicate", False, "duplicate_ids", None),
+                ("missing", False, "missing_ids", None),
+                ("error", False, "rpc_errors", None),
+                ("timeout", False, "timed_out", None),
+            ]:
+                with self.subTest(mode=mode):
+                    result = audit.run_mcp_jsonrpc_process(
+                        [sys.executable, "-u", "-c", _child_program(), mode],
+                        calls,
+                        timeout=1,
+                    )
+                    self.assertEqual(want_ok, result["ok"], result)
+                    if want_problem:
+                        self.assertTrue(result[want_problem], result)
+                    else:
+                        self.assertEqual(want_ids, result["response_ids"], result)
+                        self.assertFalse(result["stdin_closed_before_responses"], result)
+
+        self.assertTrue(all(process.stdout is not None and process.stdout.closed for process in processes))
+        self.assertTrue(all(process.stderr is not None and process.stderr.closed for process in processes))
+
+    def test_rejects_malformed_jsonrpc_response_envelopes_without_crashing(self) -> None:
+        audit = load_audit_module()
+        calls = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}]
+
+        for mode in [
+            "bare_id",
+            "wrong_version",
+            "both_result_and_error",
+            "neither_result_nor_error",
+            "non_object",
+            "error_not_object",
+            "error_bool_code",
+            "error_nonstring_message",
+        ]:
+            with self.subTest(mode=mode):
+                result = audit.run_mcp_jsonrpc_process(
+                    [sys.executable, "-u", "-c", _child_program(), mode],
+                    calls,
+                    timeout=1,
+                )
+
+                self.assertFalse(result["ok"], result)
+                self.assertTrue(result["malformed_lines"], result)
+                self.assertEqual(result["response_ids"], [], result)
 
 
 if __name__ == "__main__":

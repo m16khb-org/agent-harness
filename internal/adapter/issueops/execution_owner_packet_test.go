@@ -93,6 +93,9 @@ func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(string(packetRaw), "claim_token_file") || strings.Contains(string(packetRaw), claimTokenPath(record)) {
+		t.Fatalf("owner context packet must not expose a claim token path: %s", packetRaw)
+	}
 	var packet executionOwnerContextPacket
 	if err := json.Unmarshal(packetRaw, &packet); err != nil {
 		t.Fatal(err)
@@ -164,7 +167,9 @@ func TestExecutionOwnerPromptSeparatesSealedClaimFromRecoveryResume(t *testing.T
 	record, req := ownerPacketFixture()
 	prompt := executionOwnerPromptFixture(t, record, req)
 	for _, required := range []string{
-		"injected sealed claim command가 유일한 owner next action",
+		"아래 command가 `none`이 아니면 실행 가능한 명령이 아니라 sealed claim template이다",
+		"placeholder를 리터럴 receipt로 모두 채운 뒤 정확히 한 번 실행한다",
+		"JSON envelope나 tool display를 hash하지 않는다",
 		"`execution resume`은 coordinator 전용 recovery",
 		"dispatched owner는 실행하지 않는다",
 	} {
@@ -298,7 +303,7 @@ func TestExecutionDirectOwnerPromptUsesNoClaimCommand(t *testing.T) {
 	record.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: &issueops.NativeActor{Host: "codex", SessionID: "direct"}}
 	req.Mode = "direct"
 	prompt := executionOwnerPromptFixture(t, record, req)
-	if !strings.Contains(prompt, "claim command가 `none`") || !strings.Contains(prompt, "\n   none\n") || strings.Contains(prompt, "issueops execution claim --id") {
+	if !strings.Contains(prompt, "아래 command가 `none`이면") || !strings.Contains(prompt, "\n   none\n") || strings.Contains(prompt, "issueops execution claim --id") {
 		t.Fatalf("direct active holder prompt must not claim again:\n%s", prompt)
 	}
 }
@@ -324,6 +329,52 @@ func TestExecutionOwnerPromptTemplateMatchesKarpathyArtifactByteForByte(t *testi
 	}
 }
 
+func TestExecutionOwnerClaimCommandUsesCurrentGenerationTokenWithoutPath(t *testing.T) {
+	record, req := ownerPacketFixture()
+	command := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).Claim
+	if !strings.Contains(command, "--claim-current-token") {
+		t.Fatalf("owner claim command must select the current token internally: %q", command)
+	}
+	if strings.Contains(command, "--claim-token-file") || strings.Contains(command, claimTokenPath(record)) {
+		t.Fatalf("owner claim command must not expose a token path: %q", command)
+	}
+}
+
+func TestExecutionOwnerReleaseCommandIncludesPIDReuseSafeActorReceipt(t *testing.T) {
+	record, req := ownerPacketFixture()
+	command := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).Release
+	for _, required := range []string{
+		"--session-pid <SESSION_PID>",
+		"--session-started-at <SESSION_STARTED_AT>",
+		"--session-executable <SESSION_EXECUTABLE>",
+	} {
+		if !strings.Contains(command, required) {
+			t.Fatalf("owner release command is missing %q: %q", required, command)
+		}
+	}
+}
+
+func TestExecutionOwnerResumePastImplementSkipsBackwardPhaseTransition(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.Phase = issueops.IssueOpsPhaseAISlopClean
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	if commands.EnterImplement != "none" {
+		t.Fatalf("advanced implementation recovery must not generate a backward transition: %q", commands.EnterImplement)
+	}
+	if !strings.Contains(commands.EnterAISlopClean, "--to ai-slop-clean") {
+		t.Fatalf("advanced implementation recovery must retain the cleanup refresh command: %q", commands.EnterAISlopClean)
+	}
+	prompt := executionOwnerPromptFixture(t, record, req)
+	for _, required := range []string{
+		"`none`이면 현재 phase가 이미 implement 이후",
+		"cleanup fingerprint와 fresh implementation review를 다시 기록",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("advanced-phase recovery prompt is missing %q:\n%s", required, prompt)
+		}
+	}
+}
+
 func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDeterministically(t *testing.T) {
 	record, req := ownerPacketFixture()
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
@@ -332,9 +383,9 @@ func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDetermin
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record),
-		Issue:     executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
-		OwnerHost: req.OwnerHost, OwnerModel: "{OWNER_EFFORT}", OwnerEffort: "injected",
+		LeaseGeneration: record.Execution.Lease.Generation,
+		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
+		OwnerHost:       req.OwnerHost, OwnerModel: "{OWNER_EFFORT}", OwnerEffort: "injected",
 		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
 		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
@@ -358,9 +409,9 @@ func executionOwnerPromptFixture(t *testing.T, record issueops.IssueOpsRecord, r
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record),
-		Issue:     executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
-		OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
+		LeaseGeneration: record.Execution.Lease.Generation,
+		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
+		OwnerHost:       req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
 		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
 		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,

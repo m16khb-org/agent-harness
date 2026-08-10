@@ -161,6 +161,30 @@ func SealedGitTopologyMutation(command string) bool {
 	return false
 }
 
+// ExactCommitCherryPick recognizes the one dependency-integration shape that
+// preserves the sealed branch and worktree identity. Authorization still comes
+// from the lifecycle execution guard's active-holder and canonical-root checks.
+func ExactCommitCherryPick(command string) bool {
+	trimmed := strings.TrimSpace(command)
+	if trimmed == "" || strings.ContainsAny(trimmed, "\r\n") {
+		return false
+	}
+	fields := strings.Fields(trimmed)
+	if len(fields) != 3 || fields[0] != "git" || fields[1] != "cherry-pick" {
+		return false
+	}
+	commit := fields[2]
+	if len(commit) != 40 {
+		return false
+	}
+	for _, ch := range commit {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // MatchingOriginUpstreamBranch는 origin의 같은 이름 원격 브랜치를 명시적으로
 // tracking하는 한 가지 비파괴적 branch 설정에서 로컬 브랜치 이름을 돌려준다.
 func MatchingOriginUpstreamBranch(command string) (string, bool) {

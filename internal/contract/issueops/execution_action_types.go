@@ -28,6 +28,7 @@ type ExecutionActionRequest struct {
 	ExpectedGeneration           uint64                                         `json:"expected_generation,omitempty"`
 	CompletionGeneration         uint64                                         `json:"completion_generation,omitempty"`
 	TokenFile                    string                                         `json:"claim_token_file,omitempty"`
+	ClaimCurrentToken            bool                                           `json:"claim_current_token,omitempty"`
 	IssueBodySHA256              string                                         `json:"issue_body_sha256,omitempty"`
 	ContextPacketSHA256          string                                         `json:"context_packet_sha256,omitempty"`
 	ReplaceAction                string                                         `json:"replace_action,omitempty"`

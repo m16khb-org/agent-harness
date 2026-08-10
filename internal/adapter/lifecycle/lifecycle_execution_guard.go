@@ -177,6 +177,9 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 		filepath.Join(authority.Execution.Workspace.Root, "bin", "agent-harness"),
 		filepath.Join(authority.Execution.Workspace.SourceRoot, "bin", "agent-harness"),
 	}
+	if parent := strings.TrimSpace(authority.Execution.Workspace.ParentWorktree); parent != "" {
+		trusted = append(trusted, filepath.Join(parent, "bin", "agent-harness"))
+	}
 	for _, candidate := range trusted {
 		resolved, resolveErr := filepath.EvalSymlinks(candidate)
 		if resolveErr == nil && cleanAbsPath(resolved) == cleanAbsPath(executable) {
@@ -996,6 +999,7 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if !req.EnforceWorktree {
 		return false, "", nil
 	}
+	exactCommitCherryPick := worktreeguard.ExactCommitCherryPick(req.Command)
 	unsafeReason := executionUnsafeMutationReason(req)
 	if unsafeReason == "" && searchrouting.IsShellTool(req.Tool) && !executionTypedControlPlane(req) {
 		if command, ok := commandparse.ParseExactIssueOpsCommand(req.Command); ok && command.Path == "execution resume" {
@@ -1013,11 +1017,17 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if unsafeReason == "" {
 		temporaryBuildOutput, exactTemporaryBuild = exactTemporaryAgentHarnessBuildOutput(req.Command)
 	}
+	if unsafeReason == "" && selfVerifyInvocation(req.Command) && !commandparse.ExactSelfVerifyVerification(req.Command) {
+		unsafeReason = "unclassified self-verify command is blocked while IssueOps mutation authority is active; use the exact verification form"
+	}
+	if unsafeReason == "" && doctorInvocation(req.Command) && !commandparse.ExactDoctorVerification(req.Command) {
+		unsafeReason = "unclassified doctor command is blocked while IssueOps mutation authority is active; use the exact repo-local verification form"
+	}
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
 		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactReleasedPlanRecovery && !exactResourceWait && !exactAtomicWorkflow &&
-			!commandparse.ExactSelfVerifyVerification(req.Command) {
+			!exactCommitCherryPick && !commandparse.ExactSelfVerifyVerification(req.Command) && !commandparse.ExactDoctorVerification(req.Command) {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -1146,6 +1156,16 @@ func exactIssueOpsMutationHelpObservation(path string, tokens []string, start in
 	}
 	return len(tokens) == start+1 &&
 		(tokens[start] == "--help" || tokens[start] == "-h")
+}
+
+func selfVerifyInvocation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) >= 2 && tokens[1] == "self-verify"
+}
+
+func doctorInvocation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) >= 2 && tokens[1] == "doctor"
 }
 
 func exactIssueOpsOwnerMutation(commandText string) bool {
@@ -1634,7 +1654,7 @@ func executionUnsafeMutationReason(req lifecyclecontract.HookToolUseLifecycleReq
 		return "background or detached mutation is blocked; run the command in the foreground and observe it to completion in the holder session"
 	}
 	upstreamBranch, exactUpstream := worktreeguard.MatchingOriginUpstreamBranch(command)
-	if worktreeguard.SealedGitTopologyMutation(command) ||
+	if (worktreeguard.SealedGitTopologyMutation(command) && !worktreeguard.ExactCommitCherryPick(command)) ||
 		(exactUpstream && upstreamBranch != gitBranchFromHead(req.CWD)) {
 		return "the IssueOps branch and worktree identity are sealed; direct switch/reset/rebase/merge/force-push/worktree mutation is blocked"
 	}

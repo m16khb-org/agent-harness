@@ -377,16 +377,22 @@ func TestExecutionMutationFailsClosedWhenAuthorityStateIsCorrupt(t *testing.T) {
 func TestExecutionHolderCannotMutateGitTopology(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
+	commit := "26f6ab35a4d06bc49b452757bea2e7117bca6c8a"
 	for name, command := range map[string]string{
-		"branch switch":  "git switch other-branch",
-		"reset":          "git reset --hard HEAD~1",
-		"rebase":         "git rebase origin/main",
-		"merge":          "git merge other-branch",
-		"force push":     "git push --force origin HEAD",
-		"force refspec":  "git push origin +HEAD:refs/heads/main",
-		"mirror push":    "git push --mirror origin",
-		"remote delete":  "git push origin :refs/heads/obsolete",
-		"worktree prune": "git worktree prune",
+		"branch switch":         "git switch other-branch",
+		"reset":                 "git reset --hard HEAD~1",
+		"rebase":                "git rebase origin/main",
+		"merge":                 "git merge other-branch",
+		"force push":            "git push --force origin HEAD",
+		"force refspec":         "git push origin +HEAD:refs/heads/main",
+		"mirror push":           "git push --mirror origin",
+		"remote delete":         "git push origin :refs/heads/obsolete",
+		"worktree prune":        "git worktree prune",
+		"short cherry-pick":     "git cherry-pick 26f6ab35",
+		"uppercase cherry-pick": "git cherry-pick 26F6AB35A4D06BC49B452757BEA2E7117BCA6C8A",
+		"range cherry-pick":     "git cherry-pick " + commit + ".." + commit,
+		"multiple cherry-pick":  "git cherry-pick " + commit + " " + commit,
+		"option cherry-pick":    "git cherry-pick --no-commit " + commit,
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := executionRequest(record, worker, "claude", "owner-session", command)
@@ -395,6 +401,35 @@ func TestExecutionHolderCannotMutateGitTopology(t *testing.T) {
 				t.Fatalf("current holder must not change the sealed Git topology: %+v", got)
 			}
 		})
+	}
+}
+
+func TestExecutionHolderCanCherryPickOneExactCommit(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	command := "git cherry-pick 26f6ab35a4d06bc49b452757bea2e7117bca6c8a"
+
+	req := executionRequest(record, worker, "claude", "owner-session", command)
+	req.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("current holder must be able to integrate one exact reviewed commit: %+v", got)
+	}
+
+	foreign := req
+	foreign.SessionID = "other-session"
+	foreign.AgentID = "other-agent"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" {
+		t.Fatalf("foreign actor must not use exact cherry-pick authority: %+v", got)
+	}
+
+	record.Execution.Lease.Status = issueopscontract.LeaseStatusReleased
+	record.Execution.Lease.ReleasedAt = "2026-07-22T01:00:00Z"
+	record.Execution.Lease.Holder = nil
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("released lifecycle must not retain exact cherry-pick authority: %+v", got)
 	}
 }
 

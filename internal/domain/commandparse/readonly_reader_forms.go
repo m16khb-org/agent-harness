@@ -157,6 +157,20 @@ func ExactSelfVerifyVerification(command string) bool {
 	default:
 		return false
 	}
+	for _, token := range tokens[2:] {
+		if token != "--full" {
+			continue
+		}
+		return tokens[0] == "./bin/agent-harness" &&
+			len(tokens) == 9 &&
+			tokens[2] == "--full" &&
+			tokens[3] == "--iterations=10" &&
+			tokens[4] == "--seed=100" &&
+			tokens[5] == "--target-score=95" &&
+			tokens[6] == "--llm-eval=false" &&
+			tokens[7] == "--progress=jsonl" &&
+			tokens[8] == "--json"
+	}
 	valueOptions := map[string]bool{"--seed": true, "--target-score": true, "--llm-eval": true, "--goal": true}
 	boolOptions := map[string]bool{"--json": true}
 	for index := 2; index < len(tokens); index++ {
@@ -187,4 +201,22 @@ func ExactSelfVerifyVerification(command string) bool {
 		index++
 	}
 	return true
+}
+
+// ExactDoctorVerification admits only the repo-local doctor form used by the
+// sealed owner verification loop. It stays outside ExactReadOnlyShellCommand
+// so the lifecycle guard still requires the active holder and canonical root.
+func ExactDoctorVerification(command string) bool {
+	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) ||
+		HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) ||
+		HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) ||
+		HasActiveShellComment(command) || HasActiveZshEqualsExpansion(command) ||
+		HasUnquotedControlOperator(command) || HasUnquotedBackgroundOperator(command) {
+		return false
+	}
+	tokens := SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) == 5 && tokens[0] == "./bin/agent-harness" &&
+		tokens[1] == "doctor" && tokens[2] == "--repo" &&
+		strings.TrimSpace(tokens[3]) != "" && !strings.HasPrefix(tokens[3], "-") &&
+		tokens[4] == "--json"
 }

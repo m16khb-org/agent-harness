@@ -86,7 +86,7 @@ func TestResumeReturnsExistingBindingWithoutAllocatingAnotherLaunch(t *testing.T
 	}
 }
 
-func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
+func TestResumeReplacesSettledGhostTerminalInApplicationOrder(t *testing.T) {
 	trace := []string{}
 	record := resumeApplicationTestRecord(4)
 	repository := &resumeTraceRepository{record: record, trace: &trace}
@@ -102,7 +102,10 @@ func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 		}),
 		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
 			trace = append(trace, "owners")
-			return leasedomain.ResumeInventory{RuntimeID: "runtime"}, nil
+			return leasedomain.ResumeInventory{
+				RuntimeID: "runtime", TerminalInventoryComplete: true, TerminalID: "pty",
+				TaskStatus: "failed", DispatchStatus: "failed",
+			}, nil
 		}),
 		resumeTraceStages{trace: &trace},
 		resumeOperationIDsFunc(func() (string, error) { trace = append(trace, "operation_id"); return strings.Repeat("d", 32), nil }),

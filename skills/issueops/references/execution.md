@@ -152,25 +152,29 @@ agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
 
 A direct holder does not claim again after normal preparation. Holderless
 direct recovery is the exception: `replace --reseed|--finalize` returns an exact
-`claim` command for the new claimable generation. An Orca owner reads the
+`claim` command for the new claimable generation. That command intentionally
+omits `ACTOR_FLAGS`: the CLI observes the invoking native session and its
+PID-reuse-safe ancestry receipt. Supplying actor flags remains supported, but
+they must be supplied as one complete set; a partial set fails closed. An Orca owner reads the
 private rendered prompt and context packet, verifies the issue and packet
-SHA-256 values, then runs the exact claim command rendered by
+SHA-256 values, then runs the exact current-generation claim command rendered by
 preparation/status:
 
 ```bash
 agent-harness issueops execution claim \
   --id "$ISSUEOPS_ID" \
   --generation "$GENERATION" \
-  --claim-token-file "$CLAIM_TOKEN_FILE" \
+  --claim-current-token \
   --issue-body-sha256 "$ISSUE_BODY_SHA256" \
   --context-packet-sha256 "$CONTEXT_PACKET_SHA256" \
   $ACTOR_FLAGS \
   --json
 ```
 
-The token is read from its private file, is never printed or copied into a
-prompt, and is consumed exactly once. A digest mismatch leaves the owner
-read-only.
+The CLI resolves the token from its private deterministic path. Its value is
+never printed, and the path is never copied into generated owner prompts or
+claim commands. The token is consumed exactly once. A digest mismatch leaves
+the owner read-only.
 
 ## Release, Replacement, And Reconciliation
 
@@ -196,8 +200,7 @@ Replacement is a fail-closed sequence. There is no unsafe override:
 5. `issueops execution resume --expected-generation N --confirm` creates a
    fresh Orca terminal/Run/task/dispatch in the existing canonical worktree and
    records `orca.lease_generation=N`.
-6. The new owner claims with the resume result's token path plus issue/packet
-   digests. A reseal
+6. The new owner claims with `--claim-current-token` plus issue/packet digests. A reseal
    failure preserves the previous durable lease and removes uncommitted
    generation token/packet/prompt files. A retry first recovers exact
    harness-owned residue for that still-uncommitted generation.
@@ -244,7 +247,7 @@ claim command instead:
 ```bash
 agent-harness issueops execution claim \
   --id "$ISSUEOPS_ID" --generation "$GENERATION" \
-  --claim-token-file "$CLAIM_TOKEN_FILE" \
+  --claim-current-token \
   $ACTOR_FLAGS --json
 ```
 
@@ -255,7 +258,7 @@ returned by each read/mutation result:
 execution status
   -> execution replace --preview
   -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm
-  -> execution claim --claim-token-file <current generation token>
+  -> execution claim --claim-current-token
 ```
 
 Do not skip the preview or invent the fingerprint. A completed cycle does not

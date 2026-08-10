@@ -163,6 +163,32 @@ func TestSealedGitTopologyMutationAllowsOnlyMatchingOriginUpstream(t *testing.T)
 	}
 }
 
+func TestExactCommitCherryPick(t *testing.T) {
+	const commit = "26f6ab35a4d06bc49b452757bea2e7117bca6c8a"
+	for _, tt := range []struct {
+		name    string
+		command string
+		want    bool
+	}{
+		{name: "exact commit", command: "git cherry-pick " + commit, want: true},
+		{name: "short commit", command: "git cherry-pick 26f6ab35", want: false},
+		{name: "uppercase commit", command: "git cherry-pick 26F6AB35A4D06BC49B452757BEA2E7117BCA6C8A", want: false},
+		{name: "commit range", command: "git cherry-pick " + commit + ".." + commit, want: false},
+		{name: "multiple commits", command: "git cherry-pick " + commit + " " + commit, want: false},
+		{name: "option", command: "git cherry-pick --no-commit " + commit, want: false},
+		{name: "absolute git", command: "/usr/bin/git cherry-pick " + commit, want: false},
+		{name: "quoted git", command: `"git" cherry-pick ` + commit, want: false},
+		{name: "dynamic commit", command: "git cherry-pick $COMMIT", want: false},
+		{name: "shell wrapper", command: "sh -c 'git cherry-pick " + commit + "'", want: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ExactCommitCherryPick(tt.command); got != tt.want {
+				t.Fatalf("ExactCommitCherryPick(%q) = %v, want %v", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIssueOpsBranchCreationSourceReason(t *testing.T) {
 	reason := IssueOpsBranchCreationSourceReason("feature/foo")
 	if reason == "" {

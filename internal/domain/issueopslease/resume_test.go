@@ -33,7 +33,42 @@ func TestPlanResumeDecisionTable(t *testing.T) {
 		}, deny: DenyResumeOwnerLive},
 		{name: "reuse terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalLive = true; r.Inventory.TerminalID = "pty-3" }, want: ResumeReuseTerminal},
 		{name: "changed terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalLive = true; r.Inventory.TerminalID = "other" }, deny: DenyResumeTerminalIdentity},
-		{name: "matching ghost terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalID = "pty-3" }, deny: DenyResumeTerminalIdentity},
+		{name: "matching settled ghost terminal", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalInventoryComplete = true
+			r.Inventory.TerminalID = "pty-3"
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "failed"
+		}, want: ResumeCreateTerminal},
+		{name: "matching ghost terminal with incomplete inventory", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalID = "pty-3"
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "failed"
+		}, deny: DenyResumeTerminalIdentity},
+		{name: "matching ghost terminal with live task", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalInventoryComplete = true
+			r.Inventory.TerminalID = "pty-3"
+			r.Inventory.TaskLive = true
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "failed"
+		}, deny: DenyResumeOwnerContradiction},
+		{name: "matching ghost terminal with dispatched work", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalInventoryComplete = true
+			r.Inventory.TerminalID = "pty-3"
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "dispatched"
+		}, deny: DenyResumeTerminalIdentity},
+		{name: "matching ghost terminal with unsettled dispatch", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalInventoryComplete = true
+			r.Inventory.TerminalID = "pty-3"
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "pending"
+		}, deny: DenyResumeTerminalIdentity},
+		{name: "changed ghost terminal", edit: func(r *ResumeRequest) {
+			r.Inventory.TerminalInventoryComplete = true
+			r.Inventory.TerminalID = "other"
+			r.Inventory.TaskStatus = "failed"
+			r.Inventory.DispatchStatus = "failed"
+		}, deny: DenyResumeTerminalIdentity},
 		{name: "new terminal", edit: func(r *ResumeRequest) {}, want: ResumeCreateTerminal},
 		{name: "unsafe runtime rollover", edit: func(r *ResumeRequest) {
 			r.Inventory.RuntimeID = "runtime-current"
