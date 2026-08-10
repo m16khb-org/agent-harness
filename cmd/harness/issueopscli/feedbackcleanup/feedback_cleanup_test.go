@@ -362,6 +362,48 @@ func TestRunCleanupStatusDoesNotNormalizeProviderOrIssueErrors(t *testing.T) {
 	}
 }
 
+func TestRunCleanupFinishUsesSupersedingArtifactBaseBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := cleanupStatusRecord(t, true, true)
+	replacement := "https://github.com/acme/repo/pull/454"
+	provider := &cleanupStatusProvider{snapshot: port.ExecutionIssueSnapshot{
+		URL: record.IssueURL, Body: port.IssueBodyCompletionStartMarker, State: "closed",
+	}}
+	deps := cleanupStatusDeps(nil)
+	deps.Provider = func(string) (port.IssueProvider, error) { return provider, nil }
+	observed := []string{}
+	deps.VerifyMergedHead = func(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+		observed = append(observed, artifact.URL)
+		if artifact.URL == record.RemoteArtifact.URL {
+			return issueopscontract.CleanupRemoteBranchArtifactHead{}, errors.New("original child PR is not merged")
+		}
+		if artifact.URL != replacement {
+			t.Fatalf("unexpected replacement artifact: %+v", artifact)
+		}
+		return issueopscontract.CleanupRemoteBranchArtifactHead{BaseRefName: "main"}, nil
+	}
+
+	previous := cleanupDeps
+	t.Cleanup(func() { cleanupDeps = previous })
+	wired := cleanupDeps
+	var captured issueopscontract.CleanupFinishRequest
+	wired.CleanupFinish = func(_ context.Context, _ string, req issueopscontract.CleanupFinishRequest, _ Deps, _ port.IssueProvider) (issueopscontract.CleanupFinishResult, error) {
+		captured = req
+		return issueopscontract.CleanupFinishResult{OK: true, ID: req.ID, Preview: true}, nil
+	}
+	ConfigureCleanup(wired)
+
+	if err := RunCleanup([]string{"finish", "--id", record.ID, "--preview", "--superseded-by", replacement, "--json"}, deps); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(observed, "\n") != record.RemoteArtifact.URL+"\n"+replacement {
+		t.Fatalf("merge observations = %v", observed)
+	}
+	if captured.Merged || captured.SupersededBy != replacement || captured.MergedBaseBranch != "main" {
+		t.Fatalf("superseding finish request lost replacement merge evidence: %+v", captured)
+	}
+}
+
 func TestRunCleanupOrphanDefaultsToPreviewAndGatesApply(t *testing.T) {
 	var printed []any
 	var previews []orphancontract.Request

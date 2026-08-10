@@ -390,8 +390,18 @@ func runCleanupFinish(args []string, deps Deps) error {
 	// 원 artifact가 머지되지 않은 것은 replacement 증거가 있을 때만 통과 후보다.
 	// 증거가 없으면 종전대로 여기서 멈춘다 — 관측 실패를 조용히 넘기지 않는다.
 	mergedArtifact, mergeErr := deps.VerifyMergedHead(*record.RemoteArtifact)
-	if mergeErr != nil && strings.TrimSpace(*supersededBy) == "" {
+	originalMerged := mergeErr == nil
+	supersedingURL := strings.TrimSpace(*supersededBy)
+	if mergeErr != nil && supersedingURL == "" {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", mergeErr))
+	}
+	if !originalMerged {
+		replacement := *record.RemoteArtifact
+		replacement.URL = supersedingURL
+		mergedArtifact, err = deps.VerifyMergedHead(replacement)
+		if err != nil {
+			return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("superseding merge evidence readback failed (refusing to continue): %w", err))
+		}
 	}
 	snapshot, err := cleanupDeps.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
@@ -405,7 +415,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 		// 가드를 여는 대신 fail-closed로 거부한다(C2-F4).
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot resolve current directory (refusing destructive cleanup): %w", err))
 	}
-	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint, mergeErr == nil, strings.TrimSpace(*supersededBy))
+	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint, originalMerged, supersedingURL)
 	result, err := cleanupDeps.CleanupFinish(context.Background(), cleanupDeps.IssueOpsStateRoot(), req, deps, prov)
 	var bindErr error
 	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
