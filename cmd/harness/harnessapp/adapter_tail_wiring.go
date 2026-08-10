@@ -19,6 +19,7 @@ func configureAdapterTail() {
 	claudet4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 	claudet4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 	claudet4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+	claudet4deps.HookGroupContainsCommand = installutiladapter.HookGroupContainsCommand
 	claudet4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
 	claudet4deps.HookTargetGenerationMessages = func(config map[string]any, h, expected, running string, read func(string) string) []string {
 		return installutiladapter.HookTargetGenerationMessages(config, h, expected, running, read)
@@ -26,12 +27,12 @@ func configureAdapterTail() {
 	claudet4deps.RunningBuildGenerationString = installadapter.RunningBuildGenerationString
 	claudet4deps.FileBuildGenerationString = installadapter.FileBuildGenerationString
 	claudet4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
-	claudet4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 	claudet4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
-	claudet4deps.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+	claudet4deps.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 	claudet4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
 	codext4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 	codext4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+	codext4deps.HookGroupContainsCommand = installutiladapter.HookGroupContainsCommand
 	codext4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
 	codext4deps.HookTargetGenerationMessages = func(config map[string]any, h, expected, running string, read func(string) string) []string {
 		return installutiladapter.HookTargetGenerationMessages(config, h, expected, running, read)
@@ -39,9 +40,8 @@ func configureAdapterTail() {
 	codext4deps.RunningBuildGenerationString = installadapter.RunningBuildGenerationString
 	codext4deps.FileBuildGenerationString = installadapter.FileBuildGenerationString
 	codext4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
-	codext4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 	codext4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
-	codext4deps.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+	codext4deps.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 	codext4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
 	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL
 	installclit4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
@@ -56,6 +56,9 @@ func configureAdapterTail() {
 	}
 	installclit4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
 	nativeintegrationt4deps.SkillNamesForHost = installutiladapter.SkillNamesForHost
+	nativeintegrationt4deps.ResolveStableNativeRoot = installadapter.ResolveStableNativeRoot
+	nativeintegrationt4deps.CodexHooksConfig = codext4deps.HooksConfig
+	nativeintegrationt4deps.VerifyHookConfigActivation = installutiladapter.VerifyHookConfigActivation
 	projectbootstrapt4deps.AnalyzeProjectSignals = projectdocsadapter.AnalyzeProjectSignals
 	projectbootstrapt4deps.RenderAgentsWithBlock = projectdocsadapter.RenderAgentsWithBlock
 	projectbootstrapt4deps.RenderProjectDocs = projectdocsadapter.RenderProjectDocs

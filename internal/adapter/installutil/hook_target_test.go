@@ -58,6 +58,15 @@ func TestHookTargetDriftMessages(t *testing.T) {
 	}
 }
 
+func TestHookCommandTargetDecodesQuotedTargetContainingHookAndEscapedQuote(t *testing.T) {
+	want := "/source thin hook workspace/it's/bin/agent-harness"
+	command := "'/source thin hook workspace/it'\"'\"'s/bin/agent-harness' hook session-start --host codex"
+	got, ok := hookCommandTarget(command)
+	if !ok || got != want {
+		t.Fatalf("hookCommandTarget(%q) = %q, %t; want %q, true", command, got, ok, want)
+	}
+}
+
 func hookTargetTestConfig(command string) map[string]any {
 	return map[string]any{"hooks": map[string]any{"PreToolUse": []any{
 		map[string]any{"hooks": []any{map[string]any{"type": "command", "command": command}}},

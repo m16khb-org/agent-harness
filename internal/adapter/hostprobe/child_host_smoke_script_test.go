@@ -128,7 +128,7 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 			{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}},
 			{Hooks: []codexSmokeHook{{Type: "command", Command: "touch " + coResidentSentinel, Timeout: 5}}},
 		},
-		"PreToolUse": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PreToolUse"), Timeout: 5}}}},
+		"PostCompact": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PostCompact"), Timeout: 5}}}},
 	}}
 	sourceHookBytes, err := json.Marshal(sourceHooks)
 	if err != nil {
@@ -228,7 +228,7 @@ func assertProjectedCodexSmokeHooks(t *testing.T, path, observationPath, harness
 	if len(document.Hooks) != 2 {
 		t.Fatalf("projected hook events=%v", document.Hooks)
 	}
-	for _, event := range []string{"SessionStart", "PreToolUse"} {
+	for _, event := range []string{"SessionStart", "PostCompact"} {
 		groups := document.Hooks[event]
 		if len(groups) != 1 || len(groups[0].Hooks) != 1 {
 			t.Fatalf("%s groups=%+v", event, groups)
@@ -252,7 +252,7 @@ func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T
 	harnessBinary := filepath.Join(root, "bin", "agent-harness")
 	document := codexSmokeHookDocument{Hooks: map[string][]codexSmokeHookGroup{
 		"SessionStart": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}}},
-		"PreToolUse":   {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PreToolUse") + " && printf drift", Timeout: 5}}}},
+		"PostCompact":  {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PostCompact") + " && printf drift", Timeout: 5}}}},
 	}}
 	data, err := json.Marshal(document)
 	if err != nil {
@@ -272,7 +272,7 @@ func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T
 		t.Fatal(err)
 	}
 	if _, err := prepareCodexSmokeHome(episodeRoot, harnessBinary, filepath.Join(root, "observation.json"), deps); err == nil {
-		t.Fatal("drifted activated Codex PreToolUse command was projected")
+		t.Fatal("drifted activated Codex PostCompact command was projected")
 	}
 }
 
@@ -281,7 +281,7 @@ func testCodexManagedHookCommand(harnessBinary, event string) string {
 	if event == "SessionStart" {
 		return base + "session-start --host codex"
 	}
-	return base + "pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
+	return base + "post-compact --host codex"
 }
 
 func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
@@ -341,7 +341,7 @@ func TestChildHostSmokeRejectsSymlinkedHookMarker(t *testing.T) {
 
 func writeChildSmokeHookMarkers(t *testing.T, observationPath string) {
 	t.Helper()
-	data := []byte("{\"event\":\"SessionStart\"}\n{\"event\":\"PreToolUse\"}\n")
+	data := []byte("{\"event\":\"SessionStart\"}\n")
 	if err := os.WriteFile(observationPath+".hooks", data, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func mcpOnlyHostStream(t *testing.T, stream []byte) []byte {
 
 func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path string) {
 	t.Helper()
-	if !result.Completed || !result.SessionStartObserved || !result.PreToolUseObserved || len(result.ResponseSHA256) != 64 || result.ExitCode != 0 {
+	if !result.Completed || !result.SessionStartObserved || result.PreToolUseObserved || len(result.ResponseSHA256) != 64 || result.ExitCode != 0 {
 		t.Fatalf("result=%+v", result)
 	}
 	data, err := os.ReadFile(path)
@@ -386,7 +386,7 @@ func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path
 	if err := decodeStrictJSON(data, &observation); err != nil {
 		t.Fatal(err)
 	}
-	if !observation.SessionStartObserved || !observation.PreToolUseObserved || observation.MCPCallCount != 1 || observation.ResponseSHA256 != result.ResponseSHA256 {
+	if !observation.SessionStartObserved || observation.PreToolUseObserved || observation.MCPCallCount != 1 || observation.ResponseSHA256 != result.ResponseSHA256 {
 		t.Fatalf("observation=%+v", observation)
 	}
 	if strings.Contains(string(data), "captured") || strings.Contains(string(data), "agent_harness_probe") {
@@ -414,7 +414,7 @@ func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 		t.Fatalf("canonical command identity missing from round trip: before=%+v activated=%+v", result.Receipt.Before.Command, result.Receipt.Activated.Command)
 	}
 	for _, host := range []childSmokeHostEvidence{result.Receipt.Codex, result.Receipt.Claude} {
-		if !host.SessionStartObserved || !host.PreToolUseObserved || host.MCPCallCount != 1 || len(host.ResponseSHA256) != 64 || host.ExitCode != 0 {
+		if !host.SessionStartObserved || host.PreToolUseObserved || host.MCPCallCount != 1 || len(host.ResponseSHA256) != 64 || host.ExitCode != 0 {
 			t.Fatalf("host evidence=%+v", host)
 		}
 	}
@@ -454,7 +454,7 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 		"codex-version-drift",
 		"claude-version-drift",
 		"codex-session-start-missing",
-		"claude-pre-tool-use-missing",
+		"claude-pre-tool-use-observed",
 		"codex-mcp-zero",
 		"claude-mcp-two",
 		"codex-mcp-readback-mismatch",
@@ -690,12 +690,12 @@ func writeManagedSurfaceFixture(t *testing.T, home, codexHome, root string) {
 	binary := filepath.Join(root, "bin", "agent-harness")
 	files := map[string]string{
 		filepath.Join(codexHome, "config.toml"): fmt.Sprintf("[mcp_servers.agent_harness]\ncommand = %q\nargs = [\"mcp\"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = %q\n", binary, root),
-		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PreToolUse":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
-`, "'"+binary+"' hook session-start --host codex", "'"+binary+"' hook pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"),
+		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PostCompact":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start --host codex", "'"+binary+"' hook post-compact --host codex"),
 		filepath.Join(home, ".claude.json"): fmt.Sprintf(`{"mcpServers":{"agent_harness":{"type":"stdio","command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}
 `, binary, root),
-		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
-`, "'"+binary+"' hook session-start", "'"+binary+"' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"),
+		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PostCompact":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start --host claude", "'"+binary+"' hook post-compact --host claude"),
 	}
 	for path, content := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -743,7 +743,7 @@ with open(os.path.join(codex_home, "config.toml"), "w", encoding="utf-8") as han
     handle.write(f'[mcp_servers.agent_harness]\ncommand = "{binary}"\nargs = ["mcp"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = "{root}"\n')
 hooks = {"hooks": {
     "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host codex", "timeout": 5}]}],
-    "PreToolUse": [{"hooks": [{"type": "command", "command": f"'{binary}' hook pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl", "timeout": 5}]}],
+    "PostCompact": [{"hooks": [{"type": "command", "command": f"'{binary}' hook post-compact --host codex", "timeout": 5}]}],
 }}
 with open(os.path.join(codex_home, "hooks.json"), "w", encoding="utf-8") as handle:
     json.dump(hooks, handle, separators=(",", ":"))
@@ -752,8 +752,8 @@ with open(os.path.join(home, ".claude.json"), "w", encoding="utf-8") as handle:
     json.dump({"mcpServers": {"agent_harness": {"type": "stdio", "command": binary, "args": ["mcp"], "env": {"HARNESS_ROOT": root}}}}, handle, separators=(",", ":"))
     handle.write("\n")
 claude_hooks = {"hooks": {
-    "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start", "timeout": 5}]}],
-    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": f"'{binary}' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl", "timeout": 5}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host claude", "timeout": 5}]}],
+    "PostCompact": [{"hooks": [{"type": "command", "command": f"'{binary}' hook post-compact --host claude", "timeout": 5}]}],
 }}
 with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8") as handle:
     json.dump(claude_hooks, handle, separators=(",", ":"))
@@ -767,7 +767,7 @@ import sys
 path = sys.argv[1]
 with open(path, encoding="utf-8") as handle:
     document = json.load(handle)
-document["hooks"]["PreToolUse"][0]["hooks"][0]["command"] += " && printf drift"
+document["hooks"]["PostCompact"][0]["hooks"][0]["command"] += " && printf drift"
 with open(path, "w", encoding="utf-8") as handle:
     json.dump(document, handle, separators=(",", ":"))
     handle.write("\n")
@@ -916,10 +916,10 @@ case "${1:-}" in
       exit 12
     fi
     session=true
-    pretool=true
+    pretool=false
     calls=1
     [[ "${FAKE_SCENARIO:-}" != "$host-session-start-missing" ]] || session=false
-    [[ "${FAKE_SCENARIO:-}" != "$host-pre-tool-use-missing" ]] || pretool=false
+    [[ "${FAKE_SCENARIO:-}" != "$host-pre-tool-use-observed" ]] || pretool=true
     [[ "${FAKE_SCENARIO:-}" != "$host-mcp-zero" ]] || calls=0
     [[ "${FAKE_SCENARIO:-}" != "$host-mcp-two" ]] || calls=2
     if [[ "${FAKE_SCENARIO:-}" == "$host-observation-extra-field" ]]; then

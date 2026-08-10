@@ -2,6 +2,7 @@ package nativeintegration
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testing.T) {
 	root := t.TempDir()
+	stubStableNativeRoot(t, func(string) (string, error) { return root, nil })
 	home := t.TempDir()
 	existing := nativeIntegrationExpectedPaths(root, home)
 	deps := nativeIntegrationValidationDeps{
@@ -31,7 +33,7 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 			case "config.toml":
 				return []byte("[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n"), nil
 			case "hooks.json":
-				return []byte(`{"command":"agent-harness hook user-prompt"}`), nil
+				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"))), nil
 			default:
 				return nil, errors.New("unexpected read")
 			}
@@ -54,6 +56,7 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 
 func TestValidateNativeIntegrationWithDepsCoversSkillConfigAndWarningFailures(t *testing.T) {
 	root := t.TempDir()
+	stubStableNativeRoot(t, func(string) (string, error) { return root, nil })
 	home := t.TempDir()
 	existing := nativeIntegrationExpectedPaths(root, home)
 	deps := nativeIntegrationValidationDeps{
@@ -79,12 +82,135 @@ func TestValidateNativeIntegrationWithDepsCoversSkillConfigAndWarningFailures(t 
 	for _, want := range []string{
 		"list native skills: skill list failed",
 		"Codex MCP config missing agent_harness",
-		"Codex UserPromptSubmit hook missing agent-harness hook user-prompt",
+		"Codex thin context hooks missing agent-harness SessionStart/PostCompact surface",
 		"Claude duplicate MCP warning fixture was not classified",
 	} {
 		if !strings.Contains(step.Error, want) {
 			t.Fatalf("expected %q in error, got %#v", want, step)
 		}
+	}
+}
+
+func TestValidateNativeIntegrationReportsStableRootResolutionError(t *testing.T) {
+	root := t.TempDir()
+	stubStableNativeRoot(t, func(string) (string, error) { return "", errors.New("stable root unavailable") })
+	home := t.TempDir()
+	existing := nativeIntegrationExpectedPaths(root, home)
+	deps := nativeIntegrationValidationDeps{
+		userHomeDir: func() (string, error) { return home, nil },
+		listSkills:  func(string) ([]string, error) { return []string{"shared", "codex-only", "claude-only"}, nil },
+		skillNamesForHost: func(_ string, _ []string, host string) ([]string, []string) {
+			if host == "codex" {
+				return []string{"shared", "codex-only"}, nil
+			}
+			return []string{"shared", "claude-only"}, nil
+		},
+		exists: func(path string) bool { return existing[path] },
+		readFile: func(path string) ([]byte, error) {
+			switch filepath.Base(path) {
+			case "config.toml":
+				return []byte("[mcp_servers.agent_harness]\n"), nil
+			case "hooks.json":
+				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"))), nil
+			default:
+				return nil, errors.New("unexpected read")
+			}
+		},
+		duplicateWarningFixture: claudeMCPDuplicateWarningFixture,
+	}
+
+	step := validateNativeIntegrationWithDeps(root, deps)
+	if step.OK || !strings.Contains(step.Error, "resolve stable native root: stable root unavailable") {
+		t.Fatalf("native integration must fail closed on stable-root resolution: %#v", step)
+	}
+}
+
+func TestHasThinCodexContextHooksPermitsThirdPartyLifecycleEvents(t *testing.T) {
+	config := `{
+		"hooks": {
+			"SessionStart": [
+				{"hooks": [{"type": "command", "command": "'/Users/example/.orca/agent-hooks/codex-hook.sh' observe", "timeout": 10}]},
+				{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}
+			],
+			"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
+			"PreToolUse": [{"hooks": [{"type": "command", "command": "'/Users/example/.orca/agent-hooks/codex-hook.sh' observe", "timeout": 10}]}],
+			"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "codegraph observe", "timeout": 10}]}],
+			"SubagentStop": [{"hooks": [{"type": "command", "command": "third-party stop", "timeout": 10}]}],
+			"PermissionRequest": [{"hooks": [{"type": "command", "command": "third-party permission", "timeout": 10}]}]
+		}
+	}`
+	if !hasThinCodexContextHooks(config, "/source/bin/agent-harness") {
+		t.Fatal("third-party lifecycle hooks must not invalidate the two managed context hooks")
+	}
+}
+
+func TestHasThinCodexContextHooksRejectsLegacyManagedEvent(t *testing.T) {
+	config := `{
+		"hooks": {
+			"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
+			"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
+			"PreToolUse": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook pre-tool-use --host codex --enforce-worktree", "timeout": 5}]}]
+		}
+	}`
+	if hasThinCodexContextHooks(config, "/source/bin/agent-harness") {
+		t.Fatal("legacy agent-harness enforcement event must invalidate the managed context-hook surface")
+	}
+}
+
+func TestHasThinCodexContextHooksUsesCanonicalGroupsForManagedCommands(t *testing.T) {
+	for name, config := range map[string]string{
+		"quoted canonical path with spaces": `{
+			"hooks": {
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source with spaces/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
+				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source with spaces/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+			}
+		}`,
+		"legacy no-host event": `{
+			"hooks": {
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
+				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
+				"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook user-prompt", "timeout": 5}]}]
+			}
+		}`,
+		"wrong host alongside required hooks": `{
+			"hooks": {
+				"SessionStart": [
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]},
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host claude", "timeout": 5}]}
+				],
+				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+			}
+		}`,
+		"extra argument alongside required hooks": `{
+			"hooks": {
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
+				"PostCompact": [
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]},
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex --legacy", "timeout": 5}]}
+				]
+			}
+		}`,
+		"wrong binary path": `{
+			"hooks": {
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/other/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
+				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+			}
+		}`,
+		"malformed JSON": `{"hooks":`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			expectedBinary := "/source/bin/agent-harness"
+			if name == "quoted canonical path with spaces" {
+				expectedBinary = "/source with spaces/bin/agent-harness"
+				if !hasThinCodexContextHooks(config, expectedBinary) {
+					t.Fatal("quoted canonical path must validate")
+				}
+				return
+			}
+			if hasThinCodexContextHooks(config, expectedBinary) {
+				t.Fatal("non-canonical managed hook config was accepted")
+			}
+		})
 	}
 }
 
@@ -103,6 +229,13 @@ func nativeIntegrationExpectedPaths(root, home string) map[string]bool {
 		out[path] = true
 	}
 	return out
+}
+
+func stubStableNativeRoot(t *testing.T, resolver func(string) (string, error)) {
+	t.Helper()
+	previous := ResolveStableNativeRoot
+	ResolveStableNativeRoot = resolver
+	t.Cleanup(func() { ResolveStableNativeRoot = previous })
 }
 
 func TestValidateNativeIntegrationWithDepsCoversHomeFailure(t *testing.T) {

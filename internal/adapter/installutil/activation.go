@@ -25,6 +25,10 @@ func VerifyHookActivation(path string, expected map[string]any) (string, error) 
 	if err := json.Unmarshal(raw, &actual); err != nil {
 		return "", err
 	}
+	return VerifyHookConfigActivation(actual, expected)
+}
+
+func VerifyHookConfigActivation(actual, expected map[string]any) (string, error) {
 	expectedHooks, ok := expected["hooks"].(map[string]any)
 	if !ok || len(expectedHooks) == 0 {
 		return "", fmt.Errorf("expected hook catalog is empty")

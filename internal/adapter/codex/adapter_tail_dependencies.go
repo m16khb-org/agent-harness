@@ -9,13 +9,13 @@ import (
 var (
 	CaptureNativeActivationEvidence func(host, surface, path, semanticSHA256 string) (port.NativeActivationEvidence, error)
 	HookGroupContainsAgentHarness   func(group any) bool
+	HookGroupContainsCommand        func(group any, commandPrefix string) bool
 	HookTargetDriftMessages         func(config map[string]any, host, expected string) []string
 	HookTargetGenerationMessages    func(config map[string]any, host, expected, running string, read func(string) string) []string
 	PlanHostSkillLinks              func(root, destRoot string, skillNames []string, host string, dryRun bool) ([]string, []port.InstallLink, []string, []error)
 	FileBuildGenerationString       func(path string) string
 	RunningBuildGenerationString    func() string
-	PreToolUseEnforcementFlags      func() string
 	SemanticSHA256                  func(value any) (string, error)
-	StopEnforcementFlags            func() string
+	ValidateHookConfigForMerge      func(config map[string]any, knownEvents []string) error
 	VerifyHookActivation            func(path string, expected map[string]any) (string, error)
 )

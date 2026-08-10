@@ -2,6 +2,7 @@ package projectdoc
 
 import (
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,89 @@ func TestDiscoverProjectDocsEmptyWhenNoAgentHarness(t *testing.T) {
 	}
 	if got := DiscoverProjectDocs(""); got != nil {
 		t.Fatalf("expected nil catalog for empty repo root, got %+v", got)
+	}
+}
+
+func TestDiscoverProjectDocsSkipsSymlinkAndNonRegularMarkdown(t *testing.T) {
+	repo := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(repo, ".agent-harness")
+	if err := os.MkdirAll(filepath.Join(dir, "directory.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "outside.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeProjectDoc(t, repo, "inside.md", "# Inside\n")
+
+	catalog := DiscoverProjectDocs(repo)
+	if len(catalog) != 1 || catalog[0].RelPath != ".agent-harness/inside.md" {
+		t.Fatalf("catalog must exclude symlinked and non-regular markdown: %+v", catalog)
+	}
+}
+
+func TestDiscoverProjectDocsRejectsSymlinkedAgentHarnessDirectory(t *testing.T) {
+	repo := t.TempDir()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "outside.md"), []byte("# Outside\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(repo, ".agent-harness")); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := DiscoverProjectDocs(repo); got != nil {
+		t.Fatalf("symlinked .agent-harness directory must be ignored: %+v", got)
+	}
+}
+
+func TestDiscoverProjectDocsBoundsEntriesAndContent(t *testing.T) {
+	repo := t.TempDir()
+	for index := 0; index < projectDocCatalogMaxEntries+1; index++ {
+		writeProjectDoc(t, repo, fmt.Sprintf("entry-%02d.md", index), "# Entry\n")
+	}
+	if got := DiscoverProjectDocs(repo); len(got) != projectDocCatalogMaxEntries {
+		t.Fatalf("catalog entries = %d, want %d", len(got), projectDocCatalogMaxEntries)
+	}
+
+	perFileRepo := t.TempDir()
+	writeProjectDoc(t, perFileRepo, "oversize.md", strings.Repeat("x", projectDocCatalogMaxFileBytes+1))
+	if got := DiscoverProjectDocs(perFileRepo); len(got) != 0 {
+		t.Fatalf("oversize document must be skipped: %+v", got)
+	}
+
+	totalRepo := t.TempDir()
+	for index := 0; index < 8; index++ {
+		writeProjectDoc(t, totalRepo, fmt.Sprintf("entry-%02d.md", index), strings.Repeat("x", 240*1024))
+	}
+	writeProjectDoc(t, totalRepo, "entry-99.md", strings.Repeat("x", 160*1024))
+	if got := DiscoverProjectDocs(totalRepo); len(got) != 8 {
+		t.Fatalf("catalog must stop before exceeding total content bound: %d entries", len(got))
+	}
+}
+
+func TestReadProjectDocCatalogEntriesCapsRawDirectoryScan(t *testing.T) {
+	dir := t.TempDir()
+	for index := 0; index < projectDocCatalogMaxRawEntries+1; index++ {
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("ignored-%03d.txt", index)), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file, err := os.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	entries, err := readProjectDocCatalogEntries(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != projectDocCatalogMaxRawEntries {
+		t.Fatalf("raw entries = %d, want %d", len(entries), projectDocCatalogMaxRawEntries)
 	}
 }
 

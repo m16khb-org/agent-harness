@@ -88,8 +88,10 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	checkProjectDocs(&result, root)
 	checkRepoLocalRuntimeState(&result, root)
 	checkLoopContracts(&result, root)
-	checkPipeCapacity(&result)
-	checkMCPGateways(&result, req.Home)
+	if !req.StaticOnly {
+		checkPipeCapacity(&result)
+		checkMCPGateways(&result, req.Home)
+	}
 	checkNativeIntegrations(&result, req.Home)
 	checkBinaryDrift(&result, req.HarnessRoot)
 

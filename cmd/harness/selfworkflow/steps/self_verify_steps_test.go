@@ -101,6 +101,38 @@ func TestPlannedSelfVerifyStepsGivesGoTestFullGateTimeout(t *testing.T) {
 	}
 }
 
+func TestPlannedSelfVerifyStepsUsesStaticDoctorForBinaryDrift(t *testing.T) {
+	var goTestStep StepResult
+	var gotTimeout time.Duration
+	var gotExecutable string
+	var gotArgs []string
+	deps := fakeSelfVerifyStepDeps(t)
+	deps.RunCommandStep = func(_ string, label string, timeout time.Duration, _ string, executable string, args ...string) StepResult {
+		if label == "binary drift" {
+			gotTimeout = timeout
+			gotExecutable = executable
+			gotArgs = append([]string(nil), args...)
+		}
+		return StepResult{Label: label, OK: true}
+	}
+
+	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, deps)
+	got := steps[5].Run()
+	if !got.OK || got.Label != "binary drift" {
+		t.Fatalf("binary drift step returned unexpected result: %#v", got)
+	}
+	if gotTimeout != 10*time.Second {
+		t.Fatalf("binary drift timeout = %s, want 10s", gotTimeout)
+	}
+	if gotExecutable != "/tmp/agent-harness" {
+		t.Fatalf("binary drift executable = %q, want temp binary", gotExecutable)
+	}
+	wantArgs := []string{"doctor", "--static-only", "--json", "--repo", "/repo"}
+	if strings.Join(gotArgs, "\x00") != strings.Join(wantArgs, "\x00") {
+		t.Fatalf("binary drift args = %#v, want %#v", gotArgs, wantArgs)
+	}
+}
+
 func TestCachedContractGoldenStepFallsBackWhenGoTestDidNotPass(t *testing.T) {
 	step := CachedContractGoldenStep(StepResult{Label: "go test", OK: false}, fakeSelfVerifyStepDeps(t))
 	if !step.OK || step.Label != "contract golden tests" {

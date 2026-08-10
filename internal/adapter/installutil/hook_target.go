@@ -76,17 +76,53 @@ func hookGroupTargets(group any) []string {
 }
 
 func hookCommandTarget(command string) (string, bool) {
-	marker := " hook "
-	index := strings.Index(command, marker)
-	if index <= 0 {
+	executable, remaining, ok := shellCommandWord(strings.TrimSpace(command))
+	if !ok {
 		return "", false
 	}
-	prefix := strings.TrimSpace(command[:index])
-	if strings.HasPrefix(prefix, "'") && strings.HasSuffix(prefix, "'") && len(prefix) >= 2 {
-		return strings.ReplaceAll(prefix[1:len(prefix)-1], `'"'"'`, `'`), true
-	}
-	if prefix == "" || strings.ContainsAny(prefix, " \t\r\n\"'") {
+	subcommand, _, ok := shellCommandWord(strings.TrimLeft(remaining, " \t\r\n"))
+	if !ok || subcommand != "hook" {
 		return "", false
 	}
-	return prefix, true
+	return executable, true
+}
+
+func shellCommandWord(command string) (string, string, bool) {
+	if command == "" {
+		return "", "", false
+	}
+	var word strings.Builder
+	for index := 0; index < len(command); {
+		switch command[index] {
+		case ' ', '\t', '\r', '\n':
+			if word.Len() == 0 {
+				return "", "", false
+			}
+			return word.String(), command[index:], true
+		case '\\':
+			if index+1 == len(command) {
+				return "", "", false
+			}
+			word.WriteByte(command[index+1])
+			index += 2
+		case '\'', '"':
+			quote := command[index]
+			index++
+			for index < len(command) && command[index] != quote {
+				word.WriteByte(command[index])
+				index++
+			}
+			if index == len(command) {
+				return "", "", false
+			}
+			index++
+		default:
+			word.WriteByte(command[index])
+			index++
+		}
+	}
+	if word.Len() == 0 {
+		return "", "", false
+	}
+	return word.String(), "", true
 }

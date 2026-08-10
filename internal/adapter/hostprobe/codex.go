@@ -12,10 +12,7 @@ import (
 	"agent-harness/internal/port"
 )
 
-const (
-	codexProbeServer              = "agent_harness_probe"
-	codexSmokePreToolUseArguments = "--host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
-)
+const codexProbeServer = "agent_harness_probe"
 
 // CodexRunner runs one capture-only MCP episode in an isolated Codex session.
 type CodexRunner struct {
@@ -209,7 +206,7 @@ func projectActivatedCodexSmokeHooks(sourcePath, harnessBinary, observationPath 
 		expected   string
 	}{
 		{event: "SessionStart", subcommand: "session-start", expected: shellSingleQuote(harnessBinary) + " hook session-start --host codex"},
-		{event: "PreToolUse", subcommand: "pre-tool-use", expected: shellSingleQuote(harnessBinary) + " hook pre-tool-use " + codexSmokePreToolUseArguments},
+		{event: "PostCompact", subcommand: "post-compact", expected: shellSingleQuote(harnessBinary) + " hook post-compact --host codex"},
 	} {
 		var candidates []codexSmokeHook
 		managedPrefix := shellSingleQuote(harnessBinary) + " hook " + contract.subcommand

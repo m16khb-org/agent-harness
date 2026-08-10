@@ -2,7 +2,6 @@ package installutil
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"agent-harness/internal/port"
@@ -57,24 +56,6 @@ func TestPlanFinishFoldsErrors(t *testing.T) {
 	}
 	if result.OK {
 		t.Fatalf("result should not be OK when errors present: %+v", result)
-	}
-}
-
-func TestEnforcementFlagBundles(t *testing.T) {
-	pre := PreToolUseEnforcementFlags()
-	for _, want := range []string{"--enforce-worktree", "--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--enforce-staged-checks", "--enforce-gitops-kubectl"} {
-		if !strings.Contains(pre, want) {
-			t.Fatalf("PreToolUseEnforcementFlags missing %q: %s", want, pre)
-		}
-	}
-	if strings.Contains(pre, "--enforce-search-routing") {
-		t.Fatalf("PreToolUse flags must not enable blocking search routing by default: %s", pre)
-	}
-	stop := StopEnforcementFlags()
-	for _, want := range []string{"--enforce-numbered-next-actions", "--enforce-engelbart-canvas-sections", "--relay-next-action-judgement"} {
-		if !strings.Contains(stop, want) {
-			t.Fatalf("StopEnforcementFlags missing %q: %s", want, stop)
-		}
 	}
 }
 

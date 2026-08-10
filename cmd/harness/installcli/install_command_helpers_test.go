@@ -4,6 +4,7 @@ import (
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
 	"agent-harness/internal/adapter/install"
+	installutiladapter "agent-harness/internal/adapter/installutil"
 	activationport "agent-harness/internal/port/nativeactivation"
 	"bytes"
 	"encoding/json"
@@ -29,6 +30,8 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("HARNESS_ROOT", root)
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("PATH", "/usr/bin:/bin")
+	claudeadapter.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
+	codexadapter.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 	Configure(Deps{
 		HarnessRoot:          func() string { return root },
 		ExecutablePath:       func() (string, error) { return filepath.Join(root, "bin", "agent-harness"), nil },

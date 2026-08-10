@@ -1,6 +1,7 @@
 package validationcli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,7 +102,7 @@ func writeNativeIntegrationFixture(t *testing.T, root, home string) {
 		writeFileForWrapperTest(t, path, "ok\n")
 	}
 	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "config.toml"), "[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n")
-	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "hooks.json"), `{"command":"agent-harness hook user-prompt"}`)
+	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "hooks.json"), fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness")))
 }
 
 func writeFileForWrapperTest(t *testing.T, path, body string) {

@@ -1,0 +1,104 @@
+{
+  "lifecycle": "io-88768225a08b",
+  "mode": "orca",
+  "issue": 455,
+  "acceptance": {
+    "AC-01": {
+      "tests": [
+        "TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths",
+        "TestClaudeInstallerDefaultsToUserScopeOnly"
+      ],
+      "command": "go test ./internal/adapter/codex ./internal/adapter/claude ./internal/adapter/installutil ./cmd/harness/hookcli -count=1",
+      "result": "PASS: final focused gate and final full/race suites exited 0 after the shared managed-command contract correction."
+    },
+    "AC-02": {
+      "tests": [
+        "TestCodexInstallerMergesLifecycleHooksIdempotently",
+        "TestClaudeInstallerMergesLifecycleHooksIdempotently",
+        "TestMergeHookConfigReplacesManagedContextGroupsInPlace",
+        "TestCodexInstallerRejectsMalformedHookConfigWithoutWriting",
+        "TestClaudeInstallerRejectsMalformedHookConfigWithoutWriting"
+      ],
+      "command": "go test ./internal/adapter/codex ./internal/adapter/claude -count=1",
+      "result": "PASS: focused Codex/Claude installer tests and final full/race suites exited 0; managed replacements retain their first group position while extra managed groups are removed."
+    },
+    "AC-03": {
+      "tests": [
+        "TestNativeInstallAdapterContractMatrix",
+        "TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths",
+        "TestClaudeInstallerDefaultsToUserScopeOnly"
+      ],
+      "command": "go test ./internal/adapter -count=1",
+      "result": "PASS: final full/race suites exited 0 with the native install contract matrix."
+    },
+    "AC-04": {
+      "tests": [
+        "TestRunHookSessionStartDoesNotInjectWorktreeReminder",
+        "TestRunHookContextEventsAcrossIsolatedWorktreesDoNotCreateHarnessState",
+        "TestRunHookSessionStartDoesNotMaintainHookFailures"
+      ],
+      "command": "go test ./cmd/harness/hookcli -count=1",
+      "result": "PASS: final focused hookcli gate and final full/race suites exited 0."
+    },
+    "AC-05": {
+      "tests": [
+        "TestRunHookPreToolUseAllowsCurrentOrcaOwnerControlCommands",
+        "TestExecutionOwnerMutation"
+      ],
+      "command": "go test ./... -count=1",
+      "result": "PASS: final full/race suites exited 0."
+    },
+    "AC-06": {
+      "tests": [
+        "TestChildHostSmokeCompleteFakeTwoHostPass",
+        "TestNativeInstallAdapterContractMatrix",
+        "TestRunDoctorStaticOnlySkipsLiveOperationalChecks",
+        "TestPlannedSelfVerifyStepsUsesStaticDoctorForBinaryDrift",
+        "TestValidateNativeIntegrationReportsStableRootResolutionError"
+      ],
+      "command": "go test ./... -count=1; ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json",
+      "result": "PASS: final full suite and ordinary foreground self-verify both exited 0; the visible self-verify native-integration step was OK."
+    },
+    "AC-07": {
+      "tests": [
+        "TestRunHookContextEventsAcrossIsolatedWorktreesDoNotCreateHarnessState",
+        "TestChildHostSmokeCompleteFakeTwoHostPass"
+      ],
+      "command": "go test ./cmd/harness/hookcli ./internal/adapter/hostprobe -count=1",
+      "result": "PENDING (coordinator-owned): requires two independent top-level IssueOps+Orca child cycles with distinct worktree, runtime, Run, task, dispatch, final-head, and merged evidence PR receipts. Temporary-worktree and fake-host checks are supporting regressions only."
+    },
+    "AC-08": {
+      "tests": [
+        "TestNativeInstallAdapterContractMatrix",
+        "TestChildHostSmokeCompleteFakeTwoHostPass",
+        "TestDiscoverProjectDocsSkipsSymlinkAndNonRegularMarkdown",
+        "TestDiscoverProjectDocsRejectsSymlinkedAgentHarnessDirectory",
+        "TestReadProjectDocCatalogEntriesCapsRawDirectoryScan"
+      ],
+      "command": "go test ./internal/adapter/projectdoc ./internal/adapter ./internal/adapter/hostprobe -count=1",
+      "result": "PASS: final full/race suites exited 0; the catalog is root-confined and bounded while existing host-smoke regressions remain green."
+    }
+  },
+  "verification": [
+    {"command": "go test ./internal/adapter/codex ./internal/adapter/claude ./internal/adapter/installutil ./cmd/harness/hookcli -count=1", "result": "PASS: exit 0 after all final code changes."},
+    {"command": "go test ./... -count=1", "result": "PASS: foreground final run exit 0 after all final code changes."},
+    {"command": "go test -race ./... -count=1", "result": "PASS: foreground final run exit 0 after all final code changes."},
+    {"command": "go vet ./...", "result": "PASS: exit 0 after all final code changes."},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS: exit 0 after all final code changes."},
+    {"command": "./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json", "result": "PASS: ordinary foreground run exit 0; visible native-integration step was OK."},
+    {"command": "jq empty .agent-harness/turing/issueops-v1-a14d6dcf65e65e20.json", "result": "PASS: exit 0 after final evidence update."},
+    {"command": "git diff --check", "result": "PASS: exit 0 after final evidence update."}
+  ],
+  "ai_slop_clean": {
+    "cleanup": "Removed duplicate native-hook parsing and direct adapter-to-installutil dependencies; reused shared semantic activation, target decoding, and composition-root wiring.",
+    "result": "PASS"
+  },
+  "brooks_review": {
+    "verdict": "pass",
+    "findings": [
+      "post-delta gpt-5.6-sol/xhigh review found no remaining implementation blocker"
+    ],
+    "resolution": "PASS: composition-root wiring removes prohibited production adapter-to-installutil imports while preserving pre-write malformed-config rejection."
+  },
+  "status": "generation_6_parent_ready_to_push; external_ac07_pending_coordinator_owned_live_dogfood"
+}

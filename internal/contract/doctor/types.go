@@ -12,6 +12,7 @@ type HarnessDoctorRequest struct {
 	HarnessRoot         string                              `json:"harness_root,omitempty"`
 	Home                string                              `json:"home,omitempty"`
 	Version             string                              `json:"version,omitempty"`
+	StaticOnly          bool                                `json:"-"`
 	DaemonAdmission     HarnessDoctorDaemonAdmission        `json:"daemon_admission,omitempty"`
 	OperationalSnapshot *operationalhealthcontract.Snapshot `json:"-"`
 	OperationalOptions  operationalhealthcontract.Options   `json:"-"`

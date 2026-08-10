@@ -6,43 +6,17 @@ import "strings"
 
 func BuildProjectDocCatalogContext(repo string) hookpromptcontract.ProjectDocCatalogContext {
 	docs := DiscoverProjectDocs(repo)
-	worktreeReminder := activeWorktreeReminderValue(repo)
-	orchestrationReminder := orchestrationReminderValue(repo)
-	if len(docs) == 0 && worktreeReminder == "" && orchestrationReminder == "" {
+	if len(docs) == 0 {
 		return hookpromptcontract.ProjectDocCatalogContext{}
 	}
 	compact := FormatProjectDocCatalog(docs)
 	userView := renderProjectDocCatalogUserView(docs)
-	if worktreeReminder != "" {
-		compact = appendCatalogContextLine(compact, "worktree: "+worktreeReminder)
-		userView = appendCatalogContextLine(userView, "• worktree: "+worktreeReminder)
-	}
-	for _, line := range strings.Split(orchestrationReminder, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		compact = appendCatalogContextLine(compact, "orchestration: "+line)
-		userView = appendCatalogContextLine(userView, "• orchestration: "+line)
-	}
 	return hookpromptcontract.ProjectDocCatalogContext{
 		ShouldInject: true,
 		ProjectDocs:  docs,
 		Compact:      compact,
 		UserView:     userView,
 	}
-}
-
-func appendCatalogContextLine(context, line string) string {
-	context = strings.TrimSpace(context)
-	line = strings.TrimSpace(line)
-	if context == "" {
-		return line
-	}
-	if line == "" {
-		return context
-	}
-	return context + "\n" + line
 }
 
 func renderProjectDocCatalogUserView(docs []ProjectDocCatalogEntry) string {
