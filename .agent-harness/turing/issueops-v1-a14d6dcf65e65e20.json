@@ -61,11 +61,11 @@
     },
     "AC-07": {
       "tests": [
-        "TestRunHookContextEventsAcrossIsolatedWorktreesDoNotCreateHarnessState",
-        "TestChildHostSmokeCompleteFakeTwoHostPass"
+        "generation_two_orca_lane_identity_readback",
+        "merged_lane_heads_are_parent_ancestors"
       ],
-      "command": "go test ./cmd/harness/hookcli ./internal/adapter/hostprobe -count=1",
-      "result": "PENDING (coordinator-owned): requires two independent top-level IssueOps+Orca child cycles with distinct worktree, runtime, Run, task, dispatch, final-head, and merged evidence PR receipts. Temporary-worktree and fake-host checks are supporting regressions only."
+      "command": "agent-harness issueops execution status --id io-034fe305d0f5 --json; agent-harness issueops execution status --id io-2bfc1ae2a84a --json; gh pr view 458/459 --repo m16khb/agent-harness --json state,mergeCommit,headRefOid; git fetch origin 455-thin-context-hooks; git merge --ff-only origin/455-thin-context-hooks; git merge-base --is-ancestor f7be27ecde219819977f06c0bc403bfc95378db3 HEAD; git merge-base --is-ancestor 2d96e765e73aabacf6a197755128b6660de84215 HEAD",
+      "result": "PASS: generation-2 Codex lane io-034fe305d0f5 is released with worktree /Users/m16khb/Workspace/agent-harness.worktrees/457-codex-native-install-readback, runtime 1b7bc4b8-67db-4896-8516-f5d9bea69d1c, Run run_dba3b368892f, task task_d8bca334ea70, dispatch ctx_760b45f08269, completion f7be27ecde219819977f06c0bc403bfc95378db3, and PR #458 merged as d1c417cf6a7d262d7402ea4a4223f2bf7404f857. Generation-2 Claude lane io-2bfc1ae2a84a is released with worktree /Users/m16khb/Workspace/agent-harness.worktrees/456-claude-native-install-readback, the same runtime, Run run_5dbdacb5356a, task task_96f3ca698f43, dispatch ctx_a1a4441e43ad, completion 2d96e765e73aabacf6a197755128b6660de84215, and PR #459 merged as 3b0023d956f5b8f2335d04a5d61097651028783e. After the parent fast-forwarded to 3b0023d956f5b8f2335d04a5d61097651028783e, both completion heads are proven ancestors."
     },
     "AC-08": {
       "tests": [
@@ -100,5 +100,5 @@
     ],
     "resolution": "PASS: composition-root wiring removes prohibited production adapter-to-installutil imports while preserving pre-write malformed-config rejection."
   },
-  "status": "generation_6_parent_ready_to_push; external_ac07_pending_coordinator_owned_live_dogfood"
+  "status": "generation_7_ac07_live_orca_lanes_verified; parent_fast_forwarded_to_3b0023d956f5b8f2335d04a5d61097651028783e"
 }
