@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
@@ -170,6 +171,9 @@ func TestCleanupAbandonConvergesWhenWorktreeRemovalAlreadyDroppedTheBranchRef(t 
 // merged·같은 프로젝트·명시적 supersede를 만족하면 정리할 수 있어야 한다.
 func TestCleanupFinishAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.BranchPrepare.BaseBranch = "439-all-handoffs-green"
+	})
 	git := &realErrorFinishGit{branchOID: ""}
 	deps := CleanupFinishDeps{
 		Git:              git.run,

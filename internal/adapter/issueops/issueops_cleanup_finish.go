@@ -230,7 +230,10 @@ func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest
 		switch {
 		case observedBase == "":
 			missing = append(missing, "merged_base_branch_unobserved")
-		case observedBase != preparedBase:
+		// A verified replacement is a different artifact and may intentionally
+		// target the parent branch's base. Its provider-observed base must exist,
+		// but comparing it to the original child PR base is a category error.
+		case result.SupersededBy == "" && observedBase != preparedBase:
 			missing = append(missing, "base_branch_drifted")
 		}
 	}
