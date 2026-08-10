@@ -77,8 +77,18 @@
     {
       "id": "AC-06",
       "test": "draft_pr_metadata_readback",
-      "command": "pending governed draft PR creation and GitHub API readback",
-      "result": "pending"
+      "command": "gh pr view 458 --repo m16khb/agent-harness --json url,isDraft,baseRefName,headRefName,headRefOid,labels,assignees,body,title",
+      "result": "pass",
+      "evidence": {
+        "url": "https://github.com/m16khb/agent-harness/pull/458",
+        "draft": true,
+        "base": "455-thin-context-hooks",
+        "head": "457-codex-native-install-readback",
+        "verified_head": "ac94fa1f0514959c0866186bcdcaabb93ca8b81e",
+        "label": "enhancement",
+        "assignee": "m16khb",
+        "body_is_korean": true
+      }
     }
   ],
   "scope": {
