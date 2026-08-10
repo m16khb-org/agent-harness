@@ -19,6 +19,9 @@ func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.Insta
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
 		return file, nil, err
 	}
+	if err := ValidateHookConfigForMerge(config, claudeLifecycleHookEvents); err != nil {
+		return file, nil, err
+	}
 	messages := HookTargetDriftMessages(config, "claude", req.BinPath)
 	// 경로가 같아도 빌드 세대가 갈리면 이전 세대 hook이 새 typed command를
 	// 모른 채 차단해 복구가 교착된다(#328). 그 축을 여기서 함께 보고한다.
@@ -42,17 +45,27 @@ func mergeClaudeHookConfig(config map[string]any, binPath string) map[string]any
 		hooks = map[string]any{}
 		config["hooks"] = hooks
 	}
+	desired := map[string]claudeLifecycleHookSpec{}
 	for _, spec := range claudeLifecycleHookSpecs(binPath) {
+		desired[spec.Event] = spec
+	}
+	for _, event := range claudeLifecycleHookEvents {
 		groups := []any{}
-		if existing, ok := hooks[spec.Event].([]any); ok {
+		if existing, ok := hooks[event].([]any); ok {
 			for _, group := range existing {
-				if !HookGroupContainsAgentHarness(group) {
+				if !HookGroupContainsAgentHarness(group) && !HookGroupContainsCommand(group, shellQuote(binPath)+" hook ") {
 					groups = append(groups, group)
 				}
 			}
 		}
-		groups = append(groups, claudeHookGroup(spec))
-		hooks[spec.Event] = groups
+		if spec, ok := desired[event]; ok {
+			groups = append(groups, claudeHookGroup(spec))
+		}
+		if len(groups) == 0 {
+			delete(hooks, event)
+			continue
+		}
+		hooks[event] = groups
 	}
 	return config
 }
@@ -68,13 +81,18 @@ type claudeLifecycleHookSpec struct {
 func claudeLifecycleHookSpecs(binPath string) []claudeLifecycleHookSpec {
 	return []claudeLifecycleHookSpec{
 		{BinPath: binPath, Event: "SessionStart", Subcommand: "session-start", Timeout: 5},
-		{BinPath: binPath, Event: "UserPromptSubmit", Subcommand: "user-prompt", Timeout: 5},
-		{BinPath: binPath, Event: "PreToolUse", Subcommand: "pre-tool-use", Matcher: "*", Timeout: 5},
-		{BinPath: binPath, Event: "PostToolUse", Subcommand: "post-tool-use", Matcher: "*", Timeout: 5},
-		{BinPath: binPath, Event: "PreCompact", Subcommand: "pre-compact", Timeout: 5},
 		{BinPath: binPath, Event: "PostCompact", Subcommand: "post-compact", Timeout: 5},
-		{BinPath: binPath, Event: "Stop", Subcommand: "stop", Timeout: 5},
 	}
+}
+
+var claudeLifecycleHookEvents = []string{
+	"SessionStart",
+	"UserPromptSubmit",
+	"PreToolUse",
+	"PostToolUse",
+	"PreCompact",
+	"PostCompact",
+	"Stop",
 }
 
 func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
@@ -95,15 +113,7 @@ func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
 
 func claudeHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
-	if subcommand == "pre-tool-use" {
-		cmd += " --host claude " + PreToolUseEnforcementFlags()
-	}
-	if subcommand == "stop" {
-		cmd += " --host claude " + StopEnforcementFlags()
-	}
-	if subcommand == "post-tool-use" {
-		// --host lets post-tool-use inject a deterministic gofmt lint-failure as
-		// additionalContext (B3); Codex omits --host so it keeps its no-op shape.
+	if subcommand == "session-start" || subcommand == "post-compact" {
 		cmd += " --host claude"
 	}
 	return cmd

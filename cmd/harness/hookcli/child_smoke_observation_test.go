@@ -50,7 +50,7 @@ func TestRecordChildSmokeHookEventRejectsNonPrivateParent(t *testing.T) {
 	}
 }
 
-func TestChildSmokeRecordsHookInvocationBeforeDispatchFailure(t *testing.T) {
+func TestContextHookBypassesChildSmokeObservation(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
@@ -62,11 +62,7 @@ func TestChildSmokeRecordsHookInvocationBeforeDispatchFailure(t *testing.T) {
 	if err := runHook([]string{"session-start", "--invalid-child-smoke-flag"}); err == nil {
 		t.Fatal("invalid hook arguments unexpectedly passed")
 	}
-	data, err := os.ReadFile(observationPath + ".hooks")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != "{\"event\":\"SessionStart\"}\n" {
-		t.Fatalf("marker=%q", data)
+	if _, err := os.Stat(observationPath + ".hooks"); !os.IsNotExist(err) {
+		t.Fatalf("context hook must not write a child-smoke marker: %v", err)
 	}
 }

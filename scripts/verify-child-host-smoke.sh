@@ -352,7 +352,7 @@ def instrument(path, observation):
     if not isinstance(hooks, dict):
         raise SystemExit(1)
     prefix = f"/usr/bin/env HARNESS_CHILD_SMOKE_HOOKS=1 HARNESS_CHILD_SMOKE_OBSERVATION_FILE={shlex.quote(observation)} "
-    for event, subcommand in (("SessionStart", "session-start"), ("PreToolUse", "pre-tool-use")):
+    for event, subcommand in (("SessionStart", "session-start"),):
         matches = 0
         for group in hooks.get(event, []):
             if not isinstance(group, dict):
@@ -423,20 +423,28 @@ def event_commands(document, event):
                 hooks.append(hook)
     return hooks
 
-enforcement = "--enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
 contracts = (
     (codex_hooks, {
         "SessionStart": f"'{binary}' hook session-start --host codex",
-        "PreToolUse": f"'{binary}' hook pre-tool-use --host codex {enforcement}",
+        "PostCompact": f"'{binary}' hook post-compact --host codex",
     }),
     (claude_hooks, {
-        "SessionStart": f"'{binary}' hook session-start",
-        "PreToolUse": f"'{binary}' hook pre-tool-use --host claude {enforcement}",
+        "SessionStart": f"'{binary}' hook session-start --host claude",
+        "PostCompact": f"'{binary}' hook post-compact --host claude",
     }),
 )
 for document, expected_by_event in contracts:
+    managed_events = set()
+    for event, groups in document.get("hooks", {}).items():
+        for group in groups:
+            for hook in group.get("hooks", []):
+                command = hook.get("command")
+                if isinstance(command, str) and "/bin/agent-harness' hook" in command:
+                    managed_events.add(event)
+    if managed_events != set(expected_by_event):
+        raise SystemExit(1)
     for event, expected in expected_by_event.items():
-        subcommand = "session-start" if event == "SessionStart" else "pre-tool-use"
+        subcommand = "session-start" if event == "SessionStart" else "post-compact"
         managed_prefix = f"'{binary}' hook {subcommand}"
         managed = []
         for hook in event_commands(document, event):
@@ -623,7 +631,7 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 expected = {"session_start_observed", "pre_tool_use_observed", "mcp_call_count", "response_sha256", "exit_code", "duration_ms"}
 if set(value) != expected:
     raise SystemExit(1)
-if value["session_start_observed"] is not True or value["pre_tool_use_observed"] is not True:
+if value["session_start_observed"] is not True or value["pre_tool_use_observed"] is not False:
     raise SystemExit(1)
 if type(value["mcp_call_count"]) is not int or value["mcp_call_count"] != 1:
     raise SystemExit(1)

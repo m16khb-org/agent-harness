@@ -30,9 +30,14 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 		t.Fatalf("claude user skill link missing")
 	}
 	settings := readClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"))
-	for _, needle := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook stop", req.BinPath} {
+	for _, needle := range []string{"SessionStart", "PostCompact", "hook session-start --host claude", "hook post-compact --host claude", req.BinPath} {
 		if !strings.Contains(settings, needle) {
 			t.Fatalf("claude settings missing %q:\n%s", needle, settings)
+		}
+	}
+	for _, forbidden := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "Stop", "hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+		if strings.Contains(settings, forbidden) {
+			t.Fatalf("claude settings must not contain default hook %q:\n%s", forbidden, settings)
 		}
 	}
 	mcp := readClaudeTestFile(t, filepath.Join(home, ".claude.json"))
@@ -133,7 +138,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		t.Fatalf("existing setting was not preserved: %+v", settings)
 	}
 	hooks := settings["hooks"].(map[string]any)
-	for _, event := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "PostCompact", "Stop"} {
+	for _, event := range []string{"SessionStart", "PostCompact"} {
 		groups := hooks[event].([]any)
 		count := 0
 		for _, group := range groups {
@@ -148,16 +153,18 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 			t.Fatalf("event %s has %d harness hooks, want 1: %+v", event, count, groups)
 		}
 	}
-	preToolUse := hooks["PreToolUse"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude --enforce-worktree") {
-		t.Fatalf("PreToolUse should preserve Claude host schema: %s", preToolUse)
+	userPromptGroups := hooks["UserPromptSubmit"].([]any)
+	if len(userPromptGroups) != 1 {
+		t.Fatalf("third-party UserPromptSubmit group must be preserved: %+v", userPromptGroups)
 	}
-	if strings.Contains(preToolUse, "--enforce-search-routing") {
-		t.Fatalf("PreToolUse must not enable blocking search routing enforcement by default: %s", preToolUse)
+	command := userPromptGroups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	if command != "echo keep" {
+		t.Fatalf("unexpected UserPromptSubmit group after managed-hook cleanup: %q", command)
 	}
-	stop := hooks["Stop"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	if !strings.Contains(stop, "hook stop --host claude --enforce-numbered-next-actions") {
-		t.Fatalf("Stop should be strict-ready for numbered next actions: %s", stop)
+	for _, removed := range []string{"PreToolUse", "PostToolUse", "PreCompact", "Stop"} {
+		if _, ok := hooks[removed]; ok {
+			t.Fatalf("legacy managed event %s must be removed: %+v", removed, hooks)
+		}
 	}
 }
 
@@ -178,6 +185,31 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unexpected end of JSON input") {
 		t.Fatalf("invalid settings error = %v", err)
+	}
+}
+
+func TestClaudeInstallerRejectsMalformedHookConfigWithoutWriting(t *testing.T) {
+	for name, content := range map[string]string{
+		"opaque hooks":          `{"hooks":"opaque"}`,
+		"non-array known event": `{"hooks":{"SessionStart":{"owner":"third-party"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			home := t.TempDir()
+			writeAdapterTestSkill(t, root, "alpha")
+			path := filepath.Join(home, ".claude", "settings.json")
+			writeClaudeTestFile(t, path, content)
+			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+			req.SkillNames = []string{"alpha"}
+
+			result, err := NewInstaller().Install(req)
+			if err == nil || result.OK {
+				t.Fatalf("malformed hook config must fail without replacement: result=%+v err=%v", result, err)
+			}
+			if got := readClaudeTestFile(t, path); got != content {
+				t.Fatalf("malformed hook config was rewritten:\n got %q\nwant %q", got, content)
+			}
+		})
 	}
 }
 

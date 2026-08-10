@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"agent-harness/cmd/harness/daemoncli"
 	doctorcontract "agent-harness/internal/contract/doctor"
 	"agent-harness/internal/domain/operationalhealth"
 	"context"
@@ -53,13 +54,14 @@ func runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
 	jsonOut := fs.Bool("json", false, "print JSON")
+	staticOnly := fs.Bool("static-only", false, "skip live operational, daemon, pipe, and MCP probes")
 	sealed := fs.Bool("sealed", false, "use the sealed audit profile: unowned live terminals and orchestration message history count as residue")
 	var preserveCycles doctorRepeatedFlag
 	var preserveTerminals doctorRepeatedFlag
 	fs.Var(&preserveCycles, "preserve-cycle", "preserve one exact IssueOps cycle for this invocation (repeatable)")
 	fs.Var(&preserveTerminals, "preserve-terminal", "preserve one exact terminal handle for this invocation (repeatable)")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage: agent-harness doctor [--repo PATH] [--sealed] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]")
+		fmt.Fprintln(fs.Output(), "Usage: agent-harness doctor [--repo PATH] [--static-only] [--sealed] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -80,18 +82,23 @@ func runDoctor(args []string) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
-	snapshot := deps.CollectOperationalHealth(context.Background(), root)
+	var snapshot *operationalhealth.Snapshot
+	var daemon daemoncli.Status
+	if !*staticOnly {
+		observed := deps.CollectOperationalHealth(context.Background(), root)
+		snapshot = &observed
+		daemon = deps.CheckDaemonStatus()
+	}
 	home, _ := os.UserHomeDir()
-	daemon := deps.CheckDaemonStatus()
 	result, err := harnessDoctor(doctorcontract.HarnessDoctorRequest{
 		RepoRoot:            root,
 		HarnessRoot:         deps.HarnessRoot(),
 		Home:                home,
 		Version:             deps.Version,
-		OperationalSnapshot: &snapshot,
+		StaticOnly:          *staticOnly,
+		OperationalSnapshot: snapshot,
 		OperationalOptions: operationalhealth.Options{
-			Now:                     now,
+			Now:                     time.Now().UTC(),
 			Profile:                 doctorProfile(*sealed),
 			PreserveCycleIDs:        cycleIDs,
 			PreserveTerminalHandles: terminalHandles,

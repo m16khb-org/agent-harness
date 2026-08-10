@@ -143,7 +143,7 @@ func TestRunHookSessionStartInjectsCatalogClaude(t *testing.T) {
 	}
 }
 
-func TestRunHookSessionStartInjectsWorktreeReminder(t *testing.T) {
+func TestRunHookSessionStartDoesNotInjectWorktreeReminder(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := filepath.Join(t.TempDir(), "agent-harness")
 	writeHookFixtureFile(t, repo, ".agent-harness/ARCHITECTURE.md", "# Arch\n")
@@ -158,8 +158,8 @@ func TestRunHookSessionStartInjectsWorktreeReminder(t *testing.T) {
 
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
 	ctx := hookAdditionalContext(obj)
-	if !strings.Contains(ctx, "worktree: "+cycle.path) || !strings.Contains(ctx, "편집 전 cwd/절대경로 확인") {
-		t.Fatalf("SessionStart should inject worktree reminder: %q", ctx)
+	if strings.Contains(ctx, "worktree: "+cycle.path) || strings.Contains(ctx, "편집 전 cwd/절대경로 확인") {
+		t.Fatalf("SessionStart must not read or inject a worktree reminder: %q", ctx)
 	}
 }
 
@@ -211,6 +211,26 @@ func TestRunHookPostCompactCodexEmitsCompatibleSchema(t *testing.T) {
 	}
 	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") || !strings.Contains(sysMsg, "ARCHITECTURE.md") {
 		t.Fatalf("Codex PostCompact should use supported systemMessage catalog: %v", obj["systemMessage"])
+	}
+}
+
+func TestRunHookContextEventsAcrossIsolatedWorktreesDoNotCreateHarnessState(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	for _, host := range []string{"codex", "claude"} {
+		for _, repo := range []string{hookTempRepoWithDoc(t), hookTempRepoWithDoc(t)} {
+			for _, event := range []string{"session-start", "post-compact"} {
+				event := event
+				runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error {
+					return runHook([]string{event, "--host", host})
+				})
+			}
+		}
+	}
+	for _, path := range []string{"harness.db", "issueops_v1", ".last-store-maintain"} {
+		if _, err := os.Stat(filepath.Join(stateDir, path)); !os.IsNotExist(err) {
+			t.Fatalf("context hooks must not create %s: %v", path, err)
+		}
 	}
 }
 
@@ -430,9 +450,7 @@ func hookInputJSON(t *testing.T, repo, key, value string) string {
 	return fmt.Sprintf(`{"cwd":%q,%q:%s}`, repo, key, encoded)
 }
 
-// Q2/P1: session start must rotate the hook-failure log so it cannot grow
-// without bound (pruning previously required a manual command).
-func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
+func TestRunHookSessionStartDoesNotMaintainHookFailures(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	stale := `{"timestamp":"` + time.Now().UTC().Add(-31*24*time.Hour).Format(time.RFC3339Nano) + `","hook":"stop","error":"stale"}` + "\n"
@@ -449,8 +467,8 @@ func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.Total != 1 || stats.ByHook["stop"] != 1 {
-		t.Fatalf("session start must prune entries older than 720h, got %+v", stats)
+	if stats.Total != 2 || stats.ByHook["stop"] != 2 {
+		t.Fatalf("session start must not maintain hook failures, got %+v", stats)
 	}
 }
 

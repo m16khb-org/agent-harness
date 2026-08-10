@@ -49,9 +49,9 @@ export HARNESS_DISABLE_HOOKS=1    # 셸 세션 전체에 적용
 ```
 
 - 값이 `1`, `true`, `yes`, `on` 중 하나면 활성이다 (`hookenv.Bool` 계약).
-- 모든 hook 이벤트(`user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `post-compact`, `session-start`, `stop`)가 검사 없이 exit 0으로 통과하고 latency telemetry도 남기지 않는다.
+- 기본 설치 hook 이벤트(`session-start`, `post-compact`)가 검사 없이 exit 0으로 통과하고 telemetry나 state를 남기지 않는다.
 - `agent-harness hook failures`와 `hook metrics`는 계속 동작한다. kill-switch가 끄는 것은 강제이지 관측이 아니다.
-- agent-harness 저장소 자체에서는 켜지 마라. worktree 강제, IssueOps mutation authority, staged-check gate가 함께 사라진다.
+- 명시적으로 실행하는 legacy diagnostic hook CLI도 같은 kill-switch를 따른다.
 
 ## Operational Health and One-Time Reconciliation
 
@@ -90,11 +90,7 @@ Initial live report가 `defer_hardening`이면 현재 preregistered matrix에서
 
 ## State Store Maintenance
 
-The sqlite-backed state stores accumulate WAL frames and sidecar files that need periodic checkpointing. Two surfaces handle this:
-
-**Automatic (session-start hook):** `MaybeMaintainStateStores` runs WAL truncate + permission repair at most once per 24h via a `.last-store-maintain` sentinel in the state root. No user action needed.
-
-**Manual CLI:**
+The sqlite-backed state stores accumulate WAL frames and sidecar files that need periodic checkpointing. Context hooks never maintain them; use the manual CLI when needed:
 ```bash
 # Checkpoint WAL and repair sidecar permissions on all known store roots
 agent-harness state maintain --json
@@ -132,7 +128,7 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 
 - Default install writes only user-level host configuration. Target repos get files only through explicit project bootstrap or project-local opt-in.
 - Host adapters are thin wrappers around the same CLI/core behavior. They must not duplicate policy, schema, or state semantics.
-- Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads.
+- Default hooks provide only static project-doc context. They must not create issues/PRs, run tests, edit shared docs, read IssueOps state, perform maintenance, or perform long network/file reads.
 - IssueOps implementation must pass durable design, compatibility, devil's-advocate, and execution v1 gates. Hooks do not decide compatibility, side effects, sub-agent usage, or lease ownership. `issueops execution prepare/status/claim/release/replace/reconcile/complete` and MCP `issueops_execution` are the single execution contract.
 - Native install/update paths are standalone. External tools are neither installed nor required by `agent-harness`; use their own setup paths when a separate workflow needs them.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.

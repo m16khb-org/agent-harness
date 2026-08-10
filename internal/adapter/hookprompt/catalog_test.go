@@ -73,7 +73,7 @@ func TestBuildProjectDocCatalogContext(t *testing.T) {
 	}
 }
 
-func TestBuildProjectDocCatalogContextIncludesLinkedWorktreeReminder(t *testing.T) {
+func TestBuildProjectDocCatalogContextDoesNotInjectLinkedWorktreeReminder(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := filepath.Join(t.TempDir(), "agent-harness")
 	writeProjectDoc(t, repo, "ARCHITECTURE.md", "# 아키텍처\n\n## 핵심 경계\n")
@@ -81,8 +81,8 @@ func TestBuildProjectDocCatalogContextIncludesLinkedWorktreeReminder(t *testing.
 
 	cat := BuildProjectDocCatalogContext(repo)
 	for _, text := range []string{cat.Compact, cat.UserView} {
-		if !strings.Contains(text, "worktree: "+worktree) || !strings.Contains(text, "편집 전 cwd/절대경로 확인") {
-			t.Fatalf("catalog context missing worktree reminder:\n%s", text)
+		if strings.Contains(text, "worktree: "+worktree) || strings.Contains(text, "편집 전 cwd/절대경로 확인") {
+			t.Fatalf("catalog context must not inject a worktree reminder:\n%s", text)
 		}
 	}
 }

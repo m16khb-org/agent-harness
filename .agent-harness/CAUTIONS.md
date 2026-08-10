@@ -715,6 +715,14 @@ IssueOps PR readiness는 `validation_verdict=dropped` child를 scope에서 제�
 - core readiness와 hook hot path가 같은 child verdict 의미를 갖는 named regression을 함께 유지한다.
 - bounded scan은 raw child 목록을 먼저 자른 뒤 dropped를 건너뛰지 않는다. dropped를 제외한 처음 N개를 읽어야 앞의 removed scope가 뒤의 active child를 숨기지 않는다.
 
+## 기본 context hook 축소에서 third-party group을 지우지 말 것
+
+기본 설치 표면을 `SessionStart`/`PostCompact`로 줄일 때 managed hook만 지워야 한다. known lifecycle event 전체를 비우면 unrelated host integration까지 제거하고 Codex trust key가 불필요하게 drift한다.
+
+- upgrade는 모든 known event에서 agent-harness command group만 제거한 뒤 third-party group의 상대 순서를 보존한다.
+- 기본 surface 밖 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `Stop`에는 managed group이 남아서는 안 되며, empty event key만 제거한다.
+- child-host smoke는 exact two-event configuration과 simple native episode에서 `PreToolUse`가 관찰되지 않음을 함께 검증한다. PostCompact actual delivery는 compaction 발생이 host-controlled이므로 installed config contract로 검증한다.
+
 ## Codex co-resident hook merge에서 matcher 배열 위치를 바꾸지 말 것
 
 Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:hook-index` key의 `trusted_hash`에 결합된다. installer가 agent-harness 그룹을 제거한 뒤 끝에 append하면 co-resident Orca hook과 배열 위치가 바뀌고, 두 command가 모두 상대방의 stored hash와 비교되어 `modified`가 된다.

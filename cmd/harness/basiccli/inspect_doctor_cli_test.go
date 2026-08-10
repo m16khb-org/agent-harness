@@ -121,6 +121,43 @@ func TestRunDoctor_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	}
 }
 
+func TestRunDoctorStaticOnlySkipsLiveOperationalChecks(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	repo := t.TempDir()
+	oldDeps := deps
+	t.Cleanup(func() { Configure(oldDeps) })
+	next := deps
+	next.CheckDaemonStatus = func() daemoncli.Status {
+		panic("static doctor must not inspect daemon admission")
+	}
+	next.CollectOperationalHealth = func(context.Context, string) operationalhealth.Snapshot {
+		panic("static doctor must not collect live operational health")
+	}
+	Configure(next)
+
+	out, err := testsupport.CaptureStdoutAndError(t, func() error {
+		return RunDoctor([]string{"--static-only", "--json", "--repo", repo})
+	})
+	if err != nil {
+		t.Fatalf("static doctor failed: %v\n%s", err, out)
+	}
+	var result doctor.HarnessDoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode static doctor json: %v\n%s", err, out)
+	}
+	for _, name := range []string{"operational_state", "pipe_capacity", "mcp_gateway"} {
+		if check, ok := doctorResultCheck(result, name); ok {
+			t.Fatalf("static doctor included live %s check: %#v", name, check)
+		}
+	}
+	if check, ok := doctorResultCheck(result, "binary_drift"); !ok {
+		t.Fatalf("static doctor must retain binary_drift: %#v", result.Checks)
+	} else if check.Name != "binary_drift" {
+		t.Fatalf("unexpected binary_drift check: %#v", check)
+	}
+}
+
 func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

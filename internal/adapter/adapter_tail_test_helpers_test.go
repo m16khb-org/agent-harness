@@ -26,21 +26,21 @@ func init() {
 			claudeadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 			claudeadapter.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 			claudeadapter.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+			claudeadapter.HookGroupContainsCommand = installutiladapter.HookGroupContainsCommand
 			claudeadapter.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
 			claudeadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
-			claudeadapter.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 			claudeadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
-			claudeadapter.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+			claudeadapter.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 			claudeadapter.VerifyHookActivation = installutiladapter.VerifyHookActivation
 		},
 		func() {
 			codexadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 			codexadapter.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+			codexadapter.HookGroupContainsCommand = installutiladapter.HookGroupContainsCommand
 			codexadapter.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
 			codexadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
-			codexadapter.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 			codexadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
-			codexadapter.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+			codexadapter.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 			codexadapter.VerifyHookActivation = installutiladapter.VerifyHookActivation
 		},
 	} {

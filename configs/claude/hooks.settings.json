@@ -4,75 +4,18 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook post-compact",
+            "command": "'./bin/agent-harness' hook post-compact --host claude",
             "timeout": 5,
             "type": "command"
           }
         ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook post-tool-use --host claude",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook pre-compact",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
       }
     ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook session-start",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook stop --host claude --enforce-numbered-next-actions --enforce-engelbart-canvas-sections --relay-next-action-judgement",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook user-prompt",
+            "command": "'./bin/agent-harness' hook session-start --host claude",
             "timeout": 5,
             "type": "command"
           }

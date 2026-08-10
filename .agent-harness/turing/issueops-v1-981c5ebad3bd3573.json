@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-034fe305d0f5",
+  "mode": "orca",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-terra",
+    "effort": "xhigh",
+    "lease_generation": 2
+  },
+  "sealed_identity": {
+    "branch": "457-codex-native-install-readback",
+    "base_head": "3531e3e6e0f6642a6f77d4d8665766444d760348",
+    "issue_body_sha256": "ef9c3eb0ae2d20c825b59a777f735c09487460a5b6229580712dba91f39503a4",
+    "context_packet_sha256": "d0f09155fe26efdf4555729c13b6fd0eb29b3031dc3770f5897a068166bb1955",
+    "plan_sha256": "95f308dcc606ce7155aae96f3aa7a39179b8061b51157c2dbed19eee82c15420"
+  },
+  "red_green": {
+    "red": {
+      "test": "generation_two_report_identity",
+      "command": "python3 report assertion for lease_generation=2 and current context packet SHA-256",
+      "result": "fail",
+      "observed": "The committed generation-1 report had a stale owner generation and context packet digest."
+    },
+    "green": {
+      "test": "generation_two_report_identity",
+      "command": "python3 report assertion after the evidence update",
+      "result": "pass"
+    }
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "test": "sealed_archive_matches_requested_commit",
+      "command": "git archive --format=tar --output=/private/tmp/agent-harness-lane-457/source.tar 3531e3e6e0f6642a6f77d4d8665766444d760348; tar -xf into the private source root",
+      "result": "pass",
+      "evidence": {
+        "archive_sha256": "32d432a8dce0ab48b0c8453bc140c79d88690eea0da440abe3f409930b4a74e8",
+        "extracted_AGENTS_sha256": "cf7b578fbb4a8af1cea9ce58cec1bfcc6f189b0f710861e43ebccbae943ba621",
+        "archive_source_has_git_dir": false
+      }
+    },
+    {
+      "id": "AC-02",
+      "test": "private_lane_native_install",
+      "command": "/usr/bin/env HOME=/private/tmp/agent-harness-lane-457/home CODEX_HOME=/private/tmp/agent-harness-lane-457/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-457/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-457/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-457/source /private/tmp/agent-harness-lane-457/source/scripts/install-native.sh --path-mode=skip --json",
+      "result": "pass",
+      "evidence": {
+        "ok": true,
+        "committed": true,
+        "root": "/private/tmp/agent-harness-lane-457/source",
+        "binary": "/private/tmp/agent-harness-lane-457/source/bin/agent-harness"
+      }
+    },
+    {
+      "id": "AC-03",
+      "test": "codex_mcp_private_readback",
+      "command": "/usr/bin/env HOME=/private/tmp/agent-harness-lane-457/home CODEX_HOME=/private/tmp/agent-harness-lane-457/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-457/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-457/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-457/source codex mcp get agent_harness --json",
+      "result": "pass",
+      "evidence": {
+        "enabled": true,
+        "command": "/private/tmp/agent-harness-lane-457/source/bin/agent-harness",
+        "args": ["mcp"],
+        "harness_root": "/private/tmp/agent-harness-lane-457/source"
+      }
+    },
+    {
+      "id": "AC-04",
+      "test": "managed_hooks_are_limited_and_third_party_hook_survives",
+      "command": "project the private codex-home/hooks.json after the actual installer",
+      "result": "pass",
+      "evidence": {
+        "managed_events": ["PostCompact", "SessionStart"],
+        "managed_hook_count": 2,
+        "third_party_event": "PreToolUse",
+        "third_party_preserved": true
+      }
+    },
+    {
+      "id": "AC-05",
+      "test": "only_packet_turing_report_is_tracked",
+      "command": "git status --short; git diff --check; git diff --name-only 3531e3e6e0f6642a6f77d4d8665766444d760348...HEAD",
+      "result": "pass",
+      "evidence": {
+        "expected_path": ".agent-harness/turing/issueops-v1-981c5ebad3bd3573.json"
+      }
+    },
+    {
+      "id": "AC-06",
+      "test": "draft_pr_metadata_readback",
+      "command": "gh pr view 458 --repo m16khb/agent-harness --json url,isDraft,baseRefName,headRefName,labels,assignees,body,title",
+      "result": "pass",
+      "evidence": {
+        "url": "https://github.com/m16khb/agent-harness/pull/458",
+        "draft": true,
+        "base": "455-thin-context-hooks",
+        "head": "457-codex-native-install-readback",
+        "head_snapshot_before_generation_2_evidence_commit": "0aa218f557f7c988b0ac74f9a62eafe8499dceaf",
+        "head_snapshot_semantics": "Observed by git rev-parse HEAD immediately before the generation-2 evidence edit; this is a temporal pre-evidence snapshot, not a final or current claim.",
+        "label": "enhancement",
+        "assignee": "m16khb",
+        "body_is_korean": true
+      },
+      "note": "The authoritative generation-2 final SHA is intentionally excluded from this self-referential report; it is recorded only by post-commit PR API readback and durable IssueOps completion."
+    }
+  ],
+  "scope": {
+    "production_source_changed": false,
+    "external_claude_readback_run": false,
+    "child_lifecycle_created": false
+  }
+}

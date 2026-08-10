@@ -172,7 +172,7 @@ legacy edge를 없앨 때는 **소비되는 심볼의 성격**이 처방을 결�
 설치 adapter 규칙:
 
 - `internal/core.InstallNative`가 host-neutral 설치 engine이고 `port.HostInstaller`가 SOLID 경계다.
-- Codex/Claude adapter는 자기 host의 user/global 설정만 기본으로 쓴다. Codex는 `~/.codex/hooks.json`, Claude는 `~/.claude/settings.json`에 같은 lifecycle hook CLI를 등록한다. repo-local `.mcp.json`, `.claude/settings.json`, `.claude/skills`는 `--project-local` 같은 명시적 opt-in 없이는 만들지 않는다.
+- Codex/Claude adapter는 자기 host의 user/global 설정만 기본으로 쓴다. Codex는 `~/.codex/hooks.json`, Claude는 `~/.claude/settings.json`에 `SessionStart`와 `PostCompact`의 같은 context hook CLI만 등록한다. repo-local `.mcp.json`, `.claude/settings.json`, `.claude/skills`는 `--project-local` 같은 명시적 opt-in 없이는 만들지 않는다.
 - 기본 symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하거나 installer-owned command shim(`~/.local/bin/agent-harness`, `~/.local/bin/ah`)을 연결할 때만 사용한다.
 - adapter 설치 계약을 바꾸면 `internal/adapter/install_contract_matrix_test.go`와 `internal/adapter/testdata/native_install_contract_matrix.golden.json`을 함께 갱신해 user/global 기본 설치와 explicit project-local opt-in의 차이를 보존한다.
 
@@ -259,9 +259,8 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 ## Hook 컨벤션
 
-- UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트를 주입한다. 예외적으로 exact `승인 AH-XXXXXX`는 Codex kubectl live-access pending record를 10분짜리 one-shot grant로 전환하며, raw command 없이 session/request fingerprint에만 결합한다. PreToolUse hook은 tool 실행 직전의 critical path에 있으므로 기본은 host stdout `{}`인 빠른 allow/no-op preflight로 유지한다. 명시적으로 설치된 deterministic gate만 차단할 수 있고, Codex live-access gate는 project-scoped user state의 keyed lock 안에서 token 발급 또는 grant 한 번 소비만 수행한다. PostToolUse hook은 성공한 mutating tool 실행 이후 lifecycle upkeep queue 기록만 수행하며 read-only Bash/조회 output path로 upkeep을 만들지 않는다. Stop hook은 lifecycle reminder를 계산하되 Stop hook stdout schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. PreCompact/PostCompact hook은 pending upkeep queue를 작은 user-state capsule로 저장하고 한 번만 복원한다. Codex와 Claude Code hook adapter는 같은 `agent-harness hook user-prompt/pre-tool-use/post-tool-use/pre-compact/post-compact/stop` CLI를 호출해야 한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
-- Hook 출력은 event별 host schema를 따른다. UserPromptSubmit/PostCompact처럼 additional context를 지원하는 이벤트만 `hookSpecificOutput.additionalContext`를 쓰고, Stop/PreToolUse는 빈 JSON 객체 또는 검증된 host control schema만 사용한다. Codex PreToolUse는 native `ask`를 내보내지 않고 token 안내를 포함한 flat block을 사용하며, 승인된 동일 요청을 한 번 소비하면 `{}` allow를 반환한다. 실패해도 사용자 작업을 불필요하게 막지 않도록 작고 deterministic하게 유지한다.
-- UserPromptSubmit output is host-shaped at the adapter edge: Codex uses `--host codex` where needed, omits `systemMessage`, and avoids noisy route/action/profile/pending-upkeep prose in visible TUI channels; Claude Code may keep the richer `systemMessage` + compact `additionalContext` split for events that support it.
+- 기본 설치는 `SessionStart`와 `PostCompact`만 context-only로 호출한다. 두 hook은 project-doc catalog만 읽어 host-compatible context를 만들며 IssueOps list/read, lifecycle reminder, runtime diagnostic, telemetry, SQLite maintenance, worker recovery, state write를 하지 않는다. `user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `stop` CLI는 backward-compatible 명시 진단 표면이지만 installer가 등록하지 않는다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
+- Hook 출력은 event별 host schema를 따른다. 기본 `SessionStart`/`PostCompact`는 additional context가 지원되는 host shape만 사용한다. Codex는 `--host codex`를 명시하고 Claude Code는 readable `systemMessage`와 compact `additionalContext`를 분리할 수 있다.
 - `.agent-harness/*.md` frontmatter descriptions are canonical bootstrap/sync metadata. Keep them concise English category descriptions, not prose summaries, because every `project bootstrap`/`project bootstrap --sync` target and every project-doc catalog inherits them.
 - Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing/compaction 판단은 공통 `agent-harness hook ...` CLI/core에 둔다.
 

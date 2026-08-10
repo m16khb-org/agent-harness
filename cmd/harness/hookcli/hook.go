@@ -31,6 +31,9 @@ func runHook(args []string) error {
 	if hookDisabled(args) {
 		return nil
 	}
+	if isContextHook(args) {
+		return runHookDispatch(args)
+	}
 	stdin, restoreStdin, stdinErr := captureReplayableHookStdin()
 	if restoreStdin != nil {
 		defer restoreStdin()
@@ -66,6 +69,10 @@ func runHook(args []string) error {
 	}
 	hookMetricDecision = ""
 	return err
+}
+
+func isContextHook(args []string) bool {
+	return len(args) > 0 && (args[0] == "session-start" || args[0] == "post-compact")
 }
 
 // hookMetricDecision is set by enforcement gates when they block. The hook
@@ -144,7 +151,7 @@ func runHookSessionStart(args []string) error {
 }
 
 func hookCatalogConfig() hookcatalog.Config {
-	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime, PruneHookFailureLog: PruneHookFailureLog, PruneHookMetricsLog: PruneHookMetricsLog, MaybeDetectStuckWorkerJobs: MaybeDetectStuckWorkerJobs, BuildLifecyclePostCompactReminder: buildLifecyclePostCompactReminder}
+	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON}
 }
 
 func hookUsage() {

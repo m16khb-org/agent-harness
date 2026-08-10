@@ -37,7 +37,7 @@ func validateNativeIntegrationWithDeps(root string, deps nativeIntegrationValida
 	claudeSkills, _ := deps.skillNamesForHost(root, nativeSkills, "claude")
 	paths := nativeIntegrationRequiredPaths(root, home, codexSkills, claudeSkills)
 	errs = append(errs, nativeIntegrationPathErrors(paths, deps)...)
-	errs = append(errs, nativeIntegrationCodexConfigErrors(home, deps)...)
+	errs = append(errs, nativeIntegrationCodexConfigErrors(root, home, deps)...)
 	warningErrs, warningOutput := nativeIntegrationDuplicateWarningOutput(deps.duplicateWarningFixture())
 	errs = append(errs, warningErrs...)
 	stdoutParts = append(stdoutParts, warningOutput)

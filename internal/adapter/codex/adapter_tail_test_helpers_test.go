@@ -9,6 +9,7 @@ import (
 func init() {
 	CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 	HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+	HookGroupContainsCommand = installutiladapter.HookGroupContainsCommand
 	HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
 	RunningBuildGenerationString = installadapter.RunningBuildGenerationString
 	FileBuildGenerationString = installadapter.FileBuildGenerationString
@@ -16,8 +17,7 @@ func init() {
 		return installutiladapter.HookTargetGenerationMessages(config, h, expected, running, read)
 	}
 	PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
-	PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 	SemanticSHA256 = installutiladapter.SemanticSHA256
-	StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+	ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 	VerifyHookActivation = installutiladapter.VerifyHookActivation
 }

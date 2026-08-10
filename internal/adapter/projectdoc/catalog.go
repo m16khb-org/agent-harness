@@ -2,10 +2,18 @@ package projectdoc
 
 import (
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+)
+
+const (
+	projectDocCatalogMaxEntries    = 64
+	projectDocCatalogMaxRawEntries = 128
+	projectDocCatalogMaxFileBytes  = 256 * 1024
+	projectDocCatalogMaxTotalBytes = 2 * 1024 * 1024
 )
 
 // projectdocdomain.ProjectDocCatalogEntry describes one project doc in the working repo's
@@ -33,20 +41,38 @@ func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEn
 	if repoRoot == "" {
 		return nil
 	}
-	dir := filepath.Join(repoRoot, ".agent-harness")
-	entries, err := os.ReadDir(dir)
+	root, err := os.OpenRoot(repoRoot)
+	if err != nil {
+		return nil
+	}
+	defer root.Close()
+	docsInfo, err := root.Lstat(".agent-harness")
+	if err != nil || !docsInfo.IsDir() || docsInfo.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	docsDir, err := root.Open(".agent-harness")
+	if err != nil {
+		return nil
+	}
+	defer docsDir.Close()
+	entries, err := readProjectDocCatalogEntries(docsDir)
 	if err != nil {
 		return nil
 	}
 	catalog := []projectdocdomain.ProjectDocCatalogEntry{}
+	totalBytes := 0
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+		if len(catalog) == projectDocCatalogMaxEntries || totalBytes == projectDocCatalogMaxTotalBytes {
+			break
+		}
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		content, err := os.ReadFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
+		content, ok := readProjectDocCatalogFile(root, filepath.Join(".agent-harness", entry.Name()), projectDocCatalogMaxTotalBytes-totalBytes)
+		if !ok {
 			continue
 		}
+		totalBytes += len(content)
 		_, description, _, _ := projectdocdomain.ParseFrontmatter(string(content))
 		if description == "" {
 			if canonical, ok := projectdocdomain.DocMetaDescription(entry.Name()); ok {
@@ -61,6 +87,39 @@ func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEn
 	}
 	sort.Slice(catalog, func(i, j int) bool { return catalog[i].RelPath < catalog[j].RelPath })
 	return catalog
+}
+
+func readProjectDocCatalogEntries(dir *os.File) ([]os.DirEntry, error) {
+	entries, err := dir.ReadDir(projectDocCatalogMaxRawEntries)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return entries, nil
+}
+
+func readProjectDocCatalogFile(root *os.Root, name string, remaining int) ([]byte, bool) {
+	info, err := root.Lstat(name)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, false
+	}
+	file, err := root.Open(name)
+	if err != nil {
+		return nil, false
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil || !opened.Mode().IsRegular() {
+		return nil, false
+	}
+	limit := projectDocCatalogMaxFileBytes + 1
+	if remaining+1 < limit {
+		limit = remaining + 1
+	}
+	content, err := io.ReadAll(io.LimitReader(file, int64(limit)))
+	if err != nil || len(content) > projectDocCatalogMaxFileBytes || len(content) > remaining {
+		return nil, false
+	}
+	return content, true
 }
 
 // FormatProjectDocCatalog renders a compact one-line menu of the project docs,

@@ -35,21 +35,18 @@ must use `python3 scripts/validate-skill.py skills/<skill-name>` so local
 verification does not depend on upstream Codex system-skill changes or local
 PyYAML installation.
 
-Codex lifecycle hooks live in `~/.codex/hooks.json`. `UserPromptSubmit` invokes `agent-harness hook user-prompt --host codex`; `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, and `Stop` call the shared hook CLI.
+Codex lifecycle hooks live in `~/.codex/hooks.json`. Default installation owns exactly `SessionStart` and `PostCompact`, both invoking the shared context CLI with `--host codex`.
 
 Hook behavior:
 
-- `UserPromptSubmit`: dynamic routing/profile/upkeep hint only.
-- `PreToolUse`: installed with worktree, Korean remote artifact, VCS issue-linking, staged-check, and GitOps kubectl guards. The Korean remote artifact and VCS issue-linking guards inspect both shell CLI commands and MCP tool-call shapes for issue/PR/MR create/edit/update requests. The worktree guard is a no-op unless an IssueOps cycle or `HARNESS_EXPECTED_WORKTREE` applies; the staged-check guard asks before broad `biome check apps libs` / broad package-script lint or format checks so agents use staged or changed-file scope first; the kubectl guard blocks direct mutating cluster commands, asks for confirmation on live access such as `exec` and `port-forward`, and allows read-only inspection plus dry-runs. Raw `--json` exposes diagnostics.
-- `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state. It must not auto-queue draft-wiki material; the main agent explicitly queues judged reusable material with `agent-harness project draft-wiki queue --stdin` or `--input`.
-- `PreCompact`/`PostCompact`: save and restore a small pending-upkeep capsule once.
-- `Stop`: installed with `--enforce-numbered-next-actions`; when the host exposes the final assistant message or transcript, it blocks missing numbered next actions and tells the agent to explain the block before presenting context-specific choices. With `--relay-next-action-judgement`, it relays only observed next-action facts back to the main agent; the main agent must then state why it is auto-proceeding or why it is not auto-proceeding and needs user confirmation. Auto-proceed result reports still include `선택지:` with three options and exactly one recommendation. No-auto-proceed judgements stop without adding another choices block.
+- `SessionStart` and `PostCompact`: read the static project-doc catalog and emit host-compatible context. They do not read IssueOps, emit lifecycle reminders, inspect runtime state, write telemetry, maintain SQLite, recover workers, or mutate state.
+- Legacy hook CLI subcommands (`user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `stop`) remain available only when explicitly invoked for diagnosis or compatibility; installer upgrade removes their managed registrations while preserving non-harness groups.
 
 Hook smoke:
 
 ```bash
-printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | agent-harness hook user-prompt
-agent-harness hook stop --json
+agent-harness hook session-start --host codex --json
+agent-harness hook post-compact --host codex --json
 ```
 
 ## Claude Code
@@ -79,7 +76,7 @@ Inside Claude Code:
 
 Default install registers user-scope MCP server `agent_harness`. This repo's dogfood `.mcp.json` uses `agent_harness_project` to avoid scope collisions.
 
-Claude hooks live in `~/.claude/settings.json`. They call the same shared CLI/core as Codex, but Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`. `PreToolUse` and `PostToolUse` use matcher `*`; `PreToolUse` runs deterministic worktree, remote artifact, issue-linking, staged-check, and GitOps kubectl guards. `Stop` enforces numbered next-action choices through `--enforce-numbered-next-actions`.
+Claude hooks live in `~/.claude/settings.json`. Default installation owns exactly `SessionStart` and `PostCompact`, both calling the same context CLI/core as Codex with `--host claude`; Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`.
 
 Claude project-local hooks can be committed, so do not create `.claude/settings.json` in target repos without explicit opt-in.
 
@@ -87,4 +84,4 @@ Claude project-local hooks can be committed, so do not create `.claude/settings.
 
 Hooks may suggest IssueOps but must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, or clean up branches/worktrees. The main agent loop owns the `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state.
 
-Installed hooks enforce only fast deterministic boundaries: linked worktree targets, Korean remote artifacts, VCS issue-linking metadata, PR/MR target/base branch, label and assignee evidence, staged-check/live-command confirmation, and numbered next-action format. The main agent owns remote writes and must pass Korean artifact gates before issue or PR/MR mutation.
+Default installed hooks have no authority boundary beyond static context injection. Explicit `agent-harness issueops ...` commands own durable CAS, lease authority, remote writes, verification, and publication; any legacy diagnostic hook must not be treated as an installed enforcement path.

@@ -685,13 +685,15 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	claudeSettings := readFile(t, filepath.Join(req.Home, ".claude", "settings.json"))
-	for _, needle := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", req.BinPath} {
+	for _, needle := range []string{"SessionStart", "PostCompact", req.BinPath, "hook session-start --host claude", "hook post-compact --host claude"} {
 		if !strings.Contains(claudeSettings, needle) {
 			t.Fatalf("Claude settings missing lifecycle hook %q:\n%s", needle, claudeSettings)
 		}
 	}
-	if !strings.Contains(claudeSettings, "hook pre-tool-use --host claude --enforce-worktree") {
-		t.Fatalf("Claude PreToolUse hook missing native host identity:\n%s", claudeSettings)
+	for _, gone := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "Stop", "--enforce-", "--relay-next-action-judgement"} {
+		if strings.Contains(claudeSettings, gone) {
+			t.Fatalf("Claude default hooks retained removed lifecycle surface %q:\n%s", gone, claudeSettings)
+		}
 	}
 	codexConfig := readFile(t, filepath.Join(req.CodexHome, "config.toml"))
 	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.Root} {
@@ -700,8 +702,15 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	codexHooks := readFile(t, filepath.Join(req.CodexHome, "hooks.json"))
-	if !strings.Contains(codexHooks, "hook pre-tool-use --host codex --enforce-worktree") {
-		t.Fatalf("Codex PreToolUse hook missing native host identity:\n%s", codexHooks)
+	for _, needle := range []string{"SessionStart", "PostCompact", "hook session-start --host codex", "hook post-compact --host codex"} {
+		if !strings.Contains(codexHooks, needle) {
+			t.Fatalf("Codex hooks missing lifecycle hook %q:\n%s", needle, codexHooks)
+		}
+	}
+	for _, gone := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "Stop", "--enforce-", "--relay-next-action-judgement"} {
+		if strings.Contains(codexHooks, gone) {
+			t.Fatalf("Codex default hooks retained removed lifecycle surface %q:\n%s", gone, codexHooks)
+		}
 	}
 }
 

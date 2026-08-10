@@ -61,7 +61,7 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 			// binary_drift 체크를 살핀다. 갓 빌드한 tempBin은 구조상 항상 최신이므로
 			// 이 단계가 false positive를 낼 수는 없지만, self-verify QA 표면의 일부로
 			// drift 탐지 경로를 여전히 검증한다.
-			return deps.RunCommandStep(root, "binary drift", 10*time.Second, "", tempBin, "doctor", "--json", "--repo", root)
+			return deps.RunCommandStep(root, "binary drift", 10*time.Second, "", tempBin, "doctor", "--static-only", "--json", "--repo", root)
 		}},
 		{Label: "inspect smoke", Run: func() StepResult { return deps.ValidateInspect(tempBin, root) }},
 		{Label: "docs index smoke", Run: func() StepResult { return deps.ValidateDocsIndex(tempBin, root) }},

@@ -4,6 +4,7 @@ import (
 	install "agent-harness/internal/adapter/install"
 	hook "agent-harness/internal/domain/hook"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,18 +51,22 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(hooks), "hook user-prompt --host codex") || !strings.Contains(string(hooks), req.BinPath) {
-		t.Fatalf("codex hooks missing harness UserPromptSubmit hook:\n%s", string(hooks))
+	for _, subcommand := range []string{"hook session-start --host codex", "hook post-compact --host codex"} {
+		if !strings.Contains(string(hooks), subcommand) || !strings.Contains(string(hooks), req.BinPath) {
+			t.Fatalf("codex hooks missing context-only command %q:\n%s", subcommand, string(hooks))
+		}
 	}
-	if !strings.Contains(string(hooks), "hook pre-tool-use --host codex --enforce-worktree") {
-		t.Fatalf("codex PreToolUse hook must supply native host identity:\n%s", string(hooks))
+	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+		if strings.Contains(string(hooks), forbidden) {
+			t.Fatalf("codex default hooks must not contain %q:\n%s", forbidden, string(hooks))
+		}
 	}
 	template, err := os.ReadFile(filepath.Join(root, "configs", "codex", "hooks.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(template), "hook pre-tool-use --host codex --enforce-worktree") {
-		t.Fatalf("codex hook template must supply native host identity:\n%s", string(template))
+	if strings.Contains(string(template), "hook pre-tool-use") || strings.Contains(string(template), "--enforce-") || strings.Contains(string(template), "hook stop") {
+		t.Fatalf("codex hook template must contain only context hooks:\n%s", string(template))
 	}
 	if exists(filepath.Join(root, ".claude", "skills", "alpha")) || exists(filepath.Join(root, ".mcp.json")) {
 		t.Fatalf("codex installer wrote project-local files")
@@ -84,13 +89,15 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook user-prompt --host codex", "hook pre-tool-use --host codex --enforce-worktree", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop --enforce-numbered-next-actions"} {
+	for _, subcommand := range []string{"hook session-start --host codex", "hook post-compact --host codex"} {
 		if count := strings.Count(string(hooks), subcommand); count != 1 {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}
 	}
-	if strings.Contains(string(hooks), "hook pre-tool-use --enforce-search-routing") {
-		t.Fatalf("Codex installer must not enable blocking search routing enforcement by default:\n%s", string(hooks))
+	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+		if strings.Contains(string(hooks), forbidden) {
+			t.Fatalf("Codex installer must remove default hook %q:\n%s", forbidden, string(hooks))
+		}
 	}
 }
 
@@ -105,16 +112,60 @@ func TestMergeHookConfigPreservesCoResidentHookPositions(t *testing.T) {
 
 	merged := mergeHookConfig(config, "/new/bin/agent-harness")
 	groups := merged["hooks"].(map[string]any)["PreToolUse"].([]any)
-	if len(groups) != 2 {
-		t.Fatalf("PreToolUse groups = %d, want 2: %#v", len(groups), groups)
+	if len(groups) != 1 {
+		t.Fatalf("PreToolUse groups = %d, want only the third-party group: %#v", len(groups), groups)
 	}
-	firstCommand := groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	secondCommand := groups[1].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	if !strings.Contains(firstCommand, "/new/bin/agent-harness") {
-		t.Fatalf("agent-harness replacement moved away from its trusted index: first=%q second=%q", firstCommand, secondCommand)
+	command := groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	if command != "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh" {
+		t.Fatalf("legacy agent-harness group must be removed while third-party group is preserved: %q", command)
 	}
-	if secondCommand != "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh" {
-		t.Fatalf("co-resident hook index changed: first=%q second=%q", firstCommand, secondCommand)
+	for _, event := range []string{"SessionStart", "PostCompact"} {
+		if len(merged["hooks"].(map[string]any)[event].([]any)) != 1 {
+			t.Fatalf("%s must contain one replacement context hook: %#v", event, merged)
+		}
+	}
+}
+
+func TestMergeHookConfigReplacesManagedContextGroupsInPlace(t *testing.T) {
+	managed := func(command string) map[string]any {
+		return map[string]any{"hooks": []any{map[string]any{
+			"type": "command", "command": command, "timeout": float64(5),
+		}}}
+	}
+	thirdParty := func(command string) map[string]any {
+		return map[string]any{"hooks": []any{map[string]any{
+			"type": "command", "command": command, "timeout": float64(10),
+		}}}
+	}
+	for name, groups := range map[string][]any{
+		"managed before third party": {
+			managed("'/old/bin/agent-harness' hook session-start --host codex"),
+			thirdParty("orca observe"),
+		},
+		"managed after third party": {
+			thirdParty("codegraph observe"),
+			managed("'/old/bin/agent-harness' hook session-start --host codex"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			merged := mergeHookConfig(map[string]any{"hooks": map[string]any{"SessionStart": groups}}, "/new/bin/agent-harness")
+			got := merged["hooks"].(map[string]any)["SessionStart"].([]any)
+			if len(got) != 2 {
+				t.Fatalf("SessionStart groups = %d, want 2: %#v", len(got), got)
+			}
+			for index, group := range groups {
+				command := group.(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+				if command == "orca observe" || command == "codegraph observe" {
+					gotCommand := got[index].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+					if gotCommand != command {
+						t.Fatalf("third-party group moved from index %d: got %q want %q", index, gotCommand, command)
+					}
+				}
+			}
+			if count := strings.Count(fmt.Sprint(got), "'/new/bin/agent-harness' hook session-start --host codex"); count != 1 {
+				t.Fatalf("canonical managed group count = %d, want 1: %#v", count, got)
+			}
+		})
 	}
 }
 
@@ -150,6 +201,35 @@ func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "echo preserved") {
 		t.Fatalf("installer dropped non-empty third-party hook group:\n%s", string(b))
+	}
+}
+
+func TestCodexInstallerRejectsMalformedHookConfigWithoutWriting(t *testing.T) {
+	for name, content := range map[string]string{
+		"opaque hooks":          `{"hooks":"opaque"}`,
+		"non-array known event": `{"hooks":{"SessionStart":{"owner":"third-party"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			home := t.TempDir()
+			writeAdapterTestSkill(t, root, "alpha")
+			path := filepath.Join(home, ".codex", "hooks.json")
+			writeFile(t, path, content)
+			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+			req.SkillNames = []string{"alpha"}
+
+			result, err := NewInstaller().Install(req)
+			if err == nil || result.OK {
+				t.Fatalf("malformed hook config must fail without replacement: result=%+v err=%v", result, err)
+			}
+			gotBytes, readErr := os.ReadFile(path)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if got := string(gotBytes); got != content {
+				t.Fatalf("malformed hook config was rewritten:\n got %q\nwant %q", got, content)
+			}
+		})
 	}
 }
 
