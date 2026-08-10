@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "status": "evidence_ready_for_publication",
+  "lifecycle_id": "io-8724649f2a51",
+  "issue_url": "https://github.com/m16khb/agent-harness/issues/463",
+  "mode": "orca",
+  "generation": 4,
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-terra",
+    "effort": "xhigh",
+    "session_id": "019feb4c-b907-7993-8cb6-c1c89f952caa"
+  },
+  "identity": {
+    "source_root": "/Users/m16khb/Workspace/agent-harness",
+    "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/463-parallel-issueops-lane-c",
+    "branch": "463-parallel-issueops-lane-c",
+    "base_head": "8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac",
+    "run_id": "run_dbe93021b8a0",
+    "task_id": "task_c7f49c62acb9",
+    "dispatch_id": "ctx_c0331320bdf7",
+    "worktree_instance_id": "94d3fcc8-f80d-41a7-80ec-cebefcfa9029"
+  },
+  "sealed_inputs": {
+    "issue_body_sha256": "077dc2caaaf78659169f3e23362f303e693b676c81421b34794c41d7a0987b84",
+    "context_packet_sha256": "000f0a2c3787fce385e51b7e73f4792ba91551a836705185d5a5ecc085b9c7c8",
+    "artifacts": {
+      "plan": "fa4c775206d30aeef18bfe22b3878660c04beb11955a09de39d66f21ce0db49b",
+      "spec": "4686e6892805d3fed1aab02857d9d4be7b13e0b67b8c5f6591970833d6d180a6",
+      "turing-loop": "5b3b2b1df529240530f51b2183415b68e10c85bf90abd089a58b276e83acc517"
+    }
+  },
+  "interval": {
+    "native_session_started_at": "2026-08-10T10:51:41Z",
+    "claimed_at": "2026-08-10T10:53:52.254086Z",
+    "evidence_finished_at": "2026-08-10T10:55:56Z"
+  },
+  "verification_mode": "report-only lifecycle: no production source change; focused isolation test plus durable CLI evidence",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "result": "PASS",
+      "command": "agent-harness issueops execution status --id 'io-8724649f2a51' --json",
+      "evidence": "schema_version=1, mode=orca, lifecycle io-8724649f2a51, generation=4, branch, sealed base, and canonical worktree matched the claimed native Codex holder."
+    },
+    {
+      "id": "AC-02",
+      "result": "PASS",
+      "command": "agent-harness issueops execution status --id 'io-8724649f2a51' --json; agent-harness issueops list --repo /Users/m16khb/Workspace/agent-harness --json",
+      "evidence": "C generation 4 observed run_dbe93021b8a0, task_c7f49c62acb9, dispatch ctx_c0331320bdf7, and its distinct worktree instance. The issue SSOT's durable coordinator receipt identifies distinct A and B run/task/dispatch tuples."
+    },
+    {
+      "id": "AC-03",
+      "result": "PASS",
+      "command": "remote issue #463 body digest readback",
+      "evidence": "The SSOT coordinator receipt records T=2026-08-10T10:46:29Z with max claimed_at=2026-08-10T10:42:51.811008Z and C released_at=2026-08-10T10:47:02.042278Z; it explicitly authorizes this owner to use that durable three-lane overlap evidence without waiting."
+    },
+    {
+      "id": "AC-04",
+      "result": "PASS",
+      "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
+      "evidence": "PASS: ok agent-harness/cmd/harness/validationcli/parallelisolation 0.447s.",
+      "cleanup_receipt": "The command created no persistent process, port, browser, or temporary artifact."
+    },
+    {
+      "id": "AC-05",
+      "result": "PENDING_GOVERNED_COMMIT",
+      "command": "git status --short; git diff --name-only 8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac...HEAD",
+      "evidence": "Before the required single-file commit, this packet-issued report is the only untracked path and the base-to-HEAD name-only diff is empty. The post-commit rerun must show only this path while the source checkout remains clean."
+    },
+    {
+      "id": "AC-06",
+      "result": "PENDING_GOVERNED_PUBLICATION",
+      "command": "agent-harness issueops remote create-pr --id io-8724649f2a51 ... --base parallel-issueops-probe-20260810-8166a2d --label enhancement --assignee m16khb --confirm --json",
+      "evidence": "Publication is intentionally deferred until this report is committed and its fresh implementation review passes; governed readback must confirm draft PR base, head, label, assignee, and Korean body."
+    },
+    {
+      "id": "AC-07",
+      "result": "PASS",
+      "baseline_command": "agent-harness issueops status --id 'io-8724649f2a51' --json; agent-harness issueops status --id 'io-8f76e5e0a5f0' --json",
+      "baseline_observed_at": "2026-08-10T10:54:32Z",
+      "probes": [
+        {
+          "case": "own-id + own-cwd",
+          "command": "agent-harness issueops record-routing --id 'io-8724649f2a51' --phase 'ai-slop-clean' --skill 'turing' --host codex --session-id '019feb4c-b907-7993-8cb6-c1c89f952caa' --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/463-parallel-issueops-lane-c' --json",
+          "result": "PASS: ok=true; the existing C turing routing marker was retained idempotently.",
+          "C_before_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_after_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_projection_equal": true,
+          "A_before_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_after_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_projection_equal": true
+        },
+        {
+          "case": "foreign-A-id + own-C-cwd",
+          "command": "agent-harness issueops record-routing --id 'io-8f76e5e0a5f0' --phase 'ai-slop-clean' --skill 'turing' --host codex --session-id '019feb4c-b907-7993-8cb6-c1c89f952caa' --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/463-parallel-issueops-lane-c' --json",
+          "result": "DENIED: IssueOps execution generation 3 has no active write lease.",
+          "C_before_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_after_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_projection_equal": true,
+          "A_before_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_after_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_projection_equal": true
+        },
+        {
+          "case": "own-C-id + foreign-A-cwd",
+          "command": "agent-harness issueops record-routing --id 'io-8724649f2a51' --phase 'ai-slop-clean' --skill 'turing' --host codex --session-id '019feb4c-b907-7993-8cb6-c1c89f952caa' --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/462-parallel-issueops-lane-a' --json",
+          "result": "DENIED: IssueOps execution mutation requires the canonical worktree cwd.",
+          "C_before_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_after_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_projection_equal": true,
+          "A_before_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_after_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_projection_equal": true
+        },
+        {
+          "case": "foreign-A-id + foreign-A-cwd",
+          "command": "agent-harness issueops record-routing --id 'io-8f76e5e0a5f0' --phase 'ai-slop-clean' --skill 'turing' --host codex --session-id '019feb4c-b907-7993-8cb6-c1c89f952caa' --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/462-parallel-issueops-lane-a' --json",
+          "result": "DENIED: IssueOps execution generation 3 has no active write lease.",
+          "C_before_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_after_projection_sha256": "888ac0f8ad4c6855b1b660c11aa32388089a4aa29fc4719e461ffbe7e2eb7c28",
+          "C_projection_equal": true,
+          "A_before_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_after_projection_sha256": "c7ee753213b7969f0ac8d186acc21a70befc55897446af55f96f4deeef2fb91c",
+          "A_projection_equal": true
+        }
+      ],
+      "post_command": "agent-harness issueops list --repo '/Users/m16khb/Workspace/agent-harness' --json; agent-harness issueops status --id 'io-8724649f2a51' --json; agent-harness issueops status --id 'io-8f76e5e0a5f0' --json",
+      "post_observed_at": "2026-08-10T10:55:07Z",
+      "projection_digest_algorithm": "SHA-256 of the jq -cS projection with one terminating LF",
+      "before_after_projection": {
+        "C_before_and_after": {
+          "schema_version": 1,
+          "id": "io-8724649f2a51",
+          "repo": "/Users/m16khb/Workspace/agent-harness",
+          "branch": "463-parallel-issueops-lane-c",
+          "generation": 4,
+          "canonical_worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/463-parallel-issueops-lane-c",
+          "routing_trace": [
+            {
+              "phase": "ai-slop-clean",
+              "skill": "turing",
+              "at": "2026-08-10T10:44:56.790336Z"
+            }
+          ]
+        },
+        "A_before_and_after": {
+          "schema_version": 1,
+          "id": "io-8f76e5e0a5f0",
+          "repo": "/Users/m16khb/Workspace/agent-harness",
+          "branch": "462-parallel-issueops-lane-a",
+          "generation": 3,
+          "canonical_worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/462-parallel-issueops-lane-a",
+          "routing_trace": [
+            {
+              "phase": "implement",
+              "skill": "turing",
+              "at": "2026-08-10T10:44:06.539274Z"
+            }
+          ]
+        }
+      },
+      "conclusion": "Only the own-id + own-cwd request was admitted. The three denied probes left both selected lifecycle routing projections unchanged; peer phase/lease/timestamp fields were excluded because they may change under peer authority."
+    }
+  ],
+  "tdd": {
+    "red": "jq -e '.generation == 4 and .status != \"blocked\"' .agent-harness/turing/issueops-v1-6399bb2bb715c507.json returned false against the generation-3 blocked report.",
+    "green": "This replacement report records generation 4 and evidence_ready_for_publication; the same jq assertion is rerun in final verification."
+  },
+  "deviation": "The sealed plan/spec/turing-loop describe an Orca question/reply barrier. Remote issue #463's '실행 계약 정정 (SSOT)' explicitly replaces that barrier and the mutable-status-hash requirement; no barrier was executed.",
+  "ai_slop_clean": {
+    "result": "pending_fresh_review",
+    "scope": "Replaced stale generation-3 report evidence only. No production source, compatibility shim, abstraction, generated asset, or comment was added."
+  },
+  "cleanup_receipt": "No runtime resource was spawned by this owner. Completion or a blocker release returns the generation lease; worktree and branch cleanup remain outside owner authority."
+}
