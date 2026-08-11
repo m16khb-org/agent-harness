@@ -810,6 +810,13 @@
           "path": "$HARNESS_ROOT/skills/project-bootstrap"
         },
         {
+          "description": "Audit and modularize oversized agent-harness operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.agent-harness` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "project-docs-optimize",
+          "path": "$HARNESS_ROOT/skills/project-docs-optimize"
+        },
+        {
           "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5044,6 +5051,7 @@
           "issueops",
           "karpathy",
           "project-bootstrap",
+          "project-docs-optimize",
           "self-augment",
           "self-verify",
           "shannon",
@@ -6946,6 +6954,13 @@
                 "path": "$HARNESS_ROOT/skills/project-bootstrap"
               },
               {
+                "description": "Audit and modularize oversized agent-harness operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.agent-harness` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "project-docs-optimize",
+                "path": "$HARNESS_ROOT/skills/project-docs-optimize"
+              },
+              {
                 "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7950,6 +7965,7 @@
                 "issueops",
                 "karpathy",
                 "project-bootstrap",
+                "project-docs-optimize",
                 "self-augment",
                 "self-verify",
                 "shannon",

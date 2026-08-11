@@ -167,7 +167,7 @@ func repoSignalRules() []repoSignalRule {
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasReleaseReproPack = fileContainsTerm(root, filepath.Join("scripts", "release-repro-smoke.sh"), "install --dry-run --project-local --json") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release Checklist") &&
-				fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "release install reproducibility smoke")
+				docsContainTerm(root, "release install reproducibility smoke")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			hasReleaseGuideHeading := readmeContainsTerm(root, "Release User Guide: Install, Update, Rollback") ||
@@ -183,10 +183,10 @@ func repoSignalRules() []repoSignalRule {
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasCrossPlatformBuildMatrix = fileContainsTerm(root, filepath.Join("scripts", "release-build-matrix.sh"), "darwin/arm64 darwin/amd64 linux/amd64 linux/arm64") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Cross-Platform Build Matrix") &&
-				fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "cross-platform release build matrix smoke")
+				docsContainTerm(root, "cross-platform release build matrix smoke")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasDistributionDecision = fileContainsTerm(root, filepath.Join(".agent-harness", "ADR.md"), "2026-06-13 — Distribution decision gate") &&
+			signals.HasDistributionDecision = docsContainTerm(root, "2026-06-13 — Distribution decision gate") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Rollback criteria") &&
 				(readmeContainsTerm(root, "Current distribution decision") || readmeContainsTerm(root, "현재 배포 결정"))

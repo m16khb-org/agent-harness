@@ -53,13 +53,14 @@ func hermeticTrackedDocs(root string, candidates []string) []string {
 	if !ok {
 		return candidates
 	}
+	authoring := loadAuthoringScope(root)
 	matched := make([]string, 0, len(candidates))
 	for _, path := range candidates {
 		rel, err := filepath.Rel(root, path)
 		if err != nil {
 			continue
 		}
-		if tracked[filepath.ToSlash(rel)] {
+		if tracked[filepath.ToSlash(rel)] || authoring.includes(rel) {
 			matched = append(matched, path)
 		}
 	}

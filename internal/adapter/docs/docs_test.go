@@ -44,6 +44,46 @@ func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
 	}
 }
 
+func TestListDocsIncludesUntrackedCanonicalProjectDocs(t *testing.T) {
+	root := t.TempDir()
+	gitRun := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e",
+			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Skipf("git unavailable for hermetic test: %v\n%s", err, out)
+		}
+	}
+	gitRun("init")
+	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Agents\n")
+	gitRun("add", "AGENTS.md")
+	gitRun("commit", "-m", "seed")
+
+	mustWrite(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "# Testing\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "testing", "unit.md"), "# Unit\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "scratch.md"), "# Scratch\n")
+	mustWrite(
+		t,
+		filepath.Join(root, ".agent-harness", "documentation", "manifest.json"),
+		`{"schema_version":1,"families":[{"root":".agent-harness/TESTING.md","module_dir":".agent-harness/testing","responsibility":"testing"}]}`,
+	)
+
+	index := DocsIndex(root, "test")
+	for _, want := range []string{
+		".agent-harness/TESTING.md",
+		".agent-harness/testing/unit.md",
+	} {
+		if !docIndexContains(index.Docs, want) {
+			t.Fatalf("canonical untracked doc %s must be discoverable: %+v", want, index.Docs)
+		}
+	}
+	if docIndexContains(index.Docs, ".agent-harness/research/scratch.md") {
+		t.Fatalf("untracked research artifact must stay excluded: %+v", index.Docs)
+	}
+}
+
 func TestDocsIndexIncludesAgentDocs(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

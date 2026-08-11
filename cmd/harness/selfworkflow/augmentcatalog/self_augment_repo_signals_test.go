@@ -313,7 +313,7 @@ func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install --dry-run --project-local --json\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "# Release Reproducibility\n\n## Release Checklist\n")
-	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "- `scripts/release-repro-smoke.sh` clean-machine release install reproducibility smoke\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "testing", "release.md"), "- `scripts/release-repro-smoke.sh` clean-machine release install reproducibility smoke\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
 	if !signals.HasReleaseReproPack {
@@ -381,7 +381,7 @@ func TestCrossPlatformBuildMatrixIsSatisfiedByScriptDocsAndTestingSignal(t *test
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-build-matrix.sh"), "TARGETS=\"darwin/arm64 darwin/amd64 linux/amd64 linux/arm64\"\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "## Cross-Platform Build Matrix\n")
-	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "- `scripts/release-build-matrix.sh` cross-platform release build matrix smoke\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "testing", "release.md"), "- `scripts/release-build-matrix.sh` cross-platform release build matrix smoke\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
 	if !signals.HasCrossPlatformBuildMatrix {
@@ -397,7 +397,7 @@ func TestCrossPlatformBuildMatrixIsSatisfiedByScriptDocsAndTestingSignal(t *test
 
 func TestDistributionDecisionRecordIsSatisfiedByADRReleaseDocsAndReadme(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "ADR.md"), "### 2026-06-13 — Distribution decision gate\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "adr", "decisions", "2026-06-13-distribution-decision-gate.md"), "### 2026-06-13 — Distribution decision gate\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive\n\nRollback criteria\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "Current distribution decision: use a tarball/manual archive for the first release\n")
 
@@ -415,7 +415,7 @@ func TestDistributionDecisionRecordIsSatisfiedByADRReleaseDocsAndReadme(t *testi
 
 func TestDistributionDecisionSupportsKoreanCanonicalReadme(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "ADR.md"), "### 2026-06-13 — Distribution decision gate\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "adr", "decisions", "2026-06-13-distribution-decision-gate.md"), "### 2026-06-13 — Distribution decision gate\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive\n\nRollback criteria\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "현재 배포 결정은 tarball/manual archive를 우선합니다.\n")
 

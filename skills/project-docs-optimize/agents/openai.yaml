@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Docs Optimize"
+  short_description: "Modularize and validate agent-harness operating docs"
+  default_prompt: "Use $project-docs-optimize to audit .agent-harness documentation, preserve required root indexes, move detail into single-owner modules, and validate line budgets, links, commands, and runtime discovery."
