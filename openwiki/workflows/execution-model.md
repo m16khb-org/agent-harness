@@ -20,7 +20,7 @@ One record has exactly one `Execution`, one canonical worktree, and one active g
 
 The `auto` mode probes Orca readiness before any mutation. If Orca is absent or unready, it selects direct. For GitLab-linked cycles, `auto` reports `gitlab_issue_metadata_unsupported` and selects direct, because the Orca CLI currently has no sealed GitLab issue/work-item metadata mutation surface.
 
-Source: [`internal/core/issueops/execution_prepare.go`](/internal/core/issueops/execution_prepare.go).
+Source: [`internal/adapter/issueops/execution_prepare.go`](/internal/adapter/issueops/execution_prepare.go).
 
 ## Preparation Flow
 
@@ -71,7 +71,7 @@ stateDiagram-v2
     revoking --> [*]: reseed (new generation)
 ```
 
-Source: [`internal/core/issueops/execution_lease.go`](/internal/core/issueops/execution_lease.go).
+Source: [`internal/adapter/issueops/execution_lease.go`](/internal/adapter/issueops/execution_lease.go), [`internal/domain/issueopslease/`](/internal/domain/issueopslease/).
 
 ### Lease Fields
 
@@ -100,7 +100,7 @@ When an execution holder is dead or needs replacement, the sequence is:
 
 There is no unsafe override. Inventory and quiescence fingerprints must match at each step.
 
-Source: [`internal/core/issueops/execution_lease.go`](/internal/core/issueops/execution_lease.go).
+Source: [`internal/adapter/issueops/execution_lease.go`](/internal/adapter/issueops/execution_lease.go), [`internal/domain/issueopslease/`](/internal/domain/issueopslease/).
 
 ## Completion Gate
 
@@ -115,7 +115,11 @@ Completion is the atomic transition from `pr` to `done`. It requires:
 
 The completion receipt, `done` transition, and lease release are **one atomic state mutation**. Completion never merges or deletes local/remote resources — cleanup remains a separate human-authorized operation.
 
-Source: [`internal/core/issueops/execution_complete.go`](/internal/core/issueops/execution_complete.go).
+### Orca Task Settlement Deferred to Worker
+
+The completion path no longer calls `SettleTask` on the Orca task. Previously, completion-side settlement terminalized the Orca task before the owner could report `worker_done`, violating the "exactly one worker_done" contract. The sealed owner `worker_done` transition is now the **only** Orca task terminal transition. The `TaskSettler` type was removed from the completion service entirely.
+
+Source: [`internal/application/issueopscompletion/complete.go`](/internal/application/issueopscompletion/complete.go), [`internal/adapter/orca/client.go`](/internal/adapter/orca/client.go).
 
 ## GitHub Branch Ordering (Orca Mode)
 
@@ -125,7 +129,7 @@ The solution: prepare the branch record first (no actual branch), let Orca creat
 
 `gh issue develop` is explicitly not used because its `--base` takes a branch name and GitHub uses the current HEAD as `oid`, which can diverge from the sealed base SHA.
 
-Source: [`.agent-harness/OPERATIONS.md`](/.agent-harness/OPERATIONS.md) "Optional Orca execution v1", [`internal/core/issueops/branchprepare/branch_prepare.go`](/internal/core/issueops/branchprepare/branch_prepare.go).
+Source: [`.agent-harness/OPERATIONS.md`](/.agent-harness/OPERATIONS.md) "Optional Orca execution v1", [`internal/adapter/issueops/branchprepare/`](/internal/adapter/issueops/branchprepare/).
 
 ## Process Identity and PID Reuse Safety
 
@@ -136,7 +140,7 @@ Native process identity is established through OS-level observation, never from 
 - `normalizeNativeActor()` requires the session process receipt to appear in the local process ancestry (first-party observation) and the PID to be live with matching `StartedAt`/`Executable`.
 - **Lease-holder reverse index** (`lease_holder_v1` bucket) maps `sha256(host\x00session_id\x00agent_id)` → `{lifecycle_id, generation}`, preventing one session from holding two active leases.
 
-Source: [`internal/core/issueops/execution_process.go`](/internal/core/issueops/execution_process.go), [`internal/core/issueops/execution_state.go`](/internal/core/issueops/execution_state.go).
+Source: [`internal/adapter/issueops/execution_process.go`](/internal/adapter/issueops/execution_process.go), [`internal/adapter/issueops/execution_state.go`](/internal/adapter/issueops/execution_state.go).
 
 ### Workspace Quiescence and Requester Ancestry Exclusion
 
@@ -146,36 +150,41 @@ Source: [`internal/core/issueops/execution_process.go`](/internal/core/issueops/
 
 The probe's own `lsof` PID is excluded from results to prevent self-detection when the probe inherits the caller's CWD.
 
-Source: [`internal/core/issueops/execution_process.go`](/internal/core/issueops/execution_process.go).
+Source: [`internal/adapter/issueops/execution_process.go`](/internal/adapter/issueops/execution_process.go).
 
 ## Lifecycle Guard
 
 The lifecycle guard is a pre-tool-use hook that intercepts every command/tool invocation and decides `allow | block | ask`. It is registered as the `hook pre-tool-use` CLI handler and is the default-deny enforcement point for execution workspace safety.
 
-<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: an unescaped angle bracket inside a label breaks rendering; rephrase the label. -->
-```text
+```mermaid
 flowchart TD
     Req["Tool/command request"] --> A{"Read-only observation?"}
     Req --> B{"Typed control plane?"}
     A -- yes --> Allow["Skip mutation guard"]
     B -- yes --> Allow
-    A -- no --> C{"Direct branch creation<br/>or worktree mutation?"}
+    A -- no --> C{"Direct branch creation or worktree mutation?"}
     B -- no --> C
     C --> D{"Touches execution workspace?"}
-    D --> E{"Worktree guard<br/>sealed topology"}
-    E --> F{"Remote/VCS/staged checks"}
+    D --> E{"Worktree guard sealed topology"}
+    E --> F{"Remote VCS staged checks"}
     F --> Result["Decision: allow/block/ask"]
 ```
 
+The lifecycle guard decides whether a tool/command request is admitted during active IssueOps mutation authority.
+
 Three admission paths (all fail-closed by explicit enumeration — no rule-based classification):
 
-1. **Observation** — read-only commands (`status`, `list`, `whoami`, `preview`) and exact-read provider commands pass. Unclassified commands do not match.
-2. **Typed control plane** — `execution prepare/claim/release/replace/reconcile/complete/sync-base/switch-mode`, `cleanup orphan`. These skip the mutation block but the core still enforces lease/authority.
-3. **Mutation decision** — for anything that may mutate lifecycle files: if an active lease exists and the actor matches the holder and the request stays inside the workspace root → **allow**; if the actor differs → **block** with `holder_identity_mismatch`.
+1. **Observation** — read-only commands (`status`, `list`, `whoami`, `preview`, exact self-verify forms) and exact-read provider commands pass. Unclassified commands do not match. `gofmt -l` (listing mode) is admitted as read-only.
+2. **Typed control plane** — `execution prepare/claim/release/replace/reconcile/complete/sync-base/switch-mode`, `cleanup orphan`, `branch await-link`. These skip the mutation block but the core still enforces lease/authority.
+3. **Mutation decision** — for anything that may mutate lifecycle files: if an active lease exists and the actor matches the holder and the request stays inside the workspace root → **allow**; if the actor differs → **block** with `holder_identity_mismatch`. Exact single-commit cherry-picks (`git cherry-pick <40-char SHA>`) from completed children are admitted.
 
 **Direct git branch creation and worktree mutation are blocked** — must go through `issueops execution prepare`.
 
-Source: [`internal/core/lifecycle/lifecycle_execution_guard.go`](/internal/core/lifecycle/lifecycle_execution_guard.go), [`internal/core/lifecycle/lifecycle_state.go`](/internal/core/lifecycle/lifecycle_state.go).
+### Pre-Link Await Window
+
+In GitHub + Orca mode, Orca always creates a new local branch, so the remote linked branch must not exist before prepare. The owner launches in a pre-link window where the branch link is structurally absent. The lifecycle guard admits only two commands during this window: `branch await-link` (bounded polling at 15-second intervals, 10-minute default timeout) and `execution release`.
+
+Source: [`internal/adapter/lifecycle/lifecycle_execution_guard.go`](/internal/adapter/lifecycle/lifecycle_execution_guard.go), [`internal/adapter/issueops/branch_await_link.go`](/internal/adapter/issueops/branch_await_link.go).
 
 ## Remote PR/MR Creation: Durable External Intent
 
@@ -202,7 +211,7 @@ sequenceDiagram
 
 Provider reconcile matches candidate PRs against the sealed intent exactly: head SHA, title, body SHA256, labels, assignees, draft state. For GitLab draft MRs, the `Draft:` / `WIP:` title prefix is stripped before comparison. A merged or closed artifact is no longer draft, so a draft intent that was later marked ready and merged is not a contradiction.
 
-Source: [`internal/core/issueops/execution_remote.go`](/internal/core/issueops/execution_remote.go), [`internal/port/provider.go`](/internal/port/provider.go).
+Source: [`internal/adapter/issueops/execution_remote.go`](/internal/adapter/issueops/execution_remote.go), [`internal/port/provider.go`](/internal/port/provider.go).
 
 ## Provider Integration
 
@@ -219,6 +228,32 @@ The `port.IssueProvider` interface abstracts GitHub and GitLab operations. The c
 
 Source: [`internal/port/provider.go`](/internal/port/provider.go), [`internal/adapter/provider/github/`](/internal/adapter/provider/github/), [`internal/adapter/provider/gitlab/`](/internal/adapter/provider/gitlab/).
 
+## Orca Run-Scoped Inventory
+
+All Orca inventory reads are now Run-scoped rather than ad hoc per-call. A single validated `OrcaRunInventory` snapshot (containing `RuntimeID` and `[]OrcaRun`) is fetched via cursor-based pagination, then task, dispatched-task, and gate reads fan out from that snapshot with bounded concurrency (`min(8, len(runs))` workers).
+
+Fail-closed validation enforces: canonical runtime ID, valid Run IDs, non-empty objectives, no duplicate Runs, cursor completeness across pages, and runtime identity consistency on every task/gate response.
+
+The [operational health](../operations/policy-guard-testing.md#operational-health) collector reuses this snapshot: one `ListRunInventory` call feeds all three typed projections concurrently via goroutines.
+
+Source: [`internal/port/orca_context.go`](/internal/port/orca_context.go), [`internal/adapter/orca/client.go`](/internal/adapter/orca/client.go), [`internal/adapter/operationalhealth/collector.go`](/internal/adapter/operationalhealth/collector.go).
+
+## Handoff Sealing
+
+Claim tokens are resolved to a **deterministic current-generation path** derived from `tokenSHA256(record.ID)[:16]`, not an arbitrary user-supplied path. The token file is created with `O_CREAT|O_EXCL` and `0600` permissions; symlinks and non-regular files are rejected. The read path validates the file matches the computed path exactly and rejects oversized files (>256 bytes).
+
+This sealing prevents generation confusion: a stale-generation token cannot be used to claim a new-generation lease. The Orca inventory port, timestamp boundary, and MCP schema are frozen as a sealed contract after handoff.
+
+### Ghost Owner Recovery
+
+A released Orca owner can leave a terminal row whose pane is no longer live. Previously, `PlanResume` treated this settled "ghost" as an identity conflict and blocked replacement. When the terminal is present but not live, and the prior dispatch is settled with matching sealed binding, the disposition is now `ResumeCreateTerminal` — admitting only the exact prior PTY identity.
+
+### Absent-Workspace Lease Recovery
+
+When the canonical worktree directory no longer exists, lease replacement finalizes directly to `Released` (not `Claimable`), since nobody can read a claim token from a missing workspace. This opens the `abandon` recovery path for leases with no holder process and no worktree.
+
+Source: [`internal/adapter/issueops/execution_lease.go`](/internal/adapter/issueops/execution_lease.go), [`internal/domain/issueopslease/resume.go`](/internal/domain/issueopslease/resume.go).
+
 ## Adversarial Multi-Session Threat Model
 
 Execution v1 is designed for adversarial multi-session environments:
@@ -229,4 +264,4 @@ Execution v1 is designed for adversarial multi-session environments:
 - **No Git, provider, or Orca process call runs while the cycle lock is held**. sqlstore `BEGIN IMMEDIATE` spans serialize record CAS.
 - **Self-revoke is refused**: a live holder cannot fence itself — `finalize` needs the holder dead, and `claim` needs `claimable`. This prevents a deadlock where neither path has an exit.
 
-Source: [`.agent-harness/ARCHITECTURE.md`](/.agent-harness/ARCHITECTURE.md) "IssueOps execution v1 threat model and invariants".
+Source: [`.agent-harness/ARCHITECTURE.md`](/.agent-harness/ARCHITECTURE.md) "IssueOps execution v1 threat model and invariants", [`internal/adapter/lifecycle/lifecycle_execution_guard.go`](/internal/adapter/lifecycle/lifecycle_execution_guard.go).

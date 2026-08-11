@@ -39,7 +39,7 @@ stateDiagram-v2
     end note
 ```
 
-Source: [`internal/core/issueops/model/phase.go`](/internal/core/issueops/model/phase.go), [`internal/core/issueops/issueops_phase.go`](/internal/core/issueops/issueops_phase.go).
+Source: [`internal/domain/issueops/phase.go`](/internal/domain/issueops/phase.go), [`internal/adapter/issueops/issueops_phase.go`](/internal/adapter/issueops/issueops_phase.go).
 
 ### Phase Definitions
 
@@ -65,19 +65,19 @@ Every phase transition passes through a fail-closed readiness function. The gate
 
 The readiness model is layered: later phases inherit all earlier requirements. For example, entering `implement` requires everything from `compatibility-review` plus the devil's-advocate review and an active execution lease.
 
-Source: [`internal/core/issueops/issueops_readiness.go`](/internal/core/issueops/issueops_readiness.go), [`internal/core/issueops/issueops_pr_readiness_strict.go`](/internal/core/issueops/issueops_pr_readiness_strict.go).
+Source: [`internal/domain/issueops/`](/internal/domain/issueops/), [`internal/adapter/issueops/issueops_readiness.go`](/internal/adapter/issueops/issueops_readiness.go), [`internal/adapter/issueops/issueops_pr_readiness_strict.go`](/internal/adapter/issueops/issueops_pr_readiness_strict.go).
 
 ## Phase Ledger
 
 Every forward transition is recorded in an additive audit index called the **Phase Ledger** — a `map[IssueOpsPhase]PhaseLedgerEntry` with `EnteredAt`, `CompletedAt`, `Artifacts`, `Missing`, and `Notes`. The ledger records what was observed, not what is enforced. Source-of-truth fields drive the gates; the ledger provides visibility and diagnostics.
 
-Source: [`internal/core/issueops/issueops_phase_ledger.go`](/internal/core/issueops/issueops_phase_ledger.go).
+Source: [`internal/adapter/issueops/issueops_phase_ledger.go`](/internal/adapter/issueops/issueops_phase_ledger.go).
 
 ## Brooks Regress Events
 
 When a devil's-advocate review produces a `stop` or `revise` verdict, a regress event is recorded (`IssueOpsRegressEvent` with reason, from-phase, timestamp). A regress cap escalates to human decision after repeated rounds, preventing infinite revision loops.
 
-Source: [`internal/core/issueops/issueops_regress.go`](/internal/core/issueops/issueops_regress.go).
+Source: [`internal/adapter/issueops/issueops_regress.go`](/internal/adapter/issueops/issueops_regress.go).
 
 ## IssueOpsRecord — Root Aggregate
 
@@ -116,13 +116,13 @@ erDiagram
 
 The `IssueOpsRecord` is the root aggregate, persisted as a single JSON row per IssueOps ID. The ID is deterministic: `io-` + first 12 hex chars of `SHA-256(repo + "\x00" + branch)`.
 
-Source: [`internal/core/issueops/model/types.go`](/internal/core/issueops/model/types.go), [`internal/core/issueops/model/execution.go`](/internal/core/issueops/model/execution.go).
+Source: [`internal/domain/issueops/`](/internal/domain/issueops/), [`internal/adapter/issueops/`](/internal/adapter/issueops/).
 
 ## Intent Class
 
 The intent class controls plan-prep gate strictness: `trivial` (skips the gate), `standard` (default), `refactoring`, `architecture`, `research`. Empty normalizes to `standard`.
 
-Source: [`internal/core/issueops/model/intent_class.go`](/internal/core/issueops/model/intent_class.go).
+Source: [`internal/domain/issueops/intent_class.go`](/internal/domain/issueops/intent_class.go).
 
 ## State Persistence
 
@@ -130,7 +130,7 @@ IssueOps v1 state lives in a physically separate SQLite namespace: `issueops_v1/
 
 All writes require `RequireIssueOpsMutationAllowed(stateRoot)` and are serialized through [sqlstore spans](../operations/state-and-storage.md) (BEGIN IMMEDIATE on a lock database).
 
-Source: [`internal/core/issueops/issueops_state.go`](/internal/core/issueops/issueops_state.go).
+Source: [`internal/adapter/issueops/issueops_state.go`](/internal/adapter/issueops/issueops_state.go).
 
 ## Brooks Devil's Advocate and Regress
 
@@ -155,7 +155,7 @@ stateDiagram-v2
 
 Regression does **not** delete the worktree, branch, or artifacts. It clears design approval and marks downstream ledger entries stale (retained as audit). The regress cap (`issueOpsRegressCap = 3`) prevents infinite revision loops.
 
-Source: [`internal/core/issueops/issueops_regress.go`](/internal/core/issueops/issueops_regress.go), [`internal/core/issueops/devilsadvocate/devils_advocate.go`](/internal/core/issueops/devilsadvocate/devils_advocate.go).
+Source: [`internal/adapter/issueops/issueops_regress.go`](/internal/adapter/issueops/issueops_regress.go), [`internal/adapter/issueops/devilsadvocate/devils_advocate.go`](/internal/adapter/issueops/devilsadvocate/devils_advocate.go).
 
 ## Cleanup and Post-Merge
 
@@ -195,13 +195,47 @@ Workspace process quiescence (`inspectWorkspaceProcesses`) blocks if processes h
 
 Orphan cleanup targets **recordless** worktrees whose remote artifacts are already merged — cycles that never completed formal phases. It requires: `repo_root_match`, `inventory_complete`, `canonical_repo_root`, exactly one target worktree, valid worktree HEAD, `record_absent`, no lease-holder authority, no Orca worktree authority. The remote branch is intentionally untouched — deletion requires separate explicit approval.
 
-Source: [`internal/core/issueops/issueops_cleanup_finish.go`](/internal/core/issueops/issueops_cleanup_finish.go), [`internal/core/issueops/cleanupstatus/cleanup_status.go`](/internal/core/issueops/cleanupstatus/cleanup_status.go), [`internal/core/issueops/orphancleanup/orphan_cleanup.go`](/internal/core/issueops/orphancleanup/orphan_cleanup.go), [`internal/core/issueops/issueops_cleanup_abandon.go`](/internal/core/issueops/issueops_cleanup_abandon.go).
+Source: [`internal/adapter/issueops/issueops_cleanup_finish.go`](/internal/adapter/issueops/issueops_cleanup_finish.go), [`internal/adapter/issueops/cleanupstatus/cleanup_status.go`](/internal/adapter/issueops/cleanupstatus/cleanup_status.go), [`internal/adapter/issueops/orphancleanup/orphan_cleanup.go`](/internal/adapter/issueops/orphancleanup/orphan_cleanup.go), [`internal/adapter/issueops/issueops_cleanup_abandon.go`](/internal/adapter/issueops/issueops_cleanup_abandon.go).
+
+### Superseding Artifact Verification
+
+When a completed record's original PR was closed-unmerged but a replacement PR that explicitly includes those changes was merged, the normal cleanup paths dead-end — `cleanup finish` rejects "artifact not merged" and `cleanup abandon` rejects "phase is done" ([issue #283](https://github.com/m16khb/agent-harness/issues/283)). The `--superseded-by` flag on `cleanup finish` accepts a replacement artifact URL and verifies it via provider readback (`ValidateSupersedingArtifact`). The check is fail-closed: the replacement must be merged, must belong to the same provider and repo, and its body must explicitly declare it supersedes the original URL on the same line. Cross-repo replacements are not accepted, and mere URL mentions in issue listings or quotes do not qualify.
+
+Source: [`internal/domain/issueops/superseding_artifact.go`](/internal/domain/issueops/superseding_artifact.go), [`internal/adapter/issueops/issueops_cleanup_finish.go`](/internal/adapter/issueops/issueops_cleanup_finish.go).
 
 ## Delegation and Child Cycles
 
 IssueOps supports parent-child cycle delegation via `IssueOpsDelegationContract` (parent cycle ID, task scope, acceptance criteria) and `IssueOpsChildCycleRef` entries. This enables umbrella/topology workflows where a parent issue spawns child implementation cycles.
 
-Source: [`internal/core/issueops/issueops_delegation.go`](/internal/core/issueops/issueops_delegation.go), [`internal/core/issueops/issueops_umbrella_topology.go`](/internal/core/issueops/issueops_umbrella_topology.go).
+### Handoff Sealing and Child Recovery
+
+Handoff generation is sealed to a deterministic token path derived from `tokenSHA256(record.ID)[:16]`, not an arbitrary user-supplied path. Claim tokens use `O_CREAT|O_EXCL` with `0600` permissions and reject symlinks and oversized files. MCP audit responses are drained before pipe closure.
+
+When a child cycle is cleaned and restarted, the parent's child reference is reset **only** when the child's incarnation is strictly newer (`issueOpsChildRefHasNewerIncarnation` compares `CreatedAt` timestamps). If the child record is missing (exact cleanup removed it), the parent records an audited receipt against the indexed missing child after confirming absence under the held parent span.
+
+Only well-formed receipts — `accepted` with evidence, or `dropped` with a reason of at least 10 characters — count as terminal for status and PR gates.
+
+### Unresolved Children Count
+
+`cleanup abandon` blocks when unresolved child cycles exist. A child counts as resolved only when its record is observed with `phase == done` — record absence is **not** evidence of resolution (the child could be lost, not finished). To clean an absent child, the parent must first record an audited receipt via `issueops cleanup close-children` (which performs remote observation). This unified both code paths (IssueLinks and ChildCycles) to the same standard, fixing a split where one path checked `CloseVerifiedAt` and the other blocked on record existence alone ([issue #437](https://github.com/m16khb/agent-harness/issues/437)). The diagnostic returns specific child IDs, not just a count, so the user knows exactly what to resolve first.
+
+### Ghost Owner Replacement
+
+A released Orca owner can leave a terminal row whose pane is no longer live. `PlanResume` previously treated this as an identity conflict, blocking replacement. Now, when the terminal ID is present but `TerminalLive == false`, and the terminal inventory is complete with a settled dispatch status matching the sealed binding, the disposition is `ResumeCreateTerminal` instead of denial. This admits only the exact prior PTY identity.
+
+### Lease Recovery for Absent Worktrees
+
+If a lease's canonical worktree directory no longer exists, the lease is transitioned directly to `Released` (not `Claimable`) during finalize. This opens the `abandon` path — `Claimable` would be false because no workspace means no token file can be read. The absence is sealed to a fingerprint bound to exact path and branch, so a resurrected worktree produces a different fingerprint.
+
+### Reconcile Intent Clearing
+
+When a mutation's invocation result is unknown but the external inventory returns an authoritative zero (confirmed absence via actual Orca query), `PlanReconcileStage` returns `ReconcileStageClear` with reason `"invocation-left-no-resource"`. This clears the pending intent without recording a failure. Non-authoritative zeros still preserve the intent.
+
+### Orphan Linked Branch Recovery
+
+GitHub's `createLinkedBranch` can return `linkedBranch: null` without error, leaving a ref-null orphan record. The typed cleanup control plane classifies observation into `StateAbsent`, `StateHealthy`, `StateOrphan`, `StateMismatched`, or `StateAmbiguous`. Only `StateOrphan` (ref-null) is deletable, by node ID only (not branch name). The flow is preview, classify, fingerprint-bind, re-observe (stale check), delete, and record all outcomes as durable audit.
+
+Source: [`internal/adapter/issueops/`](/internal/adapter/issueops/), [`internal/domain/issueopslinkedbranch/`](/internal/domain/issueopslinkedbranch/), [`internal/domain/issueopslease/reconcile.go`](/internal/domain/issueopslease/reconcile.go).
 
 ## IssueOps Skill
 

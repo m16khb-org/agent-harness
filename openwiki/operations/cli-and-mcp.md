@@ -11,9 +11,9 @@ agent-harness exposes three execution surfaces — CLI one-shot, daemon-backed M
 
 ## CLI Command Tree
 
-The binary entrypoint is [`cmd/harness/main.go`](/cmd/harness/main.go), which calls `harnessapp.RunRootCommand(os.Args[1:])`. The root command is constructed in [`root_command_facade.go`](/cmd/harness/harnessapp/root_command_facade.go) with a `Runners` map of subcommand-name → handler function.
+The binary entrypoint is [`cmd/harness/main.go`](/cmd/harness/main.go), which calls `harnessapp.RunRootCommand(os.Args[1:])`. The root command is constructed in [`harnessapp/root_command_facade.go`](/cmd/harness/harnessapp/root_command_facade.go) with a `Runners` map of subcommand-name to handler function.
 
-The canonical command catalog is owned by [`internal/adapter/cli/usage.go`](/internal/adapter/cli/usage.go), which returns a deterministic `[]Command` list. This is the single source of truth — the catalog and the help text cannot drift.
+The canonical command catalog is owned by [`internal/domain/cli/usage.go`](/internal/domain/cli/usage.go), which returns a deterministic `[]Command` list. This is the single source of truth — the catalog and the help text cannot drift.
 
 ### 28 Top-Level Commands
 
@@ -32,7 +32,7 @@ agent-harness
 ├── issueops         Issue-driven workflow (start, execution, cleanup, benchmark)
 ├── loop             Verify-until-done loop contracts
 ├── api-doc          API documentation generation and review
-├── hook             Lifecycle hooks (user-prompt, pre/post-tool-use, stop)
+├── hook             Lifecycle hooks (session-start, post-compact, user-prompt, pre/post-tool-use, stop)
 ├── project          Project bootstrap, draft-wiki, doc routing
 ├── mcp              MCP stdio proxy
 ├── daemon           Daemon start/stop/status
@@ -99,7 +99,7 @@ The daemon is a persistent user-level process managed via `daemoncli` (start, st
 
 ## MCP Tool Dispatch
 
-Tool dispatch is routed through six handler groups defined in [`internal/adapter/mcp/catalog.go`](/internal/adapter/mcp/catalog.go):
+Tool dispatch is routed through six handler groups defined in [`internal/domain/mcp/catalog.go`](/internal/domain/mcp/catalog.go):
 
 | Dispatch Group | Catalog File | Representative Tools |
 |---------------|-------------|---------------------|
@@ -133,16 +133,22 @@ Dynamic fields (timestamps, temp paths, audit IDs) are normalized to prevent dri
 
 ## Lifecycle Hooks
 
-Hooks are registered per host and call the same `agent-harness hook` CLI:
+Default native hooks are **thinned to context-only catalog injection**. Only `SessionStart` and `PostCompact` are installed as managed hooks. Enforcement hooks (`PreToolUse`, `Stop`, `UserPromptSubmit`, `PostToolUse`, `PreCompact`) are **no longer installed by default** but are cleaned up on re-install — groups containing agent-harness hooks for removed events are deleted during merge, and empty event keys are removed.
 
-| Hook Event | CLI Subcommand | Role |
-|-----------|---------------|------|
-| UserPromptSubmit | `hook user-prompt` | Inject routing and lifecycle guidance |
-| PreToolUse | `hook pre-tool-use` | Default-deny guard for mismatched mutation |
-| PostToolUse | `hook post-tool-use` | Record doc upkeep events |
-| PreCompact / PostCompact | `hook pre-compact` / `hook post-compact` | Context preservation |
-| Stop | `hook stop` | Surface pending events and reminders |
+| Hook Event | CLI Subcommand | Installed by default? | Role |
+|-----------|---------------|----------------------|------|
+| SessionStart | `hook session-start` | Yes | Project-doc catalog context injection |
+| PostCompact | `hook post-compact` | Yes | Project-doc catalog context injection |
+| UserPromptSubmit | `hook user-prompt` | No (cleaned up on re-install) | Routing and lifecycle guidance |
+| PreToolUse | `hook pre-tool-use` | No (cleaned up on re-install) | Default-deny guard for mismatched mutation |
+| PostToolUse | `hook post-tool-use` | No (cleaned up on re-install) | Record doc upkeep events |
+| PreCompact | `hook pre-compact` | No (cleaned up on re-install) | Context preservation |
+| Stop | `hook stop` | No (cleaned up on re-install) | Surface pending events and reminders |
 
-Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads. The [lifecycle guard](../workflows/execution-model.md) uses hooks as default-deny enforcement points.
+The `--host claude` / `--host codex` flag is appended only for `session-start` and `post-compact`. Context hooks route through a lightweight dispatch path that skips the full enforcement stdin/stdout machinery. The catalog is massively simplified: `SessionStart` no longer runs runtime diagnostics, log pruning, worker-job detection, or state-store maintenance — it only injects project-doc catalog context.
 
-Source: [`cmd/harness/hookcli/`](/cmd/harness/hookcli/), [`internal/core/lifecycle/`](/internal/core/lifecycle/).
+Third-party hooks are preserved during merge. The merge logic detects agent-harness hooks by command prefix (`HookGroupContainsCommand`) for precise cleanup.
+
+The [lifecycle guard](../workflows/execution-model.md) still uses hooks as default-deny enforcement points when they are configured — the thinning only affects what is **installed by default**, not what the guard enforces when present.
+
+Source: [`internal/adapter/codex/install_hooks.go`](/internal/adapter/codex/install_hooks.go), [`internal/adapter/claude/install_hooks.go`](/internal/adapter/claude/install_hooks.go), [`cmd/harness/hookcli/hookcatalog/catalog.go`](/cmd/harness/hookcli/hookcatalog/catalog.go).

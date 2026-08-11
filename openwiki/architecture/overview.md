@@ -1,13 +1,13 @@
 ---
 type: Architecture
 title: Architecture Overview
-description: Hybrid harness design with an external Go core and thin host adapters for Codex and Claude Code. Layer boundaries, execution modes, and package structure.
-tags: [architecture, layers, boundaries]
+description: Hexagonal architecture with domain, application, adapter, contract, and port layers. An external Go core provides all policy, state, workflow, and contract logic while thin host adapters handle installation and lifecycle hooks.
+tags: [architecture, hexagonal, layers, boundaries]
 ---
 
 # Architecture Overview
 
-agent-harness uses a **hybrid architecture**: a host-neutral Go core provides all policy, state, workflow, and contract logic, while thin host adapters (Codex, Claude Code) handle installation, skill symlinks, MCP registration, and lifecycle hooks. The core never depends on a specific host's SDK or config format.
+agent-harness uses a **hexagonal (ports-and-adapters) architecture**: pure domain logic lives in `internal/domain/`, use case orchestration in `internal/application/`, boundary implementations in `internal/adapter/`, shared DTOs and interfaces in `internal/contract/`, and port interfaces in `internal/port/`. The core never depends on a specific host's SDK or config format.
 
 ## Core Decision: External Harness, Not Plugin-Only
 
@@ -31,28 +31,36 @@ flowchart TD
         Shell["Human shell"]
     end
 
-    subgraph Surface["Execution surface"]
+    subgraph Surface["Execution surface cmd/harness"]
         CLI["CLI one-shot"]
         MCP["MCP stdio proxy"]
         Daemon["Daemon backend"]
     end
 
-    subgraph Core["Go core internal/core"]
-        Facade["Facade layer *_facade.go"]
-        Sub["Domain subpackages"]
+    subgraph DomainLayer["internal/domain"]
+        DomainLogic["Pure domain logic: state machines, classifiers, transitions"]
     end
 
-    subgraph Ports["internal/port"]
-        Interfaces["Interfaces and DTOs"]
+    subgraph AppLayer["internal/application"]
+        UseCases["Use case orchestration"]
+    end
+
+    subgraph PortsLayer["internal/port"]
+        Interfaces["Port interfaces"]
     end
 
     subgraph Adapters["internal/adapter"]
-        CliAdapter["cli"]
-        McpAdapter["mcp"]
+        CliAdapter["cli, mcp"]
         CodexAdapter["codex"]
         ClaudeAdapter["claude"]
         Provider["provider github gitlab"]
         Orca["orca"]
+        IssueOps["issueops"]
+        Lifecycle["lifecycle"]
+    end
+
+    subgraph Contracts["internal/contract"]
+        DTOs["Shared DTOs and vocabulary"]
     end
 
     Codex --> MCP
@@ -62,48 +70,47 @@ flowchart TD
     Claude --> CLI
 
     MCP --> Daemon
-    CLI --> Facade
-    Daemon --> Facade
-    MCP --> Facade
+    CLI --> Adapters
+    Daemon --> Adapters
+    MCP --> Adapters
 
-    Facade --> Sub
-    Sub --> Interfaces
-    Interfaces --> CliAdapter
-    Interfaces --> McpAdapter
-    Interfaces --> CodexAdapter
-    Interfaces --> ClaudeAdapter
-    Interfaces --> Provider
-    Interfaces --> Orca
+    Adapters --> AppLayer
+    AppLayer --> DomainLogic
+    Adapters --> DomainLogic
+    DomainLogic --> PortsLayer
+    PortsLayer --> Contracts
+    Adapters --> Contracts
 ```
 
-The three execution surfaces (CLI, MCP proxy, daemon) all converge on the same core facades, so identical inputs produce identical results.
+The three execution surfaces (CLI, MCP proxy, daemon) all converge on the same adapter implementations, which delegate to application use cases and domain logic, so identical inputs produce identical results.
 
-### Facade Rule
+### Hexagonal Rules
 
-The `core` package exposes a **stable public surface** via `*_facade.go` files. Callers import `core`, not `core/issueops` or `core/lifecycle` directly (with narrow exceptions for cmd-local tooling). Facades may only:
+1. **`internal/domain/`** contains pure logic — no I/O, no file system, no network. State machines, classifiers, decision functions.
+2. **`internal/application/`** orchestrates domain logic with port dependencies. Use case services that compose multiple domain decisions.
+3. **`internal/adapter/`** implements port interfaces with concrete I/O — SQLite, `gh`/`glab` CLI, Orca API, file system, process probes.
+4. **`internal/contract/`** holds DTOs and vocabulary types shared across layers. Ports speak in contract vocabulary, not adapter types.
+5. **`internal/port/`** defines interfaces that adapters implement. No concrete adapter types leak here.
 
-1. Re-export subpackage types as type aliases
-2. Convert types across boundaries
-3. Compose multiple subpackage results
-4. Enforce domain boundaries
-
-New domain logic belongs in subpackages, never in facades.
-
-Source: [`internal/core/doc.go`](/internal/core/doc.go).
+Source: [`internal/architecture/dependency_test.go`](/internal/architecture/dependency_test.go) (dependency-direction enforcement), [`internal/architecture/ownership_manifest_test.go`](/internal/architecture/ownership_manifest_test.go).
 
 ## Package Structure
 
 | Layer | Path | Responsibility |
 |-------|------|---------------|
 | Binary entrypoint | `cmd/harness/` | CLI flag parsing, MCP JSON-RPC, daemon lifecycle, hook dispatch |
-| Core use cases | `internal/core/*_facade.go` | Intended public surface: issueops, workflow, policy, state, project_doc |
-| Core subpackages | `internal/core/<domain>/` | Split domains: issueops, lifecycle, state, policy, guard, worker, docs, inspect |
-| Ports | `internal/port/` | Interfaces, DTOs, error contracts — no concrete adapter types |
-| CLI adapter | `internal/adapter/cli/` | Flag parsing, stdout/stderr, exit codes, command catalog |
-| MCP adapter | `internal/adapter/mcp/` | MCP tool schemas, dispatch groups, catalog |
+| Domain logic | `internal/domain/` | Pure state machines, classifiers, transitions (issueops, lifecycle, policy, guard, state) |
+| Application | `internal/application/` | Use case orchestration (issueops lease/completion/preparation, state, webfetch) |
+| Contracts | `internal/contract/` | Shared DTOs and vocabulary types across all layers |
+| Ports | `internal/port/` | Port interfaces — provider, Orca, install, execution workspace, tool conformance |
+| Adapters | `internal/adapter/` | Boundary implementations: issueops, lifecycle, cli, mcp, codex, claude, provider, orca, policy, guard, install, operationalhealth |
+| CLI adapter | `internal/adapter/cli/` | Command catalog (`usage.go`), flag parsing |
+| MCP adapter | `internal/adapter/mcp/` | MCP tool schemas and dispatch groups |
 | Host adapters | `internal/adapter/codex/`, `internal/adapter/claude/` | User-level skill/MCP/hook installation |
 | Provider adapter | `internal/adapter/provider/` | GitHub/GitLab issue and PR/MR operations via gh/glab |
-| Orca adapter | `internal/adapter/orca/` | Optional Orca supervised execution |
+| Orca adapter | `internal/adapter/orca/` | Optional Orca supervised execution, Run inventory reader |
+| Architecture tests | `internal/architecture/` | AST-level dependency direction and convention enforcement |
+| Test support | `internal/testsupport/` | Shared test helpers (stdout capture, fixtures) |
 | Config templates | `configs/codex/`, `configs/claude/` | Host MCP and hook config templates |
 | Skills | `skills/` | Single source of truth for all shared skills |
 | Project docs | `.agent-harness/` | Architecture, operations, testing, ADR, conventions |
@@ -117,23 +124,27 @@ Source: [`internal/core/doc.go`](/internal/core/doc.go).
 | `agent-harness daemon` | Implemented | Shared user-level MCP backend, state sharing across sessions |
 | `agent-harness issueops` | Implemented | Durable issue-driven workflow with direct/Orca execution v1 |
 | `agent-harness loop` | Implemented | Verify-until-done loop contracts with PR readiness gates |
-| `agent-harness worker` | Partial | No-shell lifecycle jobs and draft-wiki queue processing |
+| `agent-harness worker` | Implemented | No-shell lifecycle jobs and draft-wiki queue processing |
 
 Source: [`.agent-harness/ARCHITECTURE.md`](/.agent-harness/ARCHITECTURE.md) §3.
 
 ## Architectural Invariants
 
-1. **Core behavior lives in Go core**, not host plugins or hooks.
-2. **CLI JSON, MCP response, daemon response share the same DTO.**
+1. **Domain behavior lives in `internal/domain/`**, not host plugins or hooks.
+2. **CLI JSON, MCP response, daemon response share the same DTO** from the contract layer.
 3. **Host adapters must not bypass** authentication, command policy, or workspace boundaries.
 4. **Hooks provide context and deterministic guards** but do not create issues, edit files, or run tests.
 5. **Worker is policy-gated and state-first** — not a general-purpose writable shell runner.
 
-These invariants are enforced by the [command policy](../operations/policy-guard-testing.md), the [lifecycle guard](../workflows/execution-model.md#lifecycle-guard), and tested via golden contracts.
+These invariants are enforced by the [command policy](../operations/policy-guard-testing.md), the [lifecycle guard](../workflows/execution-model.md#lifecycle-guard), tested via golden contracts, and pinned by AST-level [architecture tests](/internal/architecture/).
 
-The [lifecycle guard](../workflows/execution-model.md) is a pre-tool-use hook that enforces the execution workspace safety boundary: unclassified commands are blocked during active mutation authority, and only explicitly enumerated read-only or typed-control-plane commands pass.
+## Conventions
 
-## Adding a New Host
+### errors.AsType (Go 1.26)
+
+The repository uses the Go 1.26 standard library `errors.AsType[E](err) → (E, bool)` generic form for typed error matching instead of the older `errors.As(err, &target)` out-parameter form. An AST ratchet test in [`internal/architecture/errors_astype_test.go`](/internal/architecture/errors_astype_test.go) enforces zero `errors.As` calls in production code.
+
+### Adding a New Host
 
 The `port.HostInstaller` interface defines the contract:
 

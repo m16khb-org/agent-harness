@@ -21,11 +21,11 @@ The policy derives a named privilege tier from capability flags:
 read_only → workspace_write → network_access → shell_exception
 ```
 
-YOLO/auto-escalation tiers are deliberately excluded. Source: [`internal/core/policy/policy_types.go`](/internal/core/policy/policy_types.go).
+YOLO/auto-escalation tiers are deliberately excluded. Source: [`internal/domain/policy/decision.go`](/internal/domain/policy/decision.go), [`internal/adapter/policy/policy_catalog.go`](/internal/adapter/policy/policy_catalog.go).
 
 ### Classification Catalog
 
-The built-in catalog ([`internal/core/policy/policy_catalog.go`](/internal/core/policy/policy_catalog.go)) classifies commands into six maps:
+The built-in catalog ([`internal/adapter/policy/policy_catalog.go`](/internal/adapter/policy/policy_catalog.go)) classifies commands into six maps:
 
 | Category | Examples |
 |----------|---------|
@@ -34,13 +34,19 @@ The built-in catalog ([`internal/core/policy/policy_catalog.go`](/internal/core/
 | Network subcommands | `git fetch`, `git pull`, `git push`, `git clone` |
 | Write commands | `rm`, `mv`, `cp`, `tee`, `go build`, `go test` |
 | Write subcommands | `git add`, `git commit`, `git reset` |
-| Read-only commands | `ls`, `cat`, `grep`, `find`, `git status`, `git diff`, `git log` |
+| Read-only commands | `ls`, `cat`, `grep`, `find`, `git status`, `git diff`, `git log`, `gofmt -l`, `gofmt -d` |
 
 Policy overrides from `.agent-harness/policy.json` are **additive only** — they can add commands, never remove from the built-in catalog.
 
+### gofmt Listing as Read-Only
+
+`gofmt -l` (listing) and `gofmt -d` (diff) are admitted as read-only under an active lease, including with directory operands (e.g., `gofmt -l internal cmd`). The `-s` (simplify) and `-e` (show errors) flags are allowed as output modifiers. Write forms (`-w`, `-r`), stdin alias (`-`), profile flags, and parent escape (`../`) remain blocked.
+
+Source: [`internal/domain/commandparse/issueops.go`](/internal/domain/commandparse/issueops.go), [`internal/domain/commandparse/readonly_reader_forms.go`](/internal/domain/commandparse/readonly_reader_forms.go).
+
 ### Evaluation
 
-`EvaluateCommandPolicy` ([`internal/core/policy/policy_evaluate.go`](/internal/core/policy/policy_evaluate.go)) validates workspace root, CWD containment, argv, timeout (≤15m), env allowlist, and secret-like arguments, then applies classification rules:
+`EvaluateCommandPolicy` ([`internal/adapter/policy/policy_evaluate.go`](/internal/adapter/policy/policy_evaluate.go)) validates workspace root, CWD containment, argv, timeout (≤15m), env allowlist, and secret-like arguments, then applies classification rules:
 
 - `cwd` outside `workspace_root` → deny
 - Path-like argv pointing outside workspace → deny
@@ -88,7 +94,7 @@ The guard scans code files for anti-patterns that cause flaky tests, security is
 | `contract-surface-without-golden` | warn | CLI/MCP/adapter contract surface changed, no golden update |
 | `large-test-fixture` | warn | Test file > 200KB |
 
-Source: [`internal/core/guard/findings.go`](/internal/core/guard/findings.go), [`internal/core/guard/pattern/patterns.go`](/internal/core/guard/pattern/patterns.go).
+Source: [`internal/domain/guardpattern/patterns.go`](/internal/domain/guardpattern/patterns.go), [`internal/adapter/guard/`](/internal/adapter/guard/).
 
 ### Markers
 
@@ -121,7 +127,7 @@ Source: [`.agent-harness/TESTING.md`](/.agent-harness/TESTING.md).
 ### Core Package Tests
 
 ```bash
-go test ./internal/core -count=1
+go test ./internal/domain ./internal/adapter ./internal/application -count=1
 go test ./cmd/harness -count=1
 ```
 
@@ -175,7 +181,7 @@ agent-harness contract conformance replay --fixture PATH --json
 
 Evidence is stored in mode 0600/0700 under `.agent-harness/evidence/tool-conformance/` and never added to git.
 
-Source: [`.agent-harness/TESTING.md`](/.agent-harness/TESTING.md) §2, [`internal/core/toolconformance/`](/internal/core/toolconformance/).
+Source: [`internal/adapter/toolconformance/`](/internal/adapter/toolconformance/).
 
 ### Self-Verify Quality Gate
 
@@ -199,7 +205,7 @@ The 25 steps run in order: `harness invariants` → `go test` → `contract gold
 
 **Run modes**: `quick` (single deterministic pass) or `full` (10 iterations). Passing `--iterations` without `--full` is invalid.
 
-Source: [`cmd/harness/selfworkflow/verifyloop/loop.go`](/cmd/harness/selfworkflow/verifyloop/loop.go), [`cmd/harness/selfworkflow/steps/self_verify_steps.go`](/cmd/harness/selfworkflow/steps/self_verify_steps.go).
+Source: [`cmd/harness/selfworkflow/verifyloop/loop.go`](/cmd/harness/selfworkflow/verifyloop/loop.go), [`cmd/harness/selfworkflow/steps/`](/cmd/harness/selfworkflow/steps/).
 
 ### Self-Augment Loop
 
@@ -227,11 +233,20 @@ agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --jud
 
 A passing deterministic benchmark requires `average_score == 100`, `minimum_score == 100`, and `critical_failure_count == 0`.
 
+### Coding Conventions
+
+**`errors.AsType` over `errors.As`**: The repository standardizes on `errors.AsType[E](err) (E, bool)` — the Go 1.26 generic value+ok form — instead of the `errors.As(err, &target)` out-parameter form. An AST ratchet test (`TestProductionCodeUsesErrorsAsTypeInsteadOfErrorsAs`) enforces zero `errors.As` calls in production code under `cmd/` and `internal/`.
+
+Source: [`internal/architecture/errors_astype_test.go`](/internal/architecture/errors_astype_test.go).
+
 ### Operational Health and Stability Audit
 
 - Pure classifier tests pin the 15-minute heartbeat boundary, invocation-only preserves, duplicate/incomplete inventory failure, and exact resource ownership.
 - External vocabulary enumerations cite the upstream definition, not observed samples.
 - Stability audit builds the binary, then delegates operational judgement to `doctor`.
 - Final live reconciliation runs only after the external recovery manifest/journal is sealed.
+- **Doctor ignores settled orchestration gates**: resolved and timed-out gates are durable Run history, not operational residue. Only `pending` gates trigger `FindingGateResidue`.
+- **Run inventory snapshot reuse**: the health collector fetches a single validated Run inventory snapshot, then fans out tasks, dispatched tasks, and gates concurrently from that same snapshot — eliminating inventory skew between independent reads.
+- **Legacy UTC task timestamp parsing**: Orca task records that omit RFC3339 separators/timezone are parsed via a UTC fallback layout instead of causing collector errors.
 
-Source: [`.agent-harness/TESTING.md`](/.agent-harness/TESTING.md) §2 "Operational-health and stability delegation".
+Source: [`.agent-harness/TESTING.md`](/.agent-harness/TESTING.md) §2 "Operational-health and stability delegation", [`internal/domain/operationalhealth/classifier.go`](/internal/domain/operationalhealth/classifier.go), [`internal/adapter/operationalhealth/collector.go`](/internal/adapter/operationalhealth/collector.go), [`internal/adapter/operationalhealth/task_timestamp.go`](/internal/adapter/operationalhealth/task_timestamp.go).

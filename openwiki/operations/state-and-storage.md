@@ -18,7 +18,7 @@ Each state root directory owns two SQLite databases:
 | `harness.db` | Stores all records as `(bucket, id, data-JSON)` rows |
 | `harness.lock.db` | Exists solely to carry cross-process span locks via `BEGIN IMMEDIATE` |
 
-Source: [`internal/core/sqlstore/sqlstore.go`](/internal/core/sqlstore/sqlstore.go).
+Source: [`internal/adapter/outbound/sqlstore/sqlstore.go`](/internal/adapter/outbound/sqlstore/sqlstore.go).
 
 ### Locking Model
 
@@ -29,7 +29,7 @@ Locking is dual-layer:
 
 `StateUpdate` performs read-modify-write inside a single span. `WithKeyLock` exposes the same span to external callers. No Git, provider, or Orca process call runs while a cycle lock is held.
 
-Source: [`internal/core/state/state_lock.go`](/internal/core/state/state_lock.go).
+Source: [`internal/domain/state/`](/internal/domain/state/), [`internal/adapter/outbound/sqlstore/`](/internal/adapter/outbound/sqlstore/).
 
 ### Handle Caching
 
@@ -50,7 +50,7 @@ Source: [`internal/core/state/state_lock.go`](/internal/core/state/state_lock.go
 - Each `StateRecord` carries `SchemaVersion`, `Key`, `Content`, `UpdatedAt`, `Bytes`.
 - `StateDoctor` validates integrity (byte-count, key-match, schema-version bounds) without modifying files.
 
-Source: [`internal/core/state/state_io.go`](/internal/core/state/state_io.go), [`internal/core/state/state_types.go`](/internal/core/state/state_types.go).
+Source: [`internal/domain/state/`](/internal/domain/state/).
 
 ### Schema Versioning
 
@@ -71,7 +71,7 @@ IssueOps v1 lease recovery is **not** part of store maintenance and never happen
 
 ### InstallNative Orchestration
 
-[`internal/core/install/install.go`](/internal/core/install/install.go) is the host-neutral install engine:
+[`internal/adapter/install/install.go`](/internal/adapter/install/install.go) is the host-neutral install engine:
 
 1. Validates shared inputs (root, home, codexHome, binPath)
 2. Auto-discovers skills by scanning `<root>/skills/*/SKILL.md`
@@ -83,7 +83,7 @@ IssueOps v1 lease recovery is **not** part of store maintenance and never happen
 - **Binary**: `<root>/bin/agent-harness`
 - **Skill symlinks**: Host skill directories → repository `skills/` directories
 - **MCP config**: Registers `agent-harness mcp` as a stdio MCP server
-- **Lifecycle hooks**: Registers pre/post-tool-use hooks pointing at the binary
+- **Lifecycle hooks**: Registers `SessionStart` and `PostCompact` context hooks pointing at the binary (see [CLI and MCP](cli-and-mcp.md#lifecycle-hooks))
 
 ### Bootstrap and Update
 
@@ -139,7 +139,15 @@ Project lifecycle state is isolated per-repo via `fingerprint.ForRoot()` → `fi
 
 Namespace consistency is validated on every read (fingerprint equality + schema version match).
 
-Source: [`internal/core/lifecycle/lifecycle_project_state_store.go`](/internal/core/lifecycle/lifecycle_project_state_store.go).
+Source: [`internal/adapter/lifecycle/`](/internal/adapter/lifecycle/), [`internal/domain/lifecycle/`](/internal/domain/lifecycle/).
+
+## Install Generation Skew Detection
+
+The install system detects **build-generation skew** — when the installed hook binary and the running CLI process are different builds even though they share the same file path. This happens when the binary is replaced while a long-running session holds the old generation in memory.
+
+`NativeBuildGeneration` identifies a binary build by VCS revision and modified flag. `SameGeneration` is fail-open: it returns `true` if either side is unobserved, and only reports `false` when both revisions are observed and differ. The install dry-run and readback report generation skew with an exact recovery command: `go build -o <target> ./cmd/harness && <target> install --json`. The recovery instructs a **session restart**, not a reinstall — the path already matches, so the issue is the running process holding a stale generation.
+
+Source: [`internal/adapter/install/native_generation.go`](/internal/adapter/install/native_generation.go), [`internal/adapter/install/native_runtime.go`](/internal/adapter/install/native_runtime.go), [`internal/adapter/installutil/hook_generation.go`](/internal/adapter/installutil/hook_generation.go).
 
 ## Draft Wiki Staging
 
