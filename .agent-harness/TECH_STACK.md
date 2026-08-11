@@ -119,7 +119,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness verify-work --json -- git status --short
 ./bin/agent-harness daemon status --json
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 ./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
@@ -155,7 +155,7 @@ agent-harness daemon status --json
 agent-harness daemon stop --json
 agent-harness mcp
 agent-harness self-verify --seed=100 --target-score=95
-agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
 agent-harness self-verify history --prefix self-verify --json
 agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json

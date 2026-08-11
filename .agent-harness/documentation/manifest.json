@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "max_root_lines": 250,
+  "max_module_lines": 250,
+  "families": [
+    {
+      "root": ".agent-harness/ADR.md",
+      "module_dir": ".agent-harness/adr",
+      "responsibility": "accepted architecture decisions and roadmap"
+    },
+    {
+      "root": ".agent-harness/ARCHITECTURE.md",
+      "module_dir": ".agent-harness/architecture",
+      "responsibility": "dependency direction and runtime topology"
+    },
+    {
+      "root": ".agent-harness/CAUTIONS.md",
+      "module_dir": ".agent-harness/cautions",
+      "responsibility": "known risks and incident lessons"
+    },
+    {
+      "root": ".agent-harness/CONVENTIONS.md",
+      "module_dir": ".agent-harness/conventions",
+      "responsibility": "implementation and interface conventions"
+    },
+    {
+      "root": ".agent-harness/OPERATIONS.md",
+      "module_dir": ".agent-harness/operations/guides",
+      "responsibility": "installation and runtime operation"
+    },
+    {
+      "root": ".agent-harness/TESTING.md",
+      "module_dir": ".agent-harness/testing",
+      "responsibility": "test strategy and verification gates"
+    }
+  ],
+  "single_owner_topics": {
+    "commit formatting": ".agent-harness/COMMIT_POLICY.md",
+    "constitutional priority and safety": ".agent-harness/CONSTITUTION.md",
+    "OpenAPI requirements": ".agent-harness/OPEN_API_SPEC.md",
+    "technology selection": ".agent-harness/TECH_STACK.md",
+    "agent execution sequence": ".agent-harness/AGENT_WORKFLOW.md"
+  }
+}

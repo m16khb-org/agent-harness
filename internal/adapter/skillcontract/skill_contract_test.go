@@ -253,29 +253,30 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 }
 
 func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
+	testingIndex := readRepoFileForTest(t, filepath.Join(".agent-harness", "TESTING.md"))
+	if !strings.Contains(testingIndex, "testing/issueops-execution.md") {
+		t.Fatal(".agent-harness/TESTING.md must route handoff probes to testing/issueops-execution.md")
+	}
 	for _, relPath := range []string{
-		filepath.Join(".agent-harness", "TESTING.md"),
+		filepath.Join(".agent-harness", "testing", "issueops-execution.md"),
 		filepath.Join(".agent-harness", "operations", "verification.md"),
 	} {
-		body, err := os.ReadFile(filepath.Join("..", "..", "..", relPath))
-		if err != nil {
-			t.Fatal(err)
-		}
+		body := readRepoFileForTest(t, relPath)
 		for _, want := range []string{
 			"./cmd/harness/hookcli/hookinput",
 			"Codex",
 			"Claude",
 		} {
-			if !strings.Contains(string(body), want) {
+			if !strings.Contains(body, want) {
 				t.Fatalf("%s missing verification probe %q", relPath, want)
 			}
 		}
-		for _, line := range strings.Split(string(body), "\n") {
+		for line := range strings.SplitSeq(body, "\n") {
 			if strings.Contains(line, "go test ") && strings.Contains(line, "./internal/core/hookinput") {
 				t.Fatalf("%s must not execute nonexistent hookinput package: %s", relPath, line)
 			}
 		}
-		assertRetiredHostsAbsent(t, relPath, string(body))
+		assertRetiredHostsAbsent(t, relPath, body)
 	}
 }
 

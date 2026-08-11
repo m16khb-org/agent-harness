@@ -19,7 +19,11 @@ func validateQAGateWithDeps(root string, deps docsValidationDeps) StepResult {
 		filepath.Join(root, "GENIUS_THINK.md"):                                {"천재적 사고", "Mermaid"},
 		filepath.Join(root, "skills", "self-augment", "SELF_AUGMENTATION.md"): {"Self-augmentation", "95"},
 		filepath.Join(root, "skills", "self-verify", "SKILL.md"):              {"Self-verification", "95"},
-		filepath.Join(root, ".agent-harness", "TESTING.md"):                   {"Well-structured tests", "Poorly-structured tests"},
+		filepath.Join(root, ".agent-harness", "TESTING.md"):                   {"testing/unit-and-contract.md"},
+		filepath.Join(root, ".agent-harness", "testing", "unit-and-contract.md"): {
+			"Well-structured tests",
+			"Poorly-structured tests",
+		},
 	}
 	for path, needles := range requiredDocs {
 		b, err := deps.readFile(path)

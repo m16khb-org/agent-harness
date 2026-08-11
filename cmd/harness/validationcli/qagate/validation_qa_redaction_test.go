@@ -77,6 +77,7 @@ func TestValidateQAGateWithDepsCoversHealthyAndAggregateFailures(t *testing.T) {
 	selfAugmentDoc := filepath.Join(root, "skills", "self-augment", "SELF_AUGMENTATION.md")
 	selfVerifyDoc := filepath.Join(root, "skills", "self-verify", "SKILL.md")
 	testingDoc := filepath.Join(root, ".agent-harness", "TESTING.md")
+	testingModule := filepath.Join(root, ".agent-harness", "testing", "unit-and-contract.md")
 	geniusDoc := filepath.Join(root, "GENIUS_THINK.md")
 	atomicSkill := filepath.Join(root, "skills", "atomic-commit-push", "SKILL.md")
 	selfAugmentSkill := filepath.Join(root, "skills", "self-augment", "SKILL.md")
@@ -90,6 +91,8 @@ func TestValidateQAGateWithDepsCoversHealthyAndAggregateFailures(t *testing.T) {
 			case selfVerifyDoc:
 				return []byte("---\nname: self-verify\ndescription: verify\n---\nSelf-verification 95\n"), nil
 			case testingDoc:
+				return []byte("[Unit and contract testing](testing/unit-and-contract.md)\n"), nil
+			case testingModule:
 				return []byte("Well-structured tests\nPoorly-structured tests\n"), nil
 			case atomicSkill:
 				return []byte("---\nname: atomic-commit-push\ndescription: git\n---\n"), nil

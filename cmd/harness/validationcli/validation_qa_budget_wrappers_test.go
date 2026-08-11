@@ -35,7 +35,8 @@ func TestValidationQABudgetWrappersUseDefaultSurfaces(t *testing.T) {
 func writeQAGateWrapperFixture(t *testing.T, root string) {
 	t.Helper()
 	writeFileForWrapperTest(t, filepath.Join(root, "GENIUS_THINK.md"), "# Thinking\n\n천재적 사고\nMermaid\n\n```mermaid\ngraph TD\n  A[\"OK\"]\n```\n")
-	writeFileForWrapperTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "# Testing\n\nWell-structured tests\nPoorly-structured tests\n")
+	writeFileForWrapperTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "# Testing\n\n[Unit contracts](testing/unit-and-contract.md)\n")
+	writeFileForWrapperTest(t, filepath.Join(root, ".agent-harness", "testing", "unit-and-contract.md"), "# Unit contracts\n\nWell-structured tests\nPoorly-structured tests\n")
 	writeFileForWrapperTest(t, filepath.Join(root, "skills", "self-augment", "SELF_AUGMENTATION.md"), "# Self Augment\n\nSelf-augmentation 95\n")
 	for _, skill := range []string{"atomic-commit-push", "self-augment", "self-verify"} {
 		writeFileForWrapperTest(t, filepath.Join(root, "skills", skill, "SKILL.md"), "---\nname: "+skill+"\ndescription: fixture\n---\nSelf-verification 95\n")

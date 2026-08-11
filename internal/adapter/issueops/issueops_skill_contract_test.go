@@ -60,11 +60,15 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 }
 
 func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
+	operationsIndex := readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md")
+	if !strings.Contains(operationsIndex, "operations/guides/issueops-providers.md") {
+		t.Fatal("OPERATIONS.md must route provider ordering to operations/guides/issueops-providers.md")
+	}
 	documents := map[string]string{
 		"skill":      readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
 		"execution":  readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"start":      readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
-		"operations": readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md"),
+		"operations": readIssueOpsContractFile(t, ".agent-harness", "operations", "guides", "issueops-providers.md"),
 	}
 	const want = "`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`"
 	for name, document := range documents {
