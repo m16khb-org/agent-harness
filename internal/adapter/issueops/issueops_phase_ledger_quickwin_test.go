@@ -29,7 +29,7 @@ func TestIssueOpsStatusBackfillsPartialLedger(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	status, err := IssueOpsStatus(stateRoot, rec.ID)
+	status, err := readIssueOpsStatusForTest(stateRoot, rec.ID)
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}

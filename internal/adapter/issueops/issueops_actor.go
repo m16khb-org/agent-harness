@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/contract/issueops"
+	issueopsartifactdomain "agent-harness/internal/domain/issueopsartifact"
 )
 
 // validateExecutionMutation binds every durable IssueOps mutation to the
@@ -49,7 +50,7 @@ func validateExecutionMutation(record issueops.IssueOpsRecord, actor *IssueOpsAc
 }
 
 func validatePlanLinkMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
-	if record.Execution == nil || !canStageIssueOpsArtifact(record, "plan") {
+	if record.Execution == nil || !issueopsartifactdomain.CanStage(record, "plan") {
 		return validateExecutionMutation(record, actor)
 	}
 	host := ""

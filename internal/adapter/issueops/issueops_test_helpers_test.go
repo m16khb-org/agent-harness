@@ -233,7 +233,7 @@ func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
 // grill->plan boundary. split_decision is recorded as a no-split scope decision.
 func recordIssueOpsGrillArtifactsForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
-	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{
+	if _, err := addIssueOpsDecisionForTest(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{
 		Title: "no split",
 		Body:  "single focused work item; no provider-native child tasks needed",
 		Kind:  "scope",

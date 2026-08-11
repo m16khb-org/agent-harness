@@ -17,7 +17,7 @@ func TestIssueOpsStatusDerivesLedgerWhenAbsent(t *testing.T) {
 	}
 	recordIssueOpsIntentForTest(t, stateRoot, rec.ID)
 
-	status, err := IssueOpsStatus(stateRoot, rec.ID)
+	status, err := readIssueOpsStatusForTest(stateRoot, rec.ID)
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}

@@ -31,7 +31,7 @@ func TestEnterPlanRequiresDomainReview(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	id := issueOpsGrillGateBaseRecord(t, stateRoot, repo, "1-gate")
 	// split_decision satisfied via a scope decision, but no domain review yet.
-	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
+	if _, err := addIssueOpsDecisionForTest(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan)); err == nil || !strings.Contains(err.Error(), "domain_review") {
@@ -57,7 +57,7 @@ func TestEnterPlanRequiresSplitDecision(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan)); err == nil || !strings.Contains(err.Error(), "split_decision") {
 		t.Fatalf("plan entry must require split_decision, got %v", err)
 	}
-	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
+	if _, err := addIssueOpsDecisionForTest(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
 		t.Fatal(err)
 	}
 	rec, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan))

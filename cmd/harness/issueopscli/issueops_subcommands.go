@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
 )
 
 // This file holds the individual `issueops <subcommand>` handlers. runIssueOps
@@ -249,30 +250,33 @@ func runIssueOpsRoutingScore(args []string) error {
 	if err != nil {
 		return err
 	}
-	record, err := issueOpsCLIDeps.ReadIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), *id)
+	result, observed, err := issueOpsCLIDeps.ScoreLiveRoutingFidelity(
+		issueOpsCLIDeps.IssueOpsStateRoot(),
+		*id,
+		expected,
+	)
 	if err != nil {
 		if *jsonOut {
 			return printIssueOpsErrorJSON(err)
 		}
 		return err
 	}
-	result := issueOpsCLIDeps.ScoreLiveRoutingFidelity(record, expected)
 	if *jsonOut {
 		return printJSON(result)
 	}
-	fmt.Printf("routing fidelity: ok=%v (observed %d pairings)\n", result.OK, len(record.RoutingTrace))
+	fmt.Printf("routing fidelity: ok=%v (observed %d pairings)\n", result.OK, observed)
 	for _, m := range result.Missing {
 		fmt.Printf("- missing: %s@%s\n", m.Skill, m.Phase)
 	}
 	return nil
 }
 
-func parseExpectedRouting(spec string) ([]issueopscontract.SkillRouting, error) {
+func parseExpectedRouting(spec string) ([]issueopsroutingcontract.Expected, error) {
 	spec = strings.TrimSpace(spec)
 	if spec == "" {
 		return nil, fmt.Errorf("--expect is required as comma-separated phase:skill pairings")
 	}
-	var out []issueopscontract.SkillRouting
+	var out []issueopsroutingcontract.Expected
 	for _, p := range strings.Split(spec, ",") {
 		p = strings.TrimSpace(p)
 		if p == "" {
@@ -283,7 +287,7 @@ func parseExpectedRouting(spec string) ([]issueopscontract.SkillRouting, error) 
 		if !ok || phase == "" || skill == "" {
 			return nil, fmt.Errorf("invalid --expect pairing %q; want phase:skill", p)
 		}
-		out = append(out, issueopscontract.SkillRouting{Phase: phase, Skill: skill})
+		out = append(out, issueopsroutingcontract.Expected{Phase: phase, Skill: skill})
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("--expect produced no pairings")

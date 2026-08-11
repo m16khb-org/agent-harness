@@ -4,13 +4,9 @@ import (
 	"strings"
 
 	"agent-harness/internal/contract/issueops"
+	issueopsstatusdomain "agent-harness/internal/domain/issueopsstatus"
 	"agent-harness/internal/domain/stringlist"
 )
-
-// issueOpsLedgerDerivedSentinel은 실시간으로 관찰하지 못해 기존 필드에서
-// 파생하거나 보완한 phase timestamp에 쓴다. 파생 과정이 wall-clock 정밀도를
-// 꾸며내지 않고 host와 run 사이에서 byte-deterministic하도록 의도적으로 비운다.
-const issueOpsLedgerDerivedSentinel = ""
 
 func issueOpsReadinessFrom(record issueops.IssueOpsRecord, missing []string) issueops.IssueOpsReadiness {
 	return issueops.IssueOpsReadiness{
@@ -203,84 +199,6 @@ func IssueOpsPhaseCompletion(record issueops.IssueOpsRecord, phase issueops.Issu
 	}
 }
 
-// issueOpsPhaseArtifactKeys는 완료된 ledger entry의 Artifacts에 기록할 phase별
-// matrix 완료 집합이다.
-func issueOpsPhaseArtifactKeys(phase issueops.IssueOpsPhase) []string {
-	switch phase {
-	case IssueOpsPhaseProblem:
-		return []string{"intent_contract"}
-	case IssueOpsPhaseGrill:
-		return []string{"issue_url", "branch", "plan_prep", "split_decision", "domain_review"}
-	case IssueOpsPhasePlan:
-		return []string{"branch_prepare", "worktree_path", "plan_path", "design_review"}
-	case IssueOpsPhaseCompatibilityReview:
-		return []string{"compatibility_review", "compatibility_approval", "compatibility_blockers"}
-	case IssueOpsPhaseImplement:
-		return []string{"worktree_tools", "execution_decision", "implementation_changes"}
-	case IssueOpsPhaseAISlopClean:
-		return []string{"ai_slop_clean_at", "ai_slop_clean_head", "ai_slop_clean_fingerprint", "cleanup_evidence", "verification_evidence"}
-	case IssueOpsPhaseFeedback:
-		return []string{"feedback_classification", "contract_feedback_issue_update", "feedback_resolution"}
-	case IssueOpsPhasePR:
-		return []string{"strict_pr_readiness", "children_complete", "remote_artifact", "target_branch_match"}
-	case IssueOpsPhaseDone:
-		return []string{"prior_phase_pr", "verified_remote_artifact"}
-	default:
-		return nil
-	}
-}
-
-// DeriveIssueOpsPhaseLedger는 현재 필드에서 IssueOpsPhases 순서의 virtual ledger를
-// 만든다. timestamp에는 wall-clock 대신 derived sentinel을 써 출력이
-// byte-deterministic하게 유지된다. 각 entry는 derived로 표시하며, 완료 phase는
-// artifact와 빈 missing key를, 미완료 phase는 missing key를 기록한다.
-func DeriveIssueOpsPhaseLedger(record issueops.IssueOpsRecord) issueops.IssueOpsPhaseLedger {
-	ledger := issueops.IssueOpsPhaseLedger{}
-	currentRank := issueOpsPhaseRank(record.Phase)
-	for _, phase := range issueops.IssueOpsPhases {
-		entry := issueops.IssueOpsPhaseLedgerEntry{Phase: phase, Notes: []string{"derived"}}
-		if issueOpsPhaseRank(phase) <= currentRank {
-			entry.EnteredAt = issueOpsLedgerDerivedSentinel
-		}
-		completion := IssueOpsPhaseCompletion(record, phase)
-		if completion.Ready {
-			entry.CompletedAt = issueOpsLedgerDerivedSentinel
-			entry.Artifacts = issueOpsPhaseArtifactKeys(phase)
-		} else {
-			entry.Missing = completion.Missing
-		}
-		ledger[phase] = entry
-	}
-	return ledger
-}
-
-// IssueOpsStatus는 표시할 cycle을 읽고 phase ledger가 존재하도록 보장한다. ledger가
-// stamp되지 않았을 때(legacy record 또는 전이 없이 artifact만 기록한 cycle)는
-// deterministic derived ledger를 채워 status가 항상 phase 진행 상황을 보이게 한다.
-// 이는 read-only이며 derived ledger는 저장하지 않는다.
-func IssueOpsStatus(stateRoot, id string) (issueops.IssueOpsRecord, error) {
-	record, err := ReadIssueOps(stateRoot, id)
-	if err != nil {
-		return record, err
-	}
-	if len(record.PhaseLedger) == 0 {
-		record.PhaseLedger = DeriveIssueOpsPhaseLedger(record)
-	} else {
-		// 부분 persisted ledger에 없는 phase를 보완한다. multi-phase forward jump는
-		// 양 끝점만 stamp하고, regress 뒤 ledger는 stale plan/compatibility-review
-		// entry만 저장하므로 완료 artifact가 있는 phase를 status가 축소 보고하면 안
-		// 된다. read-only로 동작하며, persisted entry(실제 timestamp, stale note)가
-		// 항상 우선이고 없는 phase만 derived ledger로 채운다.
-		derived := DeriveIssueOpsPhaseLedger(record)
-		for phase, entry := range derived {
-			if _, ok := record.PhaseLedger[phase]; !ok {
-				record.PhaseLedger[phase] = entry
-			}
-		}
-	}
-	return record, nil
-}
-
 // stampIssueOpsForwardTransition은 관찰한 phase 전이를 ledger에 기록한다(rule
 // 4/5/11). 떠나는 phase는 완료로 표시한다. 성공한 forward transition은 이전 phase
 // 완료를 요구하는 새 phase의 entry gate를 이미 통과했음을 뜻한다. 진입하는 phase에는
@@ -297,7 +215,7 @@ func stampIssueOpsForwardTransition(ledger issueops.IssueOpsPhaseLedger, prevPha
 		prev.EnteredAt = now
 	}
 	prev.CompletedAt = now
-	prev.Artifacts = issueOpsPhaseArtifactKeys(prevPhase)
+	prev.Artifacts = issueopsstatusdomain.ArtifactKeys(prevPhase)
 	prev.Missing = nil
 	// 이 phase가 실제로 다시 완료된 forward transition은
 	// RegressIssueOpsForReplan이 남긴 stale-regression mark를 지운다. 정상적으로

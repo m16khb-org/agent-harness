@@ -215,7 +215,7 @@ func rolloverExecutionFixture(t *testing.T) (string, contractissueops.IssueOpsRe
 	if _, err := writeIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(planBody)); err != nil {
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(planBody)); err != nil {
 		t.Fatal(err)
 	}
 	record.Execution.Lease = contractissueops.WriteLease{

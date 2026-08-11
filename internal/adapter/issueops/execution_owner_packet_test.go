@@ -43,7 +43,7 @@ func TestExecutionPreparationPlanArtifactGatePrecedesRemoteOwnerRead(t *testing.
 func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
 	stateRoot, record := executionPrepareRecord(t)
 	const plan = "# Sealed owner plan\n"
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
 		t.Fatal(err)
 	}
 	worktree := t.TempDir()

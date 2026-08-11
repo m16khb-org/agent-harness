@@ -14,7 +14,7 @@ import (
 func TestOrcaIntentWorktreeReceiptPersistsPlanBeforeNextIntent(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	const plan = "# Intent owner plan\n"
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
 		t.Fatal(err)
 	}
 	worktree := issueOpsWorktreePathForTest(record.Repo, record.Branch)

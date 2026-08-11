@@ -1,17 +1,14 @@
 package issueops
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
 )
 
 // artifactStageBucket은 prepare 이전에 코디네이터가 스테이징한 artifact를
@@ -23,8 +20,6 @@ const artifactStageBucket = "artifact_stage_v1"
 // 상대 경로다. `.gitignore` 대상이며 보존은 completion 섹션이 담당한다.
 const IssueOpsArtifactDir = ".agent-harness/artifact"
 
-var issueOpsArtifactNames = map[string]bool{"plan": true, "spec": true, "turing-loop": true}
-
 type PlanIdentity struct {
 	Path   string
 	Digest string
@@ -34,22 +29,6 @@ type OwnerPlanIdentity = PlanIdentity
 
 type planArtifactRequiredError struct {
 	nextCommand string
-}
-
-type artifactStageRecoveryError struct {
-	id string
-}
-
-func (e *artifactStageRecoveryError) Error() string {
-	return "artifacts are sealed after execution prepare; only a clean released Orca generation may stage a plan, and execution replace --reseed is required before resume"
-}
-
-func (e *artifactStageRecoveryError) IssueOpsErrorFields() map[string]any {
-	return map[string]any{
-		"code":            "artifact_stage_requires_reseed",
-		"required_action": "execution replace --reseed",
-		"next_command":    "agent-harness issueops execution status --id " + quoteExecutionOwnerArg(e.id) + " --json",
-	}
 }
 
 func (e *planArtifactRequiredError) Error() string {
@@ -166,134 +145,6 @@ func materializeExecutionOwnerArtifacts(stateRoot string, record issueops.IssueO
 	return identity, manifest, nil
 }
 
-// StageIssueOpsArtifact는 plan|spec|turing-loop artifact를 스테이징한다.
-// prepare 이후(Execution 존재)에는 조용한 no-op 대신 명시적으로 실패한다 —
-// materialize와 manifest 봉인이 이미 끝났으므로 재스테이징은 반영되지 않는다.
-func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (issueops.IssueOpsRecord, error) {
-	name = strings.TrimSpace(name)
-	if !issueOpsArtifactNames[name] {
-		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
-	}
-	if len(content) == 0 {
-		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact content is empty")
-	}
-	if len(content) > leasecontract.OwnerArtifactMaxBytes {
-		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact exceeds %d bytes", leasecontract.OwnerArtifactMaxBytes)
-	}
-	// 거부형 redaction: 스크럽은 사람이 쓴 문서를 훼손하므로 반려한다.
-	if err := rejectSecretLikeContent(string(content)); err != nil {
-		return issueops.IssueOpsRecord{OK: false}, err
-	}
-	var record issueops.IssueOpsRecord
-	// read-modify-write이므로 다른 레코드 변형과 동일하게 사이클 락 안에서
-	// 수행한다 — 동시 stage가 서로를 덮어쓰지 않는다(C4a-F2).
-	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		rec, e := ReadIssueOps(stateRoot, id)
-		if e != nil {
-			return e
-		}
-		if !canStageIssueOpsArtifact(rec, name) {
-			return &artifactStageRecoveryError{id: rec.ID}
-		}
-		staged, e := readStagedArtifacts(stateRoot, rec.ID)
-		if e != nil {
-			return e
-		}
-		staged[name] = string(content)
-		data, e := json.Marshal(staged)
-		if e != nil {
-			return e
-		}
-		db, e := sqlstore.Open(stateRoot)
-		if e != nil {
-			return e
-		}
-		if e := db.Put(artifactStageBucket, rec.ID, data); e != nil {
-			return e
-		}
-		record = rec
-		return nil
-	})
-	if err != nil {
-		return issueops.IssueOpsRecord{OK: false}, err
-	}
-	return record, nil
-}
-
-func canStageIssueOpsArtifact(record issueops.IssueOpsRecord, name string) bool {
-	if record.Execution == nil {
-		return true
-	}
-	execution := record.Execution
-	return name == "plan" &&
-		execution.Mode == issueops.ExecutionModeOrca &&
-		execution.Lease.Status == issueops.LeaseStatusReleased &&
-		execution.Lease.Holder == nil &&
-		execution.Pending == nil &&
-		execution.Completion == nil
-}
-
-// UnstageIssueOpsArtifact는 스테이징된 artifact 하나를 되돌린다. prepare
-// 이전에만 의미가 있으며, 없는 이름의 unstage는 no-op 성공이다(C4a-F4).
-func UnstageIssueOpsArtifact(stateRoot, id, name string) (issueops.IssueOpsRecord, error) {
-	name = strings.TrimSpace(name)
-	if !issueOpsArtifactNames[name] {
-		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
-	}
-	var record issueops.IssueOpsRecord
-	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		rec, e := ReadIssueOps(stateRoot, id)
-		if e != nil {
-			return e
-		}
-		if rec.Execution != nil {
-			return fmt.Errorf("staged artifacts are sealed after execution prepare and cannot be unstaged")
-		}
-		staged, e := readStagedArtifacts(stateRoot, rec.ID)
-		if e != nil {
-			return e
-		}
-		delete(staged, name)
-		db, e := sqlstore.Open(stateRoot)
-		if e != nil {
-			return e
-		}
-		if len(staged) == 0 {
-			if e := db.Delete(artifactStageBucket, rec.ID); e != nil {
-				return e
-			}
-		} else {
-			data, e := json.Marshal(staged)
-			if e != nil {
-				return e
-			}
-			if e := db.Put(artifactStageBucket, rec.ID, data); e != nil {
-				return e
-			}
-		}
-		record = rec
-		return nil
-	})
-	if err != nil {
-		return issueops.IssueOpsRecord{OK: false}, err
-	}
-	return record, nil
-}
-
-// StagedIssueOpsArtifactNames는 스테이징된 artifact 이름을 정렬해 돌려준다.
-func StagedIssueOpsArtifactNames(stateRoot, id string) ([]string, error) {
-	staged, err := readStagedArtifacts(stateRoot, id)
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(staged))
-	for name := range staged {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names, nil
-}
-
 func readStagedArtifacts(stateRoot, id string) (map[string]string, error) {
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
@@ -342,9 +193,3 @@ func materializeStagedArtifacts(stateRoot string, record issueops.IssueOpsRecord
 
 // rejectSecretLikeContent는 issueops_decision.go의 거부형 secret 검사 계약을
 // artifact 본문에 적용한다.
-func rejectSecretLikeContent(content string) error {
-	if containsSecretPattern(content) {
-		return fmt.Errorf("artifact content contains secret-like values; redact them before staging")
-	}
-	return nil
-}

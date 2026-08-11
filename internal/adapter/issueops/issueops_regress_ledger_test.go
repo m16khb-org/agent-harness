@@ -35,7 +35,7 @@ func TestRegressIssueOpsForReplanStatusBackfillsAllPhases(t *testing.T) {
 		t.Fatalf("regress: %v", err)
 	}
 
-	status, err := IssueOpsStatus(stateRoot, rec.ID)
+	status, err := readIssueOpsStatusForTest(stateRoot, rec.ID)
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}

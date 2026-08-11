@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsartifactdomain "agent-harness/internal/domain/issueopsartifact"
 )
 
 func TestRequireStagedExecutionOwnerPlanArtifact(t *testing.T) {
@@ -111,7 +112,7 @@ func TestRequireStagedExecutionOwnerPlanArtifact(t *testing.T) {
 				test.configure(t, &record)
 			}
 			for name, content := range test.stage {
-				if _, err := StageIssueOpsArtifact(stateRoot, record.ID, name, []byte(content)); err != nil {
+				if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, name, []byte(content)); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -176,7 +177,7 @@ func TestExecutionOwnerPlanMaterializationRequiresDurableIdentity(t *testing.T) 
 			stateRoot, record := executionPrepareRecord(t)
 			const plan = "# Owner plan\n"
 			if test.stagePlan {
-				if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+				if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -254,8 +255,8 @@ func TestArtifactStagingReleasedRecoveryPredicate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			record := issueopscontract.IssueOpsRecord{Execution: test.execution}
-			if got := canStageIssueOpsArtifact(record, test.artifact); got != test.want {
-				t.Fatalf("canStageIssueOpsArtifact=%t want %t", got, test.want)
+			if got := issueopsartifactdomain.CanStage(record, test.artifact); got != test.want {
+				t.Fatalf("CanStage=%t want %t", got, test.want)
 			}
 		})
 	}
@@ -280,7 +281,7 @@ func TestReleasedArtifactStagingChangesOnlyNextResealInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	const recoveryPlan = "# Recovery plan\n"
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(recoveryPlan)); err != nil {
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(recoveryPlan)); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.ReadFile(packetPath)
@@ -319,7 +320,7 @@ func TestReleasedArtifactRecoveryLinksPlanBeforeStaging(t *testing.T) {
 	if linked.PlanPath != planPath {
 		t.Fatalf("linked plan=%q want %q", linked.PlanPath, planPath)
 	}
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Recovery plan\n")); err != nil {
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte("# Recovery plan\n")); err != nil {
 		t.Fatal(err)
 	}
 	replacement := filepath.Join(worktree, "plans", "replacement.md")
@@ -342,7 +343,7 @@ func TestArtifactReleasedNearMissRequiresReseedBeforeResume(t *testing.T) {
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	_, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Blocked\n"))
+	_, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte("# Blocked\n"))
 	if err == nil {
 		t.Fatal("released direct execution accepted recovery staging")
 	}

@@ -1,7 +1,6 @@
 package issueops
 
 import (
-	"reflect"
 	"testing"
 
 	"agent-harness/internal/contract/issueops"
@@ -86,55 +85,11 @@ func TestIssueOpsPhaseCompletionDispatches(t *testing.T) {
 	}
 }
 
-func TestDeriveIssueOpsPhaseLedgerIsDeterministicAndSentinel(t *testing.T) {
-	rec := issueops.IssueOpsRecord{Phase: IssueOpsPhaseGrill, Intent: fullIntentForLedger()}
-	a := DeriveIssueOpsPhaseLedger(rec)
-	b := DeriveIssueOpsPhaseLedger(rec)
-	if !reflect.DeepEqual(a, b) {
-		t.Fatalf("derivation must be deterministic:\n a=%#v\n b=%#v", a, b)
-	}
-	problem, ok := a[IssueOpsPhaseProblem]
-	if !ok || problem.Phase != IssueOpsPhaseProblem {
-		t.Fatalf("expected a problem ledger entry keyed by its phase, got %#v", a)
-	}
-	for phase, entry := range a {
-		if entry.Phase != phase {
-			t.Fatalf("entry phase %q must equal map key %q", entry.Phase, phase)
-		}
-		if isWallClock(entry.EnteredAt) || isWallClock(entry.CompletedAt) {
-			t.Fatalf("derived entry must use sentinel, not wall-clock: %#v", entry)
-		}
-	}
-	// problem is complete (intent present) -> derived entry has no missing keys
-	// and records the artifacts that satisfied it.
-	if len(problem.Missing) != 0 || len(problem.Artifacts) == 0 {
-		t.Fatalf("problem should derive as complete (no missing, artifacts populated): %#v", problem)
-	}
-	// grill is incomplete (no issue_url/branch/etc.) -> missing keys recorded.
-	if grill, ok := a[IssueOpsPhaseGrill]; !ok || len(grill.Missing) == 0 {
-		t.Fatalf("grill should derive as incomplete with missing keys: %#v", a[IssueOpsPhaseGrill])
-	}
-}
-
-func TestIssueOpsPhaseLedgerIndexesChildrenComplete(t *testing.T) {
-	keys := issueOpsPhaseArtifactKeys(IssueOpsPhasePR)
-	if !containsLedgerKey(keys, "children_complete") {
-		t.Fatalf("pr artifact set should include children_complete, got %#v", keys)
-	}
-	if containsLedgerKey(issueOpsPhaseArtifactKeys(IssueOpsPhaseImplement), "children_complete") {
-		t.Fatalf("implement artifact set must not include children_complete")
-	}
-}
-
 func containsLedgerKey(keys []string, want string) bool {
-	for _, k := range keys {
-		if k == want {
+	for _, key := range keys {
+		if key == want {
 			return true
 		}
 	}
 	return false
 }
-
-// isWallClock treats any non-empty timestamp as a wall-clock value; derived
-// entries must use the empty sentinel.
-func isWallClock(ts string) bool { return ts != "" }

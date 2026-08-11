@@ -6,6 +6,12 @@ import (
 	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
+	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
+	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsretentioncontract "agent-harness/internal/contract/issueopsretention"
+	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
+	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
 )
 
 var errIssueOpsCLINotConfigured = errors.New("issueops runtime is not configured")
@@ -17,22 +23,22 @@ var issueOpsCLIDeps = neutralIssueOpsCLIDeps()
 // IssueOpsCLIDeps는 composition root가 실제 어댑터를 꽂는 진입점이다.
 type IssueOpsCLIDeps struct {
 	AcceptIssueOpsChildWithActor                func(stateRoot, parentID, childID string, evidence []string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error)
-	AddIssueOpsDecisionWithActor                func(stateRoot, id string, req issueopscontract.IssueOpsDecisionRecordRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
+	AddIssueOpsDecisionWithActor                func(stateRoot, id string, req issueopsdecisioncontract.Request, actor issueopsdecisioncontract.Actor) (issueopsdecisioncontract.Record, error)
 	DropIssueOpsChildWithActor                  func(stateRoot, parentID, childID, reason string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error)
 	IssueOpsChildStatusWithActor                func(stateRoot, parentID string, repair bool, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildStatusResult, error)
 	IssueOpsPRReadiness                         func(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness
 	IssueOpsStateRoot                           func() string
-	IssueOpsStatus                              func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error)
+	IssueOpsStatus                              func(stateRoot, id string) (issueopsstatuscontract.Record, error)
 	LinkIssueOpsChildWithActor                  func(stateRoot, id, childURL, title string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	LinkIssueOpsIssueWithActor                  func(stateRoot, id, issueURL string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	LinkIssueOpsPlanWithActor                   func(stateRoot, id, planPath string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	LinkIssueOpsRelatedWithActor                func(stateRoot, id, linkType, relatedURL, title string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	LinkIssueOpsWorktreeWithActor               func(stateRoot, id, worktreePath string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
-	ListIssueOpsCycles                          func(stateRoot, repo string) (issueopscontract.IssueOpsListResult, error)
+	ListIssueOpsCycles                          func(stateRoot, repo string) (issueopsinventorycontract.ListResult, error)
 	ObserveNativeProcessAncestry                func(pid int) ([]issueopscontract.NativeProcessReceipt, error)
 	PrepareIssueOpsBranchWithActor              func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	AwaitIssueOpsBranchLink                     func(ctx context.Context, stateRoot string, req issueopscontract.AwaitBranchLinkRequest) (issueopscontract.AwaitBranchLinkResult, error)
-	PruneIssueOps                               func(stateRoot string, maxAge time.Duration, confirm bool) (issueopscontract.IssueOpsPruneResult, error)
+	PruneIssueOps                               func(stateRoot string, maxAge time.Duration, confirm bool) (issueopsretentioncontract.Result, error)
 	ReadIssueOps                                func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsAISlopCleanEvidenceWithActor  func(stateRoot, id string, categories, verification []string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsCompatibilityReviewWithActor  func(stateRoot, id string, req issueopscontract.IssueOpsCompatibilityReviewRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
@@ -42,16 +48,16 @@ type IssueOpsCLIDeps struct {
 	RecordIssueOpsImplementationReview          func(stateRoot, id string, req issueopscontract.IssueOpsImplementationReviewRequest) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsIntentWithActor               func(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsPlanPrepWithActor             func(stateRoot, id string, req issueopscontract.IssueOpsPlanPrepRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
-	RecordIssueOpsRoutingWithActor              func(stateRoot, id, phase, skill string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
+	RecordIssueOpsRoutingWithActor              func(stateRoot, id, phase, skill string, actor issueopsroutingcontract.Actor) (issueopsroutingcontract.Record, error)
 	RegressIssueOpsForReplanWithActor           func(stateRoot, id, reason string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RejectIssueOpsChildWithActor                func(stateRoot, parentID, childID, reason string, evidence []string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error)
 	ResolveIssueOpsFeedbackWithActor            func(stateRoot, id string, index int, resolution string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
-	ScoreLiveRoutingFidelity                    func(record issueopscontract.IssueOpsRecord, expected []issueopscontract.SkillRouting) issueopscontract.RoutingFidelityResult
-	StageIssueOpsArtifact                       func(stateRoot, id, name string, content []byte) (issueopscontract.IssueOpsRecord, error)
+	ScoreLiveRoutingFidelity                    func(stateRoot, id string, expected []issueopsroutingcontract.Expected) (issueopsroutingcontract.Result, int, error)
+	StageIssueOpsArtifact                       func(stateRoot, id, name string, content []byte) (issueopsartifactcontract.Record, error)
 	StagedIssueOpsArtifactNames                 func(stateRoot, id string) ([]string, error)
 	StartIssueOps                               func(stateRoot string, req issueopscontract.IssueOpsStartRequest) (issueopscontract.IssueOpsRecord, error)
 	StartIssueOpsChildWithActor                 func(stateRoot string, req issueopscontract.IssueOpsChildStartRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildStartResult, error)
-	UnstageIssueOpsArtifact                     func(stateRoot, id, name string) (issueopscontract.IssueOpsRecord, error)
+	UnstageIssueOpsArtifact                     func(stateRoot, id, name string) (issueopsartifactcontract.Record, error)
 }
 
 func ConfigureIssueOpsRuntime2(deps IssueOpsCLIDeps) {
@@ -171,8 +177,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		AcceptIssueOpsChildWithActor: func(stateRoot, parentID, childID string, evidence []string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error) {
 			return issueopscontract.IssueOpsChildValidationResult{}, errIssueOpsCLINotConfigured
 		},
-		AddIssueOpsDecisionWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsDecisionRecordRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
-			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		AddIssueOpsDecisionWithActor: func(stateRoot, id string, req issueopsdecisioncontract.Request, actor issueopsdecisioncontract.Actor) (issueopsdecisioncontract.Record, error) {
+			return issueopsdecisioncontract.Record{}, errIssueOpsCLINotConfigured
 		},
 		DropIssueOpsChildWithActor: func(stateRoot, parentID, childID, reason string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error) {
 			return issueopscontract.IssueOpsChildValidationResult{}, errIssueOpsCLINotConfigured
@@ -184,8 +190,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 			return issueopscontract.IssueOpsReadiness{}
 		},
 		IssueOpsStateRoot: func() string { return "" },
-		IssueOpsStatus: func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
-			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		IssueOpsStatus: func(stateRoot, id string) (issueopsstatuscontract.Record, error) {
+			return issueopsstatuscontract.Record{}, errIssueOpsCLINotConfigured
 		},
 		LinkIssueOpsChildWithActor: func(stateRoot, id, childURL, title string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
@@ -202,8 +208,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		LinkIssueOpsWorktreeWithActor: func(stateRoot, id, worktreePath string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
-		ListIssueOpsCycles: func(stateRoot, repo string) (issueopscontract.IssueOpsListResult, error) {
-			return issueopscontract.IssueOpsListResult{}, errIssueOpsCLINotConfigured
+		ListIssueOpsCycles: func(stateRoot, repo string) (issueopsinventorycontract.ListResult, error) {
+			return issueopsinventorycontract.ListResult{}, errIssueOpsCLINotConfigured
 		},
 		ObserveNativeProcessAncestry: func(pid int) ([]issueopscontract.NativeProcessReceipt, error) {
 			return nil, errIssueOpsCLINotConfigured
@@ -211,8 +217,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		PrepareIssueOpsBranchWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
-		PruneIssueOps: func(stateRoot string, maxAge time.Duration, confirm bool) (issueopscontract.IssueOpsPruneResult, error) {
-			return issueopscontract.IssueOpsPruneResult{}, errIssueOpsCLINotConfigured
+		PruneIssueOps: func(stateRoot string, maxAge time.Duration, confirm bool) (issueopsretentioncontract.Result, error) {
+			return issueopsretentioncontract.Result{}, errIssueOpsCLINotConfigured
 		},
 		ReadIssueOps: func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
@@ -241,8 +247,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		RecordIssueOpsPlanPrepWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsPlanPrepRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
-		RecordIssueOpsRoutingWithActor: func(stateRoot, id, phase, skill string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
-			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		RecordIssueOpsRoutingWithActor: func(stateRoot, id, phase, skill string, actor issueopsroutingcontract.Actor) (issueopsroutingcontract.Record, error) {
+			return issueopsroutingcontract.Record{}, errIssueOpsCLINotConfigured
 		},
 		RegressIssueOpsForReplanWithActor: func(stateRoot, id, reason string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
@@ -253,11 +259,11 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		ResolveIssueOpsFeedbackWithActor: func(stateRoot, id string, index int, resolution string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
-		ScoreLiveRoutingFidelity: func(record issueopscontract.IssueOpsRecord, expected []issueopscontract.SkillRouting) issueopscontract.RoutingFidelityResult {
-			return issueopscontract.RoutingFidelityResult{}
+		ScoreLiveRoutingFidelity: func(stateRoot, id string, expected []issueopsroutingcontract.Expected) (issueopsroutingcontract.Result, int, error) {
+			return issueopsroutingcontract.Result{OK: false}, 0, errIssueOpsCLINotConfigured
 		},
-		StageIssueOpsArtifact: func(stateRoot, id, name string, content []byte) (issueopscontract.IssueOpsRecord, error) {
-			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		StageIssueOpsArtifact: func(stateRoot, id, name string, content []byte) (issueopsartifactcontract.Record, error) {
+			return issueopsartifactcontract.Record{}, errIssueOpsCLINotConfigured
 		},
 		StagedIssueOpsArtifactNames: func(stateRoot, id string) ([]string, error) { return nil, errIssueOpsCLINotConfigured },
 		StartIssueOps: func(stateRoot string, req issueopscontract.IssueOpsStartRequest) (issueopscontract.IssueOpsRecord, error) {
@@ -266,8 +272,8 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		StartIssueOpsChildWithActor: func(stateRoot string, req issueopscontract.IssueOpsChildStartRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildStartResult, error) {
 			return issueopscontract.IssueOpsChildStartResult{}, errIssueOpsCLINotConfigured
 		},
-		UnstageIssueOpsArtifact: func(stateRoot, id, name string) (issueopscontract.IssueOpsRecord, error) {
-			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		UnstageIssueOpsArtifact: func(stateRoot, id, name string) (issueopsartifactcontract.Record, error) {
+			return issueopsartifactcontract.Record{}, errIssueOpsCLINotConfigured
 		},
 	}
 }

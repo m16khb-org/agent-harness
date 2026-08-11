@@ -106,7 +106,7 @@ func TestIssueOpsPrepareWiringUsesRequestScopedIssueSnapshot(t *testing.T) {
 	// Orca prepare는 staged plan artifact를 요구한다(#262). 스냅샷 경로 계약을
 	// 검증하려면 그 선행 조건을 먼저 만족시켜야 한다.
 	seedPlannerGates(t, stateRoot, record.ID)
-	if _, err := issueopscore.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# plan\n")); err != nil {
+	if _, err := stageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# plan\n")); err != nil {
 		t.Fatal(err)
 	}
 	request := issueopscore.ExecutionActionRequest{

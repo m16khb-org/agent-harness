@@ -35,7 +35,7 @@ func TestReplacementResealRequiresExistingPlanIdentity(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			stateRoot, record := executionPrepareRecord(t)
 			const plan = "# Replacement plan\n"
-			if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+			if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
 				t.Fatal(err)
 			}
 			worktree := t.TempDir()

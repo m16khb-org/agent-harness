@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
@@ -360,33 +359,6 @@ func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T
 	}
 	if git.removedWorktree {
 		t.Fatal("orca가 이미 제거한 worktree에 git worktree remove를 다시 실행하면 안 된다")
-	}
-}
-
-// AC-03: completion 미반영 + RemoteArtifact 보유 레코드는 prune되지 않는다.
-func TestPrunePreservesUnreflectedMergedRecords(t *testing.T) {
-	stateRoot, record, _ := finishTestRecord(t, false)
-	old := time.Now().UTC().Add(-90 * 24 * time.Hour).Format(time.RFC3339Nano)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) { rec.UpdatedAt = old })
-
-	result, err := PruneIssueOps(stateRoot, 30*24*time.Hour, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Pruned) != 0 || !containsString(result.Kept, record.ID) {
-		t.Fatalf("unreflected merged record must be kept: %+v", result)
-	}
-
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
-		rec.RemoteCompletion = &issueops.IssueOpsRemoteCompletion{ReflectedAt: "t"}
-		rec.UpdatedAt = old
-	})
-	result, err = PruneIssueOps(stateRoot, 30*24*time.Hour, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !containsString(result.Pruned, record.ID) {
-		t.Fatalf("reflected record must be prunable: %+v", result)
 	}
 }
 

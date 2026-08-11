@@ -104,9 +104,4 @@ type (
 	RemotePullRequestCreateHandler = issueopscontract.RemotePullRequestCreateHandler
 )
 
-type (
-	IssueOpsImplementationReviewRequest = issueopscontract.IssueOpsImplementationReviewRequest
-	IssueOpsListEntry                   = issueopscontract.IssueOpsListEntry
-	IssueOpsListResult                  = issueopscontract.IssueOpsListResult
-	IssueOpsPruneResult                 = issueopscontract.IssueOpsPruneResult
-)
+type IssueOpsImplementationReviewRequest = issueopscontract.IssueOpsImplementationReviewRequest

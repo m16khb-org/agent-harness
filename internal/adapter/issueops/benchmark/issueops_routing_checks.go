@@ -1,8 +1,9 @@
 package benchmark
 
-import issueopscontract "agent-harness/internal/contract/issueops"
-
-import "strings"
+import (
+	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsroutingdomain "agent-harness/internal/domain/issueopsrouting"
+)
 
 // issueOpsSkillRoutingFidelityComplete reports whether the artifact's recorded
 // RoutingTrace contains every skill-at-phase pairing the fixture expects (A5).
@@ -31,21 +32,5 @@ func issueOpsSkillRoutingFidelityComplete(fixture issueopscontract.IssueOpsBench
 // and live scoring of a real run (observed = the recorded RoutingTrace), so a
 // real run is scored by the same logic instead of a synthesized tautology.
 func RoutingFidelity(expected, observed []issueopscontract.SkillRouting) RoutingFidelityResult {
-	var missing []issueopscontract.SkillRouting
-	for _, e := range expected {
-		if !routingTraceHasPairing(observed, e) {
-			missing = append(missing, e)
-		}
-	}
-	return RoutingFidelityResult{OK: len(missing) == 0, Missing: missing}
-}
-
-func routingTraceHasPairing(trace []issueopscontract.SkillRouting, expected issueopscontract.SkillRouting) bool {
-	for _, entry := range trace {
-		if strings.EqualFold(strings.TrimSpace(entry.Phase), strings.TrimSpace(expected.Phase)) &&
-			strings.EqualFold(strings.TrimSpace(entry.Skill), strings.TrimSpace(expected.Skill)) {
-			return true
-		}
-	}
-	return false
+	return issueopsroutingdomain.Score(expected, observed)
 }

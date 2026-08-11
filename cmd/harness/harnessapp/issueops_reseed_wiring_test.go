@@ -191,7 +191,7 @@ func TestExecutionReseedCompletedStatusExposesReopenContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	persisted, err := issueops.IssueOpsStatus(stateRoot, record.ID)
+	persisted, err := issueOpsStatusHandler()(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

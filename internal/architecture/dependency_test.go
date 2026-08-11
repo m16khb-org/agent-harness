@@ -1479,7 +1479,8 @@ func isSameCapabilityAdapter(importer, imported string) bool {
 	return capability != "" && capability == adapterCapability(imported)
 }
 
-// outbound/sqlstore는 특정 capability의 어댑터가 아니라 저장 엔진 자체다.
+// outbound/sqlstore와 issueopsrecord는 특정 usecase 어댑터가 아니라 공유
+// 저장 엔진 및 IssueOps record codec/lock primitive다.
 // state와 issueops는 각자의 레코드를 같은 sqlite 파일에 담으며, 엔진을 포트로
 // 감싸 주입으로 갈아끼우는 것은 가능하지만 그 대가로 이 저장소의 거의 모든
 // 테스트 패키지가 배선을 짊어지게 된다. 엔진 교체는 실제 요구가 아니므로,
@@ -1487,11 +1488,14 @@ func isSameCapabilityAdapter(importer, imported string) bool {
 // 허용 범위는 outbound -> sqlstore 한 방향뿐이고, cmd·inbound·domain에서
 // 들어오는 edge는 그대로 막힌다.
 func isSharedStorageEngineEdge(importer, imported string) bool {
-	if imported != "internal/adapter/outbound/sqlstore" {
-		return false
+	if imported == "internal/adapter/outbound/issueopsrecord" {
+		return strings.HasPrefix(importer, "internal/adapter/outbound/issueops")
 	}
-	return strings.HasPrefix(importer, "internal/adapter/outbound/") ||
-		importer == "internal/adapter/issueops"
+	if imported == "internal/adapter/outbound/sqlstore" {
+		return strings.HasPrefix(importer, "internal/adapter/outbound/") ||
+			importer == "internal/adapter/issueops"
+	}
+	return false
 }
 
 func isInboundAdapter(path string) bool {
