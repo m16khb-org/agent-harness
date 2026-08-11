@@ -31,10 +31,13 @@ import (
 )
 
 const (
-	dataDBFile       = "harness.db"
-	spanDBFile       = "harness.lock.db"
-	spanLockMaxWait  = 60 * time.Second
-	spanLockRetryGap = 10 * time.Millisecond
+	dataDBFile      = "harness.db"
+	spanDBFile      = "harness.lock.db"
+	spanLockMaxWait = 60 * time.Second
+	// 짧은 cross-process span이 풀린 직후 10ms 고정 tick까지 기다리지 않도록
+	// 1ms에서 시작하되, 장기 경합의 SQLite syscall 밀도는 기존 10ms로 제한한다.
+	spanLockInitialRetryGap = time.Millisecond
+	spanLockMaxRetryGap     = 10 * time.Millisecond
 	// existingReadBusyTimeout은 read-only existing-store 조회가 일시적 SQLite
 	// 경합(writer commit, daemon WAL checkpoint)에서 대기하는 시간의 상한이다.
 	// 값이 0이면 밀리초 단위 checkpoint 구간 동안 lifecycle-hook 조회가 즉시
@@ -167,7 +170,7 @@ func CloseRoot(dir string) error {
 func newDBWithRetry(abs string) (*DB, error) {
 	deadline := time.NewTimer(openLockMaxWait)
 	defer deadline.Stop()
-	retry := time.NewTicker(spanLockRetryGap)
+	retry := time.NewTicker(spanLockMaxRetryGap)
 	defer retry.Stop()
 	for {
 		db, err := newDB(abs)
@@ -329,13 +332,41 @@ func openSQLite(path, params string) (*sql.DB, error) {
 // WithSpan은 root 하나의 read-modify-write span을 직렬화하고, 순서 있는
 // active-root chain을 전파하며, 로컬 대기와 SQLite lock 대기 모두 ctx를
 // 따르게 한다.
-func (d *DB) WithSpan(ctx context.Context, fn func(context.Context) error) error {
+func (d *DB) WithSpan(ctx context.Context, fn func(context.Context) error) (err error) {
 	if ctx == nil {
 		return fmt.Errorf("sqlstore span context is required")
 	}
 	if fn == nil {
 		return fmt.Errorf("sqlstore span callback is required")
 	}
+	started := time.Now()
+	observation := SpanObservation{}
+	observer := spanObserver(ctx)
+	gateHeld := false
+	lockAcquiredAt := time.Time{}
+	defer func() {
+		if !lockAcquiredAt.IsZero() {
+			observation.Hold = time.Since(lockAcquiredAt)
+		} else {
+			observation.Wait = time.Since(started)
+		}
+		if gateHeld {
+			d.spanGate <- struct{}{}
+		}
+		switch {
+		case err == nil:
+			observation.Outcome = SpanOutcomeSuccess
+		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+			observation.Outcome = SpanOutcomeCanceled
+		case isNestedSpanError(err):
+			observation.Outcome = SpanOutcomeNested
+		default:
+			observation.Outcome = SpanOutcomeError
+		}
+		if observer != nil {
+			observer(observation)
+		}
+	}()
 	chain, _ := ctx.Value(spanChainKey{}).([]string)
 	chain = append([]string(nil), chain...)
 	for _, active := range chain {
@@ -350,45 +381,73 @@ func (d *DB) WithSpan(ctx context.Context, fn func(context.Context) error) error
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-d.spanGate:
+		gateHeld = true
+	default:
+		observation.Contended = true
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-d.spanGate:
+			gateHeld = true
+		}
 	}
-	defer func() { d.spanGate <- struct{}{} }()
-	tx, err := d.beginSpanTx(ctx)
+	tx, sqliteContended, err := d.beginSpanTx(ctx)
+	observation.Contended = observation.Contended || sqliteContended
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return fmt.Errorf("sqlstore span lock %s: %w", d.dir, ctxErr)
 		}
 		return fmt.Errorf("sqlstore span lock %s: %w", d.dir, err)
 	}
+	lockAcquiredAt = time.Now()
+	observation.Wait = lockAcquiredAt.Sub(started)
 	defer func() { _ = tx.Rollback() }()
 	spanCtx := context.WithValue(ctx, spanChainKey{}, append(chain, d.dir))
 	return fn(spanCtx)
 }
 
-func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, error) {
+func isNestedSpanError(err error) bool {
+	_, ok := errors.AsType[*NestedSpanError](err)
+	return ok
+}
+
+func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, bool, error) {
 	maxWait := time.NewTimer(spanLockMaxWait)
 	defer maxWait.Stop()
-	retry := time.NewTicker(spanLockRetryGap)
+	retry := time.NewTimer(time.Hour)
+	if !retry.Stop() {
+		<-retry.C
+	}
 	defer retry.Stop()
 
+	contended := false
+	retryGap := spanLockInitialRetryGap
 	for {
 		tx, err := d.span.BeginTx(ctx, nil)
 		if err == nil {
-			return tx, nil
+			return tx, contended, nil
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
+			return nil, contended, ctxErr
 		}
 		if !isSQLiteLockContention(err) {
-			return nil, err
+			return nil, contended, err
 		}
+		contended = true
+		retry.Reset(retryGap)
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, contended, ctx.Err()
 		case <-maxWait.C:
-			return nil, err
+			return nil, contended, err
 		case <-retry.C:
+			retryGap = nextSpanRetryGap(retryGap)
 		}
 	}
+}
+
+func nextSpanRetryGap(current time.Duration) time.Duration {
+	return min(current*2, spanLockMaxRetryGap)
 }
 
 func isSQLiteLockContention(err error) bool {
