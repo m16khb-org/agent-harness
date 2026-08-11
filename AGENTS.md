@@ -168,7 +168,6 @@ go build -o bin/agent-harness ./cmd/harness
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json && rm -rf "$tmp_state"
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 codex mcp get agent_harness
 claude mcp list
 ```

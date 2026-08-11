@@ -12,7 +12,6 @@ import (
 
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/cmd/harness/selfworkflow/runmode"
 )
 
 const skillName = "atomic-commit-push"
@@ -88,7 +87,7 @@ var CompatibilityContract = func() any {
 	return map[string]any{"ok": true, "name": "agent_harness_cli_mcp_compatibility", "mcp_tools": toolNames}
 }
 
-var SelfVerify = func(int, int64, float64, bool) (selfworkflow.SelfAugmentResult, error) {
+var SelfVerify = func(selfworkflow.SelfVerifyRequest) (selfworkflow.SelfAugmentResult, error) {
 	return selfworkflow.SelfAugmentResult{}, fmt.Errorf("self-verify dependency is not configured")
 }
 
@@ -110,12 +109,6 @@ func isAPIDocStaticGateError(err error) bool {
 
 func isSelfVerificationGateError(err error) bool {
 	return errors.Is(err, ErrSelfVerificationGateFailed)
-}
-
-type selfVerifyRunMode = runmode.Mode
-
-func resolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (selfVerifyRunMode, error) {
-	return runmode.Resolve(full, iterationsFlagSet, iterations)
 }
 
 func fileExists(path string) bool {

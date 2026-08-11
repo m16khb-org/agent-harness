@@ -234,11 +234,9 @@ func selfLoopAdvertisedTools() []Tool {
 		},
 		{
 			Name:        "self_verify",
-			Description: "Run the self-verification loop. Defaults to quick one-iteration verification; set full=true for the full gate with at least 10 seeded iterations. Termination requires every concrete goal score to be greater than target_score.",
+			Description: "Run one complete deterministic self-verification evidence pass. Termination requires every concrete goal score to be greater than target_score.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
-				"full":         map[string]any{"type": "boolean", "description": "Run the full ten-plus-iteration verification gate. Defaults to false quick mode."},
-				"iterations":   map[string]any{"type": "integer", "description": "Full-gate iteration count; requires full=true and must be at least 10."},
-				"seed":         map[string]any{"type": "integer", "description": "Base seed for deterministic per-iteration fuzz fixtures."},
+				"seed":         map[string]any{"type": "integer", "description": "Seed for deterministic fuzz fixtures."},
 				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
 				"save_state":   map[string]any{"type": "boolean", "description": "When true, save compact summary to harness state after the run."},
 				"state_key":    map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-latest."},

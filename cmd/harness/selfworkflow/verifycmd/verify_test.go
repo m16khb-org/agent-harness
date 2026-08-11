@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/llmeval"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/cmd/harness/selfworkflow/progress"
+	"agent-harness/cmd/harness/selfworkflow/verifyloop"
 	"agent-harness/internal/testsupport"
 )
 
@@ -19,18 +19,21 @@ func TestRunCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 	var saveCalled bool
 	deps := Deps{
 		LookupEnv: func(string) (string, bool) { return "", false },
-		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter, _ bool) (model.SelfAugmentResult, error) {
+		Verify: func(request verifyloop.Request) (model.SelfAugmentResult, error) {
 			verifyCalled = true
-			if iterations != 1 || baseSeed != 42 || targetScore != 95 || verbose || reporter != nil {
-				t.Fatalf("unexpected verify args: iterations=%d seed=%d target=%v verbose=%v progress=%v", iterations, baseSeed, targetScore, verbose, reporter)
+			if request.BaseSeed != 42 ||
+				request.TargetScore != 95 ||
+				request.Verbose ||
+				request.Reporter != nil {
+				t.Fatalf("unexpected verify request: %+v", request)
 			}
 			return model.SelfAugmentResult{
 				OK:                  true,
 				LoopKind:            "self_verification",
 				KoreanName:          model.SelfVerificationKoreanName,
-				Iterations:          iterations,
-				BaseSeed:            baseSeed,
-				TargetScore:         targetScore,
+				Iterations:          1,
+				BaseSeed:            request.BaseSeed,
+				TargetScore:         request.TargetScore,
 				TerminationEligible: true,
 				Summary:             model.SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true},
 			}, nil
@@ -84,7 +87,7 @@ func TestRunReturnsSaveErrorAfterSuccessfulVerification(t *testing.T) {
 	out, err := captureStdoutAllowError(t, func() error {
 		return Run([]string{"--save-state", "--state-key", "bad-key", "--json"}, Deps{
 			LookupEnv: func(string) (string, bool) { return "", false },
-			Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter, _ bool) (model.SelfAugmentResult, error) {
+			Verify: func(verifyloop.Request) (model.SelfAugmentResult, error) {
 				return model.SelfAugmentResult{OK: true, LoopKind: "self_verification", Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}, nil
 			},
 			SaveSummary: func(result *model.SelfAugmentResult, key string) error {
@@ -99,6 +102,15 @@ func TestRunReturnsSaveErrorAfterSuccessfulVerification(t *testing.T) {
 	}
 	if !strings.Contains(out, `"state_checkpoint"`) || !strings.Contains(out, saveErr.Error()) {
 		t.Fatalf("expected JSON output to include failed checkpoint, got:\n%s", out)
+	}
+}
+
+func TestRunRejectsRemovedRepeatedVerificationFlags(t *testing.T) {
+	for _, args := range [][]string{{"--full"}, {"--iterations=10"}} {
+		err := Run(args, Deps{})
+		if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
+			t.Fatalf("args=%v error=%v", args, err)
+		}
 	}
 }
 

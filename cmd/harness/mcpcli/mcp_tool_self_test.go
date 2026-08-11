@@ -86,11 +86,6 @@ func TestHandleSelfLoopMCPToolCallCoversBoundaryErrorsAndUnknownTool(t *testing.
 			wantMsg: "Self-augmentation lesson save failed",
 		},
 		{
-			name:    "self verify invalid mode",
-			call:    MCPToolCall{Name: "self_verify", Arguments: map[string]any{"full": true, "iterations": 1}},
-			wantMsg: "Self-verification mode invalid",
-		},
-		{
 			name:    "self verify compare missing baseline",
 			call:    MCPToolCall{Name: "self_verify_compare", Arguments: map[string]any{"candidate_key": "candidate"}},
 			wantMsg: "Self-verify compare failed",

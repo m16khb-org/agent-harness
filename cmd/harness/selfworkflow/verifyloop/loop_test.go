@@ -13,43 +13,9 @@ import (
 	"agent-harness/cmd/harness/selfworkflow/steps"
 )
 
-func TestSelfVerifyRejectsZeroIterations(t *testing.T) {
-	result, err := SelfVerify(0, 100, 95, false, Deps{})
-	if err == nil || !strings.Contains(err.Error(), "requires at least 1 iteration") {
-		t.Fatalf("expected zero-iteration error, got result=%#v err=%v", result, err)
-	}
-	if result.OK || result.LoopKind != "self_verification" || result.Iterations != 0 || result.Summary.TotalRuns != 0 {
-		t.Fatalf("unexpected zero-iteration result: %#v", result)
-	}
-}
-
-func TestSelfVerifyProgressRejectsZeroIterationsWithLoopEndEvent(t *testing.T) {
-	var buf bytes.Buffer
-	reporter, err := progress.NewSelfVerifyProgressReporter("jsonl", &buf)
-	if err != nil {
-		t.Fatalf("NewSelfVerifyProgressReporter: %v", err)
-	}
-
-	result, err := SelfVerifyWithProgress(0, 123, 95, false, reporter, Deps{})
-	if err == nil || !strings.Contains(err.Error(), "requires at least 1 iteration") {
-		t.Fatalf("expected zero-iteration error, got result=%#v err=%v", result, err)
-	}
-
-	events := decodeProgressEventsForLoopTest(t, buf.String())
-	if len(events) != 2 {
-		t.Fatalf("expected loop_start and loop_end events, got %d: %s", len(events), buf.String())
-	}
-	if events[0].Event != "loop_start" || events[0].Iterations != 0 || events[0].Seed != 123 {
-		t.Fatalf("unexpected loop_start event: %+v", events[0])
-	}
-	if events[1].Event != "loop_end" || events[1].OK == nil || *events[1].OK || !strings.Contains(events[1].Error, "requires at least 1 iteration") {
-		t.Fatalf("unexpected loop_end event: %+v", events[1])
-	}
-}
-
 func TestSelfVerifyRunsAllStepsSuccessfully(t *testing.T) {
 	var printed []string
-	result, err := SelfVerify(1, 100, 0, true, Deps{
+	result, err := SelfVerify(Request{BaseSeed: 100, TargetScore: 0, Verbose: true}, Deps{
 		HarnessRoot: func() string { return t.TempDir() },
 		StepDeps:    fakeVerifyLoopStepDeps("", ""),
 		PrintStep: func(step commandstep.StepResult) {
@@ -76,7 +42,11 @@ func TestSelfVerifyStopsOnFailedStepAndEmitsProgress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSelfVerifyProgressReporter: %v", err)
 	}
-	result, err := SelfVerifyWithProgress(1, 200, 95, false, reporter, Deps{
+	result, err := SelfVerify(Request{
+		BaseSeed:    200,
+		TargetScore: 95,
+		Reporter:    reporter,
+	}, Deps{
 		HarnessRoot: func() string { return t.TempDir() },
 		StepDeps:    fakeVerifyLoopStepDeps("docs index smoke", "docs failed"),
 	})
@@ -140,7 +110,9 @@ func fakeVerifyLoopStepDepsOK(ok func(string) commandstep.StepResult) steps.Self
 			return ok(label)
 		},
 		ValidateHarnessInvariants: func(string) commandstep.StepResult { return ok("harness invariants") },
-		ValidateRiskQATier:        func(string) commandstep.StepResult { return ok("risk QA tier") },
+		ValidateRiskQATier: func(string) steps.RiskQAEvidence {
+			return steps.RiskQAEvidence{Step: ok("risk QA tier")}
+		},
 		ValidateInspect: func(string, string) commandstep.StepResult {
 			return ok("inspect smoke")
 		},
@@ -205,8 +177,10 @@ func TestSelfVerifyCollectAllStepsSurfacesEveryFailure(t *testing.T) {
 	// later one. Both fail.
 	stepDeps := fakeVerifyLoopStepDepsFailing("harness invariants", "docs index smoke")
 
-	collect, err := SelfVerify(1, 100, 95, false, Deps{
-		HarnessRoot: func() string { return "." }, StepDeps: stepDeps, CollectAllSteps: true,
+	collect, err := SelfVerify(Request{
+		BaseSeed: 100, TargetScore: 95, CollectAllSteps: true,
+	}, Deps{
+		HarnessRoot: func() string { return "." }, StepDeps: stepDeps,
 	})
 	if err == nil || !errors.Is(err, ErrSelfVerificationGateFailed) {
 		t.Fatalf("collect-all must still fail the gate, got %v", err)
@@ -227,7 +201,7 @@ func TestSelfVerifyCollectAllStepsSurfacesEveryFailure(t *testing.T) {
 	}
 
 	// Fail-fast (default): stops at the first failure; the later gate never runs.
-	ff, err := SelfVerify(1, 100, 95, false, Deps{
+	ff, err := SelfVerify(Request{BaseSeed: 100, TargetScore: 95}, Deps{
 		HarnessRoot: func() string { return "." }, StepDeps: stepDeps,
 	})
 	if err == nil || !errors.Is(err, ErrSelfVerificationGateFailed) {

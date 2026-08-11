@@ -17,7 +17,7 @@ Verify that the harness produces consistent results across Codex and Claude Code
 
 ```bash
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
@@ -28,12 +28,12 @@ Legacy `self_augment_history`, `compare`, and `promote` calls remain compatibili
 
 ### Required steps
 
-Each iteration includes at least these checks:
+The single evidence pass includes at least these checks:
 
 1. Core invariant checks.
 2. Go test suite and contract/golden tests.
 3. Build artifact check.
-4. **Risk QA tier**: run `go test -race ./... -count=1` plus `go vet ./...` for sensitive Go changes, `go vet ./...` for ordinary Go changes, and explicitly record skips for docs/config-only changes.
+4. **Risk QA tier**: run `go test -race ./... -count=1` plus `go vet ./...` for sensitive Go changes, `go vet ./...` for ordinary Go changes, and explicitly record skips for docs/config-only changes. A successful full race suite supplies the regular full-test evidence instead of rerunning the same suite.
 5. CLI/MCP response contract checks.
 6. Native integration smoke checks.
 7. Candidate export: verify `self-verify candidates` exports next candidates and open/satisfied status.

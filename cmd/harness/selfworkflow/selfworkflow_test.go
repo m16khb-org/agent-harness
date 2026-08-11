@@ -250,15 +250,12 @@ func TestSelfVerifyCLIAndStateWrappers(t *testing.T) {
 		HarnessRoot:         t.TempDir(),
 		Summary:             SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true},
 	}
-	if _, err := ResolveSelfVerifyRunMode(false, false, 1); err != nil {
-		t.Fatalf("ResolveSelfVerifyRunMode quick: %v", err)
-	}
 	if err := RunSelfVerifyWithDeps([]string{"--json", "--save-state", "--state-key", "verify-latest", "--seed", "100"}, SelfVerifyRunDeps{
 		LookupEnv:      func(string) (string, bool) { return "", false },
 		ProgressWriter: &bytes.Buffer{},
-		Verify: func(iterations int, seed int64, targetScore float64, text bool, reporter *SelfVerifyProgressReporter, _ bool) (SelfAugmentResult, error) {
-			if iterations != 1 || seed != 100 || text {
-				t.Fatalf("unexpected verify args iterations=%d seed=%d text=%v", iterations, seed, text)
+		Verify: func(request SelfVerifyRequest) (SelfAugmentResult, error) {
+			if request.BaseSeed != 100 || request.Verbose {
+				t.Fatalf("unexpected verify request: %+v", request)
 			}
 			return runResult, nil
 		},

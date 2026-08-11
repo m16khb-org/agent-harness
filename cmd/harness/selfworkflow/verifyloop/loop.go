@@ -23,134 +23,150 @@ type Deps struct {
 	FailedStep  func(string, error) commandstep.StepResult
 	PrintStep   func(commandstep.StepResult)
 	Printf      func(string, ...any) (int, error)
-	// CollectAllSteps가 true면 어떤 step이 실패한 뒤에도 fail-fast 대신 그
-	// iteration의 나머지 step을 계속 실행해, 실패한 gate를 모두 드러내 동시
-	// regression 진단을 돕는다. 기본값 false는 fail-fast 동작을 유지한다. gate를
-	// 약화시키는 일은 절대 없다: iteration과 최종 판정은 여전히 실패하며
-	// ErrSelfVerificationGateFailed를 반환한다.
+}
+
+type Request struct {
+	BaseSeed        int64
+	TargetScore     float64
+	Verbose         bool
+	Reporter        *progress.SelfVerifyProgressReporter
 	CollectAllSteps bool
 }
 
-func SelfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool, deps Deps) (model.SelfAugmentResult, error) {
-	return SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, deps)
-}
-
-func SelfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter, deps Deps) (model.SelfAugmentResult, error) {
+func SelfVerify(request Request, deps Deps) (model.SelfAugmentResult, error) {
+	const iterations = 1
 	deps = deps.withDefaults()
 	started := time.Now()
-	result := loopresult.New(iterations, baseSeed, targetScore, deps.HarnessRoot())
-	if reporter != nil {
-		reporter.SetStarted(started)
-		loopresult.EmitStart(reporter, result.LoopKind, iterations, baseSeed)
+	result := loopresult.New(iterations, request.BaseSeed, request.TargetScore, deps.HarnessRoot())
+	if request.Reporter != nil {
+		request.Reporter.SetStarted(started)
+		loopresult.EmitStart(request.Reporter, result.LoopKind, iterations, request.BaseSeed)
 	}
-	if iterations < 1 {
-		err := fmt.Errorf("self-verification requires at least 1 iteration")
+
+	const iteration = 1
+	seed := request.BaseSeed
+	if request.Verbose {
+		_, _ = deps.Printf("\n=== Self-verification evidence pass seed=%d ===\n", seed)
+	}
+	run := model.SelfAugmentIteration{Iteration: iteration, Seed: seed}
+	tempDir, err := os.MkdirTemp("", "agent-harness-self-verify-*")
+	if err != nil {
+		step := deps.FailedStep("create temp workspace", err)
+		run.Steps = append(run.Steps, step)
+		result.Runs = append(result.Runs, run)
 		result.ElapsedMS = time.Since(started).Milliseconds()
-		result.Summary = summary.SummarizeSelfVerification(result, targetScore)
-		loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, false, err.Error())
+		result.Summary = summary.SummarizeSelfVerification(result, request.TargetScore)
+		loopresult.EmitEnd(request.Reporter, result.LoopKind, iterations, request.BaseSeed, false, err.Error())
 		return result, err
 	}
+	defer os.RemoveAll(tempDir)
+	tempBin := filepath.Join(tempDir, "harness")
 
-	for iteration := 1; iteration <= iterations; iteration++ {
-		seed := baseSeed + int64(iteration) - 1
-		if verbose {
-			_, _ = deps.Printf("\n=== Self-verification iteration %d/%d seed=%d ===\n", iteration, iterations, seed)
-		}
-		run := model.SelfAugmentIteration{Iteration: iteration, Seed: seed}
-		tempDir, err := os.MkdirTemp("", "agent-harness-self-verify-*")
-		if err != nil {
-			step := deps.FailedStep("create temp workspace", err)
-			run.Steps = append(run.Steps, step)
-			result.Runs = append(result.Runs, run)
-			result.ElapsedMS = time.Since(started).Milliseconds()
-			result.Summary = summary.SummarizeSelfVerification(result, targetScore)
-			loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, false, err.Error())
-			return result, err
-		}
-		tempBin := filepath.Join(tempDir, "harness")
-
-		var goTestStep commandstep.StepResult
-		plannedSteps := steps.PlannedSelfVerifySteps(result.HarnessRoot, tempBin, seed, &goTestStep, deps.StepDeps)
-
-		if reporter != nil {
-			reporter.Emit(progress.SelfVerifyProgressEvent{
-				Event:      "iteration_start",
+	var goTestStep commandstep.StepResult
+	plannedSteps := steps.PlannedSelfVerifySteps(
+		result.HarnessRoot,
+		tempBin,
+		seed,
+		&goTestStep,
+		deps.StepDeps,
+	)
+	if request.Reporter != nil {
+		request.Reporter.Emit(progress.SelfVerifyProgressEvent{
+			Event:      "iteration_start",
+			LoopKind:   result.LoopKind,
+			Iteration:  iteration,
+			Iterations: iterations,
+			Seed:       seed,
+			StepCount:  len(plannedSteps),
+		})
+	}
+	failed := false
+	var firstFailure commandstep.StepResult
+	for index, plannedStep := range plannedSteps {
+		if request.Reporter != nil {
+			request.Reporter.Emit(progress.SelfVerifyProgressEvent{
+				Event:      "step_start",
 				LoopKind:   result.LoopKind,
 				Iteration:  iteration,
 				Iterations: iterations,
 				Seed:       seed,
+				StepIndex:  index + 1,
 				StepCount:  len(plannedSteps),
+				Step:       plannedStep.Label,
 			})
 		}
-		iterationFailed := false
-		var firstFailure commandstep.StepResult
-		for index, plannedStep := range plannedSteps {
-			if reporter != nil {
-				reporter.Emit(progress.SelfVerifyProgressEvent{
-					Event:      "step_start",
-					LoopKind:   result.LoopKind,
-					Iteration:  iteration,
-					Iterations: iterations,
-					Seed:       seed,
-					StepIndex:  index + 1,
-					StepCount:  len(plannedSteps),
-					Step:       plannedStep.Label,
-				})
-			}
-			step := plannedStep.Run()
-			run.Steps = append(run.Steps, step)
-			if reporter != nil {
-				reporter.EmitStepEnd(result.LoopKind, iteration, iterations, seed, index+1, len(plannedSteps), step)
-			}
-			if verbose {
-				deps.PrintStep(step)
-			}
-			if !step.OK {
-				if !iterationFailed {
-					firstFailure = step
-				}
-				iterationFailed = true
-				if !deps.CollectAllSteps {
-					// 기본값은 첫 번째 실패 gate에서 즉시 멈춘다.
-					break
-				}
-				// collect-all-steps: 실패한 gate를 모두 드러내도록 계속 실행한다.
-				// 각 label은 정확히 한 번만 실행되므로, 뒤따르는 같은 label의
-				// 성공이 goal scorer를 가릴 수 없다.
-			}
+		step := plannedStep.Run()
+		run.Steps = append(run.Steps, step)
+		if request.Reporter != nil {
+			request.Reporter.EmitStepEnd(
+				result.LoopKind,
+				iteration,
+				iterations,
+				seed,
+				index+1,
+				len(plannedSteps),
+				step,
+			)
 		}
-		_ = os.RemoveAll(tempDir)
-		if iterationFailed {
-			result.Runs = append(result.Runs, run)
-			result.ElapsedMS = time.Since(started).Milliseconds()
-			result.OK = false
-			result.Summary = summary.SummarizeSelfVerification(result, targetScore)
-			loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, false, fmt.Sprintf("%s failed: %s", firstFailure.Label, firstFailure.Error))
-			return result, fmt.Errorf("%w: %s failed: %s", ErrSelfVerificationGateFailed, firstFailure.Label, firstFailure.Error)
+		if request.Verbose {
+			deps.PrintStep(step)
 		}
-		result.Runs = append(result.Runs, run)
-		if reporter != nil {
-			reporter.Emit(progress.SelfVerifyProgressEvent{
-				Event:      "iteration_end",
-				LoopKind:   result.LoopKind,
-				Iteration:  iteration,
-				Iterations: iterations,
-				Seed:       seed,
-				OK:         boolPtr(true),
-				StepCount:  len(plannedSteps),
-			})
+		if !step.OK {
+			if !failed {
+				firstFailure = step
+			}
+			failed = true
+			if !request.CollectAllSteps {
+				break
+			}
 		}
 	}
-
+	result.Runs = append(result.Runs, run)
+	if failed {
+		result.ElapsedMS = time.Since(started).Milliseconds()
+		result.OK = false
+		result.Summary = summary.SummarizeSelfVerification(result, request.TargetScore)
+		message := fmt.Sprintf("%s failed: %s", firstFailure.Label, firstFailure.Error)
+		loopresult.EmitEnd(
+			request.Reporter,
+			result.LoopKind,
+			iterations,
+			request.BaseSeed,
+			false,
+			message,
+		)
+		return result, fmt.Errorf("%w: %s", ErrSelfVerificationGateFailed, message)
+	}
+	if request.Reporter != nil {
+		request.Reporter.Emit(progress.SelfVerifyProgressEvent{
+			Event:      "iteration_end",
+			LoopKind:   result.LoopKind,
+			Iteration:  iteration,
+			Iterations: iterations,
+			Seed:       seed,
+			OK:         boolPtr(true),
+			StepCount:  len(plannedSteps),
+		})
+	}
 	result.OK = true
 	result.ElapsedMS = time.Since(started).Milliseconds()
-	result.Summary = summary.SummarizeSelfVerification(result, targetScore)
+	result.Summary = summary.SummarizeSelfVerification(result, request.TargetScore)
 	result.TerminationEligible = result.Summary.TerminationEligible
 	result.OK = result.TerminationEligible
-	if verbose {
-		_, _ = deps.Printf("\nSelf-verification pipeline passed %d iterations in %.1fs.\n", iterations, float64(result.ElapsedMS)/1000)
+	if request.Verbose {
+		_, _ = deps.Printf(
+			"\nSelf-verification pipeline passed one evidence pass in %.1fs.\n",
+			float64(result.ElapsedMS)/1000,
+		)
 	}
-	loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, result.OK, "")
+	loopresult.EmitEnd(
+		request.Reporter,
+		result.LoopKind,
+		iterations,
+		request.BaseSeed,
+		result.OK,
+		"",
+	)
 	return result, nil
 }
 

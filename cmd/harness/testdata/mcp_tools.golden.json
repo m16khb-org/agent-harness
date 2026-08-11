@@ -833,23 +833,15 @@
     "name": "self_augment_lesson"
   },
   {
-    "description": "Run the self-verification loop. Defaults to quick one-iteration verification; set full=true for the full gate with at least 10 seeded iterations. Termination requires every concrete goal score to be greater than target_score.",
+    "description": "Run one complete deterministic self-verification evidence pass. Termination requires every concrete goal score to be greater than target_score.",
     "inputSchema": {
       "properties": {
-        "full": {
-          "description": "Run the full ten-plus-iteration verification gate. Defaults to false quick mode.",
-          "type": "boolean"
-        },
-        "iterations": {
-          "description": "Full-gate iteration count; requires full=true and must be at least 10.",
-          "type": "integer"
-        },
         "save_state": {
           "description": "When true, save compact summary to harness state after the run.",
           "type": "boolean"
         },
         "seed": {
-          "description": "Base seed for deterministic per-iteration fuzz fixtures.",
+          "description": "Seed for deterministic fuzz fixtures.",
           "type": "integer"
         },
         "state_key": {

@@ -34,11 +34,8 @@ func runSelfVerify(args []string) error {
 		return runSelfVerifyCandidates(args[1:])
 	}
 	return selfworkflow.RunSelfVerifyWithDeps(args, selfworkflow.SelfVerifyRunDeps{
-		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfworkflow.SelfVerifyProgressReporter, collectAll bool) (SelfAugmentResult, error) {
-			if progress == nil {
-				return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, collectAll)
-			}
-			return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, &selfVerifyProgressReporter{inner: progress}, collectAll)
+		Verify: func(request selfworkflow.SelfVerifyRequest) (SelfAugmentResult, error) {
+			return selfVerify(request)
 		},
 	})
 }
@@ -132,23 +129,15 @@ func boolPtr(value bool) *bool {
 	return &value
 }
 
-func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool) (SelfAugmentResult, error) {
-	return selfworkflow.SelfVerify(iterations, baseSeed, targetScore, verbose, selfVerifyLoopDeps(false))
+func selfVerify(request selfworkflow.SelfVerifyRequest) (SelfAugmentResult, error) {
+	return selfworkflow.SelfVerify(request, selfVerifyLoopDeps())
 }
 
-func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter, collectAll bool) (SelfAugmentResult, error) {
-	if progress == nil {
-		return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, selfVerifyLoopDeps(collectAll))
-	}
-	return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, progress.inner, selfVerifyLoopDeps(collectAll))
-}
-
-func selfVerifyLoopDeps(collectAll bool) selfworkflow.SelfVerifyLoopDeps {
+func selfVerifyLoopDeps() selfworkflow.SelfVerifyLoopDeps {
 	return selfworkflow.SelfVerifyLoopDeps{
-		StepDeps:        selfVerifyStepDeps(),
-		FailedStep:      failedStep,
-		PrintStep:       printStep,
-		CollectAllSteps: collectAll,
+		StepDeps:   selfVerifyStepDeps(),
+		FailedStep: failedStep,
+		PrintStep:  printStep,
 	}
 }
 
@@ -196,7 +185,7 @@ func selfVerifyStepDeps() selfworkflow.SelfVerifyStepDeps {
 		HarnessRoot:                     harnessRoot,
 		RunCommandStep:                  runCommandStepAdapter,
 		ValidateHarnessInvariants:       validateHarnessInvariants,
-		ValidateRiskQATier:              validateRiskQATier,
+		ValidateRiskQATier:              validateRiskQATierEvidence,
 		ValidateInspect:                 validateInspect,
 		ValidateDocsIndex:               validateDocsIndex,
 		ValidateSelfVerifyCandidate:     validateSelfVerifyCandidateExport,

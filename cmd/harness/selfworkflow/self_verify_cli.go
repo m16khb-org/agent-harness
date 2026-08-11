@@ -3,14 +3,11 @@ package selfworkflow
 import (
 	"agent-harness/cmd/harness/selfworkflow/candidatescmd"
 	"agent-harness/cmd/harness/selfworkflow/promotecmd"
-	"agent-harness/cmd/harness/selfworkflow/runmode"
 	"agent-harness/cmd/harness/selfworkflow/verifycmd"
 	"fmt"
 )
 
 type SelfVerifyRunDeps = verifycmd.Deps
-
-type SelfVerifyRunMode = runmode.Mode
 
 type SelfVerifyPromoteDeps struct {
 	Promote func(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error)
@@ -19,10 +16,6 @@ type SelfVerifyPromoteDeps struct {
 type SelfVerifyCandidatesDeps struct {
 	Export func() SelfVerificationCandidateExportResult
 	Save   func(result *SelfVerificationCandidateExportResult, key string) error
-}
-
-func ResolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (SelfVerifyRunMode, error) {
-	return runmode.Resolve(full, iterationsFlagSet, iterations)
 }
 
 func RunSelfVerify(args []string) error {
@@ -46,7 +39,7 @@ func RunSelfVerifyWithDeps(args []string, deps SelfVerifyRunDeps) error {
 		deps.NewProgressReporter = NewSelfVerifyProgressReporter
 	}
 	if deps.Verify == nil {
-		deps.Verify = func(int, int64, float64, bool, *SelfVerifyProgressReporter, bool) (SelfAugmentResult, error) {
+		deps.Verify = func(SelfVerifyRequest) (SelfAugmentResult, error) {
 			return SelfAugmentResult{}, fmt.Errorf("self-verify runner dependency is required")
 		}
 	}

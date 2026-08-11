@@ -17,9 +17,9 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 	}
 	want := []string{
 		"harness invariants",
+		"risk QA tier",
 		"go test",
 		"contract golden tests",
-		"risk QA tier",
 		"go build",
 		"binary drift",
 		"inspect smoke",
@@ -56,10 +56,46 @@ func TestPlannedSelfVerifyStepsUsesCachedContractGoldenAfterGoTest(t *testing.T)
 	goTestStep := StepResult{Label: "go test", OK: true}
 
 	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, fakeSelfVerifyStepDeps(t))
-	got := steps[2].Run()
+	got := steps[3].Run()
 
 	if !got.OK || got.Label != "contract golden tests" || got.Command != "covered by go test ./... -count=1" {
 		t.Fatalf("expected cached contract golden result, got %#v", got)
+	}
+}
+
+func TestPlannedSelfVerifyStepsUsesSuccessfulRaceAsFullTestEvidence(t *testing.T) {
+	var goTestStep StepResult
+	goTestCalls := 0
+	deps := fakeSelfVerifyStepDeps(t)
+	deps.ValidateRiskQATier = func(string) RiskQAEvidence {
+		return RiskQAEvidence{
+			Step: StepResult{
+				Label:   "risk QA tier",
+				Command: "go test -race ./... -count=1",
+				OK:      true,
+			},
+			CoversFullGoTest: true,
+		}
+	}
+	deps.RunCommandStep = func(_ string, label string, _ time.Duration, _ string, _ string, _ ...string) StepResult {
+		if label == "go test" {
+			goTestCalls++
+		}
+		return StepResult{Label: label, OK: true}
+	}
+
+	planned := PlannedSelfVerifySteps("/repo", "/tmp/harness", 100, &goTestStep, deps)
+	riskStep := planned[1].Run()
+	testStep := planned[2].Run()
+
+	if !riskStep.OK || !testStep.OK {
+		t.Fatalf("risk/test steps failed: risk=%+v test=%+v", riskStep, testStep)
+	}
+	if goTestCalls != 0 {
+		t.Fatalf("regular full test calls=%d want=0", goTestCalls)
+	}
+	if !strings.Contains(testStep.Stdout, "race") {
+		t.Fatalf("cached test evidence did not identify race coverage: %+v", testStep)
 	}
 }
 
@@ -91,7 +127,8 @@ func TestPlannedSelfVerifyStepsGivesGoTestFullGateTimeout(t *testing.T) {
 	}
 
 	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, deps)
-	got := steps[1].Run()
+	_ = steps[1].Run()
+	got := steps[2].Run()
 
 	if !got.OK || got.Label != "go test" {
 		t.Fatalf("go test step returned unexpected result: %#v", got)
@@ -168,8 +205,8 @@ func fakeSelfVerifyStepDeps(t *testing.T) SelfVerifyStepDeps {
 		ValidateHarnessInvariants: func(string) StepResult {
 			return ok("harness invariants")
 		},
-		ValidateRiskQATier: func(string) StepResult {
-			return ok("risk QA tier")
+		ValidateRiskQATier: func(string) RiskQAEvidence {
+			return RiskQAEvidence{Step: ok("risk QA tier")}
 		},
 		ValidateInspect: func(string, string) StepResult {
 			return ok("inspect smoke")

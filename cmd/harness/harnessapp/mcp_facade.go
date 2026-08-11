@@ -42,8 +42,8 @@ func configureMCPCLI() {
 	mcpcli.CompatibilityContract = func() any {
 		return compatibilityContract()
 	}
-	mcpcli.SelfVerify = func(iterations int, baseSeed int64, targetScore float64, verbose bool) (selfworkflow.SelfAugmentResult, error) {
-		result, err := selfVerify(iterations, baseSeed, targetScore, verbose)
+	mcpcli.SelfVerify = func(request selfworkflow.SelfVerifyRequest) (selfworkflow.SelfAugmentResult, error) {
+		result, err := selfVerify(request)
 		if err != nil && isSelfVerificationGateError(err) {
 			return result, fmt.Errorf("%w: %w", mcpcli.ErrSelfVerificationGateFailed, err)
 		}

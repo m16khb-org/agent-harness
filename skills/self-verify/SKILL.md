@@ -13,8 +13,7 @@ First-party hosts are exactly Codex and Claude Code. Verify that the harness beh
 
 ```bash
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
@@ -24,8 +23,12 @@ HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --t
 # explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.
 ```
 
-Default `self-verify` is quick mode: one deterministic evidence pass. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
-The quick and full modes both run the deterministic 10-case `contract conformance baseline`; they never launch Codex, Claude, or a live model. The normative live/reproduction and evidence rules are in `.agent-harness/TESTING.md`.
+`self-verify` runs one complete deterministic evidence pass. Repeated `--full` and
+`--iterations` modes were removed because they reran the same expensive build and
+runtime gates without adding independent evidence. Seeded validators keep their
+deterministic case batteries inside that pass. The command never launches Codex,
+Claude, or a live model. The normative live/reproduction and evidence rules are in
+`.agent-harness/TESTING.md`.
 
 `HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. In the current implementation, setting it to `advisory` or `gate` only renders the read-only evaluator prompt after deterministic self-verification. No Z.AI request is sent. The `advisory` result exposes that prompt without changing deterministic success, while `gate` therefore returns a non-passing `llm_eval` result because no external verdict is ingested.
 

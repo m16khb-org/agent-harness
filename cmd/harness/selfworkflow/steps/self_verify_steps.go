@@ -13,13 +13,18 @@ type SelfVerifyPlannedStep struct {
 	Run   func() StepResult
 }
 
+type RiskQAEvidence struct {
+	Step             StepResult
+	CoversFullGoTest bool
+}
+
 const selfVerifyGoTestTimeout = 10 * time.Minute
 
 type SelfVerifyStepDeps struct {
 	HarnessRoot                     func() string
 	RunCommandStep                  func(string, string, time.Duration, string, string, ...string) StepResult
 	ValidateHarnessInvariants       func(string) StepResult
-	ValidateRiskQATier              func(string) StepResult
+	ValidateRiskQATier              func(string) RiskQAEvidence
 	ValidateInspect                 func(string, string) StepResult
 	ValidateDocsIndex               func(string, string) StepResult
 	ValidateSelfVerifyCandidate     func(string, string, int64) StepResult
@@ -42,16 +47,29 @@ type SelfVerifyStepDeps struct {
 }
 
 func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep *StepResult, deps SelfVerifyStepDeps) []SelfVerifyPlannedStep {
+	var riskQAEvidence RiskQAEvidence
 	return []SelfVerifyPlannedStep{
 		{Label: "harness invariants", Run: func() StepResult { return deps.ValidateHarnessInvariants(root) }},
+		{Label: "risk QA tier", Run: func() StepResult {
+			riskQAEvidence = deps.ValidateRiskQATier(root)
+			return riskQAEvidence.Step
+		}},
 		{Label: "go test", Run: func() StepResult {
+			if riskQAEvidence.CoversFullGoTest && riskQAEvidence.Step.OK {
+				*goTestStep = StepResult{
+					Label:   "go test",
+					Command: riskQAEvidence.Step.Command,
+					OK:      true,
+					Stdout:  "reused successful full-suite coverage from risk QA race test",
+				}
+				return *goTestStep
+			}
 			*goTestStep = deps.RunCommandStep(root, "go test", selfVerifyGoTestTimeout, "", "go", "test", "./...", "-count=1")
 			return *goTestStep
 		}},
 		{Label: "contract golden tests", Run: func() StepResult {
 			return CachedContractGoldenStep(*goTestStep, deps)
 		}},
-		{Label: "risk QA tier", Run: func() StepResult { return deps.ValidateRiskQATier(root) }},
 		{Label: "go build", Run: func() StepResult {
 			return deps.RunCommandStep(root, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")
 		}},

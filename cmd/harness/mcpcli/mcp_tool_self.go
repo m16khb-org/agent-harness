@@ -38,13 +38,12 @@ func handleSelfLoopMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "self_verify":
-		runMode, modeErr := resolveSelfVerifyRunMode(argmap.Bool(call.Arguments, "full"), argmap.Set(call.Arguments, "iterations"), argmap.Int(call.Arguments, "iterations", 10))
-		if modeErr != nil {
-			return mcpToolFailure(newProtocolError(-32602, "Self-verification mode invalid", modeErr.Error()))
-		}
 		seed := argmap.Int64(call.Arguments, "seed", time.Now().Unix())
 		targetScore := argmap.Float(call.Arguments, "target_score", selfworkflow.DefaultLoopTargetScoreExclusive)
-		result, err := SelfVerify(runMode.Iterations, seed, targetScore, false)
+		result, err := SelfVerify(selfworkflow.SelfVerifyRequest{
+			BaseSeed:    seed,
+			TargetScore: targetScore,
+		})
 		if argmap.Bool(call.Arguments, "save_state") {
 			saveErr := selfworkflow.SaveSelfVerificationSummary(&result, argmap.StringDefault(call.Arguments, "state_key", "self-verify-latest"))
 			if err == nil && saveErr != nil {

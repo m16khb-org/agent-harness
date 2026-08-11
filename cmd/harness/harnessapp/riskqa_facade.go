@@ -1,6 +1,9 @@
 package harnessapp
 
-import "agent-harness/cmd/harness/riskqa"
+import (
+	"agent-harness/cmd/harness/riskqa"
+	"agent-harness/cmd/harness/selfworkflow"
+)
 
 type RiskQATierPlan = riskqa.RiskQATierPlan
 
@@ -11,6 +14,14 @@ type riskQATierDeps struct {
 
 func validateRiskQATier(root string) StepResult {
 	return riskqa.Validate(root)
+}
+
+func validateRiskQATierEvidence(root string) selfworkflow.SelfVerifyRiskQAEvidence {
+	step, coversFullGoTest := riskqa.ValidateForSelfVerify(root)
+	return selfworkflow.SelfVerifyRiskQAEvidence{
+		Step:             step,
+		CoversFullGoTest: coversFullGoTest,
+	}
 }
 
 func validateRiskQATierWithDeps(root string, deps riskQATierDeps) StepResult {

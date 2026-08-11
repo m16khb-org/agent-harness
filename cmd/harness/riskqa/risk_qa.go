@@ -2,6 +2,7 @@ package riskqa
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ const (
 	selfVerifyAggregateOutputBudgetBytes = 8 * 1024
 	riskQARaceTimeout                    = 10 * time.Minute
 	riskQAVetTimeout                     = 120 * time.Second
+	fullRaceCommand                      = "go test -race ./... -count=1"
 )
 
 type RiskQATierPlan struct {
@@ -25,11 +27,22 @@ type RiskQATierPlan struct {
 type StepResult = commandstep.StepResult
 
 func Validate(root string) StepResult {
-	return ValidateWithDeps(root, Deps{
+	return ValidateWithDeps(root, defaultDeps())
+}
+
+func ValidateForSelfVerify(root string) (StepResult, bool) {
+	deps := defaultDeps()
+	plan := deps.Plan(root)
+	deps.Plan = func(string) RiskQATierPlan { return plan }
+	return ValidateWithDeps(root, deps), slices.Contains(plan.Commands, fullRaceCommand)
+}
+
+func defaultDeps() Deps {
+	return Deps{
 		Plan: Plan,
 		Run: func(root string, command string) StepResult {
 			switch command {
-			case "go test -race ./... -count=1":
+			case fullRaceCommand:
 				return commandstep.Run(root, "risk QA race test", riskQARaceTimeout, "", selfVerifyCommandOutputBudgetBytes, "go", "test", "-race", "./...", "-count=1")
 			case "go vet ./...":
 				return commandstep.Run(root, "risk QA static vet", riskQAVetTimeout, "", selfVerifyCommandOutputBudgetBytes, "go", "vet", "./...")
@@ -37,7 +50,7 @@ func Validate(root string) StepResult {
 				return commandstep.FailedStep("risk QA tier", fmt.Errorf("unknown risk QA command %q", command))
 			}
 		},
-	})
+	}
 }
 
 type Deps struct {

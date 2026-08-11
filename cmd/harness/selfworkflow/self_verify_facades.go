@@ -20,6 +20,7 @@ type SelfVerifyPlannedStep = steps.SelfVerifyPlannedStep
 type SelfVerifyProgressEvent = progress.SelfVerifyProgressEvent
 type SelfVerifyProgressReporter = progress.SelfVerifyProgressReporter
 type SelfVerifyStepDeps = steps.SelfVerifyStepDeps
+type SelfVerifyRiskQAEvidence = steps.RiskQAEvidence
 
 func ValidateSelfVerifyLLMEvalMode(mode string) error {
 	return llmeval.ValidateSelfVerifyLLMEvalMode(mode)

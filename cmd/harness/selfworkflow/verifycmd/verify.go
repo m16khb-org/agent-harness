@@ -10,14 +10,14 @@ import (
 	"agent-harness/cmd/harness/selfworkflow/llmeval"
 	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/cmd/harness/selfworkflow/progress"
-	"agent-harness/cmd/harness/selfworkflow/runmode"
+	"agent-harness/cmd/harness/selfworkflow/verifyloop"
 )
 
 type Deps struct {
 	LookupEnv           func(string) (string, bool)
 	ProgressWriter      io.Writer
 	NewProgressReporter func(string, io.Writer) (*progress.SelfVerifyProgressReporter, error)
-	Verify              func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter, bool) (model.SelfAugmentResult, error)
+	Verify              func(verifyloop.Request) (model.SelfAugmentResult, error)
 	ApplyLLMEval        func(model.SelfAugmentResult, llmeval.SelfVerifyLLMEvalOptions) (model.SelfAugmentResult, error)
 	SaveSummary         func(*model.SelfAugmentResult, string) error
 	PrintJSON           func(any) error
@@ -26,9 +26,7 @@ type Deps struct {
 func Run(args []string, deps Deps) error {
 	deps = deps.withDefaults()
 	fs := flag.NewFlagSet("self-verify", flag.ContinueOnError)
-	full := fs.Bool("full", false, "run the full verification gate; defaults to quick one-iteration mode")
-	iterations := fs.Int("iterations", 10, "number of full self-verification loop iterations; requires --full and must be at least 10")
-	seed := fs.Int64("seed", time.Now().Unix(), "base seed for randomized checks")
+	seed := fs.Int64("seed", time.Now().Unix(), "seed for randomized checks")
 	targetScore := fs.Float64("target-score", 95, "exclusive per-goal score threshold; every concrete goal must score above this value to terminate")
 	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
 	stateKey := fs.String("state-key", "self-verify-latest", "state key for --save-state")
@@ -36,17 +34,12 @@ func Run(args []string, deps Deps) error {
 	llmEval := fs.Bool("llm-eval", false, "run opt-in host-agent judgement prompt after deterministic self-verification")
 	llmEvalMode := fs.String("llm-eval-mode", "advisory", "LLM evaluation mode: advisory or gate")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
-	collectAll := fs.Bool("collect-all-steps", false, "run every gate in each iteration and surface ALL failures (concurrent regression diagnosis); default fail-fast. Never weakens the gate — any failure still fails self-verify")
+	collectAll := fs.Bool("collect-all-steps", false, "run every gate in the evidence pass and surface ALL failures (concurrent regression diagnosis); default fail-fast. Never weakens the gate — any failure still fails self-verify")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *targetScore < 0 || *targetScore >= 100 {
 		return fmt.Errorf("target-score must be >= 0 and < 100")
-	}
-	iterationsFlagSet := flagSetVisited(fs, "iterations")
-	mode, err := runmode.Resolve(*full, iterationsFlagSet, *iterations)
-	if err != nil {
-		return err
 	}
 	llmEvalFlagSet := flagSetVisited(fs, "llm-eval")
 	llmEvalModeFlagSet := flagSetVisited(fs, "llm-eval-mode")
@@ -58,7 +51,13 @@ func Run(args []string, deps Deps) error {
 	if err != nil {
 		return err
 	}
-	result, err := deps.Verify(mode.Iterations, *seed, *targetScore, !*jsonOut, reporter, *collectAll)
+	result, err := deps.Verify(verifyloop.Request{
+		BaseSeed:        *seed,
+		TargetScore:     *targetScore,
+		Verbose:         !*jsonOut,
+		Reporter:        reporter,
+		CollectAllSteps: *collectAll,
+	})
 	if err == nil && llmEvalConfig.Enabled {
 		result, err = deps.ApplyLLMEval(result, llmeval.SelfVerifyLLMEvalOptions{
 			Enabled:     true,
@@ -90,7 +89,7 @@ func (deps Deps) withDefaults() Deps {
 		deps.NewProgressReporter = progress.NewSelfVerifyProgressReporter
 	}
 	if deps.Verify == nil {
-		deps.Verify = func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter, bool) (model.SelfAugmentResult, error) {
+		deps.Verify = func(verifyloop.Request) (model.SelfAugmentResult, error) {
 			return model.SelfAugmentResult{}, fmt.Errorf("self-verify runner dependency is required")
 		}
 	}
