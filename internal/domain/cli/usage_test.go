@@ -35,6 +35,22 @@ func TestUsageIncludesUpdateCommand(t *testing.T) {
 	}
 }
 
+func TestUsageOmitsRetiredSelfVerifyModes(t *testing.T) {
+	for line := range strings.SplitSeq(Usage("test"), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "agent-harness self-verify ") {
+			continue
+		}
+		for _, retired := range []string{"--full", "--iterations"} {
+			if strings.Contains(line, retired) {
+				t.Fatalf("usage still advertises retired self-verify mode %q", retired)
+			}
+		}
+		return
+	}
+	t.Fatal("usage missing self-verify command")
+}
+
 func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 	usage := Usage("test")
 	for _, action := range []string{
