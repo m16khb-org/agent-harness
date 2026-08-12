@@ -13,6 +13,7 @@ import (
 	projectbootstrapt4deps "agent-harness/internal/adapter/projectbootstrap"
 	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
 	installcontract "agent-harness/internal/contract/install"
+	mcpdomain "agent-harness/internal/domain/mcp"
 )
 
 // configureAdapterTail은 설치 계획 수립과 프로젝트 문서 관측을 설치한다.
@@ -48,6 +49,9 @@ func configureAdapterTail() {
 	omot4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 	omot4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 	omot4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
+	omot4deps.MCPCatalogSHA256 = func() (string, error) {
+		return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
+	}
 	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL
 	installclit4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 	// 관리 대상 명령 파일 채택은 파일시스템 트랜잭션이다. 구현을 아는 곳은

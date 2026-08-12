@@ -5,6 +5,7 @@ import (
 	codexadapter "agent-harness/internal/adapter/codex"
 	installutiladapter "agent-harness/internal/adapter/installutil"
 	omoadapter "agent-harness/internal/adapter/omo"
+	mcpdomain "agent-harness/internal/domain/mcp"
 )
 
 // production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 세 host adapter의
@@ -54,6 +55,9 @@ func init() {
 			omoadapter.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 			omoadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 			omoadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
+			omoadapter.MCPCatalogSHA256 = func() (string, error) {
+				return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
+			}
 		},
 	} {
 		set()

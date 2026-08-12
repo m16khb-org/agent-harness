@@ -19,6 +19,10 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
   fast deterministic 위반만 차단한다.
 - IssueOps worktree 밖 mutation은 hook guard + 절대경로 + status 재확인으로 막는다.
 - self-verify는 외부 검증 메커니즘을 명시해야 하고 문서만 통과하는 가짜 안정성을 경계한다.
+- Omo MCP catalog는 server config hash로 장기 cache되므로 installer가
+  advertised catalog SHA를 config env에 포함해 binary-only schema update도
+  fresh session에서 재조회되게 한다
+  ([install.md](operations/install.md)).
 - `.agent-harness/*.md` 편집은 response-contract golden을 드리프트시킨다.
 - Dated 기록의 IssueOps 명령·필드·상태는 사고 당시 증거일 뿐 실행 지시가 아니다.
   현재 실행 계약은 `skills/issueops/references/execution.md`와

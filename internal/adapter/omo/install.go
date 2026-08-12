@@ -34,11 +34,9 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		0o644,
 		req.DryRun,
 	))
-	plan.File(WriteJSONPlan(
+	plan.File(writeOmoProjectMCP(
 		filepath.Join(req.Root, "configs", "omo", "mcp.json"),
 		"omo_project_mcp_template",
-		omoProjectMCPConfig(),
-		0o644,
 		req.DryRun,
 	))
 	plan.File(WriteTextPlan(
@@ -55,11 +53,9 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 			path := filepath.Join(req.Root, ".omo", "skills", skillName)
 			plan.Link(EnsureSymlinkPlan(target, path, req.DryRun))
 		}
-		plan.File(WriteJSONPlan(
+		plan.File(writeOmoProjectMCP(
 			filepath.Join(req.Root, ".omo", "mcp.json"),
 			"omo_project_mcp_config",
-			omoProjectMCPConfig(),
-			0o644,
 			req.DryRun,
 		))
 	}

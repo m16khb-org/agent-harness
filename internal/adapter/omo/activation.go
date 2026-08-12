@@ -35,7 +35,11 @@ func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvi
 	if err != nil {
 		return nil, err
 	}
-	expectedDigest, err := SemanticSHA256(omoUserMCPServer(req))
+	expectedServer, err := omoUserMCPServer(req)
+	if err != nil {
+		return nil, err
+	}
+	expectedDigest, err := SemanticSHA256(expectedServer)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@
       ],
       "command": "./bin/agent-harness",
       "env": {
+        "HARNESS_MCP_CATALOG_SHA256": "03f8e03ebe7ba2557d3824601f8362b8b4bdde3d73ea8bd61b2df26ba5f40976",
         "HARNESS_ROOT": "."
       }
     }

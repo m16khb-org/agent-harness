@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/installutil"
+	mcpdomain "agent-harness/internal/domain/mcp"
 	"agent-harness/internal/port"
 )
 
@@ -21,6 +22,9 @@ func init() {
 	EnsureSymlinkPlan = installutil.EnsureSymlinkPlan
 	PlanHostSkillLinks = installutil.PlanHostSkillLinks
 	SemanticSHA256 = installutil.SemanticSHA256
+	MCPCatalogSHA256 = func() (string, error) {
+		return SemanticSHA256(mcpdomain.AdvertisedTools())
+	}
 }
 
 func TestInstallerWritesNativeOmoSurfaces(t *testing.T) {
@@ -137,7 +141,11 @@ func TestTrackedTemplatesMatchGeneratedContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := SemanticSHA256(omoProjectMCPConfig())
+	expectedConfig, err := omoProjectMCPConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := SemanticSHA256(expectedConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,6 +222,18 @@ func assertOmoTestMCPServer(t *testing.T, config map[string]any, name, command, 
 	env, ok := server["env"].(map[string]any)
 	if !ok || env["HARNESS_ROOT"] != root {
 		t.Fatalf("server %q HARNESS_ROOT drifted: %+v", name, server)
+	}
+	wantCatalogSHA256, err := SemanticSHA256(mcpdomain.AdvertisedTools())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env["HARNESS_MCP_CATALOG_SHA256"] != wantCatalogSHA256 {
+		t.Fatalf(
+			"server %q HARNESS_MCP_CATALOG_SHA256 = %v, want %s",
+			name,
+			env["HARNESS_MCP_CATALOG_SHA256"],
+			wantCatalogSHA256,
+		)
 	}
 }
 

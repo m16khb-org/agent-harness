@@ -2,11 +2,14 @@ package omo
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
 	"agent-harness/internal/port"
 )
+
+const omoMCPCatalogSHA256Env = "HARNESS_MCP_CATALOG_SHA256"
 
 func writeOmoUserMCP(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: "omo_user_mcp_config"}
@@ -24,28 +27,56 @@ func writeOmoUserMCP(path string, req port.NativeInstallRequest) (port.InstallFi
 		config["mcpServers"] = servers
 	}
 	delete(servers, "agent-harness")
-	servers["agent_harness"] = omoUserMCPServer(req)
+	server, err := omoUserMCPServer(req)
+	if err != nil {
+		return file, err
+	}
+	servers["agent_harness"] = server
 	return WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
 }
 
-func omoUserMCPServer(req port.NativeInstallRequest) map[string]any {
+func writeOmoProjectMCP(path, kind string, dryRun bool) (port.InstallFile, error) {
+	file := port.InstallFile{Path: path, Kind: kind}
+	config, err := omoProjectMCPConfig()
+	if err != nil {
+		return file, err
+	}
+	return WriteJSONPlan(path, kind, config, 0o644, dryRun)
+}
+
+func omoUserMCPServer(req port.NativeInstallRequest) (map[string]any, error) {
 	return omoMCPServer(req.BinPath, req.Root)
 }
 
-func omoProjectMCPConfig() map[string]any {
+func omoProjectMCPConfig() (map[string]any, error) {
+	server, err := omoMCPServer("./bin/agent-harness", ".")
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{
 		"mcpServers": map[string]any{
-			"agent_harness_project": omoMCPServer("./bin/agent-harness", "."),
+			"agent_harness_project": server,
 		},
-	}
+	}, nil
 }
 
-func omoMCPServer(command, root string) map[string]any {
+func omoMCPServer(command, root string) (map[string]any, error) {
+	if MCPCatalogSHA256 == nil {
+		return nil, fmt.Errorf("Omo MCP catalog digest is not configured")
+	}
+	catalogSHA256, err := MCPCatalogSHA256()
+	if err != nil {
+		return nil, fmt.Errorf("compute Omo MCP catalog digest: %w", err)
+	}
+	if catalogSHA256 == "" {
+		return nil, fmt.Errorf("compute Omo MCP catalog digest: empty digest")
+	}
 	return map[string]any{
 		"command": command,
 		"args":    []string{"mcp"},
 		"env": map[string]any{
-			"HARNESS_ROOT": root,
+			"HARNESS_ROOT":         root,
+			omoMCPCatalogSHA256Env: catalogSHA256,
 		},
-	}
+	}, nil
 }

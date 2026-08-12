@@ -47,6 +47,14 @@ those snapshots together with the command shims before aborting the transition.
 
 `ah update`는 host가 소유한 stdio MCP 프로세스를 열거하거나 종료하지 않는다. 살아 있는 agent-harness proxy는 daemon generation 교체를 감지해 동일한 protocol/capability 계약으로 다시 초기화한다. 교체 시점에 완료 여부를 확정할 수 없는 요청은 자동 재실행하지 않고 `daemon_generation_changed`, `outcome=unknown`, `reconcile_required=true` 오류로 끝낸다. 새 daemon의 handshake 계약이 달라지면 proxy를 종료해 host가 새 세션으로 다시 연결하게 한다.
 
+Omo는 MCP tool catalog를 server config hash 기준으로 최대 7일 재사용하므로, 같은
+경로의 binary만 교체하면 새 세션도 이전 input schema를 유지할 수 있다. Omo
+installer는 현재 advertised tool catalog의 SHA-256을
+`HARNESS_MCP_CATALOG_SHA256` env에 기록한다. 따라서 `install`/`bootstrap`/`update`
+후 catalog가 바뀌면 Omo server config hash도 바뀌고, 다음 세션은 새
+`tools/list`를 조회한다. 이 값은 cache revision token이며 MCP handler 동작을
+제어하지 않는다.
+
 외부 GitLab MCP와 개인 wrapper 등록은 update에 포함되지 않는다. 필요할 때만 `scripts/sync-glab-mcp.sh --dry-run`으로 확인한 뒤 `scripts/sync-glab-mcp.sh`를 명시적으로 실행한다.
 
 Default user-level install updates:
