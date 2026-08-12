@@ -149,13 +149,13 @@ func TestValidateInstallDryRunSmokeWithDepsCoversCommandParseAndContractFailures
 	}
 }
 
-func TestInstallDryRunValidationErrorsRequiresExactTwoHostSet(t *testing.T) {
+func TestInstallDryRunValidationErrorsRequiresExactThreeHostSet(t *testing.T) {
 	result := validInstallDryRunResult()
 
 	errs := installDryRunValidationErrors(result, t.TempDir(), t.TempDir(), func(string) bool { return false })
 
 	if len(errs) != 0 {
-		t.Fatalf("expected exact two-host install dry-run result to pass, got %v", errs)
+		t.Fatalf("expected exact three-host install dry-run result to pass, got %v", errs)
 	}
 	result.Hosts = append(result.Hosts, installDryRunSmokeHost{Host: "retired", OK: true, DryRun: true})
 	if errs := installDryRunValidationErrors(result, t.TempDir(), t.TempDir(), func(string) bool { return false }); len(errs) == 0 {
@@ -171,6 +171,7 @@ func validInstallDryRunResult() installDryRunSmokeResult {
 		Hosts: []installDryRunSmokeHost{
 			{Host: "codex", OK: true, DryRun: true},
 			{Host: "claude", OK: true, DryRun: true},
+			{Host: "omo", OK: true, DryRun: true},
 		},
 		Files: []installDryRunSmokeFile{
 			{Path: "configs/codex.toml", WouldWrite: true},

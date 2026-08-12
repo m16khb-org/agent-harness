@@ -103,11 +103,41 @@ func executeInstall(req port.NativeInstallRequest, candidatePath, pathMode, acti
 		result.CommandPath = preflight.CommandPath
 		return outputInstallResult(result, installErr, jsonOut)
 	}
+	hostPlanReq := req
+	hostPlanReq.DryRun = true
+	hostPlan, hostPlanErr := deps.InstallNative(hostPlanReq)
+	if hostPlanErr != nil || !hostPlan.OK {
+		if hostPlanErr == nil {
+			hostPlanErr = fmt.Errorf("native installer dry-run preflight reported ok=false")
+		}
+		return finishHostPreflightFailure(&hostPlan, hostPlanErr, preflight, activationStep, jsonOut)
+	}
+	if hostPlanErr = planShellPath(&hostPlan, hostPlanReq, pathMode); hostPlanErr != nil {
+		return finishHostPreflightFailure(&hostPlan, hostPlanErr, preflight, activationStep, jsonOut)
+	}
+	hostTransaction, hostTransactionErr := prepareInstallHostTransaction(hostPlan)
+	if hostTransactionErr != nil {
+		return finishHostPreflightFailure(&hostPlan, hostTransactionErr, preflight, activationStep, jsonOut)
+	}
 	done, err := prepareActivationTransition(activationService, &activationRequest, activationStep, jsonOut)
 	if err != nil || done {
 		return err
 	}
-	return applyAndSealInstall(req, pathMode, activationStep, jsonOut, activationService, activationRequest, preflight, pathTransaction)
+	return applyAndSealInstall(req, pathMode, activationStep, jsonOut, activationService, activationRequest, preflight, pathTransaction, hostTransaction)
+}
+
+func finishHostPreflightFailure(result *port.NativeInstallResult, cause error, preflight port.NativeInstallResult, step string, jsonOut bool) error {
+	result.OK = false
+	result.Links = append(preflight.Links, result.Links...)
+	result.CommandPath = preflight.CommandPath
+	if step == "seal" {
+		result.TransitionID = os.Getenv("HARNESS_NATIVE_ACTIVATION_TRANSITION_ID")
+		result.AbortRequired = true
+		if result.CommandPath != nil {
+			result.CommandPath.AbortRequired = true
+		}
+	}
+	return outputInstallResult(*result, cause, jsonOut)
 }
 
 func nativeInstallCandidatePath(target string, dryRun bool, executable func() (string, error)) (string, error) {
@@ -155,11 +185,11 @@ func prepareActivationTransition(service *activationapp.Service, request *activa
 	return false, nil
 }
 
-func applyAndSealInstall(req port.NativeInstallRequest, pathMode, activationStep string, jsonOut bool, activationService *activationapp.Service, activationRequest activationcontract.Request, preflight port.NativeInstallResult, pathTransaction *installPathTransaction) error {
+func applyAndSealInstall(req port.NativeInstallRequest, pathMode, activationStep string, jsonOut bool, activationService *activationapp.Service, activationRequest activationcontract.Request, preflight port.NativeInstallResult, pathTransaction *installPathTransaction, hostTransaction *installHostTransaction) error {
 	result := preflight
 	result.TransitionID = activationRequest.TransitionID
 	if applyErr := pathTransaction.apply(&result); applyErr != nil {
-		return finishFailedInstall(&result, applyErr, pathTransaction, activationService, activationRequest, activationStep, jsonOut)
+		return finishFailedInstall(&result, applyErr, pathTransaction, hostTransaction, activationService, activationRequest, activationStep, jsonOut)
 	}
 	installed, installErr := deps.InstallNative(req)
 	installed.Links = append(result.Links, installed.Links...)
@@ -170,17 +200,17 @@ func applyAndSealInstall(req port.NativeInstallRequest, pathMode, activationStep
 		installErr = planShellPath(&result, req, pathMode)
 	}
 	if installErr != nil || !result.OK {
-		return finishFailedInstall(&result, installErr, pathTransaction, activationService, activationRequest, activationStep, jsonOut)
+		return finishFailedInstall(&result, installErr, pathTransaction, hostTransaction, activationService, activationRequest, activationStep, jsonOut)
 	}
 	sealed, sealErr := activationService.Seal(context.Background(), activationRequest)
 	if sealErr != nil || !sealed.OK || !sealed.Sealed || sealed.Receipt == nil {
 		if sealErr == nil {
 			sealErr = fmt.Errorf("native activation receipt was not sealed")
 		}
-		return finishFailedInstall(&result, sealErr, pathTransaction, activationService, activationRequest, activationStep, jsonOut)
+		return finishFailedInstall(&result, sealErr, pathTransaction, hostTransaction, activationService, activationRequest, activationStep, jsonOut)
 	}
 	result.Committed = true
-	result.Messages = append(result.Messages, "native activation receipt sealed after strict Codex/Claude MCP and hook readback")
+	result.Messages = append(result.Messages, "native activation receipt sealed after strict Codex/Claude/Omo MCP and lifecycle readback")
 	if finalizeErr := pathTransaction.finalize(&result); finalizeErr != nil {
 		result.Messages = append(result.Messages, "native activation is committed; command backup cleanup requires manual recovery: "+finalizeErr.Error())
 		if result.CommandPath != nil {
@@ -190,11 +220,12 @@ func applyAndSealInstall(req port.NativeInstallRequest, pathMode, activationStep
 	return outputInstallResult(result, nil, jsonOut)
 }
 
-func finishFailedInstall(result *port.NativeInstallResult, cause error, transaction *installPathTransaction, service *activationapp.Service, request activationcontract.Request, step string, jsonOut bool) error {
+func finishFailedInstall(result *port.NativeInstallResult, cause error, transaction *installPathTransaction, hostTransaction *installHostTransaction, service *activationapp.Service, request activationcontract.Request, step string, jsonOut bool) error {
 	result.OK = false
 	if cause == nil {
 		cause = fmt.Errorf("native installer reported ok=false")
 	}
+	hostRollbackErr := hostTransaction.rollback()
 	rollbackErr := transaction.rollback(result)
 	if step == "seal" {
 		result.AbortRequired = true
@@ -205,7 +236,7 @@ func finishFailedInstall(result *port.NativeInstallResult, cause error, transact
 		_, abortErr := service.Abort(context.Background(), request)
 		cause = errors.Join(cause, abortErr)
 	}
-	cause = errors.Join(cause, rollbackErr)
+	cause = errors.Join(cause, hostRollbackErr, rollbackErr)
 	return outputInstallResult(*result, cause, jsonOut)
 }
 

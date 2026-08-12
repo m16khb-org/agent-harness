@@ -9,8 +9,8 @@ description: System structure, component boundaries, and responsibilities.
 불변식을 보존하고, 상세 토폴로지·경계·runtime/state 제약은 아래 module로
 연결한다. 각 module은 다시 이 index로 돌아온다.
 
-> **핵심 판단**: Go로 작성한 외부 하네스 코어를 두고, Codex plugin과 Claude
-> Code 설정은 core를 호출하는 얇은 adapter로 둔다(Hybrid 최종 구조). 자세한
+> **핵심 판단**: Go로 작성한 외부 하네스 코어를 두고, Codex plugin, Claude
+> Code 설정, Omo native extension은 core를 호출하는 얇은 adapter로 둔다(Hybrid 최종 구조). 자세한
 > 선택지 비교와 판단 근거는
 > [`architecture/hexagonal-core.md`](architecture/hexagonal-core.md)가
 > 정규 소유자다.
@@ -21,7 +21,7 @@ description: System structure, component boundaries, and responsibilities.
 |--------|------|
 | [`architecture/hexagonal-core.md`](architecture/hexagonal-core.md) | core/port/adapter 구조, package boundary, 의존 방향 ratchet, cross-host tool contract, operational-health boundary, hardening |
 | [`architecture/runtime.md`](architecture/runtime.md) | 실행 모드(CLI/MCP/daemon/issueops/loop/worker), docs/state/config/log 토폴로지, lock 직렬화, command/policy model, MCP tool 설계, standalone runtime policy |
-| [`architecture/host-integration.md`](architecture/host-integration.md) | Codex/Claude 통합 map, pioneer skills layer(host-neutral), host-adapter 변경 체크리스트 |
+| [`architecture/host-integration.md`](architecture/host-integration.md) | Codex/Claude/Omo 통합 map, pioneer skills layer(host-neutral), host-adapter 변경 체크리스트 |
 | [`architecture/issueops.md`](architecture/issueops.md) | IssueOps v1 execution 상태·schema 권위, capability vertical, operational surface, next_command 권위, actor model, Orca 경계, execution threat model, execution boundary |
 
 ## 의존 방향 불변식 (canonical)
@@ -43,7 +43,7 @@ description: System structure, component boundaries, and responsibilities.
 ## 실행 모드와 표면 (요약)
 
 CLI one-shot, `mcp` stdio proxy, `daemon` user-level backend, `issueops`,
-`loop`, `worker` 부분 구현, 그리고 Phase 5/6의 Codex/Claude UX adapter.
+`loop`, `worker` 부분 구현, 그리고 Phase 5/6의 Codex/Claude/Omo UX adapter.
 각 모드의 도입 단계·용도·원칙 표와 daemon socket/lock, MCP schema/descriptor
 설계, command-policy catalog와 기본 거부/허용 범주, standalone runtime policy는
 [`architecture/runtime.md`](architecture/runtime.md)가 소유한다.
@@ -82,7 +82,7 @@ post-merge cleanup 순서 계약은
 
 ## Host integration (요약)
 
-Codex/Claude는 `AGENTS.md`/`CLAUDE.md`와 `agent-harness` 실행이 최소 통합,
+Codex/Claude/Omo는 repo 지침과 `agent-harness` 실행이 최소 통합,
 user-scope native skill symlink + MCP server + `SessionStart`/`PostCompact`
 context hook이 권장 통합. plugin이나 hook에 core logic/위험 명령을 넣지 않고,
 repo-local 파일은 `--project-local` 명시 opt-in에서만 생성한다. pioneer

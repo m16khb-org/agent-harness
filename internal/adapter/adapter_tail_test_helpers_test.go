@@ -4,10 +4,11 @@ import (
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
 	installutiladapter "agent-harness/internal/adapter/installutil"
+	omoadapter "agent-harness/internal/adapter/omo"
 )
 
-// production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 두 host adapter의
-// 계약을 함께 확인하므로 양쪽 의존을 모두 채운다.
+// production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 세 host adapter의
+// 계약을 함께 확인하므로 모든 의존을 채운다.
 func init() {
 	claudeadapter.NewInstallPlan = func(host string, dryRun bool) claudeadapter.InstallPlan {
 		return installutiladapter.NewPlan(host, dryRun)
@@ -21,6 +22,11 @@ func init() {
 	codexadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
 	codexadapter.WriteTextPlan = installutiladapter.WriteTextPlan
 	codexadapter.TOMLString = installutiladapter.TOMLString
+	omoadapter.NewInstallPlan = func(host string, dryRun bool) omoadapter.InstallPlan {
+		return installutiladapter.NewPlan(host, dryRun)
+	}
+	omoadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
+	omoadapter.WriteTextPlan = installutiladapter.WriteTextPlan
 	for _, set := range []func(){
 		func() {
 			claudeadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
@@ -42,6 +48,12 @@ func init() {
 			codexadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
 			codexadapter.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 			codexadapter.VerifyHookActivation = installutiladapter.VerifyHookActivation
+		},
+		func() {
+			omoadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+			omoadapter.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+			omoadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+			omoadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
 		},
 	} {
 		set()

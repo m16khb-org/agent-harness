@@ -16,19 +16,29 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 	existing := nativeIntegrationExpectedPaths(root, home)
 	deps := nativeIntegrationValidationDeps{
 		userHomeDir: func() (string, error) { return home, nil },
-		listSkills:  func(string) ([]string, error) { return []string{"shared", "codex-only", "claude-only"}, nil },
+		listSkills: func(string) ([]string, error) {
+			return []string{"shared", "codex-only", "claude-only", "omo-only"}, nil
+		},
 		skillNamesForHost: func(_ string, _ []string, host string) ([]string, []string) {
 			switch host {
 			case "codex":
 				return []string{"shared", "codex-only"}, nil
 			case "claude":
 				return []string{"shared", "claude-only"}, nil
+			case "omo":
+				return []string{"shared", "omo-only"}, nil
 			default:
 				return nil, nil
 			}
 		},
 		exists: func(path string) bool { return existing[path] },
 		readFile: func(path string) ([]byte, error) {
+			switch {
+			case path == filepath.Join(home, ".omo", "mcp.json"):
+				return []byte(fmt.Sprintf(`{"mcpServers":{"agent_harness":{"command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}`, filepath.Join(root, "bin", "agent-harness"), root)), nil
+			case path == filepath.Join(home, ".omo", "extensions", "agent-harness.js"):
+				return []byte(OmoLifecycleExtension(filepath.Join(root, "bin", "agent-harness"))), nil
+			}
 			switch filepath.Base(path) {
 			case "config.toml":
 				return []byte("[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n"), nil
@@ -46,7 +56,7 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 		t.Fatalf("unexpected success step: %#v", step)
 	}
 
-	missingPath := filepath.Join(home, ".claude", "skills", "claude-only", "SKILL.md")
+	missingPath := filepath.Join(home, ".omo", "skills", "omo-only", "SKILL.md")
 	existing[missingPath] = false
 	failed := validateNativeIntegrationWithDeps(root, deps)
 	if failed.OK || !strings.Contains(failed.Error, "missing "+missingPath) {
@@ -83,6 +93,8 @@ func TestValidateNativeIntegrationWithDepsCoversSkillConfigAndWarningFailures(t 
 		"list native skills: skill list failed",
 		"Codex MCP config missing agent_harness",
 		"Codex thin context hooks missing agent-harness SessionStart/PostCompact surface",
+		"Omo MCP config missing canonical agent_harness server",
+		"Omo lifecycle extension missing canonical SessionStart/PostCompact surface",
 		"Claude duplicate MCP warning fixture was not classified",
 	} {
 		if !strings.Contains(step.Error, want) {
@@ -219,10 +231,14 @@ func nativeIntegrationExpectedPaths(root, home string) map[string]bool {
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "codex", "hooks.json"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
+		filepath.Join(root, "configs", "omo", "mcp.json"),
+		filepath.Join(root, "configs", "omo", "agent-harness.js"),
 		filepath.Join(home, ".codex", "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".codex", "skills", "codex-only", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "claude-only", "SKILL.md"),
+		filepath.Join(home, ".omo", "skills", "shared", "SKILL.md"),
+		filepath.Join(home, ".omo", "skills", "omo-only", "SKILL.md"),
 	}
 	out := map[string]bool{}
 	for _, path := range paths {

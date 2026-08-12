@@ -15,7 +15,7 @@ description: Verification standards, test practices, and required checks.
 |---|---|
 | 단위·통합·fixture·golden·contract 표준, Go 기본 검증, lifecycle state | [testing/unit-and-contract.md](testing/unit-and-contract.md) |
 | race·process·lock·nondeterminism 규칙 | [testing/concurrency-and-race.md](testing/concurrency-and-race.md) |
-| CLI·MCP·Codex·Claude host parity, GitLab snapshot, cross-host conformance | [testing/cli-mcp-and-hosts.md](testing/cli-mcp-and-hosts.md) |
+| CLI·MCP·Codex·Claude·Omo host parity, GitLab snapshot, cross-host conformance | [testing/cli-mcp-and-hosts.md](testing/cli-mcp-and-hosts.md) |
 | single-pass self-verification 계약, 문서 단계 검증 battery | [testing/self-verification.md](testing/self-verification.md) |
 | OpenAPI 정적·agent review 게이트, prompt contract | [testing/api-documentation.md](testing/api-documentation.md) |
 | IssueOps v1 execution vertical·Orca 검증 계약 | [testing/issueops-execution.md](testing/issueops-execution.md) |

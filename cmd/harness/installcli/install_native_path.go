@@ -1,6 +1,7 @@
 package installcli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,12 +14,18 @@ import (
 const shellPathRCMarker = "# agent-harness: add user-local bin to PATH"
 
 type installPathTransaction struct {
-	req       port.NativeInstallRequest
-	command   ManagedCommandPathTransaction
-	managed   bool
-	applied   bool
-	path      string
-	shortPath string
+	req             port.NativeInstallRequest
+	command         ManagedCommandPathTransaction
+	managed         bool
+	applied         bool
+	commandCreated  bool
+	commandExisted  bool
+	commandTarget   string
+	shortCreated    bool
+	binDirExisted   bool
+	localDirExisted bool
+	path            string
+	shortPath       string
 }
 
 func prepareInstallPathPlan(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) (*installPathTransaction, error) {
@@ -29,8 +36,21 @@ func prepareInstallPathPlanForCandidate(result *port.NativeInstallResult, req po
 	userBin := filepath.Join(req.Home, ".local", "bin")
 	commandPath := filepath.Join(userBin, "agent-harness")
 	shortCommandPath := filepath.Join(userBin, "ah")
-	transaction := &installPathTransaction{req: req, path: commandPath, shortPath: shortCommandPath}
+	transaction := &installPathTransaction{
+		req:             req,
+		path:            commandPath,
+		shortPath:       shortCommandPath,
+		binDirExisted:   installPathDirectoryExists(userBin),
+		localDirExisted: installPathDirectoryExists(filepath.Dir(userBin)),
+	}
 	info, statErr := os.Lstat(commandPath)
+	if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		transaction.commandExisted = true
+		transaction.commandTarget, statErr = os.Readlink(commandPath)
+		if statErr != nil {
+			return nil, statErr
+		}
+	}
 	if statErr == nil && info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
 		managed, plan, err := PrepareManagedCommandPathCandidate(req.BinPath, candidatePath, commandPath, req.AdoptCommandFile, req.DryRun)
 		result.CommandPath = managedCommandPathResult(plan)
@@ -82,22 +102,70 @@ func (transaction *installPathTransaction) apply(result *port.NativeInstallResul
 		if err != nil {
 			return err
 		}
+		transaction.commandCreated = link.Created
 	}
 	shortLink, err := ensureShortCommandShimPlan(transaction.path, transaction.shortPath, false)
 	result.Links = append(result.Links, shortLink)
+	transaction.shortCreated = shortLink.Created
 	return err
 }
 
 func (transaction *installPathTransaction) rollback(result *port.NativeInstallResult) error {
-	if !transaction.managed || transaction.command == nil || !transaction.applied {
-		return nil
+	var errs []error
+	if transaction.shortCreated {
+		if err := os.Remove(transaction.shortPath); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.shortCreated = false
+		}
 	}
-	plan, err := transaction.command.Rollback()
-	if err == nil {
-		transaction.applied = false
+	if transaction.commandExisted && !transaction.managed {
+		if err := os.Remove(transaction.path); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.commandCreated = false
+			if err := os.Symlink(transaction.commandTarget, transaction.path); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	} else if transaction.commandCreated {
+		if err := os.Remove(transaction.path); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.commandCreated = false
+		}
 	}
-	result.CommandPath = managedCommandPathResult(plan)
-	return err
+	if transaction.managed && transaction.command != nil && transaction.applied {
+		plan, err := transaction.command.Rollback()
+		if err == nil {
+			transaction.applied = false
+		}
+		result.CommandPath = managedCommandPathResult(plan)
+		errs = append(errs, err)
+	}
+	if !transaction.commandCreated && !transaction.shortCreated {
+		type cleanupPath struct {
+			path    string
+			existed bool
+		}
+		for _, item := range []cleanupPath{
+			{path: filepath.Dir(transaction.path), existed: transaction.binDirExisted},
+			{path: filepath.Dir(filepath.Dir(transaction.path)), existed: transaction.localDirExisted},
+		} {
+			if item.existed {
+				continue
+			}
+			if err := removeInstallDirectoryIfEmpty(item.path); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func installPathDirectoryExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func (transaction *installPathTransaction) finalize(result *port.NativeInstallResult) error {

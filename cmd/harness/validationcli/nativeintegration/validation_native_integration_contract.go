@@ -7,17 +7,22 @@ import (
 	"strings"
 )
 
-func nativeIntegrationRequiredPaths(root, home string, codexSkills, claudeSkills []string) []string {
+func nativeIntegrationRequiredPaths(root, home string, codexSkills, claudeSkills, omoSkills []string) []string {
 	paths := []string{
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "codex", "hooks.json"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
+		filepath.Join(root, "configs", "omo", "mcp.json"),
+		filepath.Join(root, "configs", "omo", "agent-harness.js"),
 	}
 	for _, nativeSkill := range codexSkills {
 		paths = append(paths, filepath.Join(home, ".codex", "skills", nativeSkill, "SKILL.md"))
 	}
 	for _, nativeSkill := range claudeSkills {
 		paths = append(paths, filepath.Join(home, ".claude", "skills", nativeSkill, "SKILL.md"))
+	}
+	for _, nativeSkill := range omoSkills {
+		paths = append(paths, filepath.Join(home, ".omo", "skills", nativeSkill, "SKILL.md"))
 	}
 	return paths
 }
@@ -58,6 +63,46 @@ func hasThinCodexContextHooks(config, expectedBinary string) bool {
 	}
 	_, err := VerifyHookConfigActivation(actual, CodexHooksConfig(expectedBinary))
 	return err == nil
+}
+
+func nativeIntegrationOmoConfigErrors(root, home string, deps nativeIntegrationValidationDeps) []string {
+	expectedBinary, err := canonicalHarnessBinary(root)
+	if err != nil {
+		return []string{"resolve stable native root for Omo: " + err.Error()}
+	}
+	errs := []string{}
+	mcpPath := filepath.Join(home, ".omo", "mcp.json")
+	if body, readErr := deps.readFile(mcpPath); readErr != nil || !hasCanonicalOmoMCP(body, expectedBinary, root) {
+		errs = append(errs, "Omo MCP config missing canonical agent_harness server")
+	}
+	extensionPath := filepath.Join(home, ".omo", "extensions", "agent-harness.js")
+	if OmoLifecycleExtension == nil {
+		errs = append(errs, "Omo lifecycle extension renderer is unavailable")
+	} else if body, readErr := deps.readFile(extensionPath); readErr != nil || string(body) != OmoLifecycleExtension(expectedBinary) {
+		errs = append(errs, "Omo lifecycle extension missing canonical SessionStart/PostCompact surface")
+	}
+	return errs
+}
+
+func hasCanonicalOmoMCP(body []byte, expectedBinary, root string) bool {
+	var config map[string]any
+	if json.Unmarshal(body, &config) != nil {
+		return false
+	}
+	servers, ok := config["mcpServers"].(map[string]any)
+	if !ok {
+		return false
+	}
+	server, ok := servers["agent_harness"].(map[string]any)
+	if !ok || server["command"] != expectedBinary {
+		return false
+	}
+	args, ok := server["args"].([]any)
+	if !ok || len(args) != 1 || args[0] != "mcp" {
+		return false
+	}
+	env, ok := server["env"].(map[string]any)
+	return ok && env["HARNESS_ROOT"] == root
 }
 
 func canonicalHarnessBinary(root string) (string, error) {

@@ -21,7 +21,7 @@ Deliver every goal with **captured, verifiable evidence** for every success crit
 
 For repository-local symbol discovery, use CodeGraph first when `.codegraph/` exists; otherwise use local `rg` and direct reads only. Never use web search for local repository symbols. Run verification and inspection commands as separate calls; never chain them with `echo` or `printf` banner markers.
 
-First-party hosts are exactly Codex and Claude Code.
+First-party hosts are exactly Codex, Claude Code, and Omo native.
 
 ## IssueOps Benchmark Artifact Contract
 

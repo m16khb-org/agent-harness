@@ -9,6 +9,7 @@ import (
 	installadapter "agent-harness/internal/adapter/install"
 	installutiladapter "agent-harness/internal/adapter/installutil"
 	fingerprintt4deps "agent-harness/internal/adapter/lifecycle/fingerprint"
+	omot4deps "agent-harness/internal/adapter/omo"
 	projectbootstrapt4deps "agent-harness/internal/adapter/projectbootstrap"
 	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
 	installcontract "agent-harness/internal/contract/install"
@@ -43,6 +44,10 @@ func configureAdapterTail() {
 	codext4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
 	codext4deps.ValidateHookConfigForMerge = installutiladapter.ValidateHookConfigForMerge
 	codext4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
+	omot4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+	omot4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+	omot4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+	omot4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
 	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL
 	installclit4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 	// 관리 대상 명령 파일 채택은 파일시스템 트랜잭션이다. 구현을 아는 곳은
@@ -58,6 +63,7 @@ func configureAdapterTail() {
 	nativeintegrationt4deps.SkillNamesForHost = installutiladapter.SkillNamesForHost
 	nativeintegrationt4deps.ResolveStableNativeRoot = installadapter.ResolveStableNativeRoot
 	nativeintegrationt4deps.CodexHooksConfig = codext4deps.HooksConfig
+	nativeintegrationt4deps.OmoLifecycleExtension = omot4deps.LifecycleExtension
 	nativeintegrationt4deps.VerifyHookConfigActivation = installutiladapter.VerifyHookConfigActivation
 	projectbootstrapt4deps.AnalyzeProjectSignals = projectdocsadapter.AnalyzeProjectSignals
 	projectbootstrapt4deps.RenderAgentsWithBlock = projectdocsadapter.RenderAgentsWithBlock

@@ -1,10 +1,10 @@
-# CLI, MCP, Codex, and Claude host parity
+# CLI, MCP, Codex, Claude, and Omo host parity
 
 [← TESTING.md](../TESTING.md) owns the test-strategy index. This module owns
-CLI/MCP/Codex/Claude host parity: GitLab snapshot contracts, cross-host tool
+CLI/MCP/Codex/Claude/Omo host parity: GitLab snapshot contracts, cross-host tool
 conformance, reversible child-host smoke, and native integration parity. The
 single-pass verification battery that exercises these commands lives in
-[self-verification.md](self-verification.md); IssueOps CLI/MCP/Codex/Claude
+[self-verification.md](self-verification.md); IssueOps CLI/MCP/Codex/Claude/Omo
 adapter parity is owned by
 [issueops-execution.md](issueops-execution.md).
 
@@ -24,7 +24,7 @@ go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ```
 
-설치 갱신 뒤에는 installed Codex/Claude MCP schema에 `issue_snapshot`의 exact
+설치 갱신 뒤에는 installed Codex/Claude/Omo MCP schema에 `issue_snapshot`의 exact
 다섯 필드만 있는지 확인하고, GitLab-linked lifecycle preview에서
 `resolved_mode=orca`와 `issue_snapshot_source=glab_mcp|glab_cli`를 확인한다.
 이 smoke는 worktree나 lease를 만들지 않는 preview로 제한한다.
@@ -45,17 +45,30 @@ Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL
 
 ## Reversible child-host smoke
 
-Reversible child-host smoke는 일반 live matrix와 별도다. `scripts/verify-child-host-smoke.sh`는 literal `--confirm-user-activation`, clean local HEAD, exact singleton remote ref가 모두 일치할 때만 user-scope integration을 잠시 활성화한다. 활성화 직후 두 host의 managed `SessionStart`/`PostCompact` handler는 command·type·timeout·key set까지 exact contract로 검증하고 managed event set이 정확히 둔인지 확인하며, legacy event·enforcement flag·shell suffix를 거부한다. 실제 child episode는 `SessionStart`만 private marker로 관찰하고 `PreToolUse`가 관찰되지 않음을 확인한다; `PostCompact`는 host가 compaction을 발생시킨 경우에만 실행되므로 config contract로 증명한다. Codex는 검증된 활성화 handler 자체를 user config·plugin·co-resident hook을 로드하지 않는 private episode `CODEX_HOME`에 투영한 뒤 invocation-scoped `--dangerously-bypass-hook-trust`를 사용하며 trust state는 수정·저장하지 않는다. Host runner는 marker와 native MCP result를 boolean/count/SHA-256/exit/duration projection으로 합친 뒤 원문 stream과 marker를 폐기한다. 영수증의 `validation_lane=native_host`는 Codex·Claude adapter 실동작만 증명하며 Orca Run/task/dispatch/claim 증거를 대신하지 않는다. 어떤 post-activation 실패도 source installer 1회, 원래 네 설정 파일의 private byte snapshot 원자 복원, before/restore raw+semantic digest equality를 모두 통과하지 못하면 `verdict=pass`가 될 수 없다.
+Reversible Codex/Claude child-host smoke는 일반 live matrix와 별도다. `scripts/verify-child-host-smoke.sh`는 literal `--confirm-user-activation`, clean local HEAD, exact singleton remote ref가 모두 일치할 때만 user-scope integration을 잠시 활성화한다. 활성화 직후 두 command-host의 managed `SessionStart`/`PostCompact` handler는 command·type·timeout·key set까지 exact contract로 검증하고 managed event set이 정확히 둘인지 확인하며, legacy event·enforcement flag·shell suffix를 거부한다. 실제 child episode는 `SessionStart`만 private marker로 관찰하고 `PreToolUse`가 관찰되지 않음을 확인한다; `PostCompact`는 host가 compaction을 발생시킨 경우에만 실행되므로 config contract로 증명한다. Codex는 검증된 활성화 handler 자체를 user config·plugin·co-resident hook을 로드하지 않는 private episode `CODEX_HOME`에 투영한 뒤 invocation-scoped `--dangerously-bypass-hook-trust`를 사용하며 trust state는 수정·저장하지 않는다. Host runner는 marker와 native MCP result를 boolean/count/SHA-256/exit/duration projection으로 합친 뒤 원문 stream과 marker를 폐기한다. 영수증의 `validation_lane=native_host`는 Codex·Claude adapter 실동작만 증명하며 Orca Run/task/dispatch/claim 증거를 대신하지 않는다. 어떤 post-activation 실패도 source installer 1회, 원래 네 설정 파일의 private byte snapshot 원자 복원, before/restore raw+semantic digest equality를 모두 통과하지 못하면 `verdict=pass`가 될 수 없다.
 
 managed regular command adoption 테스트는 기본 refusal과 승인 dry-run 무변경, 실제 staged candidate의 정적 build identity, file matrix/size boundary, atomic exchange 시점의 destination drift 보존, apply/finalize, injected rollback, transition-fenced Begin/Seal/Abort, direct-vs-explicit cleanup ownership을 각각 검증한다. child smoke에서 adoption은 literal confirmation 이후 child activation 한 번에만 전달되어야 하며 source restore에는 전달되지 않아야 한다.
 
 ## Native integration parity
 
 Native integration smoke는 single-pass verification battery의 일부로
-[self-verification.md](self-verification.md)가 실행한다. Codex/Claude
-user-level skill 파일 존재, `codex mcp get agent_harness`, 그리고
-`claude mcp list | grep agent_harness`로 managed MCP registration을 확인한다.
-After native installation, exercise Codex and Claude hook fixtures through the
-common hook input boundary and require exact host, session, process, cwd, and
-allow/block projections (the IssueOps hook matrices are owned by
-[issueops-execution.md](issueops-execution.md)).
+[self-verification.md](self-verification.md)가 실행한다. Codex/Claude/Omo
+user-level skill 파일 존재, Codex/Claude MCP registration, Omo
+`~/.omo/mcp.json`, 그리고 managed Omo lifecycle extension을 확인한다.
+The deterministic battery does not require the external Omo runtime: it checks
+installed Omo skill paths, exact MCP semantics, and exact generated extension
+bytes. This keeps agent-harness independently verifiable.
+
+Release/manual QA adds the runtime evidence that deterministic self-verification
+cannot own. In an isolated `HOME`, run native install, then use the installed
+Omo/Senpi `SettingsManager -> DefaultPackageManager -> loadSkills` pipeline and
+require all pioneer skills with zero diagnostics. Use
+`discoverAndLoadExtensions` and require exactly one managed
+`agent-harness.js` with `session_start` and `session_compact`; bind
+`runtime.sendMessage`, invoke both handlers, and require rejected compaction to
+emit nothing while accepted events inject hidden `triggerTurn=false` context.
+Record the Omo/Senpi package versions with that evidence.
+
+Codex and Claude hook fixtures continue through the common hook input boundary;
+the IssueOps hook matrices are owned by
+[issueops-execution.md](issueops-execution.md).

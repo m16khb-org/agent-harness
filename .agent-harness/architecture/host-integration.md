@@ -1,17 +1,18 @@
-# Host integration: Codex and Claude thin adapters
+# Host integration: Codex, Claude, and Omo thin adapters
 
 > Family index: [`../ARCHITECTURE.md`](../ARCHITECTURE.md). This module owns the
-> Codex/Claude integration map, the shared pioneer-skills layer, and the
+> Codex/Claude/Omo integration map, the shared pioneer-skills layer, and the
 > host-adapter change checklist. Core/port/adapter structure and package
 > boundaries live in [`hexagonal-core.md`](hexagonal-core.md); runtime and MCP
 > topology live in [`runtime.md`](runtime.md).
 
-## Codex / Claude integration map
+## Codex / Claude / Omo integration map
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
 | Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` SessionStart/PostCompact context hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
 | Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` SessionStart/PostCompact context hooks | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
+| Omo native | shell에서 `agent-harness` 실행 | `~/.omo/skills/*` native skills + `~/.omo/mcp.json` MCP server + `~/.omo/extensions/agent-harness.js` session lifecycle extension | Omo 설치를 대행하거나 readiness gate로 만들지 않는다. `.omo/skills`/`.omo/mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 
 ## Pioneer Skills Layer
 
@@ -46,13 +47,13 @@ agent-harness는 12개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 
 - **Language/tech agnostic**: 어떤 스킬도 특정 언어·프레임워크를 강제하지 않는다(6f31c55에서 검증 완료). 모든 언어별 예시는 여러 언어의 동등한 명령어를 나란히 제시한다.
 - **Namesake philosophy**: 각 스킬의 방법론은 그 이름이 된 과학자의 핵심 기여에서 파생된다(예: Codd → 정규화 이론, Dijkstra → 구조적 프로그래밍 + 최단 경로).
-- **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex와 Claude Code에서 동일하게 사용된다.
+- **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex, Claude Code, Omo native에서 동일하게 사용된다.
 
 ## Architecture change checklist
 
 - core behavior 변경: CLI, MCP, worker adapter가 같은 결과를 내는지 테스트한다.
 - command policy 변경: CAUTIONS와 TESTING에 위험과 검증을 업데이트한다.
 - guard 변경: portable anti-pattern rule은 `internal/core/guard/guard_test.go`로 block/warn/review 판정을 고정하고, CLI/contract golden을 함께 갱신한다.
-- host adapter 변경: core contract를 복제하지 않았는지 확인하고 `internal/adapter` contract matrix golden으로 Codex/Claude 설치 표면이 drift되지 않았는지 검증한다.
-- shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
+- host adapter 변경: core contract를 복제하지 않았는지 확인하고 `internal/adapter` contract matrix golden으로 Codex/Claude/Omo 설치 표면이 drift되지 않았는지 검증한다.
+- shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`, `~/.omo/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
 - state 위치 변경: migration/backward compatibility와 cleanup 전략을 문서화한다.

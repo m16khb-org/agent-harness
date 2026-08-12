@@ -8,7 +8,8 @@
         "alpha",
         "beta",
         "claude-only",
-        "codex-only"
+        "codex-only",
+        "omo-only"
       ],
       "hosts": [
         {
@@ -90,7 +91,8 @@
             }
           ],
           "messages": [
-            "skip skill for claude: codex-only"
+            "skip skill for claude: codex-only",
+            "skip skill for claude: omo-only"
           ]
         },
         {
@@ -147,15 +149,99 @@
             }
           ],
           "messages": [
-            "skip skill for codex: claude-only"
+            "skip skill for codex: claude-only",
+            "skip skill for codex: omo-only"
+          ]
+        },
+        {
+          "host": "omo",
+          "ok": true,
+          "files": [
+            {
+              "kind": "omo_lifecycle_extension_template",
+              "path": "$ROOT/configs/omo/agent-harness.js",
+              "written": true,
+              "content_sha256": "9230bb879f01db38a97240e695f910ffcf9a288489fa41ca841eeba2deb382b4",
+              "content": ""
+            },
+            {
+              "kind": "omo_project_mcp_config",
+              "path": "$ROOT/.omo/mcp.json",
+              "written": true,
+              "content_sha256": "d84438b7d8a3182ab4e4c8fe0c786e7deb1b43c09886e679107f87a72c0c59d3",
+              "content": ""
+            },
+            {
+              "kind": "omo_project_mcp_template",
+              "path": "$ROOT/configs/omo/mcp.json",
+              "written": true,
+              "content_sha256": "d84438b7d8a3182ab4e4c8fe0c786e7deb1b43c09886e679107f87a72c0c59d3",
+              "content": ""
+            },
+            {
+              "kind": "omo_user_lifecycle_extension",
+              "path": "$HOME/.omo/extensions/agent-harness.js",
+              "written": true,
+              "content_sha256": "3ac41906d2dc54784a4f90683ecb4002097568e238e700b14d4cc742d70b6e83",
+              "content": ""
+            },
+            {
+              "kind": "omo_user_mcp_config",
+              "path": "$HOME/.omo/mcp.json",
+              "written": true,
+              "content_sha256": "495a4a5ceadd4cae4df14af5793d2e75ca00b6dbaa45f1e1bf87278ec6e6a52a",
+              "content": ""
+            }
+          ],
+          "links": [
+            {
+              "path": "$HOME/.omo/skills/alpha",
+              "target": "$ROOT/skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.omo/skills/beta",
+              "target": "$ROOT/skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.omo/skills/omo-only",
+              "target": "$ROOT/skills/omo-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.omo/skills/alpha",
+              "target": "../../skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.omo/skills/beta",
+              "target": "../../skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.omo/skills/omo-only",
+              "target": "../../skills/omo-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            }
+          ],
+          "messages": [
+            "skip skill for omo: claude-only",
+            "skip skill for omo: codex-only"
           ]
         }
       ],
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
-        "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
-        "default install writes no repo-local .claude or .mcp.json paths",
+        "Codex, Claude, and Omo user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex, Claude, and Omo user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "default install writes no repo-local .claude, .omo, or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]
     },
@@ -167,7 +253,8 @@
         "alpha",
         "beta",
         "claude-only",
-        "codex-only"
+        "codex-only",
+        "omo-only"
       ],
       "hosts": [
         {
@@ -224,7 +311,8 @@
             }
           ],
           "messages": [
-            "skip skill for claude: codex-only"
+            "skip skill for claude: codex-only",
+            "skip skill for claude: omo-only"
           ]
         },
         {
@@ -281,15 +369,74 @@
             }
           ],
           "messages": [
-            "skip skill for codex: claude-only"
+            "skip skill for codex: claude-only",
+            "skip skill for codex: omo-only"
+          ]
+        },
+        {
+          "host": "omo",
+          "ok": true,
+          "files": [
+            {
+              "kind": "omo_lifecycle_extension_template",
+              "path": "$ROOT/configs/omo/agent-harness.js",
+              "written": true,
+              "content_sha256": "9230bb879f01db38a97240e695f910ffcf9a288489fa41ca841eeba2deb382b4",
+              "content": ""
+            },
+            {
+              "kind": "omo_project_mcp_template",
+              "path": "$ROOT/configs/omo/mcp.json",
+              "written": true,
+              "content_sha256": "d84438b7d8a3182ab4e4c8fe0c786e7deb1b43c09886e679107f87a72c0c59d3",
+              "content": ""
+            },
+            {
+              "kind": "omo_user_lifecycle_extension",
+              "path": "$HOME/.omo/extensions/agent-harness.js",
+              "written": true,
+              "content_sha256": "3ac41906d2dc54784a4f90683ecb4002097568e238e700b14d4cc742d70b6e83",
+              "content": ""
+            },
+            {
+              "kind": "omo_user_mcp_config",
+              "path": "$HOME/.omo/mcp.json",
+              "written": true,
+              "content_sha256": "495a4a5ceadd4cae4df14af5793d2e75ca00b6dbaa45f1e1bf87278ec6e6a52a",
+              "content": ""
+            }
+          ],
+          "links": [
+            {
+              "path": "$HOME/.omo/skills/alpha",
+              "target": "$ROOT/skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.omo/skills/beta",
+              "target": "$ROOT/skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.omo/skills/omo-only",
+              "target": "$ROOT/skills/omo-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            }
+          ],
+          "messages": [
+            "skip skill for omo: claude-only",
+            "skip skill for omo: codex-only"
           ]
         }
       ],
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
-        "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
-        "default install writes no repo-local .claude or .mcp.json paths",
+        "Codex, Claude, and Omo user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex, Claude, and Omo user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "default install writes no repo-local .claude, .omo, or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]
     }

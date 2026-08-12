@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "agent_harness_project": {
+      "args": [
+        "mcp"
+      ],
+      "command": "./bin/agent-harness",
+      "env": {
+        "HARNESS_ROOT": "."
+      }
+    }
+  }
+}

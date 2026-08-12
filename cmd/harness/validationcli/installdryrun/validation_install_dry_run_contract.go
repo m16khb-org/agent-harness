@@ -2,7 +2,7 @@ package installdryrun
 
 import "path/filepath"
 
-var requiredInstallDryRunHosts = []string{"codex", "claude"}
+var requiredInstallDryRunHosts = []string{"codex", "claude", "omo"}
 
 func installDryRunValidationErrors(result installDryRunSmokeResult, tempHome, tempRoot string, pathExists func(string) bool) []string {
 	errs := []string{}
@@ -47,9 +47,11 @@ func installDryRunValidationErrors(result installDryRunSmokeResult, tempHome, te
 	for _, path := range []string{
 		filepath.Join(tempHome, ".codex"),
 		filepath.Join(tempHome, ".claude"),
+		filepath.Join(tempHome, ".omo"),
 		filepath.Join(tempRoot, "configs"),
 		filepath.Join(tempRoot, ".mcp.json"),
 		filepath.Join(tempRoot, ".claude"),
+		filepath.Join(tempRoot, ".omo"),
 	} {
 		if pathExists(path) {
 			errs = append(errs, "install dry-run wrote unexpected path:"+path)

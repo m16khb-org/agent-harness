@@ -144,20 +144,24 @@ func validateReadback(readback activationport.Readback) (activationport.Readback
 	if !validSHA256(readback.CatalogSHA256) {
 		return activationport.Readback{}, fmt.Errorf("native activation readback digest is invalid")
 	}
-	expected := map[string]bool{"codex\x00mcp": true, "codex\x00hooks": true, "claude\x00mcp": true, "claude\x00hooks": true}
+	expected := map[string]bool{
+		"codex\x00mcp": true, "codex\x00hooks": true,
+		"claude\x00mcp": true, "claude\x00hooks": true,
+		"omo\x00mcp": true, "omo\x00hooks": true,
+	}
 	paths := map[string]bool{}
 	for _, evidence := range readback.Evidence {
 		key := evidence.Host + "\x00" + evidence.Surface
 		if evidence.Host != strings.TrimSpace(evidence.Host) || evidence.Surface != strings.TrimSpace(evidence.Surface) ||
 			evidence.Path != strings.TrimSpace(evidence.Path) || !expected[key] || evidence.Path == "" || paths[evidence.Path] ||
 			!validSHA256(evidence.SemanticSHA256) || !validSHA256(evidence.SHA256) {
-			return activationport.Readback{}, fmt.Errorf("native activation requires one valid readback for each Codex/Claude MCP/hook surface")
+			return activationport.Readback{}, fmt.Errorf("native activation requires one valid readback for each first-party MCP/hook surface")
 		}
 		delete(expected, key)
 		paths[evidence.Path] = true
 	}
-	if len(expected) != 0 || len(readback.Evidence) != 4 {
-		return activationport.Readback{}, fmt.Errorf("native activation requires exactly four Codex/Claude MCP/hook readbacks")
+	if len(expected) != 0 || len(readback.Evidence) != 6 {
+		return activationport.Readback{}, fmt.Errorf("native activation requires exactly six first-party MCP/hook readbacks")
 	}
 	readback.Evidence = append([]activationport.Evidence(nil), readback.Evidence...)
 	sort.Slice(readback.Evidence, func(left, right int) bool {

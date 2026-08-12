@@ -5,7 +5,7 @@ description: Install, sync, runtime, and operational procedures.
 
 # Operations Map
 
-`agent-harness` gives Codex and Claude Code the same Go binary, MCP schema,
+`agent-harness` gives Codex, Claude Code, and Omo native the same Go binary, MCP schema,
 command policy, state store, shared skills, lifecycle hooks, and project-doc
 workflow.
 
@@ -32,7 +32,7 @@ instead of duplicating their content here or in a guide.
 |-------|-------|
 | First-run install, `ah update`, command shims, MCP refresh | [operations/install.md](operations/install.md) |
 | Direct CLI, policy, guard, state, loop, daemon, MCP cleanup, worker, audit | [operations/cli-and-mcp.md](operations/cli-and-mcp.md) |
-| Codex/Claude native skills, MCP registration, lifecycle hooks | [operations/hosts.md](operations/hosts.md) |
+| Codex/Claude/Omo native skills, MCP registration, lifecycle hooks | [operations/hosts.md](operations/hosts.md) |
 | self-verify, self-augment, api-doc gate, general smoke | [operations/verification.md](operations/verification.md) |
 | Project bootstrap, project-doc routing, MCP document updates | [operations/project-docs.md](operations/project-docs.md) |
 | Release checklist, clean-machine smoke, build matrix, rollback | [operations/release-reproducibility.md](operations/release-reproducibility.md) |

@@ -28,7 +28,16 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `./install.sh` computes the checkout root, builds `bin/agent-harness` when needed, and then runs `agent-harness install`. In a real terminal with no arguments it enters the interactive installer. Non-interactive automation can pass explicit flags such as `--dry-run --json`.
 
-`install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex/Claude MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`. PATH setup is selected with `--path-mode=auto|manual|skip`. Every mode plans or writes the canonical `~/.local/bin/agent-harness` shim and the managed `~/.local/bin/ah -> ~/.local/bin/agent-harness` shorthand; `manual` and `skip` only omit shell rc changes. The default `auto` mode also adds a shell rc PATH line when needed.
+`install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex, Claude, and Omo MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`; Omo uses its native flat-layout `~/.omo` root. PATH setup is selected with `--path-mode=auto|manual|skip`. Every mode plans or writes the canonical `~/.local/bin/agent-harness` shim and the managed `~/.local/bin/ah -> ~/.local/bin/agent-harness` shorthand; `manual` and `skip` only omit shell rc changes. The default `auto` mode also adds a shell rc PATH line when needed.
+
+Each install/update refreshes user skill links for all three first-party hosts,
+managed MCP registration, and the two-event lifecycle surface. Omo receives
+`~/.omo/mcp.json` plus `~/.omo/extensions/agent-harness.js`; explicit
+`--project-local` additionally writes `.omo/skills/*` and `.omo/mcp.json`.
+Before any non-dry-run activation, the installer renders the complete host and
+shell-path plan and snapshots every affected file, symlink, mode, and newly
+created parent directory. Any host write or activation-seal failure restores
+those snapshots together with the command shims before aborting the transition.
 
 `agent-harness` remains the canonical command identity. `ah` is a command symlink, not a shell alias or wrapper. If `~/.local/bin/ah` is a regular file, directory, or points elsewhere, install/update refuses to overwrite it and requires manual resolution.
 
@@ -49,8 +58,13 @@ Default user-level install updates:
 - Codex hooks: `~/.codex/hooks.json`
 - Claude hooks: `~/.claude/settings.json`
 - Claude user-scope MCP server: `claude mcp add-json -s user agent_harness ...`
+- Omo skill symlinks: `~/.omo/skills/* -> <agent-harness>/skills/*`
+- Omo MCP config: `~/.omo/mcp.json`
+- Omo lifecycle extension: `~/.omo/extensions/agent-harness.js`
 
-Default install does not create target-repo `.claude/skills`, `.claude/settings.json`, or `.mcp.json`. Use explicit project-local options only when a repo should own those files.
+Default install does not create target-repo `.claude/skills`,
+`.claude/settings.json`, `.mcp.json`, `.omo/skills`, or `.omo/mcp.json`. Use
+explicit project-local options only when a repo should own those files.
 
 Dry-run checks:
 

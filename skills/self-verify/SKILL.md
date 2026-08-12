@@ -7,7 +7,10 @@ description: Run or interpret the agent-harness self-verification loop. Use when
 
 ## Goal
 
-First-party hosts are exactly Codex and Claude Code. Verify that the harness behaves consistently across both hosts and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
+First-party hosts are exactly Codex, Claude Code, and Omo native. Verify that
+the harness behaves consistently across all three hosts and that CLI, MCP,
+native integration, state, policy, docs, and skills work as intended.
+This skill is a QA gate; it does not choose improvements by itself.
 
 ## Commands
 

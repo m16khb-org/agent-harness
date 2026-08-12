@@ -8,7 +8,7 @@
   <img src="docs/assets/agent-harness-hero.png" alt="여러 AI 코딩 에이전트가 하나의 로컬 하네스 코어를 공유하는 모습" width="100%" />
 </p>
 
-**agent-harness**는 여러 AI 코딩 에이전트가 같은 로컬 실행 규칙과 작업 기록을 공유하게 만드는 개인용 에이전트 하네스입니다. Codex, Claude Code와 사람이 쓰는 shell이 하나의 Go core, CLI/MCP 계약, command policy, user-state 저장소, shared skill 원본을 사용합니다.
+**agent-harness**는 여러 AI 코딩 에이전트가 같은 로컬 실행 규칙과 작업 기록을 공유하게 만드는 개인용 에이전트 하네스입니다. Codex, Claude Code, Omo native와 사람이 쓰는 shell이 하나의 Go core, CLI/MCP 계약, command policy, user-state 저장소, shared skill 원본을 사용합니다.
 
 핵심 목표는 에이전트를 더 많이 실행하는 것이 아니라, 어떤 host에서 작업하더라도 같은 결정을 남기고 같은 안전 경계를 지키며 같은 근거로 완료를 판단하게 만드는 것입니다.
 
@@ -60,12 +60,13 @@ symlink입니다. 기존 `ah` 파일이나 다른 symlink가 있으면 덮어쓰
 
 ## Host 통합
 
-기본 installer는 두 first-party host adapter를 같은 실행 계약에 연결합니다.
+기본 installer는 세 first-party host adapter를 같은 실행 계약에 연결합니다.
 
 | Host | 기본 user-level 통합 |
 | --- | --- |
 | Codex | `~/.codex/skills/`, MCP config, lifecycle hooks |
 | Claude Code | `~/.claude/skills/`, user-scope MCP, lifecycle hooks |
+| Omo native | `~/.omo/skills/`, `~/.omo/mcp.json`, lifecycle extension |
 
 기본 설치는 대상 repo에 host 설정을 만들지 않습니다. repo-local skill, hook, MCP 파일은 명시적 project-local opt-in에서만 생성합니다.
 
@@ -75,6 +76,7 @@ symlink입니다. 기존 `ah` 파일이나 다른 symlink가 있으면 덮어쓰
 flowchart LR
     Codex["Codex"] --> Host["얇은 host adapter<br/>skills · hooks · MCP wiring"]
     Claude["Claude Code"] --> Host
+    Omo["Omo native"] --> Host
     Shell["Human shell"] --> Surface["agent-harness<br/>CLI · MCP proxy · daemon"]
     Host --> Surface
     Surface --> Core["Host-neutral Go core"]
@@ -166,7 +168,7 @@ cmd/harness/       단일 Go binary와 CLI/MCP/daemon/hook 진입점
 internal/core/     host-neutral use case와 policy/state/workflow 동작
 internal/port/     core가 의존하는 interface와 DTO
 internal/adapter/  filesystem, install, host, external boundary adapter
-configs/           Codex와 Claude Code 설정 template
+configs/           Codex, Claude Code, Omo native 설정 template
 skills/            모든 host가 공유하는 skill 원본
 .agent-harness/    architecture, operations, testing, ADR 등 project docs
 scripts/           install, release, smoke, validation script

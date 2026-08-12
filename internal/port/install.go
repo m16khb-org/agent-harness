@@ -15,7 +15,7 @@ type NativeInstallRequest struct {
 
 // NativeActivationEvidence is a host adapter's strict semantic readback of
 // one installed MCP or hook surface. IssueOps seals the referenced file bytes
-// and identity only after both first-party hosts return all required surfaces.
+// and identity only after every first-party host returns all required surfaces.
 type NativeActivationEvidence struct {
 	Host           string `json:"host"`
 	Surface        string `json:"surface"`
@@ -28,7 +28,7 @@ type NativeActivationEvidence struct {
 	Inode          uint64 `json:"inode"`
 }
 
-// NativeInstallResult is the aggregate result of all host installers.
+// NativeInstallResult is the aggregate result of all first-party host installers.
 type NativeInstallResult struct {
 	OK            bool                      `json:"ok"`
 	Root          string                    `json:"root"`
@@ -89,7 +89,7 @@ type InstallLink struct {
 	WouldCreate bool   `json:"would_create,omitempty"`
 }
 
-// HostInstaller is implemented by host-specific adapters such as Codex and Claude Code.
+// HostInstaller is implemented by host-specific adapters such as Codex, Claude Code, and Omo.
 type HostInstaller interface {
 	Name() string
 	Install(NativeInstallRequest) (HostInstallResult, error)

@@ -188,13 +188,13 @@ func TestServiceSealDoesNotMutateReadbackEvidence(t *testing.T) {
 	for _, item := range evidence {
 		got = append(got, item.Host+"/"+item.Surface)
 	}
-	want := []string{"codex/mcp", "claude/hooks", "codex/hooks", "claude/mcp"}
+	want := []string{"codex/mcp", "claude/hooks", "omo/mcp", "codex/hooks", "claude/mcp", "omo/hooks"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("readback evidence was mutated: got %v want %v", got, want)
 	}
 }
 
-func TestServiceSealsOnlyAfterFourSurfaceReadback(t *testing.T) {
+func TestServiceSealsOnlyAfterEveryFirstPartySurfaceReadback(t *testing.T) {
 	backend := &backendSpy{}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 	request := activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness"}
@@ -206,7 +206,7 @@ func TestServiceSealsOnlyAfterFourSurfaceReadback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Sealed || !reflect.DeepEqual(backend.calls, []string{"begin", "readback", "seal"}) || len(result.Receipt.Evidence) != 4 {
+	if !result.Sealed || !reflect.DeepEqual(backend.calls, []string{"begin", "readback", "seal"}) || len(result.Receipt.Evidence) != 6 {
 		t.Fatalf("write-last activation drift: result=%+v calls=%v", result, backend.calls)
 	}
 }
@@ -220,8 +220,8 @@ func hash64(character byte) string {
 }
 
 func validEvidence() []activationport.Evidence {
-	evidence := make([]activationport.Evidence, 0, 4)
-	for _, item := range [][2]string{{"codex", "mcp"}, {"claude", "hooks"}, {"codex", "hooks"}, {"claude", "mcp"}} {
+	evidence := make([]activationport.Evidence, 0, 6)
+	for _, item := range [][2]string{{"codex", "mcp"}, {"claude", "hooks"}, {"omo", "mcp"}, {"codex", "hooks"}, {"claude", "mcp"}, {"omo", "hooks"}} {
 		evidence = append(evidence, activationport.Evidence{Host: item[0], Surface: item[1], Path: "/" + item[0] + "/" + item[1], SemanticSHA256: hash64('a'), SHA256: hash64('b'), Mode: 0o100600, Size: 1, Device: 1, Inode: 1})
 	}
 	return evidence

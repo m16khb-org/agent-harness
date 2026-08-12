@@ -10,7 +10,11 @@ registration detail. Canonical index: [../../OPERATIONS.md](../../OPERATIONS.md)
 
 ## Hook Kill-Switch
 
-Harness hooks are registered once at host level (`~/.claude/settings.json` and the Codex equivalent), so they fire in every repository the agent opens — including repositories the harness does not own. `HARNESS_DISABLE_HOOKS` turns that registration into a no-op for one session without editing host settings:
+Harness hooks are registered once at host level (`~/.claude/settings.json`,
+`~/.codex/hooks.json`, and `~/.omo/extensions/agent-harness.js`), so they fire
+in every repository the agent opens — including repositories the harness does
+not own. `HARNESS_DISABLE_HOOKS` turns that registration into a no-op for one
+session without editing host settings:
 
 ```bash
 HARNESS_DISABLE_HOOKS=1 claude    # 이 세션에서만 harness hook 미적용
@@ -24,5 +28,5 @@ export HARNESS_DISABLE_HOOKS=1    # 셸 세션 전체에 적용
 
 ## Related references
 
-- [operations/hosts.md](../hosts.md): Codex/Claude native skills, MCP
+- [operations/hosts.md](../hosts.md): Codex/Claude/Omo native skills, MCP
   registration, lifecycle hook behavior, and the IssueOps host authority rule.

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	nativeintegrationadapter "agent-harness/cmd/harness/validationcli/nativeintegration"
 )
 
 func TestValidationMCPMermaidNativeWrappersUseDefaultSurfaces(t *testing.T) {
@@ -95,14 +97,19 @@ func writeNativeIntegrationFixture(t *testing.T, root, home string) {
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "codex", "hooks.json"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
+		filepath.Join(root, "configs", "omo", "mcp.json"),
+		filepath.Join(root, "configs", "omo", "agent-harness.js"),
 		filepath.Join(root, "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".codex", "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "shared", "SKILL.md"),
+		filepath.Join(home, ".omo", "skills", "shared", "SKILL.md"),
 	} {
 		writeFileForWrapperTest(t, path, "ok\n")
 	}
 	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "config.toml"), "[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n")
 	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "hooks.json"), fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness")))
+	writeFileForWrapperTest(t, filepath.Join(home, ".omo", "mcp.json"), fmt.Sprintf(`{"mcpServers":{"agent_harness":{"command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}`, filepath.Join(root, "bin", "agent-harness"), root))
+	writeFileForWrapperTest(t, filepath.Join(home, ".omo", "extensions", "agent-harness.js"), nativeintegrationadapter.OmoLifecycleExtension(filepath.Join(root, "bin", "agent-harness")))
 }
 
 func writeFileForWrapperTest(t *testing.T, path, body string) {

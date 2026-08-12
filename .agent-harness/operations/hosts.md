@@ -1,6 +1,6 @@
 ---
 name: hosts.md
-description: Codex and Claude native skills, MCP registration, and lifecycle hook operations.
+description: Codex, Claude, and Omo native skills, MCP registration, and lifecycle hook operations.
 ---
 
 # Host Operations
@@ -79,6 +79,33 @@ Default install registers user-scope MCP server `agent_harness`. This repo's dog
 Claude hooks live in `~/.claude/settings.json`. Default installation owns exactly `SessionStart` and `PostCompact`, both calling the same context CLI/core as Codex with `--host claude`; Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`.
 
 Claude project-local hooks can be committed, so do not create `.claude/settings.json` in target repos without explicit opt-in.
+
+## Omo Native
+
+Omo uses the branded flat-layout native roots:
+
+- User skills: `~/.omo/skills/<skill>/SKILL.md`
+- User MCP: `~/.omo/mcp.json`
+- User lifecycle extension: `~/.omo/extensions/agent-harness.js`
+- Project skills and MCP: `.omo/skills/*` and `.omo/mcp.json` only with
+  explicit project-local opt-in.
+
+The managed extension maps Omo `session_start` and accepted `session_compact`
+events to `agent-harness hook session-start --json` and
+`agent-harness hook post-compact --json`. It injects compact project-doc context
+as a hidden custom message without triggering a new turn. Install/update strict
+readback seals both the MCP file and extension bytes before activation commits.
+
+Checks:
+
+```bash
+test -f ~/.omo/skills/atomic-commit-push/SKILL.md
+test -f ~/.omo/mcp.json
+test -f ~/.omo/extensions/agent-harness.js
+```
+
+Agent-harness does not install or gate the external Omo runtime itself; install
+Omo through its official distribution path.
 
 ## IssueOps Host Rule
 

@@ -16,6 +16,10 @@ description: Architecture decision record index and accepted baseline.
 - **아키텍처:** 외부 하네스 코어(CLI/MCP/worker)에 얇은 host adapter를 얹는
   hybrid 구조. 근거는 [plugin vs external worker](adr/decisions/2026-05-25-plugin-vs-external-worker.md)
   와 [Go 언어 선택](adr/decisions/2026-05-25-go-language-selection.md) 결정에 있다.
+- **First-party hosts:** Codex, Claude Code, Omo native가 같은 shared skill,
+  MCP, lifecycle activation contract를 사용한다. 근거는
+  [Omo native first-party host](adr/decisions/2026-08-12-omo-native-first-party-host.md)
+  결정에 있다.
 - **구현 로드맵:** phase별 계획, 목표 아키텍처, MVP 범위, 위험, 다음 작업 후보는
   [adr/roadmap.md](adr/roadmap.md) 가 소유한다.
 - **결정 규칙:** status model, naming, authoring 규칙과 archived history
