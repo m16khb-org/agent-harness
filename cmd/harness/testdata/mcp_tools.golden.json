@@ -597,7 +597,8 @@
         "owner_host": {
           "enum": [
             "codex",
-            "claude"
+            "claude",
+            "omo"
           ],
           "type": "string"
         },

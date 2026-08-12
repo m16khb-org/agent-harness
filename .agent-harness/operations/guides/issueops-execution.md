@@ -162,10 +162,14 @@ persisted Orca identity. The source main worktree remains available for
 unrelated work throughout the sequence. Plan 연결과 세 phase 전이는 sealed
 owner packet의 exact command를 사용한다. Owner가 phase를 추론해 건너뛰거나
 cleanup evidence 기록이 phase를 자동 전이한다고 가정하지 않는다.
+Omo의 non-inject fallback은 official preamble 전체를 bracketed paste 한 번과
+Enter 한 번으로 전달한다. Raw multiline send는 줄마다 별도 turn으로 실행될 수
+있으므로 사용하지 않는다.
 
 ## IssueOps 이원 구조 운영 (planner/implementer)
 
-- 스폰 준비: 승인된 child plan을 source checkout 밖의 임시 파일에 작성 → `issueops artifact stage --id ID --name plan --file PATH --json` → `issueops execution prepare --id ID --mode auto ...`. `spec|turing-loop`도 prepare 전에 stage할 수 있고 잘못 올렸으면 `artifact unstage`한다. Clean released Orca에서는 next-generation recovery용 plan stage만 허용되며 반드시 `execution replace --reseed` 후 resume한다. (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
+- 스폰 준비: 승인된 child plan을 source checkout 밖의 임시 파일에 작성 → `issueops artifact stage --id ID --name plan --file PATH --json` → `issueops execution prepare --id ID --mode auto ...`. `spec|turing-loop`도 prepare 전에 stage할 수 있고 잘못 올렸으면 `artifact unstage`한다. Clean released Orca에서는 next-generation recovery용 plan stage만 허용되며 반드시 `execution replace --reseed` 후 resume한다. (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high, Omo `openai-codex/gpt-5.6-sol`/max; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
+- Orca가 Omo TUI를 native `--inject` 대상으로 인식하지 않는 runtime에서는 harness가 non-inject dispatch의 official preamble을 검증한 뒤 sealed terminal handle에 `terminal send --enter`로 전달한다. 이미 dispatch가 보이지만 prompt delivery receipt가 없는 recovery는 성공으로 간주하지 않고 fence한다.
 - 다중 사이클 조망: `issueops list [--repo PATH] --json` — claimable/cleanup/unreflected 플래그와 scanned_records 비용을 함께 노출한다.
 - 하위 세션 publication(orca): `issueops implementation-review record --id ID --verdict pass --finding ... --evidence ... --reviewer-model <planner급>` 기록 후에만 `remote create-pr`가 통과한다. diff가 바뀌면 stale로 다시 막힌다.
 - 머지 후 정리(순서 고정): `cleanup status --merged` → `cleanup close-children --merged --confirm` → `remote reflect-completion --confirm` → `remote close-issue --confirm` → `cleanup finish --preview` → `cleanup finish --apply --confirm --fingerprint FP`. finish 재실행 전에는 preview로 fingerprint를 재발급한다.

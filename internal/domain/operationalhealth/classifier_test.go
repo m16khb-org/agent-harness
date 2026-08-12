@@ -105,7 +105,7 @@ func TestClassifyAcceptsOmoNativeHolderAndIndex(t *testing.T) {
 	}
 }
 
-func TestEvaluateCycleAuthorityRejectsOmoAsOrcaOwner(t *testing.T) {
+func TestEvaluateCycleAuthorityAcceptsOmoAsOrcaOwner(t *testing.T) {
 	cycle := healthyDirectSnapshot().Cycles[0]
 	cycle.ExecutionMode = "orca"
 	cycle.OrcaRuntimeID = "runtime"
@@ -116,8 +116,8 @@ func TestEvaluateCycleAuthorityRejectsOmoAsOrcaOwner(t *testing.T) {
 	cycle.HolderExecutable = "omo"
 	cycle.TaskID = "task-id"
 	cycle.DispatchID = "dispatch-id"
-	if got := EvaluateCycleAuthority(cycle, Options{Now: time.Now()}); got != AuthorityUnknown {
-		t.Fatalf("Omo Orca owner authority = %q, want %q", got, AuthorityUnknown)
+	if got := EvaluateCycleAuthority(cycle, Options{Now: time.Now()}); got != AuthorityLive {
+		t.Fatalf("Omo Orca owner authority = %q, want %q", got, AuthorityLive)
 	}
 }
 

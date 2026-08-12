@@ -46,6 +46,19 @@ func TestIntentCodecRoundTripsPrepareAndResumeBytes(t *testing.T) {
 	}
 }
 
+func TestIntentCodecAcceptsOmoOwner(t *testing.T) {
+	var intent Intent
+	if err := json.Unmarshal([]byte(prepareIntentJSON), &intent); err != nil {
+		t.Fatal(err)
+	}
+	intent.Probe.Host = "omo"
+	intent.Probe.Model = ImplementerModelOmo
+	intent.Probe.Effort = ImplementerEffortOmo
+	if err := (IntentCodec{}).Validate(intent, prepareOperationID); err != nil {
+		t.Fatalf("Omo owner intent must be valid: %v", err)
+	}
+}
+
 func TestIntentCodecRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	codec := IntentCodec{}
 	tests := []struct {

@@ -41,7 +41,7 @@ Usage:
   agent-harness issueops link-plan --id ID --plan-path PATH RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]
   agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude|omo [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] [ACTOR_FLAGS] [--json]

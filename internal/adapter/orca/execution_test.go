@@ -14,6 +14,77 @@ import (
 	"agent-harness/internal/port"
 )
 
+func TestExecutionValidatorsAcceptOmoOwner(t *testing.T) {
+	probe := port.ExecutionOrcaProbeRequest{
+		Repo: "/repo", Host: "omo", Model: "openai-codex/gpt-5.6-sol",
+		Effort: "max", Provider: "github", Issue: 469,
+		Marker: "agent-harness issueops-v1 lifecycle=io-omo operation=0123456789abcdef0123456789abcdef provider=github issue=469",
+	}
+	workspace := port.ExecutionWorkspaceRequest{
+		LifecycleID: "io-omo", SourceRoot: "/repo", Root: "/repo.worktrees/469-omo",
+		Branch: "469-omo", BaseHead: "41e438890bce7afdc697e16cf51fc3ea5357fde3",
+	}
+	if err := validateExecutionPrepare(workspace, probe); err != nil {
+		t.Fatalf("Omo prepare must be valid: %v", err)
+	}
+}
+
+func TestExecutionDispatchesOmoWithOfficialPreamble(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	probe.Host = "omo"
+	probe.Model = "openai-codex/gpt-5.6-sol"
+	probe.Effort = "max"
+	launch := executionLaunchFixture(t, workspace.Root)
+	prepared := executionWorkspaceReceipt(workspace, executionWorktree(workspace, probe))
+	client := &executionFake{
+		workspace: workspace, probeRequest: probe,
+		terminals: []port.OrcaTerminal{{
+			RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69",
+			WorktreeID: "wt-69", Connected: true, Writable: true,
+		}},
+		dispatchResult: &port.OrcaDispatch{
+			RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69",
+			AssigneeHandle: "term-69", Status: "dispatched", Preamble: "official Omo preamble",
+		},
+	}
+	receipt, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", RunID: "run-69", RunBound: true, TaskID: "task-69",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.DispatchID != "dispatch-69" || client.dispatchRequest.Inject || !client.dispatchRequest.ReturnPreamble {
+		t.Fatalf("Omo dispatch receipt=%#v request=%#v", receipt, client.dispatchRequest)
+	}
+	if client.promptHandle != "term-69" || client.prompt != "official Omo preamble" {
+		t.Fatalf("Omo prompt delivery handle=%q prompt=%q", client.promptHandle, client.prompt)
+	}
+}
+
+func TestExecutionDoesNotReconcileUnprovenOmoPromptDelivery(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	probe.Host = "omo"
+	probe.Model = "openai-codex/gpt-5.6-sol"
+	probe.Effort = "max"
+	launch := executionLaunchFixture(t, workspace.Root)
+	prepared := executionWorkspaceReceipt(workspace, executionWorktree(workspace, probe))
+	client := &executionFake{
+		workspace: workspace, probeRequest: probe,
+		dispatch: port.OrcaDispatch{
+			RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69",
+			AssigneeHandle: "term-69", Status: "dispatched",
+		},
+	}
+	_, err := NewExecutionClient(client).InspectIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", RunID: "run-69", RunBound: true, TaskID: "task-69",
+	})
+	if err == nil || !strings.Contains(err.Error(), "Omo prompt delivery is unproven") {
+		t.Fatalf("unproven Omo prompt delivery must stay fenced: %v", err)
+	}
+}
+
 func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T) {
 	workspace, request := executionFixture(t)
 	client := &executionFake{workspace: workspace, probeRequest: request}
@@ -1197,7 +1268,10 @@ type executionFake struct {
 	readyTasks                []port.OrcaTask
 	tasks                     []port.OrcaTask
 	dispatch                  port.OrcaDispatch
+	dispatchResult            *port.OrcaDispatch
 	createdTask               *port.OrcaTask
+	promptHandle              string
+	prompt                    string
 	terminalDetail            *executionTerminalDetailInventory
 	terminalDetailErr         error
 	terminalInventoryRuntime  *string
@@ -1287,7 +1361,17 @@ func (f *executionFake) CreateTask(_ context.Context, req port.OrcaCreateTaskReq
 func (f *executionFake) Dispatch(_ context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
 	f.calls = append(f.calls, "dispatch")
 	f.dispatchRequest = req
+	if f.dispatchResult != nil {
+		return *f.dispatchResult, nil
+	}
 	return port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: req.TaskID, AssigneeHandle: req.ToHandle, Injected: true}, nil
+}
+
+func (f *executionFake) SendTerminalPrompt(_ context.Context, handle, prompt string) error {
+	f.calls = append(f.calls, "send-terminal-prompt")
+	f.promptHandle = handle
+	f.prompt = prompt
+	return nil
 }
 
 func (f *executionFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {

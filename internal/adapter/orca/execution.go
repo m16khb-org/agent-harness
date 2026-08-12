@@ -34,6 +34,7 @@ type executionClient interface {
 	UseRun(context.Context, string) (port.OrcaRun, error)
 	CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error)
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
+	SendTerminalPrompt(context.Context, string, string) error
 }
 
 type executionInventoryClient interface {
@@ -231,6 +232,9 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 			return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{}, AuthoritativeZero: true}, nil
 		}
 		dispatch := *inventory.Dispatch
+		if req.Probe.Host == "omo" {
+			return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca Omo prompt delivery is unproven after dispatch")
+		}
 		if err := validateExecutionObservedDispatch(dispatch, req.Prepared.RuntimeID, req.TaskID); err != nil {
 			return port.ExecutionOrcaIntentInventory{}, err
 		}
@@ -317,12 +321,20 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(err)
 		}
-		dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{RunID: req.RunID, TaskID: req.TaskID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true})
+		inject := req.Probe.Host != "omo"
+		dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{
+			RunID: req.RunID, TaskID: req.TaskID, ToHandle: terminal.Handle, Inject: inject, ReturnPreamble: true,
+		})
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
 		}
-		if err := validateExecutionInvokedDispatch(dispatch, req.Prepared.RuntimeID, req.TaskID, terminal.Handle); err != nil {
+		if err := validateExecutionInvokedDispatch(dispatch, req.Prepared.RuntimeID, req.TaskID, terminal.Handle, inject); err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "dispatch_identity_mismatch", Detail: err.Error(), Invoked: true}
+		}
+		if !inject {
+			if err := p.client.SendTerminalPrompt(ctx, terminal.Handle, dispatch.Preamble); err != nil {
+				return port.ExecutionOrcaIntentReceipt{}, err
+			}
 		}
 		return port.ExecutionOrcaIntentReceipt{TaskID: dispatch.TaskID, DispatchID: dispatch.ID}, nil
 	default:
@@ -1003,9 +1015,10 @@ func validateExecutionIntentTask(task port.OrcaTask, prepared port.ExecutionOrca
 	return nil
 }
 
-func validateExecutionInvokedDispatch(dispatch port.OrcaDispatch, runtimeID, taskID, terminalHandle string) error {
+func validateExecutionInvokedDispatch(dispatch port.OrcaDispatch, runtimeID, taskID, terminalHandle string, inject bool) error {
 	if strings.TrimSpace(dispatch.ID) == "" || strings.TrimSpace(runtimeID) == "" || dispatch.RuntimeID != runtimeID || dispatch.TaskID != taskID ||
-		strings.TrimSpace(terminalHandle) == "" || dispatch.AssigneeHandle != terminalHandle || !dispatch.Injected {
+		strings.TrimSpace(terminalHandle) == "" || dispatch.AssigneeHandle != terminalHandle || dispatch.Injected != inject ||
+		(!inject && strings.TrimSpace(dispatch.Preamble) == "") {
 		return fmt.Errorf("Orca dispatch does not match the sealed task and terminal")
 	}
 	return nil
@@ -1030,8 +1043,8 @@ func validateExecutionPrepare(workspace port.ExecutionWorkspaceRequest, req port
 	if strings.TrimSpace(workspace.LifecycleID) == "" || !filepath.IsAbs(workspace.SourceRoot) || !filepath.IsAbs(workspace.Root) || strings.TrimSpace(workspace.Branch) == "" || strings.TrimSpace(workspace.BaseHead) == "" {
 		return fmt.Errorf("Orca prepare requires an exact lifecycle and workspace identity")
 	}
-	if req.Host != "codex" && req.Host != "claude" || strings.TrimSpace(req.Model) == "" || strings.TrimSpace(req.Marker) == "" {
-		return fmt.Errorf("Orca prepare requires codex or claude with explicit model and marker")
+	if req.Host != "codex" && req.Host != "claude" && req.Host != "omo" || strings.TrimSpace(req.Model) == "" || strings.TrimSpace(req.Marker) == "" {
+		return fmt.Errorf("Orca prepare requires codex, claude, or omo with explicit model and marker")
 	}
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	if provider != "github" && provider != "gitlab" {
@@ -1125,7 +1138,7 @@ func validateExecutionOwnerLaunch(prepared port.ExecutionOrcaWorkspaceReceipt, r
 	if strings.TrimSpace(prepared.WorktreeID) == "" || strings.TrimSpace(prepared.RuntimeID) == "" || strings.TrimSpace(prepared.RepoID) == "" {
 		return fmt.Errorf("Orca workspace receipt is incomplete")
 	}
-	if req.Host != "codex" && req.Host != "claude" || strings.TrimSpace(req.Model) == "" {
+	if req.Host != "codex" && req.Host != "claude" && req.Host != "omo" || strings.TrimSpace(req.Model) == "" {
 		return fmt.Errorf("Orca owner launch requires an explicit first-party owner profile")
 	}
 	packet, err := readExecutionSealedFile(prepared.Workspace.Root, launch.ContextPacketPath)

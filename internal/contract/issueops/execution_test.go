@@ -50,6 +50,15 @@ func TestValidateNativeActorAcceptsOmo(t *testing.T) {
 	}
 }
 
+func TestValidateExecutionAcceptsOmoOrcaOwner(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.OwnerHost = "omo"
+	execution.Orca.OwnerModel = "openai-codex/gpt-5.6-sol"
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("Omo Orca owner must be valid: %v", err)
+	}
+}
+
 func TestValidateExecutionAcceptsOptionalOrcaRunID(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.RunID = ""

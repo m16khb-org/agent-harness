@@ -15,6 +15,8 @@ const (
 	ImplementerEffortCodex  = "xhigh"
 	ImplementerModelClaude  = "claude-sonnet-5"
 	ImplementerEffortClaude = "high"
+	ImplementerModelOmo     = "openai-codex/gpt-5.6-sol"
+	ImplementerEffortOmo    = "max"
 )
 
 type Actor = leasecontract.Actor
@@ -28,6 +30,8 @@ func ImplementerDefaults(host string) (model string, effort string, ok bool) {
 		return ImplementerModelCodex, ImplementerEffortCodex, true
 	case "claude":
 		return ImplementerModelClaude, ImplementerEffortClaude, true
+	case "omo":
+		return ImplementerModelOmo, ImplementerEffortOmo, true
 	default:
 		return "", "", false
 	}

@@ -54,6 +54,22 @@ func TestOrcaPreviewAndAutoFallback(t *testing.T) {
 	})
 }
 
+func TestOrcaPreviewAcceptsOmoOwner(t *testing.T) {
+	fixture := newOrcaApplicationFixture()
+	command := orcaCommand(false, preparationcontract.ModeOrca)
+	command.OwnerHost = "omo"
+	command.OwnerModel = preparationcontract.ImplementerModelOmo
+	command.OwnerEffort = preparationcontract.ImplementerEffortOmo
+
+	result, err := fixture.service.Prepare(context.Background(), command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || !result.Preview || result.ResolvedMode != preparationcontract.ModeOrca {
+		t.Fatalf("result=%+v", result)
+	}
+}
+
 func TestOrcaConfirmRejectsProviderIssueDriftBeforeIntent(t *testing.T) {
 	fixture := newOrcaApplicationFixture()
 	previewCommand := orcaCommand(false, preparationcontract.ModeOrca)

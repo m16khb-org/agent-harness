@@ -60,7 +60,7 @@ func execute(req model.ExecutionActionRequest, deps Deps) (any, error) {
 }
 
 const Usage = `Usage:
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--direct-reason REASON] [--expected-readiness-fingerprint SHA256] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude|omo [--owner-model MODEL] [--owner-effort EFFORT] [--direct-reason REASON] [--expected-readiness-fingerprint SHA256] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] [ACTOR_FLAGS] [--json]

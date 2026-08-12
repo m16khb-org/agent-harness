@@ -19,6 +19,8 @@ const (
 	// 플래그가 제거되면 ownerAgentCommand(adapter/orca/client.go)의 claude
 	// 분기에서 effort 인자를 조건부 생략으로 되돌린다.
 	IssueOpsImplementerEffortClaude = "high"
+	IssueOpsImplementerModelOmo     = "openai-codex/gpt-5.6-sol"
+	IssueOpsImplementerEffortOmo    = "max"
 
 	// IssueOps planner(계획/리뷰 세션)의 host별 기본 모델. 하위 세션이 구현
 	// diff의 brooks 적대 리뷰 서브에이전트를 띄울 때 사용한다(설계 v5 WS5).
@@ -48,6 +50,8 @@ func IssueOpsImplementerDefaults(host string) (model string, effort string, ok b
 		return IssueOpsImplementerModelCodex, IssueOpsImplementerEffortCodex, true
 	case "claude":
 		return IssueOpsImplementerModelClaude, IssueOpsImplementerEffortClaude, true
+	case "omo":
+		return IssueOpsImplementerModelOmo, IssueOpsImplementerEffortOmo, true
 	}
 	return "", "", false
 }

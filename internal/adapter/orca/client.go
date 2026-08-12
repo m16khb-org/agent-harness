@@ -190,8 +190,8 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 			return result, nil
 		}
 	}
-	if agent == "claude" {
-		help, err := c.runText(ctx, "", readTimeout, []string{"claude", "--help"})
+	if agent == "claude" || agent == "omo" {
+		help, err := c.runText(ctx, "", readTimeout, []string{agent, "--help"})
 		if err != nil || !containsAllHelpFlags(help, []string{"--model"}) {
 			result.Code = "host_model_selection_unsupported"
 			return result, nil
@@ -536,6 +536,29 @@ func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootst
 	}
 	if !wait.Wait.Satisfied {
 		return &port.OrcaError{Code: "terminal_agent_bootstrap_timeout", Detail: "agent terminal did not reach Orca TUI idle state", Invoked: true}
+	}
+	return nil
+}
+
+func (c *Client) SendTerminalPrompt(ctx context.Context, handle, prompt string) error {
+	handle = strings.TrimSpace(handle)
+	if !concreteTerminalHandlePattern.MatchString(handle) || strings.TrimSpace(prompt) == "" ||
+		strings.ContainsAny(prompt, "\x00\x1b") {
+		return &port.OrcaError{Code: "terminal_prompt_invalid"}
+	}
+	prompt = "\x1b[200~" + prompt + "\x1b[201~"
+	var payload struct {
+		Send struct {
+			Accepted bool `json:"accepted"`
+		} `json:"send"`
+	}
+	if _, err := c.runJSON(ctx, "", createTimeout, []string{
+		"orca", "terminal", "send", "--terminal", handle, "--text", prompt, "--enter", "--json",
+	}, &payload); err != nil {
+		return err
+	}
+	if !payload.Send.Accepted {
+		return &port.OrcaError{Code: "terminal_prompt_rejected", Invoked: true}
 	}
 	return nil
 }
@@ -1457,6 +1480,8 @@ func hostCommand(agent string) (string, bool) {
 		return "codex", true
 	case "claude":
 		return "claude", true
+	case "omo":
+		return "omo", true
 	default:
 		return "", false
 	}
@@ -1484,6 +1509,11 @@ func ownerAgentCommand(agent, model, reasoningEffort string, allowCodexHookTrust
 			command += " --effort " + shellSingleQuote(reasoningEffort)
 		}
 		return command, true
+	case "omo":
+		if reasoningEffort != "" {
+			model += ":" + reasoningEffort
+		}
+		return "omo --model " + shellSingleQuote(model), true
 	default:
 		return "", false
 	}

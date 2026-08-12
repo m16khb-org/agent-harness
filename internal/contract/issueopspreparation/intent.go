@@ -313,7 +313,7 @@ func validateShape(intent Intent, operationID string) error {
 		intent.LifecycleID == "" || intent.Generation == 0 || intent.Marker == "" || intent.StartedAt == "" ||
 		intent.Workspace.LifecycleID != intent.LifecycleID || intent.Probe.Marker != intent.Marker ||
 		!samePath(intent.Probe.Repo, intent.Workspace.SourceRoot) || strings.TrimSpace(intent.Probe.Model) == "" ||
-		(intent.Probe.Host != "codex" && intent.Probe.Host != "claude") ||
+		(intent.Probe.Host != "codex" && intent.Probe.Host != "claude" && intent.Probe.Host != "omo") ||
 		(intent.InvocationState != InvocationNotInvoked && intent.InvocationState != InvocationUnknown) ||
 		intent.InvocationAttempts < 0 || intent.InvocationAttempts > MaxInvocationAttempts || !sha256Pattern.MatchString(intent.IssueBodySHA256) {
 		return fmt.Errorf("Orca external intent payload is invalid")

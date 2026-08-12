@@ -158,6 +158,7 @@ func TestProbeRequiresHostModelSelectionCapability(t *testing.T) {
 	}{
 		{name: "codex", agent: "codex", help: "--dangerously-bypass-hook-trust"},
 		{name: "claude", agent: "claude", help: "Usage: claude"},
+		{name: "omo", agent: "omo", help: "Usage: omo"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -185,8 +186,8 @@ func TestProbeRequiresHostModelSelectionCapability(t *testing.T) {
 	}
 }
 
-func TestProbeDoesNotApplyCodexBypassRequirementToClaude(t *testing.T) {
-	for _, agent := range []string{"claude"} {
+func TestProbeDoesNotApplyCodexBypassRequirementToOtherHosts(t *testing.T) {
+	for _, agent := range []string{"claude", "omo"} {
 		t.Run(agent, func(t *testing.T) {
 			runner := newFakeRunner(t)
 			runner.lookPaths["orca"] = "/usr/local/bin/orca"
@@ -757,6 +758,10 @@ func TestClientCreateTerminalUsesCallerSelectedHostLaunchProfile(t *testing.T) {
 			name: "Claude Opus 4.8", agent: "claude", model: "opus",
 			command: "claude --model 'opus'",
 		},
+		{
+			name: "Omo Sol max", agent: "omo", model: "openai-codex/gpt-5.6-sol", effort: "max",
+			command: "omo --model 'openai-codex/gpt-5.6-sol:max'",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -792,6 +797,39 @@ func TestClientBootstrapsExactOwnedTerminalWithSealedCodexProfile(t *testing.T) 
 	}
 	if !reflect.DeepEqual(runner.calls, want) {
 		t.Fatalf("bootstrap calls = %#v, want %#v", runner.calls, want)
+	}
+}
+
+func TestClientSendsOfficialPreambleToExactOmoTerminal(t *testing.T) {
+	runner := newFakeRunner(t)
+	handle := "term_00000000-0000-4000-8000-000000000069"
+	prompt := "official-preamble line one\nofficial-preamble line two"
+	bracketedPrompt := "\x1b[200~" + prompt + "\x1b[201~"
+	command := "orca terminal send --terminal " + handle + " --text " + bracketedPrompt + " --enter --json"
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}
+
+	if err := NewClient(runner).SendTerminalPrompt(context.Background(), handle, prompt); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{{"orca", "terminal", "send", "--terminal", handle, "--text", bracketedPrompt, "--enter", "--json"}}
+	if !reflect.DeepEqual(runner.calls, want) {
+		t.Fatalf("terminal prompt calls = %#v, want %#v", runner.calls, want)
+	}
+}
+
+func TestClientRejectsBracketedPasteControlInTerminalPrompt(t *testing.T) {
+	runner := newFakeRunner(t)
+	err := NewClient(runner).SendTerminalPrompt(
+		context.Background(),
+		"term_00000000-0000-4000-8000-000000000069",
+		"official-preamble\x1b[201~injected-turn",
+	)
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "terminal_prompt_invalid" || orcaErr.Invoked {
+		t.Fatalf("terminal prompt error = %#v", err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("invalid terminal prompt invoked mutation: %#v", runner.calls)
 	}
 }
 
@@ -1329,4 +1367,5 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 	runner.responses["orca orchestration run-list --json"] = fixtureOutput(runner.t, "run_list.json")
 	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("--model --config --dangerously-bypass-hook-trust")}
 	runner.responses["claude --help"] = CommandOutput{Stdout: []byte("--model")}
+	runner.responses["omo --help"] = CommandOutput{Stdout: []byte("--model")}
 }

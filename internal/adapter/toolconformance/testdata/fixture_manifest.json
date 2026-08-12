@@ -28,7 +28,7 @@
       "id": "nested_execution_array",
       "probe_tool": "harness_probe_nested_object_array",
       "source_tool": "issueops_execution",
-      "schema_sha256": "21a6106f605d999e3a6f05a7e6768863886b930480f77628b226bb2925b379c6",
+      "schema_sha256": "aee9facfcc4c58d3903149d56e859baecfc421aa07e1ede36a3e3fe64e87ad0a",
       "expected_arguments": {
         "action": "complete",
         "id": "issueops-probe",

@@ -64,8 +64,8 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 		if service.orca == nil {
 			readiness.Code = "orca_adapter_unavailable"
 		} else {
-			if command.OwnerHost != "codex" && command.OwnerHost != "claude" {
-				return failedResult(command.ID), fmt.Errorf("Orca owner_host must be codex or claude")
+			if command.OwnerHost != "codex" && command.OwnerHost != "claude" && command.OwnerHost != "omo" {
+				return failedResult(command.ID), fmt.Errorf("Orca owner_host must be codex, claude, or omo")
 			}
 			// owner가 보충할 수 없는 planner 전제가 빠져 있으면 띄우지 않는다.
 			// 띄우면 owner는 claim까지 완주한 뒤 채울 수 없는 게이트에 부딪혀

@@ -129,9 +129,16 @@ The preview response seals the selection evidence in `readiness_fingerprint` and
 
 Omo native sessions use `PI_SESSION_ID` and the live `omo` process receipt.
 `agent-harness issueops execution whoami --json` resolves both automatically.
-This direct native-holder support does not widen Orca provisioning:
-`--owner-host` remains `codex|claude` because Orca owns a separate host
-adapter contract.
+`--owner-host` accepts `codex|claude|omo`, so Orca can own and display any of
+those host sessions. For Omo, IssueOps launches the UI-visible terminal with
+`omo --model '<provider/model>:<thinking>'`; the default is
+`openai-codex/gpt-5.6-sol:max`.
+If Orca does not recognize that TUI for native `--inject`, IssueOps creates a
+non-inject dispatch with the official preamble, validates the sealed task and
+terminal identities, and sends the whole preamble to that exact terminal as one
+bracketed-paste turn followed by one Enter. Raw multiline sends are forbidden
+because embedded newlines can become separate Omo turns. Reconcile must stay
+fenced when a dispatch exists but prompt delivery is not provable.
 
 The provisioned path is the fixed sibling
 `${repo}.worktrees/<branch-with-slashes-replaced>`. Preparation creates or

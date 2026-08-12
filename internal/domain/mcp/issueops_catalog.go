@@ -24,7 +24,7 @@ func issueOpsExecutionSchema() map[string]any {
 			"session_started_at":             map[string]any{"type": "string"},
 			"session_executable":             map[string]any{"type": "string"},
 			"cwd":                            map[string]any{"type": "string"},
-			"owner_host":                     map[string]any{"type": "string", "enum": []string{"codex", "claude"}},
+			"owner_host":                     map[string]any{"type": "string", "enum": []string{"codex", "claude", "omo"}},
 			"owner_model":                    map[string]any{"type": "string"},
 			"owner_effort":                   map[string]any{"type": "string"},
 			"direct_reason":                  map[string]any{"type": "string"},

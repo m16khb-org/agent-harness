@@ -7,7 +7,7 @@ import (
 )
 
 func TestLegacyImplementerDefaultsMatchPreparationContract(t *testing.T) {
-	for _, host := range []string{"codex", "claude", "unknown"} {
+	for _, host := range []string{"codex", "claude", "omo", "unknown"} {
 		legacyModel, legacyEffort, legacyOK := IssueOpsImplementerDefaults(host)
 		model, effort, ok := preparationcontract.ImplementerDefaults(host)
 		if legacyModel != model || legacyEffort != effort || legacyOK != ok {

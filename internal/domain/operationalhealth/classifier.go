@@ -452,7 +452,7 @@ func validNativeHost(host string) bool {
 
 func validOrcaOwnerHost(host string) bool {
 	host = strings.TrimSpace(host)
-	return host == "codex" || host == "claude"
+	return host == "codex" || host == "claude" || host == "omo"
 }
 
 func holderIdentityEmpty(cycle Cycle) bool {
