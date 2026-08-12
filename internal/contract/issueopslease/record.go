@@ -283,8 +283,8 @@ func validateLease(lease Lease) error {
 }
 
 func validateActor(actor Actor) error {
-	if actor.Host != "codex" && actor.Host != "claude" {
-		return fmt.Errorf("native actor host must be codex or claude")
+	if actor.Host != "codex" && actor.Host != "claude" && actor.Host != "omo" {
+		return fmt.Errorf("native actor host must be codex, claude, or omo")
 	}
 	if strings.TrimSpace(actor.SessionID) == "" {
 		return fmt.Errorf("native actor session_id is required")

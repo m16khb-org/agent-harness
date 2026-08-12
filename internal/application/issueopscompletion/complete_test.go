@@ -33,6 +33,26 @@ func TestCompleteCommitsWithoutOrcaSettle(t *testing.T) {
 	}
 }
 
+func TestResolveActorAcceptsOmoNativeProcess(t *testing.T) {
+	process := completioncontract.ProcessReceipt{
+		PID: 42, StartedAt: "2026-08-12T00:00:00Z", Executable: "omo",
+	}
+	actor, err := resolveActor(
+		context.Background(),
+		completioncontract.Actor{Host: "omo", SessionID: "omo-session", Process: &process},
+		[]completioncontract.ProcessReceipt{process},
+		func(context.Context, completioncontract.ProcessReceipt) (string, completioncontract.ProcessReceipt, error) {
+			return "live", process, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("Omo completion actor must resolve: %v", err)
+	}
+	if actor.Host != "omo" || actor.SessionID != "omo-session" || actor.Process == nil || *actor.Process != process {
+		t.Fatalf("resolved Omo completion actor=%+v", actor)
+	}
+}
+
 func TestCompleteIdenticalRetrySkipsEnvironmentWithoutOrcaSettle(t *testing.T) {
 	record := activeCompletionRecord("orca")
 	record.Phase = "done"

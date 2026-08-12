@@ -413,7 +413,7 @@ func executionIdentityComplete(cycle Cycle) bool {
 		return !hasOrcaIdentity(cycle)
 	case "orca":
 		return strings.TrimSpace(cycle.OrcaRuntimeID) != "" && strings.TrimSpace(cycle.OrcaRepoID) != "" &&
-			strings.TrimSpace(cycle.OrcaWorktreeID) != "" && validNativeHost(cycle.OrcaOwnerHost) &&
+			strings.TrimSpace(cycle.OrcaWorktreeID) != "" && validOrcaOwnerHost(cycle.OrcaOwnerHost) &&
 			strings.TrimSpace(cycle.TaskID) != "" && strings.TrimSpace(cycle.DispatchID) != ""
 	default:
 		return false
@@ -446,6 +446,11 @@ func holderIdentityComplete(cycle Cycle) bool {
 }
 
 func validNativeHost(host string) bool {
+	host = strings.TrimSpace(host)
+	return host == "codex" || host == "claude" || host == "omo"
+}
+
+func validOrcaOwnerHost(host string) bool {
 	host = strings.TrimSpace(host)
 	return host == "codex" || host == "claude"
 }

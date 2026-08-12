@@ -19,7 +19,7 @@ func TestValidateActorRetainsLegacyText(t *testing.T) {
 		actor Actor
 		want  string
 	}{
-		{name: "invalid host", actor: Actor{Host: "other"}, want: "native actor host must be codex or claude"},
+		{name: "invalid host", actor: Actor{Host: "other"}, want: "native actor host must be codex, claude, or omo"},
 		{name: "missing session", actor: Actor{Host: "codex"}, want: "native actor session_id is required"},
 		{name: "missing receipt", actor: Actor{Host: "codex", SessionID: "session"}, want: "native actor requires a PID reuse-safe session_process receipt"},
 	} {
@@ -28,6 +28,19 @@ func TestValidateActorRetainsLegacyText(t *testing.T) {
 				t.Fatalf("validateActor error=%v want=%q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestValidateActorAcceptsOmo(t *testing.T) {
+	err := validateActor(Actor{
+		Host:      "omo",
+		SessionID: "019ff5b8-7d62-707a-a693-5e7a5e8a3187",
+		SessionProcess: &ProcessReceipt{
+			PID: 42, StartedAt: "2026-08-12T00:00:00Z", Executable: "/Users/test/Library/pnpm/bin/omo",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Omo native actor must be valid: %v", err)
 	}
 }
 

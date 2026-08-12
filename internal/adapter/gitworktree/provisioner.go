@@ -184,8 +184,10 @@ func workspaceRelaunchCommand(host, sourceRoot, base string) (string, error) {
 		return "codex --cd " + sourceRoot + " --add-dir " + base, nil
 	case "claude":
 		return "claude --add-dir " + base, nil
+	case "omo":
+		return "cd " + sourceRoot + " && omo", nil
 	default:
-		return "", fmt.Errorf("native actor host must be codex or claude")
+		return "", fmt.Errorf("native actor host must be codex, claude, or omo")
 	}
 }
 

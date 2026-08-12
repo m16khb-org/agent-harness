@@ -37,7 +37,7 @@ func ListLeaseHolderIndexes(stateRoot string) ([]issueopscontract.LeaseHolderInd
 			return nil, fmt.Errorf("decode active lease-holder index %s: %w", row.ID, err)
 		}
 		if index.SchemaVersion != issueops.IssueOpsSchemaVersion || index.Generation == 0 || strings.TrimSpace(index.LifecycleID) == "" ||
-			(index.Host != "codex" && index.Host != "claude") || strings.TrimSpace(index.SessionID) == "" {
+			(index.Host != "codex" && index.Host != "claude" && index.Host != "omo") || strings.TrimSpace(index.SessionID) == "" {
 			return nil, fmt.Errorf("active lease-holder index %s is invalid", row.ID)
 		}
 		if _, err := normalizeIssueOpsID(index.LifecycleID); err != nil {

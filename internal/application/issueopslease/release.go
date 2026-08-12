@@ -78,8 +78,8 @@ func resolveActor(ctx context.Context, actor issueopslease.Actor, ancestry []iss
 		process.Executable = strings.TrimSpace(process.Executable)
 		actor.Process = &process
 	}
-	if actor.Host != "codex" && actor.Host != "claude" {
-		return issueopslease.Actor{}, fmt.Errorf("native actor host must be codex or claude")
+	if actor.Host != "codex" && actor.Host != "claude" && actor.Host != "omo" {
+		return issueopslease.Actor{}, fmt.Errorf("native actor host must be codex, claude, or omo")
 	}
 	if actor.SessionID == "" {
 		return issueopslease.Actor{}, fmt.Errorf("native actor session_id is required")

@@ -66,7 +66,12 @@ func shouldSkipForbiddenNameScanDir(name, rel string) bool {
 	case ".git", "bin", "cache", ".cache", ".codex", ".codegraph", ".omc", ".omx", ".antigravitycli":
 		return true
 	}
-	return filepath.ToSlash(rel) == ".claude/hooks/.logs"
+	switch filepath.ToSlash(rel) {
+	case ".claude/hooks/.logs", ".omo/senpi-task":
+		return true
+	default:
+		return false
+	}
 }
 
 func forbiddenLegacyNeedles() []string {

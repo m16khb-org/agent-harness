@@ -42,6 +42,16 @@ func TestProbeAccessReturnsHostSpecificRelaunchWithoutWorktreeMutation(t *testin
 	}
 }
 
+func TestWorkspaceRelaunchCommandSupportsOmoLead(t *testing.T) {
+	got, err := workspaceRelaunchCommand("omo", "/repo/owner's source", "/repo.worktrees")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "cd '/repo/owner'\\''s source' && omo"; got != want {
+		t.Fatalf("Omo relaunch command=%q want=%q", got, want)
+	}
+}
+
 func initAccessRepo(t *testing.T) string {
 	t.Helper()
 	repo := filepath.Join(t.TempDir(), "repo")

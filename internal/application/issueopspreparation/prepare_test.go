@@ -46,6 +46,23 @@ func TestDirectPreparationPreviewAndConfirmTrace(t *testing.T) {
 	}
 }
 
+func TestNormalizeActorAcceptsOmo(t *testing.T) {
+	actor, err := normalizeActor(leasecontract.Actor{
+		Host:      " OMO ",
+		SessionID: " session ",
+		SessionProcess: &leasecontract.ProcessReceipt{
+			PID: 42, StartedAt: " 2026-08-12T00:00:00Z ", Executable: " omo ",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Omo preparation actor must normalize: %v", err)
+	}
+	if actor.Host != "omo" || actor.SessionID != "session" || actor.SessionProcess == nil ||
+		actor.SessionProcess.StartedAt != "2026-08-12T00:00:00Z" || actor.SessionProcess.Executable != "omo" {
+		t.Fatalf("normalized Omo actor=%+v", actor)
+	}
+}
+
 func TestDirectPreparationFailureStopsBeforeLaterEffects(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -117,8 +117,8 @@ func resolveActor(ctx context.Context, actor completioncontract.Actor, ancestry 
 		process.Executable = strings.TrimSpace(process.Executable)
 		actor.Process = &process
 	}
-	if actor.Host != "codex" && actor.Host != "claude" {
-		return completioncontract.Actor{}, fmt.Errorf("native actor host must be codex or claude")
+	if actor.Host != "codex" && actor.Host != "claude" && actor.Host != "omo" {
+		return completioncontract.Actor{}, fmt.Errorf("native actor host must be codex, claude, or omo")
 	}
 	if actor.SessionID == "" {
 		return completioncontract.Actor{}, fmt.Errorf("native actor session_id is required")

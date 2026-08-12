@@ -62,6 +62,22 @@ func TestReusableNativeProcessAncestryRecognizesOfficialClaudeInstall(t *testing
 	}
 }
 
+func TestReusableNativeProcessAncestryRecognizesOmoHost(t *testing.T) {
+	ancestry := []model.NativeProcessReceipt{
+		{PID: 101, Executable: "agent-harness"},
+		{PID: 150, Executable: "/bin/zsh"},
+		{PID: 202, Executable: "/Users/test/Library/pnpm/bin/omo"},
+		{PID: 303, Executable: "node"},
+	}
+	got, err := reusableNativeProcessAncestry("omo", 101, ancestry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].PID != 202 || got[1].PID != 303 {
+		t.Fatalf("reusable Omo ancestry = %+v", got)
+	}
+}
+
 func TestReusableNativeProcessAncestryRejectsMissingNativeHost(t *testing.T) {
 	_, err := reusableNativeProcessAncestry("codex", 101, []model.NativeProcessReceipt{
 		{PID: 101, Executable: "agent-harness"},
@@ -87,14 +103,31 @@ func TestNativeSessionIdentityFromEnvSupportsClaude(t *testing.T) {
 	}
 }
 
+func TestNativeSessionIdentityFromEnvSupportsOmo(t *testing.T) {
+	values := map[string]string{
+		"CODEX_THREAD_ID":        "",
+		"CLAUDE_CODE_SESSION_ID": "",
+		"PI_SESSION_ID":          "019ff5b8-7d62-707a-a693-5e7a5e8a3187",
+	}
+	identity, err := nativeSessionIdentityFromEnv(func(key string) string { return values[key] })
+	if err != nil {
+		t.Fatalf("Omo identity must be detected: %v", err)
+	}
+	if identity.Host != "omo" || identity.SessionID != values["PI_SESSION_ID"] ||
+		identity.Source != "PI_SESSION_ID" {
+		t.Fatalf("unexpected Omo identity: %+v", identity)
+	}
+}
+
 func TestNativeSessionIdentityFromEnvRejectsAmbiguousHosts(t *testing.T) {
 	values := map[string]string{
 		"CODEX_THREAD_ID":        "codex-session",
 		"CLAUDE_CODE_SESSION_ID": "claude-session",
+		"PI_SESSION_ID":          "omo-session",
 	}
 	_, err := nativeSessionIdentityFromEnv(func(key string) string { return values[key] })
 	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
-		t.Fatalf("both native host identities must fail closed: %v", err)
+		t.Fatalf("multiple native host identities must fail closed: %v", err)
 	}
 }
 

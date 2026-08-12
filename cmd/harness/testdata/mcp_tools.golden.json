@@ -529,7 +529,8 @@
         "host": {
           "enum": [
             "codex",
-            "claude"
+            "claude",
+            "omo"
           ],
           "type": "string"
         },

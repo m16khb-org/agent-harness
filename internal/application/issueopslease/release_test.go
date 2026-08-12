@@ -25,3 +25,23 @@ func TestReleaseKeepsLegacyNativeActorValidationErrorsPublic(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveActorAcceptsOmoNativeProcess(t *testing.T) {
+	process := leasedomain.ProcessReceipt{
+		PID: 42, StartedAt: "2026-08-12T00:00:00Z", Executable: "/Users/test/Library/pnpm/bin/omo",
+	}
+	actor, err := resolveActor(
+		context.Background(),
+		leasedomain.Actor{Host: "omo", SessionID: "019ff5b8-7d62-707a-a693-5e7a5e8a3187", Process: &process},
+		[]leasedomain.ProcessReceipt{process},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", process, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("Omo native actor must resolve: %v", err)
+	}
+	if actor.Host != "omo" || actor.SessionID == "" || actor.Process == nil || *actor.Process != process {
+		t.Fatalf("resolved Omo actor=%+v", actor)
+	}
+}

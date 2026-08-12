@@ -122,10 +122,16 @@ The preview response seals the selection evidence in `readiness_fingerprint` and
 `ACTOR_FLAGS` are the exact native process identity and cwd:
 
 ```text
---host codex|claude --session-id ID [--agent-id ID]
+--host codex|claude|omo --session-id ID [--agent-id ID]
 --session-pid PID --session-started-at RFC3339
 --session-executable PATH --cwd PATH
 ```
+
+Omo native sessions use `PI_SESSION_ID` and the live `omo` process receipt.
+`agent-harness issueops execution whoami --json` resolves both automatically.
+This direct native-holder support does not widen Orca provisioning:
+`--owner-host` remains `codex|claude` because Orca owns a separate host
+adapter contract.
 
 The provisioned path is the fixed sibling
 `${repo}.worktrees/<branch-with-slashes-replaced>`. Preparation creates or
@@ -215,7 +221,7 @@ agent-harness issueops execution resume \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" --confirm
 ```
 
-Resume observes the current native Codex/Claude session, host process receipt,
+Resume observes the current native Codex/Claude/Omo session, host process receipt,
 and canonical cwd when actor flags are absent. A complete explicit
 `ACTOR_FLAGS` receipt remains valid; a partial receipt is rejected.
 

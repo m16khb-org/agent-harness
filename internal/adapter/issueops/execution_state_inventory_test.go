@@ -35,6 +35,36 @@ func TestListLeaseHolderIndexesReadsAndValidatesExistingRows(t *testing.T) {
 	}
 }
 
+func TestListLeaseHolderIndexesAcceptsOmoHolder(t *testing.T) {
+	stateRoot := t.TempDir()
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor := issueops.NativeActor{Host: "omo", SessionID: "omo-session"}
+	index := leaseHolderIndex{
+		SchemaVersion: 1, LifecycleID: "io-0123456789ab", Generation: 1,
+		Host: actor.Host, SessionID: actor.SessionID,
+	}
+	data, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := leaseHolderIndexKey(actor)
+	if err := db.Apply(context.Background(), []port.RecordMutation{{
+		Bucket: leaseHolderBucket, ID: key, Data: data,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := ListLeaseHolderIndexes(stateRoot)
+	if err != nil {
+		t.Fatalf("Omo holder index must be readable: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Host != "omo" || rows[0].SessionID != "omo-session" {
+		t.Fatalf("Omo holder rows=%#v", rows)
+	}
+}
+
 func TestListLeaseHolderIndexesMissingStoreIsEmpty(t *testing.T) {
 	rows, err := ListLeaseHolderIndexes(t.TempDir() + "/absent")
 	if err != nil || len(rows) != 0 {

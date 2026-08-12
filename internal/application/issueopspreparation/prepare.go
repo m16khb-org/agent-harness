@@ -385,8 +385,8 @@ func normalizeActor(actor preparationcontract.Actor) (preparationcontract.Actor,
 		process.Executable = strings.TrimSpace(process.Executable)
 		actor.SessionProcess = &process
 	}
-	if actor.Host != "codex" && actor.Host != "claude" {
-		return actor, fmt.Errorf("native actor host must be codex or claude")
+	if actor.Host != "codex" && actor.Host != "claude" && actor.Host != "omo" {
+		return actor, fmt.Errorf("native actor host must be codex, claude, or omo")
 	}
 	if actor.SessionID == "" {
 		return actor, fmt.Errorf("native actor session_id is required")

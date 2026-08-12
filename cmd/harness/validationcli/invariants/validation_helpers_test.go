@@ -141,6 +141,24 @@ func TestForbiddenNameHitsSkipsWorktreeGitPointer(t *testing.T) {
 	}
 }
 
+func TestForbiddenNameHitsSkipsOnlyOmoTaskRuntime(t *testing.T) {
+	root := t.TempDir()
+	runtimeDir := filepath.Join(root, ".omo", "senpi-task", "children", "task", "sessions")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(runtimeDir, "transcript.jsonl"), []byte("legacy m"+"16kh runtime text\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".omo", "mcp.json"), []byte("legacy m"+"16kh project config\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hits := forbiddenNameHits(root)
+	if len(hits) != 1 || hits[0] != filepath.Join(".omo", "mcp.json")+" contains m"+"16kh" {
+		t.Fatalf("expected project config hit and no Omo task-runtime hit, got %+v", hits)
+	}
+}
+
 func makeValidationHarnessRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

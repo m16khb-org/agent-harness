@@ -94,6 +94,33 @@ func TestClassifyRequiresExactLeaseHolderIndex(t *testing.T) {
 	}
 }
 
+func TestClassifyAcceptsOmoNativeHolderAndIndex(t *testing.T) {
+	snapshot := healthyDirectSnapshot()
+	snapshot.Cycles[0].HolderHost = "omo"
+	snapshot.Cycles[0].HolderExecutable = "omo"
+	snapshot.LeaseHolderIndexes[0].Host = "omo"
+	result := Classify(snapshot, Options{Now: time.Now()})
+	if !result.Healthy {
+		t.Fatalf("Omo native holder inventory should be healthy: %#v", result.Findings)
+	}
+}
+
+func TestEvaluateCycleAuthorityRejectsOmoAsOrcaOwner(t *testing.T) {
+	cycle := healthyDirectSnapshot().Cycles[0]
+	cycle.ExecutionMode = "orca"
+	cycle.OrcaRuntimeID = "runtime"
+	cycle.OrcaRepoID = "repo-id"
+	cycle.OrcaWorktreeID = "worktree-id"
+	cycle.OrcaOwnerHost = "omo"
+	cycle.HolderHost = "omo"
+	cycle.HolderExecutable = "omo"
+	cycle.TaskID = "task-id"
+	cycle.DispatchID = "dispatch-id"
+	if got := EvaluateCycleAuthority(cycle, Options{Now: time.Now()}); got != AuthorityUnknown {
+		t.Fatalf("Omo Orca owner authority = %q, want %q", got, AuthorityUnknown)
+	}
+}
+
 func TestClassifyRejectsOneNativeSessionOwningTwoActiveCycles(t *testing.T) {
 	snapshot := healthyDirectSnapshot()
 	second := snapshot.Cycles[0]

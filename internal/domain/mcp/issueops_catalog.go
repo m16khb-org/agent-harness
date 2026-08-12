@@ -17,7 +17,7 @@ func issueOpsExecutionSchema() map[string]any {
 			"action":                         map[string]any{"type": "string", "enum": []string{"prepare", "status", "claim", "release", "replace", "resume", "reconcile", "complete"}},
 			"id":                             map[string]any{"type": "string"},
 			"mode":                           map[string]any{"type": "string", "enum": []string{"auto", "direct", "orca"}},
-			"host":                           map[string]any{"type": "string", "enum": []string{"codex", "claude"}},
+			"host":                           map[string]any{"type": "string", "enum": []string{"codex", "claude", "omo"}},
 			"session_id":                     map[string]any{"type": "string"},
 			"agent_id":                       map[string]any{"type": "string"},
 			"session_pid":                    map[string]any{"type": "integer", "minimum": 1},

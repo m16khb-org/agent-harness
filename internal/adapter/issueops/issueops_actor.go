@@ -57,7 +57,7 @@ func validatePlanLinkMutation(record issueops.IssueOpsRecord, actor *IssueOpsAct
 	if actor != nil {
 		host = strings.ToLower(strings.TrimSpace(actor.Host))
 	}
-	if actor == nil || (host != "codex" && host != "claude") ||
+	if actor == nil || (host != "codex" && host != "claude" && host != "omo") ||
 		strings.TrimSpace(actor.SessionID) == "" || len(actor.NativeProcessAncestry) == 0 ||
 		!samePath(actor.CWD, record.Execution.Workspace.Root) {
 		return fmt.Errorf("released Orca plan linking requires a native coordinator in the canonical worktree")

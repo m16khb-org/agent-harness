@@ -37,7 +37,7 @@ dispatched owner is different: when its sealed packet injects a claim command,
 that claim is its only next action and it must not recursively execute status'
 recovery resume. Resume accepts either
 the complete explicit `ACTOR_FLAGS` receipt or no actor flags; the actor-free
-form observes the current Codex/Claude session, native host process ancestry,
+form observes the current Codex/Claude/Omo session, native host process ancestry,
 and canonical process cwd. Supplying only part of `ACTOR_FLAGS` is rejected.
 An older v1 Orca binding with no identity version marker and no digests remains
 readable but is not resumable as-is. A versioned all-empty, unversioned-complete,

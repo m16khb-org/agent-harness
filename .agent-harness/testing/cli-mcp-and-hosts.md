@@ -72,3 +72,26 @@ Record the Omo/Senpi package versions with that evidence.
 Codex and Claude hook fixtures continue through the common hook input boundary;
 the IssueOps hook matrices are owned by
 [issueops-execution.md](issueops-execution.md).
+
+## Omo IssueOps parallel worktree sessions
+
+Durable Omo parallel-child QA must spawn one resident Omo agent per canonical
+IssueOps child worktree. For native teams, set each
+`team_create.members[].worktreePath`; the Omo runtime maps it to the child
+process `cwd` and sandbox worktree boundary. A plain `task` spawn or a prompt
+that merely says `cd` does not satisfy the contract.
+
+Each child must independently prove:
+
+- `pwd` and `git rev-parse --show-toplevel` equal the sealed canonical worktree
+- `PI_SESSION_ID` is non-empty and process ancestry contains the live `omo`
+  executable
+- `agent-harness issueops execution whoami --json` returns `host=omo` and that
+  same session/process identity
+- the assigned cross-process IssueOps regression passes while sibling Omo
+  agents are active
+- final `git status --short` contains no unowned change
+
+When team category routing is unavailable, the bounded fallback is one branded
+`omo -p` process started with the canonical worktree as its OS cwd. Record the
+category failure separately; do not substitute lead-session test execution.

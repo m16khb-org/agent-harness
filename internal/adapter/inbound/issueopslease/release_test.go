@@ -125,7 +125,7 @@ func TestReleaseHandlerPreservesLegacyNativeActorValidationText(t *testing.T) {
 		actor issueopscontract.NativeActor
 		want  string
 	}{
-		{name: "invalid host", actor: issueopscontract.NativeActor{Host: "other"}, want: "native actor host must be codex or claude"},
+		{name: "invalid host", actor: issueopscontract.NativeActor{Host: "other"}, want: "native actor host must be codex, claude, or omo"},
 		{name: "missing session", actor: issueopscontract.NativeActor{Host: "codex"}, want: "native actor session_id is required"},
 		{name: "missing receipt", actor: issueopscontract.NativeActor{Host: "codex", SessionID: "missing-receipt"}, want: "native actor requires a PID reuse-safe session_process receipt"},
 	} {

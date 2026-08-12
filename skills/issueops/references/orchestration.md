@@ -14,6 +14,41 @@ Ephemeral independent fan-out uses the host's native subagent concurrency contro
 6. Inspect progress with `issueops child status --parent "$ISSUEOPS_ID" --json`.
 7. When the child reaches done, validate the evidence with `issueops child accept --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --evidence "$EVIDENCE" --json`, or use `issueops child reject` / `issueops child drop` with a reason.
 
+### Omo Native Worktree Dispatch
+
+For durable parallel children in Omo, use a resident native team and bind every
+member to its child execution's canonical absolute worktree:
+
+```json
+{
+  "name": "issueops-parallel",
+  "members": [
+    {
+      "name": "child-a",
+      "kind": "category",
+      "category": "<configured execution category>",
+      "worktreePath": "/absolute/canonical/child-a-worktree",
+      "prompt": "<child contract prompt>",
+      "task_summary": "<bounded child scope>"
+    }
+  ]
+}
+```
+
+Omo maps `members[].worktreePath` to the resident child process `cwd` and
+sandbox worktree boundary. Do not use plain `task`, which has no
+worktree-binding field, and do not rely on a prompt-only `cd` instruction.
+After spawn, require each member to report `pwd`, `git rev-parse
+--show-toplevel`, `PI_SESSION_ID`, the live `omo` process receipt, execution
+generation, and `issueops execution whoami --json`. All roots must equal the
+sealed canonical child worktree before mutation.
+
+If a configured team category cannot start, report that routing failure and
+start an independent branded `omo -p` process from the canonical worktree as
+the bounded fallback. The fallback still must pass the same cwd, native actor,
+generation, and process-receipt gates; running tests directly in the lead
+session is not equivalent evidence.
+
 ### Child Contract Prompt Template
 
 ```text

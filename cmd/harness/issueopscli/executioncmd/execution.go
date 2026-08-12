@@ -72,7 +72,7 @@ const Usage = `Usage:
   agent-harness issueops execution sync-base --id ID --completion-generation N (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
 
-ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
+ACTOR_FLAGS: --host codex|claude|omo --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
 
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || isHelp(args[0]) {
@@ -114,7 +114,7 @@ type actorFlags struct {
 
 func addActorFlags(fs *flag.FlagSet) actorFlags {
 	return actorFlags{
-		host:       fs.String("host", "", "native host: codex or claude"),
+		host:       fs.String("host", "", "native host: codex, claude, or omo"),
 		sessionID:  fs.String("session-id", "", "native session id"),
 		agentID:    fs.String("agent-id", "", "optional native agent id"),
 		pid:        fs.Int("session-pid", 0, "native session process id"),
@@ -256,18 +256,21 @@ type nativeSessionIdentity struct {
 }
 
 func nativeSessionIdentityFromEnv(getenv func(string) string) (nativeSessionIdentity, error) {
-	codexSession := getenv("CODEX_THREAD_ID")
-	claudeSession := getenv("CLAUDE_CODE_SESSION_ID")
-	if codexSession != "" && claudeSession != "" {
-		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is ambiguous")
-	}
 	identity := nativeSessionIdentity{}
-	switch {
-	case codexSession != "":
-		identity = nativeSessionIdentity{Host: "codex", SessionID: codexSession, Source: "CODEX_THREAD_ID"}
-	case claudeSession != "":
-		identity = nativeSessionIdentity{Host: "claude", SessionID: claudeSession, Source: "CLAUDE_CODE_SESSION_ID"}
-	default:
+	for _, candidate := range []nativeSessionIdentity{
+		{Host: "codex", SessionID: getenv("CODEX_THREAD_ID"), Source: "CODEX_THREAD_ID"},
+		{Host: "claude", SessionID: getenv("CLAUDE_CODE_SESSION_ID"), Source: "CLAUDE_CODE_SESSION_ID"},
+		{Host: "omo", SessionID: getenv("PI_SESSION_ID"), Source: "PI_SESSION_ID"},
+	} {
+		if candidate.SessionID == "" {
+			continue
+		}
+		if identity.Host != "" {
+			return nativeSessionIdentity{}, fmt.Errorf("native host session identity is ambiguous")
+		}
+		identity = candidate
+	}
+	if identity.Host == "" {
 		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is unavailable")
 	}
 	if identity.SessionID != strings.TrimSpace(identity.SessionID) ||
@@ -299,6 +302,8 @@ func nativeHostProcessExecutable(host, executable string) bool {
 		return base == "codex"
 	case "claude":
 		return base == "claude" || strings.Contains(normalized, "/claude/versions/")
+	case "omo":
+		return base == "omo"
 	default:
 		return false
 	}

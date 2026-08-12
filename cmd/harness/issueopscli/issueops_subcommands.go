@@ -422,7 +422,7 @@ func runIssueOpsArtifact(args []string) error {
 // 기록이며 게이트는 verdict pass + 실질 내용만 본다(설계 v5 WS5).
 func runIssueOpsImplementationReview(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] [--json]")
+		fmt.Println("Usage: agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude|omo] [--reviewer-model MODEL] [--reviewer-effort EFFORT] [--json]")
 		return nil
 	}
 	if args[0] != "record" {

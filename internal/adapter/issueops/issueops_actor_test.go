@@ -69,3 +69,26 @@ func TestExecutionMutationAllowsPreExecutionPlanningButFencesNonActiveLease(t *t
 		t.Fatal("released lease unexpectedly authorized a mutation")
 	}
 }
+
+func TestReleasedOrcaPlanLinkAllowsOmoCoordinatorInCanonicalWorktree(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "issue.worktree")
+	record := issueops.IssueOpsRecord{Execution: &issueops.Execution{
+		Mode: issueops.ExecutionModeOrca,
+		Workspace: issueops.Workspace{
+			SourceRoot: "/tmp/source", Root: root, Branch: "69-redesign",
+			BaseHead: strings.Repeat("c", 40), Driver: "orca", LinkedAt: "2026-08-12T00:00:00Z",
+		},
+		Lease: issueops.WriteLease{
+			Generation: 1, Status: issueops.LeaseStatusReleased, ReleasedAt: "2026-08-12T00:00:01Z",
+		},
+	}}
+	actor := IssueOpsActor{
+		Host: "omo", SessionID: "omo-session", CWD: root,
+		NativeProcessAncestry: []issueops.NativeProcessReceipt{{
+			PID: 42, StartedAt: "2026-08-12T00:00:00Z", Executable: "omo",
+		}},
+	}
+	if err := validatePlanLinkMutation(record, &actor); err != nil {
+		t.Fatalf("Omo coordinator must link a released Orca plan: %v", err)
+	}
+}

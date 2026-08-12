@@ -37,6 +37,19 @@ func TestValidateExecutionAcceptsOptionalOrcaLeaseGeneration(t *testing.T) {
 	}
 }
 
+func TestValidateNativeActorAcceptsOmo(t *testing.T) {
+	err := ValidateNativeActor(NativeActor{
+		Host:      "omo",
+		SessionID: "019ff5b8-7d62-707a-a693-5e7a5e8a3187",
+		SessionProcess: &NativeProcessReceipt{
+			PID: 42, StartedAt: "2026-08-12T00:00:00Z", Executable: "/Users/test/Library/pnpm/bin/omo",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Omo native actor must be valid: %v", err)
+	}
+}
+
 func TestValidateExecutionAcceptsOptionalOrcaRunID(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.RunID = ""

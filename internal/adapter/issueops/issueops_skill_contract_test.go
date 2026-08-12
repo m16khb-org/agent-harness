@@ -100,6 +100,25 @@ func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.
 	}
 }
 
+func TestIssueOpsOrchestrationBindsOmoAgentsToCanonicalWorktrees(t *testing.T) {
+	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
+		"orchestration": readIssueOpsContractFile(t, "skills", "issueops", "references", "orchestration.md"),
+		"host-testing":  readIssueOpsContractFile(t, ".agent-harness", "testing", "cli-mcp-and-hosts.md"),
+	}))
+	for _, want := range []string{
+		"team_create.members[].worktreepath",
+		"resident child process `cwd`",
+		"plain `task`",
+		"pi_session_id",
+		"issueops execution whoami --json",
+		"branded `omo -p`",
+	} {
+		if !strings.Contains(all, want) {
+			t.Fatalf("Omo worktree orchestration contract missing %q", want)
+		}
+	}
+}
+
 func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	for _, parts := range [][]string{
 		{"internal", "domain", "cli", "usage.go"},

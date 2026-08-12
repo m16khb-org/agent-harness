@@ -632,7 +632,7 @@ func TestReseedServiceValidatesActorBeforeConfirmForLegacyErrorPriority(t *testi
 	request := reseedServiceRequest("io-reseed-test")
 	request.Confirm = false
 	request.Actor.Host = "unknown"
-	if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "native actor host must be codex or claude" {
+	if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "native actor host must be codex, claude, or omo" {
 		t.Fatalf("confirm/actor error priority=%v", err)
 	}
 }
