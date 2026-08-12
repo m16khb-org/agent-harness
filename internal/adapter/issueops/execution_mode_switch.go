@@ -103,6 +103,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 		}
 		current.Execution = nil
 		current.WorktreePath = ""
+		current.PlanPath = ""
 		_, writeErr := writeIssueOps(stateRoot, current)
 		return writeErr
 	})

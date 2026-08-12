@@ -24,6 +24,8 @@ func TestSwitchExecutionModeApplyReturnsNonCommandNextActionAfterExecutionRemova
 		},
 		Lease: issueopscontract.WriteLease{Generation: 6, Status: issueopscontract.LeaseStatusReleased},
 	}
+	record.WorktreePath = record.Execution.Workspace.Root
+	record.PlanPath = filepath.Join(record.WorktreePath, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -52,5 +54,8 @@ func TestSwitchExecutionModeApplyReturnsNonCommandNextActionAfterExecutionRemova
 	}
 	if persisted.Execution != nil {
 		t.Fatalf("switch apply retained execution authority: %#v", persisted.Execution)
+	}
+	if persisted.WorktreePath != "" || persisted.PlanPath != "" {
+		t.Fatalf("switch apply retained deleted workspace paths: worktree=%q plan=%q", persisted.WorktreePath, persisted.PlanPath)
 	}
 }
