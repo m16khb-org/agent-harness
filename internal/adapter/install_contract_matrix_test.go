@@ -673,10 +673,10 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 	assertPathMissing(t, filepath.Join(req.Home, ".claude", "skills", "codex-only"))
 	assertPathMissing(t, filepath.Join(req.Home, ".claude", "skills", "omo-only"))
 	for _, skill := range []string{"alpha", "beta", "omo-only"} {
-		assertRootSkillSymlink(t, filepath.Join(req.Home, ".omo", "skills", skill), filepath.Join(req.Root, "skills", skill))
+		assertRootSkillSymlink(t, filepath.Join(req.Home, ".omo", "agent", "skills", skill), filepath.Join(req.Root, "skills", skill))
 	}
-	assertPathMissing(t, filepath.Join(req.Home, ".omo", "skills", "codex-only"))
-	assertPathMissing(t, filepath.Join(req.Home, ".omo", "skills", "claude-only"))
+	assertPathMissing(t, filepath.Join(req.Home, ".omo", "agent", "skills", "codex-only"))
+	assertPathMissing(t, filepath.Join(req.Home, ".omo", "agent", "skills", "claude-only"))
 	if req.ProjectLocal {
 		for _, skill := range []string{"alpha", "beta", "claude-only"} {
 			assertRootSkillSymlink(t, filepath.Join(req.Root, ".claude", "skills", skill), filepath.Join(req.Root, "skills", skill))

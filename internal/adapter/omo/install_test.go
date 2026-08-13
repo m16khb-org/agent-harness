@@ -45,7 +45,7 @@ func TestInstallerWritesNativeOmoSurfaces(t *testing.T) {
 		t.Fatalf("unexpected install result: %+v", result)
 	}
 
-	assertOmoTestSkillLink(t, filepath.Join(req.Home, ".omo", "skills", "alpha"), filepath.Join(req.Root, "skills", "alpha"))
+	assertOmoTestSkillLink(t, filepath.Join(req.Home, ".omo", "agent", "skills", "alpha"), filepath.Join(req.Root, "skills", "alpha"))
 	assertOmoTestSkillLink(t, filepath.Join(req.Root, ".omo", "skills", "alpha"), filepath.Join(req.Root, "skills", "alpha"))
 
 	globalMCP := readOmoTestJSON(t, filepath.Join(req.Home, ".omo", "mcp.json"))

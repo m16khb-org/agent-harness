@@ -82,9 +82,10 @@ Claude project-local hooks can be committed, so do not create `.claude/settings.
 
 ## Omo Native
 
-Omo uses the branded flat-layout native roots:
+Omo stores runtime configuration in its branded roots and user skills in the
+Senpi agent directory:
 
-- User skills: `~/.omo/skills/<skill>/SKILL.md`
+- User skills: `~/.omo/agent/skills/<skill>/SKILL.md`
 - User MCP: `~/.omo/mcp.json`
 - User lifecycle extension: `~/.omo/extensions/agent-harness.js`
 - Project skills and MCP: `.omo/skills/*` and `.omo/mcp.json` only with
@@ -99,7 +100,7 @@ readback seals both the MCP file and extension bytes before activation commits.
 Checks:
 
 ```bash
-test -f ~/.omo/skills/atomic-commit-push/SKILL.md
+test -f ~/.omo/agent/skills/atomic-commit-push/SKILL.md
 test -f ~/.omo/mcp.json
 test -f ~/.omo/extensions/agent-harness.js
 ```

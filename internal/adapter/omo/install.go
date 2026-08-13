@@ -16,7 +16,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	plan := NewInstallPlan("omo", req.DryRun)
 	enabledSkills, links, messages, skillErrs := PlanHostSkillLinks(
 		req.Root,
-		filepath.Join(req.Home, ".omo", "skills"),
+		filepath.Join(req.Home, ".omo", "agent", "skills"),
 		req.SkillNames,
 		"omo",
 		req.DryRun,

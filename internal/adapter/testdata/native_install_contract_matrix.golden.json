@@ -195,19 +195,19 @@
           ],
           "links": [
             {
-              "path": "$HOME/.omo/skills/alpha",
+              "path": "$HOME/.omo/agent/skills/alpha",
               "target": "$ROOT/skills/alpha",
               "created": true,
               "resolves_to_root_skill": true
             },
             {
-              "path": "$HOME/.omo/skills/beta",
+              "path": "$HOME/.omo/agent/skills/beta",
               "target": "$ROOT/skills/beta",
               "created": true,
               "resolves_to_root_skill": true
             },
             {
-              "path": "$HOME/.omo/skills/omo-only",
+              "path": "$HOME/.omo/agent/skills/omo-only",
               "target": "$ROOT/skills/omo-only",
               "created": true,
               "resolves_to_root_skill": true
@@ -408,19 +408,19 @@
           ],
           "links": [
             {
-              "path": "$HOME/.omo/skills/alpha",
+              "path": "$HOME/.omo/agent/skills/alpha",
               "target": "$ROOT/skills/alpha",
               "created": true,
               "resolves_to_root_skill": true
             },
             {
-              "path": "$HOME/.omo/skills/beta",
+              "path": "$HOME/.omo/agent/skills/beta",
               "target": "$ROOT/skills/beta",
               "created": true,
               "resolves_to_root_skill": true
             },
             {
-              "path": "$HOME/.omo/skills/omo-only",
+              "path": "$HOME/.omo/agent/skills/omo-only",
               "target": "$ROOT/skills/omo-only",
               "created": true,
               "resolves_to_root_skill": true
