@@ -22,7 +22,7 @@ func nativeIntegrationRequiredPaths(root, home string, codexSkills, claudeSkills
 		paths = append(paths, filepath.Join(home, ".claude", "skills", nativeSkill, "SKILL.md"))
 	}
 	for _, nativeSkill := range omoSkills {
-		paths = append(paths, filepath.Join(home, ".omo", "skills", nativeSkill, "SKILL.md"))
+		paths = append(paths, filepath.Join(home, ".omo", "agent", "skills", nativeSkill, "SKILL.md"))
 	}
 	return paths
 }

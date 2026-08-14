@@ -1,0 +1,4 @@
+interface:
+  display_name: "Slack Delegate"
+  short_description: "Route Slack reads and confirmed mutations through connected agents"
+  default_prompt: "Use $slack-delegate to route this Slack request through the connected Claude or Codex backend, select the declared capability, return typed source evidence, and require the matching explicit confirmation before any write or destructive mutation."

@@ -1,0 +1,200 @@
+---
+name: issueops-cleanup
+description: Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says "이슈옵스 정리", "워크트리 지우고 브랜치 지우고 이슈 닫아줘".
+---
+
+# IssueOps Cleanup
+
+Finish one record-backed, merged IssueOps cycle through the harness-owned
+destructive surfaces.
+
+**User's request:** $ARGUMENTS
+
+This skill owns exactly three effects:
+
+1. close the linked parent issue and verify its remote state;
+2. remove the recorded local worktree;
+3. delete the recorded local branch.
+
+It never deletes the remote branch. Remote branch cleanup is a separate user
+decision and a separate `issueops cleanup remote-branch` flow.
+
+## Load first
+
+- Load **`issueops`** for lifecycle and cleanup-state rules.
+- Load **`torvalds`** for worktree and branch verification.
+- For GitLab issues, also load **`gitlab-usecase`** before any provider call.
+
+## Preconditions
+
+1. Resolve one exact lifecycle ID:
+   - prefer a user-supplied ID or `$ISSUEOPS_ID`;
+   - otherwise run `agent-harness issueops list --repo "$PWD" --json`;
+   - if zero or multiple plausible cycles remain, ask which ID to clean.
+2. Run from the record's source repository, never from the worktree that will
+   be removed.
+3. The cycle must be `done`, its execution lease must be released, and its
+   PR/MR must be verified merged by the provider.
+4. Linked child tasks must already have verified close evidence.
+5. The worktree must be clean and quiescent. A dirty worktree, live process,
+   active Orca resource, branch mismatch, unreadable provider state, or pending
+   external intent blocks cleanup.
+6. The remote source branch must already be absent. If it remains, stop and
+   report that this skill does not have authority to delete it.
+
+Do not use `cleanup abandon`: it intentionally avoids remote issue mutation and
+is not the merged completion path requested by this skill.
+
+## Preview the exact targets
+
+Read the lifecycle and cleanup inventory:
+
+```text
+agent-harness issueops status --id "$ISSUEOPS_ID" --json
+agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --json
+```
+
+The close command without `--confirm` is a dry-run. Verify the recorded targets
+against live Git state:
+
+```text
+git -C "$WORKTREE_PATH" status --short
+git -C "$WORKTREE_PATH" symbolic-ref --quiet --short HEAD
+git -C "$WORKTREE_PATH" rev-parse --verify HEAD
+git -C "$REPO_ROOT" rev-parse --verify "refs/heads/$BRANCH"
+```
+
+Require a clean status, a symbolic branch exactly equal to `$BRANCH`, and a
+worktree HEAD OID exactly equal to the local branch OID. If the provider exposes
+the merged artifact head OID, require it to equal the local branch OID too.
+A detached, repurposed, mismatched, or advanced worktree blocks cleanup.
+
+Before asking for confirmation, treat `cleanup status.missing` as an unordered
+set:
+
+- if provider readback says the issue is open, it must equal exactly
+  `{"issue_closed"}`;
+- if provider readback says the issue is already closed, it must be empty.
+
+The close-issue dry-run must also report `ok: true`. Any other missing gate or
+provider error blocks issue closure; report it and stop before any write.
+
+From these results, state:
+
+- lifecycle ID and issue URL;
+- provider and verified merged PR/MR;
+- exact local worktree path;
+- exact local branch name, worktree HEAD OID, and local branch OID;
+- whether the merged artifact head OID matches the local branch OID, when the
+  provider exposes that artifact OID;
+- that the remote branch will not be deleted;
+- every readiness blocker.
+
+If any target is missing or ambiguous, or any blocker beyond the permitted
+`issue_closed` gate remains, stop. Never infer a path or branch from the issue
+title.
+
+## Confirmation boundary
+
+Closing the issue and deleting local Git resources are destructive/external
+writes. Obtain one explicit confirmation that names all three exact effects:
+
+```text
+이슈 <URL>을 닫고, HEAD <WORKTREE_HEAD_OID>인 로컬 워크트리 <PATH>와
+OID <BRANCH_OID>인 로컬 브랜치 <BRANCH>를 삭제할까요?
+원격 브랜치는 삭제하지 않습니다.
+```
+
+The latest user message must confirm the exact targets. A prior generic
+"cleanup" request authorizes preview only.
+
+## Apply in fail-closed order
+
+### 1. Close and verify the issue
+
+```text
+agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --confirm --json
+```
+
+Continue only when the result reports `ok: true`, `closed: true`, and a verified
+closed state. Already-closed is an idempotent success.
+
+### 2. Re-preview local cleanup
+
+Issue closure changes cleanup readiness. Obtain a fresh fingerprint:
+
+```text
+agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --preview --json
+```
+
+When `worktree_present` is true, repeat all four live Git commands from
+**Preview the exact targets** after issue closure and before apply.
+
+When a prior typed apply already removed the worktree and retained the record
+after a later failure, `worktree_present` is false. In that recovery state:
+
+- do not run `git -C "$WORKTREE_PATH"` commands;
+- require the prior result or retained record to show the worktree-removal step
+  succeeded;
+- require `git worktree list --porcelain` not to contain `$WORKTREE_PATH`;
+- when `branch_present` is true, re-read `refs/heads/$BRANCH` and require its
+  OID to equal the OID previously confirmed by the user;
+- when `branch_present` is false, require `git show-ref --verify --quiet
+  "refs/heads/$BRANCH"` to exit `1`.
+
+Require:
+
+- `ok: true`;
+- an empty `missing` list;
+- a non-empty `fingerprint`;
+- `worktree_path` and `branch` equal the targets the user confirmed;
+- when the worktree remains present, its live HEAD OID and local branch OID
+  equal the confirmed OIDs;
+- during typed partial-failure recovery, every still-present branch OID equals
+  the confirmed branch OID.
+
+If any path, name, or OID changed, stop and request confirmation for the new
+targets. Do not reuse a stale fingerprint.
+
+### 3. Apply the emitted command
+
+Execute the preview's `next_command` exactly. It must be the typed form:
+
+```text
+agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
+  --apply --confirm --fingerprint "$FINGERPRINT" --json
+```
+
+Do not replace it with raw `git worktree remove`, `git branch -d`, `git branch
+-D`, or `git update-ref`. The harness binds deletion to the observed worktree
+and branch OID, removes Orca ownership first when present, and preserves the
+IssueOps record if a destructive step fails.
+
+Never add `issueops cleanup remote-branch` to this flow.
+
+## Verify the observable result
+
+After apply:
+
+1. Require `ok: true` and `record_deleted: true`.
+2. If the worktree was present, require `worktree_removed: true`.
+3. If the local branch was present, require `branch_deleted: true`.
+4. From the source repository, verify:
+
+```text
+git worktree list --porcelain
+git show-ref --verify --quiet "refs/heads/$BRANCH"
+```
+
+The removed worktree path must be absent, and `show-ref` must exit `1`.
+5. Re-read the remote issue with the provider and require a closed state.
+6. Report the issue URL, removed worktree, removed local branch, remote issue
+   state, and explicitly state that the remote branch was untouched.
+
+On partial failure, do not improvise. Report `failed_step` and `next_command`;
+the retained IssueOps record plus the worktree-aware recovery rules above are
+the recovery path.

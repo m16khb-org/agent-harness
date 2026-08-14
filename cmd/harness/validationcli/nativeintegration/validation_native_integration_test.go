@@ -56,7 +56,7 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 		t.Fatalf("unexpected success step: %#v", step)
 	}
 
-	missingPath := filepath.Join(home, ".omo", "skills", "omo-only", "SKILL.md")
+	missingPath := filepath.Join(home, ".omo", "agent", "skills", "omo-only", "SKILL.md")
 	existing[missingPath] = false
 	failed := validateNativeIntegrationWithDeps(root, deps)
 	if failed.OK || !strings.Contains(failed.Error, "missing "+missingPath) {
@@ -237,8 +237,8 @@ func nativeIntegrationExpectedPaths(root, home string) map[string]bool {
 		filepath.Join(home, ".codex", "skills", "codex-only", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "claude-only", "SKILL.md"),
-		filepath.Join(home, ".omo", "skills", "shared", "SKILL.md"),
-		filepath.Join(home, ".omo", "skills", "omo-only", "SKILL.md"),
+		filepath.Join(home, ".omo", "agent", "skills", "shared", "SKILL.md"),
+		filepath.Join(home, ".omo", "agent", "skills", "omo-only", "SKILL.md"),
 	}
 	out := map[string]bool{}
 	for _, path := range paths {

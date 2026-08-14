@@ -102,7 +102,7 @@ func writeNativeIntegrationFixture(t *testing.T, root, home string) {
 		filepath.Join(root, "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".codex", "skills", "shared", "SKILL.md"),
 		filepath.Join(home, ".claude", "skills", "shared", "SKILL.md"),
-		filepath.Join(home, ".omo", "skills", "shared", "SKILL.md"),
+		filepath.Join(home, ".omo", "agent", "skills", "shared", "SKILL.md"),
 	} {
 		writeFileForWrapperTest(t, path, "ok\n")
 	}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Cleanup"
+  short_description: "Close merged issues and remove local IssueOps Git resources"
+  default_prompt: "Use $issueops-cleanup to preview one completed IssueOps cycle, obtain explicit confirmation for its exact issue URL, worktree path, branch name, and Git OIDs, close and verify the parent issue, then remove only the confirmed local worktree and local branch through fingerprint-bound IssueOps commands. Never delete the remote branch in this flow."
