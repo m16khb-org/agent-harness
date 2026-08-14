@@ -67,6 +67,13 @@ agent-harness mcp cleanup --json
 agent-harness mcp cleanup --apply --json
 ```
 
+daemon admission은 기본 256개 동시 MCP 연결을 허용한다. 장기 실행 multi-session
+host에서 더 큰 bounded pool이 필요하면 daemon 시작 전에
+`HARNESS_DAEMON_MAX_CONNECTIONS`를 `1..4096` 범위로 설정하고 daemon을
+재시작한다. 범위를 벗어나거나 해석할 수 없는 값은 기본 256으로 fail-safe
+복귀한다. `daemon status --json`의 `active_connections`,
+`max_connections`, `accepting`으로 실제 admission 상태를 확인한다.
+
 `mcp cleanup`은 기본 dry-run이다. Darwin의 `--apply`만 현재 checkout의 exact `agent-harness mcp` 명령, `PPID=1`, 확인된 executable/start time을 모두 만족하고 signal 직전 동일 identity가 다시 확인된 고아를 종료한다. Linux 컨테이너처럼 `PPID=1`이 살아 있는 host일 수 있는 플랫폼은 `skip-unsupported-platform`으로 거부한다. 살아 있는 host proxy, 다른 checkout, 외부 MCP, identity 미확정 프로세스는 건드리지 않는다.
 
 MCP smoke:

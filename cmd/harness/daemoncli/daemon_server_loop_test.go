@@ -227,6 +227,27 @@ func TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached(t *testing.T) {
 	}
 }
 
+func TestDaemonMaxConnectionsBoundsEnvironmentOverride(t *testing.T) {
+	tests := []struct {
+		value string
+		want  int
+	}{
+		{value: "", want: defaultMaxConnections},
+		{value: "512", want: 512},
+		{value: "0", want: defaultMaxConnections},
+		{value: "4097", want: defaultMaxConnections},
+		{value: "invalid", want: defaultMaxConnections},
+	}
+	for _, test := range tests {
+		if got := daemonMaxConnections(test.value); got != test.want {
+			t.Fatalf("daemonMaxConnections(%q)=%d want=%d", test.value, got, test.want)
+		}
+	}
+	if defaultMaxConnections < 256 {
+		t.Fatalf("default daemon capacity must support multi-session hosts: %d", defaultMaxConnections)
+	}
+}
+
 func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing.T) {
 	var log daemonServerFakeLog
 	now := time.Unix(400, 0).UTC()

@@ -123,7 +123,10 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker_test.go"), "TestRunWorkerCleanupStuckMarksDeadPIDJobsFailed")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasDaemonConnectionLimit = fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "const maxConnections") &&
+			hasDaemonConnectionCap := fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "const maxConnections") ||
+				(fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "defaultMaxConnections") &&
+					fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "maxConnections = daemonMaxConnections"))
+			signals.HasDaemonConnectionLimit = hasDaemonConnectionCap &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "newDaemonAdmission(maxConnections)") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_admission.go"), "case a.slots <- struct{}{}") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_admission.go"), "writeDaemonAdmissionError") &&

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -13,7 +14,23 @@ import (
 	"agent-harness/cmd/harness/daemoncli/daemonpaths"
 )
 
-const maxConnections = 64
+const (
+	defaultMaxConnections  = 256
+	absoluteMaxConnections = 4096
+)
+
+var maxConnections = daemonMaxConnections(os.Getenv("HARNESS_DAEMON_MAX_CONNECTIONS"))
+
+func daemonMaxConnections(value string) int {
+	if value == "" {
+		return defaultMaxConnections
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 || parsed > absoluteMaxConnections {
+		return defaultMaxConnections
+	}
+	return parsed
+}
 
 const (
 	daemonAdmissionErrorCode    = -32001

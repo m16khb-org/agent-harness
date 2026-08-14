@@ -662,7 +662,7 @@
       "code": "stopped",
       "draining": false,
       "identity_verified": false,
-      "max_connections": 64,
+      "max_connections": 256,
       "message": "daemon is not running",
       "ok": true,
       "paths": {
@@ -6816,7 +6816,7 @@
             "code": "stopped",
             "draining": false,
             "identity_verified": false,
-            "max_connections": 64,
+            "max_connections": 256,
             "message": "daemon is not running",
             "ok": true,
             "paths": {
