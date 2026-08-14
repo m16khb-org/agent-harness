@@ -28,7 +28,7 @@ LEGACY_BIN_RE = re.compile(r"/bin/harness (daemon --internal|mcp)\b")
 HARNESS_DAEMON_RE = re.compile(r"agent-harness daemon --internal")
 TEMP_WATCHER_RE = re.compile(r"scripts/codegraph-watcher\.mjs .*/T/tmp\.")
 REGRESSION_TIMEOUT_SECONDS = 300
-FULL_SELF_VERIFY_TIMEOUT_SECONDS = 5400
+SELF_VERIFY_TIMEOUT_SECONDS = 1800
 DOCTOR_ISSUE_LIMIT = 20
 DOCTOR_CODE_LIMIT = 96
 DOCTOR_SUMMARY_LIMIT = 320
@@ -599,6 +599,30 @@ def cleanup_stale(report: dict[str, Any], enabled: bool) -> None:
     add_step(report, "process_hygiene", not classified["zombies"], classified=classified, cleanup_enabled=enabled, cleanup_actions=actions)
 
 
+def self_verify_command() -> list[str]:
+    return [
+        str(BIN),
+        "self-verify",
+        "--seed=100",
+        "--target-score=95",
+        "--llm-eval=false",
+        "--progress=jsonl",
+        "--json",
+    ]
+
+
+def self_verify_result_ok(result: dict[str, Any], parsed: Any) -> bool:
+    if result.get("returncode") != 0 or not isinstance(parsed, dict):
+        return False
+    summary = parsed.get("summary")
+    return (
+        parsed.get("ok") is True
+        and parsed.get("termination_eligible") is True
+        and isinstance(summary, dict)
+        and summary.get("termination_eligible") is True
+    )
+
+
 def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
     commands = [["go", "test", "./...", "-count=1"]]
     if race:
@@ -627,9 +651,9 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
     if self_verify:
         with tempfile.TemporaryDirectory() as td:
             res = run(
-                [str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--llm-eval=false", "--progress=jsonl", "--json"],
+                self_verify_command(),
                 env={"HARNESS_STATE_DIR": td},
-                timeout=FULL_SELF_VERIFY_TIMEOUT_SECONDS,
+                timeout=SELF_VERIFY_TIMEOUT_SECONDS,
             )
             parsed = None
             parse_error = None
@@ -637,12 +661,7 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
                 parsed = parse_json_output(res["stdout"])
             except Exception as exc:
                 parse_error = str(exc)
-            step_ok = (
-                res["returncode"] == 0
-                and isinstance(parsed, dict)
-                and bool(parsed.get("ok"))
-                and bool(parsed.get("termination_eligible", True))
-            )
+            step_ok = self_verify_result_ok(res, parsed)
             ok = ok and step_ok
             parsed_dict = parsed if isinstance(parsed, dict) else {}
             details.append(
@@ -675,7 +694,7 @@ def main() -> int:
         help="preserve one exact current Orca terminal for the operational doctor gate",
     )
     parser.add_argument("--skip-race", action="store_true", help="skip go test -race")
-    parser.add_argument("--skip-self-verify", action="store_true", help="skip 10-iteration self-verify")
+    parser.add_argument("--skip-self-verify", action="store_true", help="skip canonical deterministic self-verify")
     parser.add_argument("--daemon-cycles", type=int, default=8)
     parser.add_argument("--rss-rounds", type=int, default=3)
     parser.add_argument("--rss-calls", type=int, default=200)

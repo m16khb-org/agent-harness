@@ -14,23 +14,23 @@ agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --save-state --state-key self-verify-latest --json
 ```
 
-Full mode is explicit:
+One deterministic pass can collect every step instead of failing fast:
 
 ```bash
-agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+agent-harness self-verify --collect-all-steps --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ```
 
-`--progress=jsonl` keeps final JSON on stdout and writes iteration/step heartbeat lines to stderr so long runs are not mistaken for hangs.
+`--progress=jsonl` keeps final JSON on stdout and writes step heartbeat lines to stderr so long runs are not mistaken for hangs. Repeated full/iteration modes were removed because they reran the same expensive evidence pass without adding independent evidence.
 
 The deterministic project gate pins `--llm-eval=false`. An ambient `HARNESS_SELF_VERIFY_LLM_EVAL=gate` is valid, but the current opt-in path only renders a read-only evaluator prompt, sends no Z.AI request, and cannot pass gate mode without an ingested external verdict. Record the explicit override and restart from the first gate after an interrupted or prompt-only attempt.
 
 ### Orca execution focused and native hook smokes
 
 ```bash
-go test ./internal/core/issueops/... ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
+go test ./internal/domain/issueops... ./internal/adapter/orca ./internal/domain/lifecycle ./internal/domain/commandparse ./internal/domain/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
 ```
 
-The hook-input package is `./cmd/harness/hookcli/hookinput`; there is no `./internal/core/hookinput`. Verify both Codex and Claude fixtures through the common parser and returned block shape.
+The hook-input package is `./cmd/harness/hookcli/hookinput`; there is no domain-level hook-input package. Verify Codex, Claude, and Omo fixtures through the common parser and returned block shape.
 
 Checkpoint commands:
 

@@ -86,8 +86,8 @@ func CachedContractGoldenStep(goTestStep StepResult, deps SelfVerifyStepDeps) St
 	return steps.CachedContractGoldenStep(goTestStep, deps)
 }
 
-func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
-	return rerun.SelfVerifyRerunCommands(failedStep, iterations, baseSeed, targetScore)
+func selfVerifyRerunCommands(failedStep string, baseSeed int64, targetScore float64) []string {
+	return rerun.SelfVerifyRerunCommands(failedStep, baseSeed, targetScore)
 }
 
 func selfVerifyStepRerunCommand(label string) (string, bool) {

@@ -3,6 +3,8 @@ package rerun
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/domain/commandparse"
 )
 
 func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
@@ -22,7 +24,7 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 		"worker lifecycle smoke": "worker enqueue",
 		"MCP smoke":              "mcp",
 		"state roundtrip":        "state write",
-		"parallel isolation":     "self-verify --full",
+		"parallel isolation":     "self-verify --collect-all-steps",
 		"daemon resilience":      "daemon start",
 		"preflight fuzz":         "preflight --json",
 		"native integration":     "install-native.sh",
@@ -43,20 +45,44 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 			if !ok || !strings.Contains(got, want) {
 				t.Fatalf("SelfVerifyStepRerunCommand(%q)=%q ok=%v, want substring %q", label, got, ok, want)
 			}
+			if strings.Contains(got, "--full") || strings.Contains(got, "--iterations") {
+				t.Fatalf("SelfVerifyStepRerunCommand(%q) uses retired self-verify flags: %q", label, got)
+			}
 		})
 	}
 }
 
+func TestEmittedSelfVerifyRerunCommandsPassLifecycleGuard(t *testing.T) {
+	commands := SelfVerifyRerunCommands("unknown", 100, 95)
+	parallel, ok := SelfVerifyStepRerunCommand("parallel isolation")
+	if !ok {
+		t.Fatal("parallel isolation rerun command missing")
+	}
+	commands = append(commands, parallel)
+	for _, command := range commands {
+		if !commandparse.ExactSelfVerifyVerification(command) {
+			t.Errorf("emitted self-verify command is rejected by lifecycle guard: %q", command)
+		}
+	}
+}
+
 func TestSelfVerifyRerunCommandsAndScoreFormatting(t *testing.T) {
-	commands := SelfVerifyRerunCommands("go test", 1, 100, 95.5)
+	commands := SelfVerifyRerunCommands("go test", 100, 95.5)
 	if len(commands) != 2 {
-		t.Fatalf("expected specific and full rerun commands, got %#v", commands)
+		t.Fatalf("expected specific and collect-all rerun commands, got %#v", commands)
 	}
-	if !strings.Contains(commands[1], "--iterations=10") || !strings.Contains(commands[1], "--target-score=95.5") {
-		t.Fatalf("full rerun command did not clamp iterations or format target: %q", commands[1])
+	if !strings.Contains(commands[1], "--collect-all-steps") ||
+		!strings.Contains(commands[1], "--llm-eval=false") ||
+		!strings.Contains(commands[1], "--target-score=95.5") ||
+		strings.Contains(commands[1], "--iterations") {
+		t.Fatalf("collect-all rerun command does not match the current deterministic CLI contract: %q", commands[1])
 	}
-	commands = SelfVerifyRerunCommands("unknown", 12, 200, 95)
-	if len(commands) != 1 || !strings.Contains(commands[0], "--iterations=12") || !strings.Contains(commands[0], "--target-score=95") {
+	commands = SelfVerifyRerunCommands("unknown", 200, 95)
+	if len(commands) != 1 ||
+		!strings.Contains(commands[0], "--collect-all-steps") ||
+		!strings.Contains(commands[0], "--llm-eval=false") ||
+		!strings.Contains(commands[0], "--target-score=95") ||
+		strings.Contains(commands[0], "--iterations") {
 		t.Fatalf("unexpected fallback rerun command: %#v", commands)
 	}
 	if FormatScore(100) != "100" || FormatScore(99.25) != "99.25" {

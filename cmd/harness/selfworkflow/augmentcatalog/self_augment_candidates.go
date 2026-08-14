@@ -9,7 +9,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 99, Feasibility: 98, Novelty: 93, Risk: 8,
 			WhyNow:       []string{"현재 self-augment가 실제로는 검증 루프 역할을 한다", "사용자가 테스트와 QA 포함 및 95점 게이트를 요구했다"},
 			ExpectedGain: []string{"루프 이름/책임 혼동 제거", "검증 없는 종료 방지", "CLI/MCP/native skill 계약 일치"},
-			VerifyWith:   []string{"go test ./...", "MCP/CLI golden", "harness self-verify --full --iterations=10 --target-score=95"},
+			VerifyWith:   []string{"go test ./...", "MCP/CLI golden", "harness self-verify --seed=100 --target-score=95 --llm-eval=false --json"},
 		},
 		{
 			ID: "agent-skill-executor", Title: "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs", Category: "feature",
@@ -47,11 +47,11 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"go test -race ./... -count=1", "targeted package tests"},
 		},
 		{
-			ID: "adapter-contract-matrix", Title: "Codex/Claude adapter 계약을 matrix fixture로 고정", Category: "test",
+			ID: "adapter-contract-matrix", Title: "Codex/Claude/Omo adapter 계약을 matrix fixture로 고정", Category: "test",
 			Impact: 87, Feasibility: 90, Novelty: 75, Risk: 14,
-			WhyNow:       []string{"설치 방식과 host adapter가 늘면서 core/adapter 계약 회귀 가능성이 커졌다"},
+			WhyNow:       []string{"세 first-party host의 설치 방식이 달라 adapter 계약 회귀 가능성이 커졌다"},
 			ExpectedGain: []string{"SOLID 구조의 포트 계약 보존", "host별 출력 drift 조기 탐지"},
-			VerifyWith:   []string{"internal/core install tests", "adapter golden fixtures"},
+			VerifyWith:   []string{"go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1", "internal/adapter/testdata/native_install_contract_matrix.golden.json"},
 		},
 		{
 			ID: "install-dry-run-mode", Title: "install에 dry-run planning mode 추가", Category: "safety",

@@ -11,13 +11,13 @@ Both loops use concrete goal scores. The default exit condition is that every go
 
 ### Purpose
 
-Verify that the harness produces consistent results across Codex and Claude Code, and that CLI, MCP, native integration, state, policy, docs, and skills behave as intended. This loop is a QA gate; it does not choose improvements by itself.
+Verify that the harness produces consistent results across Codex, Claude Code, and Omo native, and that CLI, MCP, native integration, state, policy, docs, and skills behave as intended. This loop is a QA gate; it does not choose improvements by itself.
 
 ### CLI/MCP surface
 
 ```bash
-./bin/agent-harness self-verify --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --collect-all-steps --progress=jsonl --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json

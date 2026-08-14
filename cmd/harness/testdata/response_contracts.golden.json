@@ -4173,13 +4173,13 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "Codex/Claude adapter 계약을 matrix fixture로 고정",
+          "title": "Codex/Claude/Omo adapter 계약을 matrix fixture로 고정",
           "verify_with": [
-            "internal/core install tests",
-            "adapter golden fixtures"
+            "go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1",
+            "internal/adapter/testdata/native_install_contract_matrix.golden.json"
           ],
           "why_now": [
-            "설치 방식과 host adapter가 늘면서 core/adapter 계약 회귀 가능성이 커졌다",
+            "세 first-party host의 설치 방식이 달라 adapter 계약 회귀 가능성이 커졌다",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -4576,7 +4576,7 @@
           "verify_with": [
             "go test ./...",
             "MCP/CLI golden",
-            "harness self-verify --full --iterations=10 --target-score=95"
+            "harness self-verify --seed=100 --target-score=95 --llm-eval=false --json"
           ],
           "why_now": [
             "현재 self-augment가 실제로는 검증 루프 역할을 한다",
@@ -7111,13 +7111,13 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "Codex/Claude adapter 계약을 matrix fixture로 고정",
+                "title": "Codex/Claude/Omo adapter 계약을 matrix fixture로 고정",
                 "verify_with": [
-                  "internal/core install tests",
-                  "adapter golden fixtures"
+                  "go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1",
+                  "internal/adapter/testdata/native_install_contract_matrix.golden.json"
                 ],
                 "why_now": [
-                  "설치 방식과 host adapter가 늘면서 core/adapter 계약 회귀 가능성이 커졌다",
+                  "세 first-party host의 설치 방식이 달라 adapter 계약 회귀 가능성이 커졌다",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -7514,7 +7514,7 @@
                 "verify_with": [
                   "go test ./...",
                   "MCP/CLI golden",
-                  "harness self-verify --full --iterations=10 --target-score=95"
+                  "harness self-verify --seed=100 --target-score=95 --llm-eval=false --json"
                 ],
                 "why_now": [
                   "현재 self-augment가 실제로는 검증 루프 역할을 한다",

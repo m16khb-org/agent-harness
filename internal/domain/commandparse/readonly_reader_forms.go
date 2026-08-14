@@ -157,22 +157,14 @@ func ExactSelfVerifyVerification(command string) bool {
 	default:
 		return false
 	}
-	for _, token := range tokens[2:] {
-		if token != "--full" {
-			continue
-		}
-		return tokens[0] == "./bin/agent-harness" &&
-			len(tokens) == 9 &&
-			tokens[2] == "--full" &&
-			tokens[3] == "--iterations=10" &&
-			tokens[4] == "--seed=100" &&
-			tokens[5] == "--target-score=95" &&
-			tokens[6] == "--llm-eval=false" &&
-			tokens[7] == "--progress=jsonl" &&
-			tokens[8] == "--json"
+	valueOptions := map[string]bool{
+		"--seed":          true,
+		"--target-score":  true,
+		"--llm-eval":      true,
+		"--llm-eval-mode": true,
+		"--progress":      true,
 	}
-	valueOptions := map[string]bool{"--seed": true, "--target-score": true, "--llm-eval": true, "--goal": true}
-	boolOptions := map[string]bool{"--json": true}
+	boolOptions := map[string]bool{"--collect-all-steps": true, "--json": true}
 	for index := 2; index < len(tokens); index++ {
 		token := tokens[index]
 		if !strings.HasPrefix(token, "--") {

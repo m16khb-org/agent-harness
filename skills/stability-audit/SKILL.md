@@ -82,7 +82,7 @@ The script builds the current binary and immediately runs the existing top-level
      - `go test ./... -count=1`
      - `go test -race ./... -count=1` for code/runtime changes
      - `go build -o bin/agent-harness ./cmd/harness`
-     - `./bin/agent-harness self-verify --seed=100 --target-score=95 --json`
+     - `./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json`
    - Regenerate golden files only when a public contract intentionally changed.
 
 ## Completion report

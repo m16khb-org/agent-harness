@@ -74,7 +74,7 @@ func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 	summary.GoalScores = ScoreSelfVerificationGoals(result, targetScore)
 	summary.Coverage, summary.CoverageGaps = SelfVerificationCoverageForLabels(summary.StepLabels)
 	if summary.FailedStep != "" {
-		summary.RerunCommands = rerun.SelfVerifyRerunCommands(summary.FailedStep, result.Iterations, result.BaseSeed, targetScore)
+		summary.RerunCommands = rerun.SelfVerifyRerunCommands(summary.FailedStep, result.BaseSeed, targetScore)
 		summary.FailureClass, summary.FailureClassReason, summary.FailureClusters = ClassifySelfVerificationFailure(result, summary)
 	}
 	evidence := []failurecausecontract.Evidence{}

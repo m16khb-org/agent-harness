@@ -67,8 +67,8 @@ func SelfVerificationGoalDefinitions() []SelfVerificationGoalDefinition {
 	return out
 }
 
-func SelfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
-	return selfVerifyRerunCommands(failedStep, iterations, baseSeed, targetScore)
+func SelfVerifyRerunCommands(failedStep string, baseSeed int64, targetScore float64) []string {
+	return selfVerifyRerunCommands(failedStep, baseSeed, targetScore)
 }
 
 func SelfVerifyStepRerunCommand(label string) (string, bool) {

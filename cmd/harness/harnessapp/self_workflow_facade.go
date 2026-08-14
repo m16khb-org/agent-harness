@@ -158,8 +158,8 @@ func selfVerificationFailureClusters(result SelfAugmentResult) []SelfVerificatio
 	return selfworkflow.SelfVerificationFailureClusters(result)
 }
 
-func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
-	return selfworkflow.SelfVerifyRerunCommands(failedStep, iterations, baseSeed, targetScore)
+func selfVerifyRerunCommands(failedStep string, baseSeed int64, targetScore float64) []string {
+	return selfworkflow.SelfVerifyRerunCommands(failedStep, baseSeed, targetScore)
 }
 
 func selfVerifyStepRerunCommand(label string) (string, bool) {

@@ -27,8 +27,41 @@ class StabilityAuditScriptTest(unittest.TestCase):
         self.assertIn("timed out", result["stderr"])
         self.assertGreaterEqual(result["duration_ms"], 0)
 
-    def test_full_self_verify_timeout_has_full_gate_budget(self) -> None:
-        self.assertGreaterEqual(audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS, 600)
+    def test_self_verify_timeout_has_bounded_single_pass_budget(self) -> None:
+        self.assertGreaterEqual(audit.SELF_VERIFY_TIMEOUT_SECONDS, 600)
+        self.assertLessEqual(audit.SELF_VERIFY_TIMEOUT_SECONDS, 1800)
+
+    def test_self_verify_command_matches_current_cli_contract(self) -> None:
+        self.assertEqual(
+            audit.self_verify_command(),
+            [
+                str(audit.BIN),
+                "self-verify",
+                "--seed=100",
+                "--target-score=95",
+                "--llm-eval=false",
+                "--progress=jsonl",
+                "--json",
+            ],
+        )
+
+    def test_self_verify_result_requires_strict_complete_payload(self) -> None:
+        result = {"returncode": 0}
+        valid = {
+            "ok": True,
+            "termination_eligible": True,
+            "summary": {"termination_eligible": True},
+        }
+        self.assertTrue(audit.self_verify_result_ok(result, valid))
+        for invalid in [
+            {"ok": "false", "termination_eligible": True, "summary": {"termination_eligible": True}},
+            {"ok": True, "summary": {"termination_eligible": True}},
+            {"ok": True, "termination_eligible": True},
+            {"ok": True, "termination_eligible": True, "summary": {"termination_eligible": False}},
+        ]:
+            with self.subTest(invalid=invalid):
+                self.assertFalse(audit.self_verify_result_ok(result, invalid))
+        self.assertFalse(audit.self_verify_result_ok({"returncode": 1}, valid))
 
     def test_user_prompt_compact_turn_hint_is_not_noisy(self) -> None:
         ctx = "\n".join(

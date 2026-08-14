@@ -352,14 +352,14 @@ class StabilityAuditScriptTest(unittest.TestCase):
                 state_read = next(item for item in report["steps"][0]["details"] if item["name"] == "state_read")
                 self.assertFalse(state_read["ok"])
 
-    def test_regression_timeouts_cover_observed_full_gate_durations(self) -> None:
+    def test_regression_timeouts_cover_single_pass_gate_with_headroom(self) -> None:
         audit = load_audit_module()
         calls: list[tuple[list[str], float]] = []
 
         def fake_run(cmd, *, timeout=60, **_kwargs):
             call = [str(arg) for arg in cmd]
             calls.append((call, timeout))
-            stdout = '{"ok": true, "termination_eligible": true, "summary": {}}' if "self-verify" in call else ""
+            stdout = '{"ok": true, "termination_eligible": true, "summary": {"termination_eligible": true}}' if "self-verify" in call else ""
             return {
                 "returncode": 0,
                 "stdout": stdout,
@@ -377,11 +377,12 @@ class StabilityAuditScriptTest(unittest.TestCase):
         go_test_timeouts = [timeout for cmd, timeout in calls if cmd[:2] == ["go", "test"]]
         self.assertEqual(go_test_timeouts, [regression_timeout] * 2)
         self_verify_timeouts = [timeout for cmd, timeout in calls if "self-verify" in cmd]
-        self.assertEqual(self_verify_timeouts, [audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS])
+        self.assertEqual(self_verify_timeouts, [audit.SELF_VERIFY_TIMEOUT_SECONDS])
         self_verify_commands = [cmd for cmd, _timeout in calls if "self-verify" in cmd]
         self.assertIn("--progress=jsonl", self_verify_commands[0])
         self.assertIn("--llm-eval=false", self_verify_commands[0])
-        self.assertGreaterEqual(audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS, 5400)
+        self.assertGreaterEqual(audit.SELF_VERIFY_TIMEOUT_SECONDS, 600)
+        self.assertLessEqual(audit.SELF_VERIFY_TIMEOUT_SECONDS, 1800)
 
     def test_regression_isolates_harness_state_while_operational_doctor_stays_live(self) -> None:
         audit = load_audit_module()

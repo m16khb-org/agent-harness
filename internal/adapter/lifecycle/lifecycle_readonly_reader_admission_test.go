@@ -32,7 +32,7 @@ func TestActiveLeaseReadOnlyReaderAdmission(t *testing.T) {
 		{"cat SKILL.md", "/bin/cat skills/issueops/SKILL.md", "#272"},
 		{"sed -n SKILL.md", "/usr/bin/sed -n 1,9999p skills/issueops/SKILL.md", "#272"},
 		{"self-verify", "./bin/agent-harness self-verify --seed=100 --target-score=95 --json", "#299"},
-		{"full self-verify", "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json", "#448"},
+		{"collect-all self-verify", "./bin/agent-harness self-verify --collect-all-steps --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json", "#448"},
 		{"ps 조회", "ps -o pid,command -p 1234", "#301"},
 		{"pgrep 조회", "pgrep -f 'go test'", "#301"},
 		// #321 quoted 정규식 rg는 이미 허용된다. 회귀 방지로 남긴다.

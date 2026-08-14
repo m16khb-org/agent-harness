@@ -341,7 +341,7 @@ func TestSelfWorkflowAndLLMFacadeWrappers(t *testing.T) {
 	verifySummary := summarizeSelfVerification(result, 95)
 	_, _, _ = classifySelfVerificationFailure(result, verifySummary)
 	_ = selfVerificationFailureClusters(result)
-	_ = selfVerifyRerunCommands("go test", 2, 100, 95)
+	_ = selfVerifyRerunCommands("go test", 100, 95)
 	_, _ = selfVerifyStepRerunCommand("go test ./...")
 	if formatScore(95.5) == "" {
 		t.Fatal("formatScore empty")

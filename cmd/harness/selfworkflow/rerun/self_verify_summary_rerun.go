@@ -5,15 +5,12 @@ import (
 	"strconv"
 )
 
-func SelfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
+func SelfVerifyRerunCommands(failedStep string, baseSeed int64, targetScore float64) []string {
 	commands := []string{}
 	if command, ok := SelfVerifyStepRerunCommand(failedStep); ok {
 		commands = append(commands, command)
 	}
-	if iterations < 10 {
-		iterations = 10
-	}
-	commands = append(commands, fmt.Sprintf("./bin/agent-harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, FormatScore(targetScore)))
+	commands = append(commands, fmt.Sprintf("./bin/agent-harness self-verify --collect-all-steps --seed=%d --target-score=%s --llm-eval=false --progress=jsonl --json", baseSeed, FormatScore(targetScore)))
 	return commands
 }
 
@@ -34,7 +31,7 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	case "candidate export":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
 	case "step budget baseline":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "install dry-run smoke":
 		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/agent-harness install --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
@@ -50,7 +47,7 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	case "state roundtrip":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state write --key smoke --value smoke --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state read --key smoke --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
-		return "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
+		return "./bin/agent-harness self-verify --collect-all-steps --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json", true
 	case "daemon resilience":
 		return "tmp_daemon=\"$(mktemp -d)\" && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon start --json && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon stop --json; rm -rf \"$tmp_daemon\"", true
 	case "preflight fuzz":

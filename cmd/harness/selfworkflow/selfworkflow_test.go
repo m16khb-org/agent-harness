@@ -164,7 +164,7 @@ func TestSelfWorkflowSummaryAndHistoryWrappers(t *testing.T) {
 	if BuildSelfVerificationContract().Name == "" {
 		t.Fatal("contract should have a name")
 	}
-	if len(SelfVerifyRerunCommands("go test", 1, 100, 95)) == 0 {
+	if len(SelfVerifyRerunCommands("go test", 100, 95)) == 0 {
 		t.Fatal("rerun commands should not be empty")
 	}
 	if _, ok := SelfVerifyStepRerunCommand("unknown"); ok {
