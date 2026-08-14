@@ -1,11 +1,14 @@
 package qualitycli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/testsupport"
 )
@@ -23,7 +26,51 @@ func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
 		t.Fatalf("unexpected low coverage package: %+v", got[0])
 	}
 }
+func TestRunGoTestCoverageCachesExactRepositoryFingerprint(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "sample.go")
+	if err := os.WriteFile(source, []byte("package sample\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"init"},
+		{"add", "sample.go"},
+		{"-c", "user.name=coverage-test", "-c", "user.email=coverage@example.invalid", "commit", "-m", "baseline"},
+	} {
+		command := exec.Command("git", args...)
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %s: %v", args, output, err)
+		}
+	}
+	previousExecute := executeGoTestCoverage
+	previousCacheBase := coverageCacheBase
+	defer func() {
+		executeGoTestCoverage = previousExecute
+		coverageCacheBase = previousCacheBase
+	}()
+	calls := 0
+	executeGoTestCoverage = func(context.Context, string) (string, error) {
+		calls++
+		return "coverage-run", nil
+	}
+	cacheDir := t.TempDir()
+	coverageCacheBase = func() (string, error) {
+		return cacheDir, nil
+	}
 
+	first, firstErr := runGoTestCoverage(root)
+	second, secondErr := runGoTestCoverage(root)
+	if firstErr != nil || secondErr != nil || first != "coverage-run" || second != first || calls != 1 {
+		t.Fatalf("first=%q/%v second=%q/%v calls=%d", first, firstErr, second, secondErr, calls)
+	}
+	if err := os.WriteFile(source, []byte("package sample\n\nconst changed = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runGoTestCoverage(root); err != nil || calls != 2 {
+		t.Fatalf("changed source did not invalidate coverage cache: calls=%d err=%v", calls, err)
+	}
+}
 func TestRunRoutesQualityCommands(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -46,7 +93,6 @@ func TestRunRoutesQualityCommands(t *testing.T) {
 		t.Fatalf("help output=%q", out)
 	}
 }
-
 func TestRunInspectWithDepsPrintsTextAndJSON(t *testing.T) {
 	root := t.TempDir()
 	deps := qualityDepsForTest("2026-06-13T00:00:00Z")
@@ -87,6 +133,43 @@ func TestInspectDepsWithDefaultsFillsMissingDependencies(t *testing.T) {
 	deps := (InspectDeps{}).withDefaults()
 	if deps.Now == nil || deps.Coverage == nil || deps.SelfAugmentOpenCount == nil || deps.SelfVerifyOpenCount == nil {
 		t.Fatalf("withDefaults left nil dependency: %+v", deps)
+	}
+}
+
+func TestInspectRunsIndependentSignalsConcurrently(t *testing.T) {
+	started := make(chan string, 2)
+	release := make(chan struct{})
+	deps := InspectDeps{
+		Now: func() string { return "now" },
+		Coverage: func(string) (string, error) {
+			started <- "coverage"
+			<-release
+			return "", nil
+		},
+		SelfAugmentOpenCount: func(string) (int, error) { return 0, nil },
+		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
+		Candidates:           func(string) []QualityCandidate { return nil },
+		CodeSNR: func(string) SNRResult {
+			started <- "snr"
+			<-release
+			return SNRResult{}
+		},
+	}
+	result := make(chan InspectResult, 1)
+	go func() {
+		result <- Inspect(t.TempDir(), deps)
+	}()
+
+	<-started
+	select {
+	case <-started:
+	case <-time.After(250 * time.Millisecond):
+		close(release)
+		t.Fatal("independent quality signals did not start concurrently")
+	}
+	close(release)
+	if got := <-result; !got.OK {
+		t.Fatalf("inspect result = %+v", got)
 	}
 }
 

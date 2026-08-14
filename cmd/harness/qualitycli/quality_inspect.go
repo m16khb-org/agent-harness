@@ -3,6 +3,9 @@ package qualitycli
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -152,25 +156,60 @@ func signalValue(signals []Signal, id string) float64 {
 func Inspect(root string, deps InspectDeps) InspectResult {
 	root = resolveRoot(root)
 	deps = deps.withDefaults()
+	type textResult struct {
+		value string
+		err   error
+	}
+	type branchResult struct {
+		value    []BranchFunction
+		warnings []string
+	}
+	type auditResult struct {
+		value    []AuditItem
+		warnings []string
+	}
+	coverageResults := make(chan textResult, 1)
+	branchResults := make(chan branchResult, 1)
+	auditResults := make(chan auditResult, 1)
+	snrResults := make(chan SNRResult, 1)
+	go func() {
+		value, err := deps.Coverage(root)
+		coverageResults <- textResult{value: value, err: err}
+	}()
+	go func() {
+		value, warnings := collectBranchFunctions(root)
+		branchResults <- branchResult{value: value, warnings: warnings}
+	}()
+	go func() {
+		value, warnings := collectAuditItems(root)
+		auditResults <- auditResult{value: value, warnings: warnings}
+	}()
+	go func() {
+		snrResults <- deps.CodeSNR(root)
+	}()
+
+	selfAugmentOpen, selfAugmentErr := deps.SelfAugmentOpenCount(root)
+	selfVerifyOpen, selfVerifyErr := deps.SelfVerifyOpenCount(root)
+	candidates := deps.Candidates(root)
+
+	coverage := <-coverageResults
+	branches := <-branchResults
+	audit := <-auditResults
+	snr := <-snrResults
 	warnings := []string{}
-
-	coverageOutput, err := deps.Coverage(root)
-	if err != nil {
-		warnings = append(warnings, "coverage: "+err.Error())
+	if coverage.err != nil {
+		warnings = append(warnings, "coverage: "+coverage.err.Error())
 	}
-	lowCoverage := parseCoveragePackages(coverageOutput, 60)
-	branchFunctions, branchWarnings := collectBranchFunctions(root)
-	warnings = append(warnings, branchWarnings...)
-	auditItems, auditWarnings := collectAuditItems(root)
-	warnings = append(warnings, auditWarnings...)
-
-	selfAugmentOpen, err := deps.SelfAugmentOpenCount(root)
-	if err != nil {
-		warnings = append(warnings, "self-augment candidates: "+err.Error())
+	lowCoverage := parseCoveragePackages(coverage.value, 60)
+	branchFunctions := branches.value
+	warnings = append(warnings, branches.warnings...)
+	auditItems := audit.value
+	warnings = append(warnings, audit.warnings...)
+	if selfAugmentErr != nil {
+		warnings = append(warnings, "self-augment candidates: "+selfAugmentErr.Error())
 	}
-	selfVerifyOpen, err := deps.SelfVerifyOpenCount(root)
-	if err != nil {
-		warnings = append(warnings, "self-verify candidates: "+err.Error())
+	if selfVerifyErr != nil {
+		warnings = append(warnings, "self-verify candidates: "+selfVerifyErr.Error())
 	}
 	highBranchCount := 0
 	branchCandidateCount := 0
@@ -182,8 +221,6 @@ func Inspect(root string, deps InspectDeps) InspectResult {
 			highBranchCount++
 		}
 	}
-	candidates := deps.Candidates(root)
-	snr := deps.CodeSNR(root)
 	signals := []Signal{
 		{ID: "self-augment-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfAugmentOpen), Evidence: []string{"self-augment candidate catalog"}},
 		{ID: "self-verify-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfVerifyOpen), Evidence: []string{"self-verify candidate export"}},
@@ -246,8 +283,22 @@ func resolveRoot(root string) string {
 }
 
 func runGoTestCoverage(root string) (string, error) {
+	fingerprint, fingerprintErr := coverageFingerprint(root)
+	if fingerprintErr == nil {
+		if output, ok := readCoverageCache(root, fingerprint); ok {
+			return output, nil
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	output, err := executeGoTestCoverage(ctx, root)
+	if err == nil && fingerprintErr == nil {
+		writeCoverageCache(root, fingerprint, output)
+	}
+	return output, err
+}
+
+var executeGoTestCoverage = func(ctx context.Context, root string) (string, error) {
 	cmd := exec.CommandContext(ctx, "go", "test", "-cover", "./...")
 	cmd.Dir = root
 	var out bytes.Buffer
@@ -258,6 +309,177 @@ func runGoTestCoverage(root string) (string, error) {
 		return out.String(), ctx.Err()
 	}
 	return out.String(), err
+}
+
+const coverageCacheVersion = 1
+
+type coverageCacheEntry struct {
+	Version     int    `json:"version"`
+	Fingerprint string `json:"fingerprint"`
+	Output      string `json:"output"`
+}
+
+var coverageCacheBase = func() (string, error) {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "agent-harness", "quality-coverage"), nil
+}
+
+func coverageFingerprint(root string) (string, error) {
+	head, err := gitCoverageFingerprintInput(root, "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	diff, err := gitCoverageFingerprintInput(
+		root,
+		"diff",
+		"--binary",
+		"--no-ext-diff",
+		"--no-textconv",
+		"HEAD",
+		"--",
+	)
+	if err != nil {
+		return "", err
+	}
+	untracked, err := gitCoverageFingerprintInput(root, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil {
+		return "", err
+	}
+	hasher := sha256.New()
+	_, _ = fmt.Fprintf(
+		hasher,
+		"coverage-v%d\ngo=%s\ngoos=%s\ngoarch=%s\n",
+		coverageCacheVersion,
+		runtime.Version(),
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+	environment := coverageEnvironmentFingerprint()
+	sort.Strings(environment)
+	for _, value := range environment {
+		_, _ = fmt.Fprintf(hasher, "env:%s\n", value)
+	}
+	_, _ = hasher.Write(head)
+	_, _ = hasher.Write(diff)
+	paths := bytes.Split(untracked, []byte{0})
+	sort.Slice(paths, func(left, right int) bool {
+		return bytes.Compare(paths[left], paths[right]) < 0
+	})
+	for _, rawPath := range paths {
+		if len(rawPath) == 0 {
+			continue
+		}
+		relative := filepath.Clean(string(rawPath))
+		if relative == "." || filepath.IsAbs(relative) || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("coverage fingerprint path escapes repository: %s", relative)
+		}
+		path := filepath.Join(root, relative)
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = fmt.Fprintf(hasher, "path:%s\nmode:%s\n", filepath.ToSlash(relative), info.Mode())
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return "", err
+			}
+			_, _ = hasher.Write([]byte(target))
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = hasher.Write(data)
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func gitCoverageFingerprintInput(root string, args ...string) ([]byte, error) {
+	command := exec.Command("git", args...)
+	command.Dir = root
+	return command.Output()
+}
+
+func coverageEnvironmentFingerprint() []string {
+	result := []string{}
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(name, "GO") ||
+			name == "CGO_ENABLED" ||
+			name == "CC" ||
+			name == "CXX" ||
+			name == "PATH" {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+func coverageCachePath(root string) (string, error) {
+	base, err := coverageCacheBase()
+	if err != nil {
+		return "", err
+	}
+	rootHash := sha256.Sum256([]byte(filepath.Clean(root)))
+	return filepath.Join(base, hex.EncodeToString(rootHash[:16])+".json"), nil
+}
+
+func readCoverageCache(root, fingerprint string) (string, bool) {
+	path, err := coverageCachePath(root)
+	if err != nil {
+		return "", false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	var entry coverageCacheEntry
+	if json.Unmarshal(data, &entry) != nil ||
+		entry.Version != coverageCacheVersion ||
+		entry.Fingerprint != fingerprint {
+		return "", false
+	}
+	return entry.Output, true
+}
+
+func writeCoverageCache(root, fingerprint, output string) {
+	path, err := coverageCachePath(root)
+	if err != nil || os.MkdirAll(filepath.Dir(path), 0o700) != nil {
+		return
+	}
+	data, err := json.Marshal(coverageCacheEntry{
+		Version: coverageCacheVersion, Fingerprint: fingerprint, Output: output,
+	})
+	if err != nil {
+		return
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".coverage-*.tmp")
+	if err != nil {
+		return
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(0o600); err != nil {
+		_ = temporary.Close()
+		return
+	}
+	if _, err := temporary.Write(data); err != nil {
+		_ = temporary.Close()
+		return
+	}
+	if err := temporary.Close(); err != nil {
+		_ = temporary.Close()
+		return
+	}
+	_ = os.Rename(temporaryPath, path)
 }
 
 func collectSelfAugmentOpenCount(root string) (int, error) {
