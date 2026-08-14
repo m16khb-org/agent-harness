@@ -18,7 +18,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	if issueURL == "" {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("issue URL is required")
 	}
-	out, err := providerutil.RunBoundedReadback(req.Repo, "gh", "issue", "view", issueURL, "--json", "url,body,state")
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "gh", "issue", "view", issueURL, "--json", "url,body,state")
 	if err != nil {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("gh issue snapshot read failed: %w", err)
 	}

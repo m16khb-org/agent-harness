@@ -64,12 +64,7 @@ func addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification strin
 }
 
 func knownIssueOpsFeedbackClassification(classification string) bool {
-	switch classification {
-	case "", "contract_change", "defect", "question", "noise", "valid_review", "stale_review", "rollout_evidence_missing", "environment_debt":
-		return true
-	default:
-		return false
-	}
+	return issueops.KnownFeedbackClassification(classification)
 }
 
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (issueops.IssueOpsRecord, error) {

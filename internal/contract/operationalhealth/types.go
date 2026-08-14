@@ -12,6 +12,8 @@ const (
 	FindingMessageResidue       = "operational_message_residue"
 	FindingNonMainBranchResidue = "operational_non_main_branch_residue"
 	FindingStateArtifactResidue = "operational_state_artifact_residue"
+	FindingExecutionFailure     = "operational_execution_failure"
+	FindingCleanupFailure       = "operational_cleanup_failure"
 )
 
 const (
@@ -22,31 +24,33 @@ const (
 )
 
 type Cycle struct {
-	ID                     string
-	Repo                   string
-	Branch                 string
-	Phase                  string
-	ExecutionMode          string
-	LeaseStatus            string
-	Generation             uint64
-	HolderHost             string
-	HolderSessionID        string
-	HolderAgentID          string
-	HolderPID              int
-	HolderStartedAt        string
-	HolderExecutable       string
-	HolderProcessStatus    string
-	CompletionPresent      bool
-	OrcaRuntimeID          string
-	OrcaRepoID             string
-	WorktreePath           string
-	OrcaWorktreeID         string
-	OrcaWorktreeInstanceID string
-	OrcaOwnerHost          string
-	TerminalPTYID          string
-	RunID                  string
-	TaskID                 string
-	DispatchID             string
+	ID                      string
+	Repo                    string
+	Branch                  string
+	Phase                   string
+	ExecutionMode           string
+	LeaseStatus             string
+	Generation              uint64
+	HolderHost              string
+	HolderSessionID         string
+	HolderAgentID           string
+	HolderPID               int
+	HolderStartedAt         string
+	HolderExecutable        string
+	HolderProcessStatus     string
+	CompletionPresent       bool
+	ExecutionFailurePresent bool
+	CleanupFailurePresent   bool
+	OrcaRuntimeID           string
+	OrcaRepoID              string
+	WorktreePath            string
+	OrcaWorktreeID          string
+	OrcaWorktreeInstanceID  string
+	OrcaOwnerHost           string
+	TerminalPTYID           string
+	RunID                   string
+	TaskID                  string
+	DispatchID              string
 }
 
 type LeaseHolderIndex struct {

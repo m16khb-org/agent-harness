@@ -10,14 +10,6 @@ import (
 	"agent-harness/internal/contract/issueops"
 )
 
-// validIssueOpsFeedbackResolutions are the recognised feedback resolution
-// outcomes recorded for the phase-ledger feedback_resolution artifact.
-var validIssueOpsFeedbackResolutions = map[string]bool{
-	"valid-defect":      true,
-	"question-answered": true,
-	"noise-dismissed":   true,
-}
-
 // RecordIssueOpsDomainReview persists the grill-phase domain review
 // (terminology, model fit, risks, uncertainties) — the source of truth backing
 // the grill domain_review artifact.
@@ -148,7 +140,7 @@ func resolveIssueOpsFeedback(stateRoot, id string, index int, resolution string,
 
 func resolveIssueOpsFeedbackLocked(stateRoot, id string, index int, resolution string) (issueops.IssueOpsRecord, error) {
 	resolution = strings.ToLower(strings.TrimSpace(resolution))
-	if !validIssueOpsFeedbackResolutions[resolution] {
+	if !issueops.KnownFeedbackResolution(resolution) || resolution == "" {
 		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("unknown feedback resolution %q; use valid-defect, question-answered, or noise-dismissed", resolution)
 	}
 	record, err := ReadIssueOps(stateRoot, id)

@@ -17,6 +17,7 @@ func TestRepositoryPersistsDecisionMutationWithinSpan(t *testing.T) {
 	data, err := json.Marshal(issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
 		ID:            id,
+		Phase:         issueopscontract.IssueOpsPhaseProblem,
 	})
 	if err != nil {
 		t.Fatal(err)

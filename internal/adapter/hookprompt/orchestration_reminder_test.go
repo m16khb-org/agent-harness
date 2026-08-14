@@ -36,6 +36,38 @@ func TestOrchestrationReminderAbsentWithoutBoundCycle(t *testing.T) {
 	}
 }
 
+func TestBoundOrchestrationCycleUsesSingleBulkSnapshot(t *testing.T) {
+	repo := t.TempDir()
+	previousScan := ScanReadableIssueOps
+	previousList := ListIssueOpsIDs
+	defer func() {
+		ScanReadableIssueOps = previousScan
+		ListIssueOpsIDs = previousList
+	}()
+	scanCalls := 0
+	ScanReadableIssueOps = func(string) ([]issueopscontract.IssueOpsRecord, error) {
+		scanCalls++
+		return []issueopscontract.IssueOpsRecord{{
+			OK:    true,
+			ID:    "io-bound",
+			Phase: issueopscontract.IssueOpsPhasePlan,
+			Execution: &issueopscontract.Execution{
+				Workspace: issueopscontract.Workspace{Root: repo},
+			},
+		}}, nil
+	}
+	ListIssueOpsIDs = func(string) ([]string, error) {
+		t.Fatal("bound orchestration lookup must not list IDs")
+		return nil, nil
+	}
+
+	record, ok := boundOrchestrationCycle(repo)
+
+	if !ok || record.ID != "io-bound" || scanCalls != 1 {
+		t.Fatalf("ok=%t record=%+v scan calls=%d", ok, record, scanCalls)
+	}
+}
+
 func TestOrchestrationReminderIgnoresDroppedChild(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

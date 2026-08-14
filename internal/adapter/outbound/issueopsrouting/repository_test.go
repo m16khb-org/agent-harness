@@ -17,6 +17,7 @@ func TestRepositoryUpdatesAndReadsRecordWithinSpan(t *testing.T) {
 	record := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
 		ID:            id,
+		Phase:         issueopscontract.IssueOpsPhaseProblem,
 	}
 	data, err := json.Marshal(record)
 	if err != nil {

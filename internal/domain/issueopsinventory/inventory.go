@@ -40,7 +40,23 @@ func ProjectEntry(record issueopsinventorycontract.Record) issueopsinventorycont
 		if record.Execution.Orca != nil {
 			entry.OwnerModel = record.Execution.Orca.OwnerModel
 		}
+		if record.Execution.Pending != nil {
+			entry.PendingKind = record.Execution.Pending.Kind
+			entry.PendingSince = record.Execution.Pending.StartedAt
+		}
+		if record.Execution.Failure != nil {
+			entry.FailureCode = record.Execution.Failure.Code
+			entry.FailureAt = record.Execution.Failure.At
+		}
 		entry.Claimable = record.Execution.Lease.Status == issueopsinventorycontract.LeaseStatusClaimable
+	}
+	if record.CleanupFinishFailure != nil {
+		entry.CleanupFailureStep = record.CleanupFinishFailure.Step
+		entry.CleanupFailureAt = record.CleanupFinishFailure.At
+	}
+	if record.CleanupAbandonFailure != nil {
+		entry.CleanupFailureStep = record.CleanupAbandonFailure.Step
+		entry.CleanupFailureAt = record.CleanupAbandonFailure.At
 	}
 	entry.CleanupCandidate = record.Phase == issueopsinventorycontract.PhaseDone
 	return entry

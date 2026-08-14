@@ -82,6 +82,14 @@ func ObserveNativeProcessAncestry(pid int) ([]issueops.NativeProcessReceipt, err
 	if pid <= 0 {
 		return nil, fmt.Errorf("native process pid must be positive")
 	}
+	snapshot, err := observeNativeProcessSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	return nativeProcessAncestryFromSnapshot(snapshot, pid)
+}
+
+func observeNativeProcessSnapshot() (map[int]nativeProcessSnapshotEntry, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), nativeProcessProbeTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "ps", "-ww", "-axo", "pid=,ppid=,lstart=,comm=")
@@ -93,11 +101,7 @@ func ObserveNativeProcessAncestry(pid int) ([]issueops.NativeProcessReceipt, err
 	if err != nil {
 		return nil, fmt.Errorf("read native process ancestry: %w", err)
 	}
-	snapshot, err := parseNativeProcessSnapshot(string(output))
-	if err != nil {
-		return nil, err
-	}
-	return nativeProcessAncestryFromSnapshot(snapshot, pid)
+	return parseNativeProcessSnapshot(string(output))
 }
 
 func parseNativeProcessSnapshot(output string) (map[int]nativeProcessSnapshotEntry, error) {
@@ -214,6 +218,29 @@ func inspectNativeProcessReceipt(receipt issueops.NativeProcessReceipt) (string,
 	return NativeProcessStatusLive, observed, nil
 }
 
+func inspectNativeProcessReceiptFromSnapshot(
+	receipt issueops.NativeProcessReceipt,
+	snapshot map[int]nativeProcessSnapshotEntry,
+) (string, issueops.NativeProcessReceipt, error) {
+	entry, ok := snapshot[receipt.PID]
+	if !ok {
+		alive, err := nativePIDAlive(receipt.PID)
+		if err != nil {
+			return NativeProcessStatusUnknown, issueops.NativeProcessReceipt{}, err
+		}
+		if !alive {
+			return NativeProcessStatusDead, issueops.NativeProcessReceipt{}, nil
+		}
+		return NativeProcessStatusUnknown, issueops.NativeProcessReceipt{},
+			fmt.Errorf("inspect live native process identity: pid %d is absent from process snapshot", receipt.PID)
+	}
+	observed := entry.Receipt
+	if observed.StartedAt != receipt.StartedAt || observed.Executable != receipt.Executable {
+		return NativeProcessStatusIdentityMismatch, observed, nil
+	}
+	return NativeProcessStatusLive, observed, nil
+}
+
 func nativePIDAlive(pid int) (bool, error) {
 	process, err := os.FindProcess(pid)
 	if err != nil {
@@ -290,13 +317,16 @@ func inspectWorkspaceProcesses(root string, excluded map[int]bool) ([]workspaceP
 // 실행 컨텍스트다 — 그 셸의 cwd가 canonical worktree라는 이유로 finalize를
 // 막으면 direct 모드 승계가 구조적으로 불가능해진다. 관측에 실패하면 pid
 // 하나만 반환해 기존(조상 미제외) 동작으로 안전하게 축약한다.
-func nativeProcessAncestryPIDs(pid int) map[int]bool {
+func nativeProcessAncestryPIDsFromSnapshot(
+	snapshot map[int]nativeProcessSnapshotEntry,
+	pid int,
+) map[int]bool {
 	pids := map[int]bool{}
 	if pid <= 0 {
 		return pids
 	}
 	pids[pid] = true
-	ancestry, err := ObserveNativeProcessAncestry(pid)
+	ancestry, err := nativeProcessAncestryFromSnapshot(snapshot, pid)
 	if err != nil {
 		return pids
 	}
@@ -311,13 +341,17 @@ func nativeProcessAncestryPIDs(pid int) map[int]bool {
 // 다른 holder가 아니라 승계를 요청한 세션 자신의 실행 컨텍스트이므로, 이를 근거로
 // finalize를 막으면 direct 모드 승계가 성립하지 않는다. 외부 세션의 잔여
 // 프로세스는 요청자 조상에 걸리지 않으므로 원래의 fail-closed 계약은 유지된다.
-func dropRequesterOwnedProcesses(processes []workspaceProcess, owners map[int]bool) []workspaceProcess {
+func dropRequesterOwnedProcessesFromSnapshot(
+	processes []workspaceProcess,
+	owners map[int]bool,
+	snapshot map[int]nativeProcessSnapshotEntry,
+) []workspaceProcess {
 	if len(processes) == 0 || len(owners) == 0 {
 		return processes
 	}
 	kept := make([]workspaceProcess, 0, len(processes))
 	for _, process := range processes {
-		if processHasAncestorIn(process.PID, owners) {
+		if processHasAncestorInSnapshot(snapshot, process.PID, owners) {
 			continue
 		}
 		kept = append(kept, process)
@@ -327,8 +361,12 @@ func dropRequesterOwnedProcesses(processes []workspaceProcess, owners map[int]bo
 
 // processHasAncestorIn은 pid 자신 또는 그 조상이 owners에 속하는지 본다. 관측에
 // 실패하면 false를 반환해 판정을 fail-closed로 유지한다.
-func processHasAncestorIn(pid int, owners map[int]bool) bool {
-	ancestry, err := ObserveNativeProcessAncestry(pid)
+func processHasAncestorInSnapshot(
+	snapshot map[int]nativeProcessSnapshotEntry,
+	pid int,
+	owners map[int]bool,
+) bool {
+	ancestry, err := nativeProcessAncestryFromSnapshot(snapshot, pid)
 	if err != nil {
 		return false
 	}

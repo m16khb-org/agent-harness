@@ -22,3 +22,21 @@ func (repository Repository) ReadUnchecked(
 ) (issueopsinventorycontract.Record, error) {
 	return repository.Store.Read(ctx, stateRoot, id)
 }
+
+func (repository Repository) Scan(
+	ctx context.Context,
+	stateRoot string,
+) ([]issueopsinventorycontract.Record, []issueopsinventorycontract.RecordDiagnostic, error) {
+	records, diagnostics, err := repository.Store.Scan(ctx, stateRoot)
+	if err != nil {
+		return nil, nil, err
+	}
+	result := make([]issueopsinventorycontract.RecordDiagnostic, 0, len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		result = append(result, issueopsinventorycontract.RecordDiagnostic{
+			ID:   diagnostic.ID,
+			Code: diagnostic.Code,
+		})
+	}
+	return records, result, nil
+}

@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -65,6 +66,10 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 }
 
 func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+	return Provider{}.CreatePullRequestContext(context.Background(), req)
+}
+
+func (Provider) CreatePullRequestContext(ctx context.Context, req port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("PR title is required")
@@ -101,7 +106,7 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 			Preview: providerutil.DryRunPreview("gh", args...),
 		}, nil
 	}
-	result, err := runGhPRCreate(args, req.Repo)
+	result, err := runGhPRCreate(ctx, args, req.Repo)
 	if err != nil {
 		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, err
 	}
@@ -109,7 +114,7 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	if !validCanonicalGitHubPullRequestURL(result.URL) || projectSelector != "" && resultProject != projectSelector || projectSelector == "" && !strings.HasPrefix(resultProject, "github.com/") {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("created artifact URL unavailable; needs reconciliation; not retried")
 	}
-	if err := verifyCreatedGitHubPullRequest(req, result.URL); err != nil {
+	if err := verifyCreatedGitHubPullRequest(ctx, req, result.URL); err != nil {
 		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, githubCreatedPullRequestError(result.URL, err)
 	}
 	number := createdArtifactNumber(result.URL)
@@ -124,8 +129,8 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	}, nil
 }
 
-func runGhPRCreate(args []string, repo string) (ghResult, error) {
-	out, invoked, err := providerutil.RunBoundedMutation(repo, "gh", args...)
+func runGhPRCreate(ctx context.Context, args []string, repo string) (ghResult, error) {
+	out, invoked, err := providerutil.RunBoundedMutationContext(ctx, repo, "gh", args...)
 	result := parseGhOutput(string(out))
 	if err == nil {
 		return result, nil
@@ -209,14 +214,14 @@ func githubSourceProjectKey(projectKey string, row githubPullRequestProjection) 
 	return strings.ToLower(host + "/" + strings.Trim(strings.TrimSpace(row.HeadRepository.NameWithOwner), "/"))
 }
 
-func verifyCreatedGitHubPullRequest(req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
+func verifyCreatedGitHubPullRequest(ctx context.Context, req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
 	createdURL = strings.TrimSpace(createdURL)
 	args := []string{"pr", "view", createdURL}
 	if strings.TrimSpace(req.ProjectKey) != "" {
 		args = append(args, "--repo", strings.TrimSpace(req.ProjectKey))
 	}
 	args = append(args, "--json", "url,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository")
-	out, err := providerutil.RunBoundedReadback(req.Repo, "gh", args...)
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "gh", args...)
 	if err != nil {
 		return fmt.Errorf("read back created pull request: %w", err)
 	}
@@ -244,7 +249,7 @@ func verifyCreatedGitHubPullRequest(req port.IssueProviderCreatePullRequestReque
 	if !providerutil.SameStrings(req.Labels, labels) {
 		return fmt.Errorf("created pull request labels do not exactly match the request")
 	}
-	wantedAssignees, err := githubReadbackAssignees(req.Repo, req.Assignees)
+	wantedAssignees, err := githubReadbackAssignees(ctx, req.Repo, req.Assignees)
 	if err != nil {
 		return err
 	}
@@ -254,14 +259,14 @@ func verifyCreatedGitHubPullRequest(req port.IssueProviderCreatePullRequestReque
 	return nil
 }
 
-func githubReadbackAssignees(repo string, requested []string) ([]string, error) {
+func githubReadbackAssignees(ctx context.Context, repo string, requested []string) ([]string, error) {
 	resolved := make([]string, 0, len(requested))
 	for _, value := range requested {
 		if strings.TrimSpace(value) != "@me" {
 			resolved = append(resolved, value)
 			continue
 		}
-		out, err := providerutil.RunBoundedReadback(repo, "gh", "api", "user", "--jq", ".login")
+		out, err := providerutil.RunBoundedReadbackContext(ctx, repo, "gh", "api", "user", "--jq", ".login")
 		if err != nil || strings.TrimSpace(string(out)) == "" {
 			return nil, fmt.Errorf("resolve exact GitHub @me assignee for readback")
 		}
@@ -271,12 +276,16 @@ func githubReadbackAssignees(repo string, requested []string) ([]string, error) 
 }
 
 func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
+	return Provider{}.ReconcilePullRequestContext(context.Background(), req)
+}
+
+func (Provider) ReconcilePullRequestContext(ctx context.Context, req port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 	selector, err := githubProjectSelector(req.ProjectKey)
 	if err != nil || selector == "" {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitHub reconcile requires exact project authority")
 	}
 	args := []string{"pr", "list", "--repo", selector, "--head", strings.TrimSpace(req.HeadBranch), "--state", "all", "--limit", "2", "--json", "url,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository,state"}
-	out, err := providerutil.RunBoundedReadback(req.Repo, "gh", args...)
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "gh", args...)
 	if err != nil {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("list GitHub reconcile candidates: %w", err)
 	}

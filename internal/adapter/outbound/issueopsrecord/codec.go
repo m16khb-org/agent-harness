@@ -19,6 +19,10 @@ func Decode(id string, data []byte) (issueopscontract.IssueOpsRecord, error) {
 		Invalid:       true,
 		InvalidReason: statecontract.ErrInvalidState.Error(),
 	}
+	normalizedID, err := NormalizeID(id)
+	if err != nil || normalizedID != id {
+		return invalid, statecontract.ErrInvalidState
+	}
 	var record issueopscontract.IssueOpsRecord
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
@@ -31,10 +35,8 @@ func Decode(id string, data []byte) (issueopscontract.IssueOpsRecord, error) {
 	if record.ID != id || record.SchemaVersion != issueopscontract.IssueOpsSchemaVersion {
 		return invalid, statecontract.ErrInvalidState
 	}
-	if record.Execution != nil {
-		if err := issueopscontract.ValidateExecution(*record.Execution); err != nil {
-			return invalid, statecontract.ErrInvalidState
-		}
+	if err := issueopscontract.ValidateRecord(record); err != nil {
+		return invalid, statecontract.ErrInvalidState
 	}
 	record.OK = true
 	return record, nil
@@ -44,13 +46,8 @@ func Encode(record issueopscontract.IssueOpsRecord) ([]byte, error) {
 	if _, err := NormalizeID(record.ID); err != nil {
 		return nil, err
 	}
-	if record.SchemaVersion != issueopscontract.IssueOpsSchemaVersion {
+	if err := issueopscontract.ValidateRecord(record); err != nil {
 		return nil, statecontract.ErrInvalidState
-	}
-	if record.Execution != nil {
-		if err := issueopscontract.ValidateExecution(*record.Execution); err != nil {
-			return nil, err
-		}
 	}
 	record.OK = true
 	return json.MarshalIndent(record, "", "  ")

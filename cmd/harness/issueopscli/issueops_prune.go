@@ -38,6 +38,13 @@ func runIssueOpsPrune(args []string) error {
 	if *confirm {
 		mode = "pruned"
 	}
-	fmt.Printf("%s: %d done cycles selected, %d kept (cutoff %s)\n", mode, len(result.Pruned), len(result.Kept), result.Cutoff)
+	fmt.Printf(
+		"%s: %d done cycles selected, %d kept, %d unreadable (cutoff %s)\n",
+		mode,
+		len(result.Pruned),
+		len(result.Kept),
+		len(result.Unreadable),
+		result.Cutoff,
+	)
 	return nil
 }

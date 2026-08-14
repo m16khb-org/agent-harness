@@ -18,6 +18,7 @@ func wireLifecycleIssueOpsForTests() {
 		LinkIssueOpsPlan:                          issueopscore.LinkIssueOpsPlan,
 		LinkIssueOpsWorktree:                      issueopscore.LinkIssueOpsWorktree,
 		ListIssueOpsIDs:                           issueopscore.ListIssueOpsIDs,
+		ScanIssueOps:                              issueopscore.ScanIssueOps,
 		NewIssueOpsID:                             issueopscore.NewIssueOpsID,
 		PrepareIssueOpsBranch:                     issueopscore.PrepareIssueOpsBranch,
 		ReadIssueOps:                              issueopscore.ReadIssueOps,

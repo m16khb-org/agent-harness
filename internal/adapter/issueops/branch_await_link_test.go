@@ -17,7 +17,7 @@ func awaitFixture(t *testing.T, linkVerified bool) string {
 	t.Helper()
 	root := t.TempDir()
 	record := issueopscontract.IssueOpsRecord{
-		OK: true, SchemaVersion: 1, ID: "io-await1", Repo: t.TempDir(), Phase: "execution",
+		OK: true, SchemaVersion: 1, ID: "io-await1", Repo: t.TempDir(), Phase: issueopscontract.IssueOpsPhaseImplement,
 		IssueURL: lbIssueURL, CreatedAt: "2026-08-09T00:00:00Z", UpdatedAt: "2026-08-09T00:00:00Z",
 		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: lbIssueURL, Branch: lbBranch,

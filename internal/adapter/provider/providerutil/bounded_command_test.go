@@ -1,9 +1,11 @@
 package providerutil
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -20,6 +22,42 @@ func TestRunBoundedReadbackRejectsOversizedOutputAndRedactsFailure(t *testing.T)
 	}
 	if _, err := RunBoundedReadback(t.TempDir(), script, "secret"); err == nil || strings.Contains(err.Error(), "abcdefghijklmnopqrstuvwxyz123456") || len(err.Error()) > providerDiagnosticLimit+128 {
 		t.Fatalf("secret readback diagnostic was not bounded/redacted: %v", err)
+	}
+}
+
+func TestRunBoundedReadbackContextCancelsStartedCommand(t *testing.T) {
+	dir := t.TempDir()
+	fifo := filepath.Join(dir, "started")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(dir, "slow")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf started > \"$1\"\nexec sleep 30\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	started := make(chan struct{})
+	go func() {
+		data, _ := os.ReadFile(fifo)
+		if string(data) == "started" {
+			close(started)
+		}
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := RunBoundedReadbackContext(ctx, dir, script, fifo)
+		result <- err
+	}()
+	<-started
+	cancel()
+
+	select {
+	case err := <-result:
+		if err == nil || !strings.Contains(err.Error(), "context canceled") {
+			t.Fatalf("cancellation error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("canceled provider command did not stop")
 	}
 }
 

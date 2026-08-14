@@ -99,6 +99,7 @@ func issueOpsActiveStore() active.Store {
 		// silently dropping the execution guard. Command paths use ReadIssueOps,
 		// which validates the record before operating on it.
 		Read:    readIssueOpsUnchecked,
+		Scan:    ScanReadableIssueOps,
 		NewID:   newIssueOpsID,
 		ListIDs: ListIssueOpsIDs,
 	}

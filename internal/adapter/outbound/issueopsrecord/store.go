@@ -18,6 +18,11 @@ type Store struct {
 	Observer Observer
 }
 
+type ScanDiagnostic struct {
+	ID   string
+	Code string
+}
+
 type Mutation func(
 	issueopscontract.IssueOpsRecord,
 ) (issueopscontract.IssueOpsRecord, bool, error)
@@ -67,6 +72,36 @@ func (Store) ListIDs(ctx context.Context, stateRoot string) ([]string, error) {
 		return []string{}, nil
 	}
 	return ids, err
+}
+
+func (Store) Scan(
+	ctx context.Context,
+	stateRoot string,
+) ([]issueopscontract.IssueOpsRecord, []ScanDiagnostic, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	rows, err := sqlstore.GetAllExisting(stateRoot, bucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []issueopscontract.IssueOpsRecord{}, []ScanDiagnostic{}, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	records := make([]issueopscontract.IssueOpsRecord, 0, len(rows))
+	diagnostics := make([]ScanDiagnostic, 0)
+	for _, row := range rows {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		record, decodeErr := Decode(row.ID, row.Data)
+		if decodeErr != nil {
+			diagnostics = append(diagnostics, ScanDiagnostic{ID: row.ID, Code: "invalid_state"})
+			continue
+		}
+		records = append(records, record)
+	}
+	return records, diagnostics, nil
 }
 
 func (store Store) Update(

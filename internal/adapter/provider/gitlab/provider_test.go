@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -685,7 +686,7 @@ func TestRunGlabJSONReportsMissingCLI(t *testing.T) {
 		t.Fatalf("error=%v, want missing glab CLI", err)
 	}
 
-	_, mrErr := runGlabMRJSON([]string{"mr", "create"}, "")
+	_, mrErr := runGlabMRJSON(context.Background(), []string{"mr", "create"}, "")
 	var createErr *port.IssueProviderCreateError
 	if !errors.As(mrErr, &createErr) || createErr.Invoked {
 		t.Fatalf("mr error=%v, want pre-invocation failure", mrErr)
@@ -736,7 +737,7 @@ exit 2
 `)
 	t.Setenv("PATH", binDir)
 
-	mr, err := runGlabMRJSON([]string{"mr", "create"}, "")
+	mr, err := runGlabMRJSON(context.Background(), []string{"mr", "create"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

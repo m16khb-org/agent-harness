@@ -150,7 +150,7 @@ func (e *corePublicationEffects) Latest(ctx context.Context, id string) (publica
 	return publicationoutbound.EffectState{RecordID: state.Record.ID, RecordRaw: append([]byte(nil), state.RecordRaw...)}, nil
 }
 
-func (e *corePublicationEffects) create(_ context.Context, providerName string, request publicationcontract.ProviderCreateRequest) (publicationcontract.ProviderCreateResult, error) {
+func (e *corePublicationEffects) create(ctx context.Context, providerName string, request publicationcontract.ProviderCreateRequest) (publicationcontract.ProviderCreateResult, error) {
 	if e.deps.Resolve == nil {
 		return publicationcontract.ProviderCreateResult{}, fmt.Errorf("publication provider resolver is required")
 	}
@@ -158,13 +158,13 @@ func (e *corePublicationEffects) create(_ context.Context, providerName string, 
 	if err != nil {
 		return publicationcontract.ProviderCreateResult{}, err
 	}
-	result, err := issueops.CreateRemotePullRequestViaProvider(portPublicationRequest(request), resolved)
+	result, err := issueops.CreateRemotePullRequestViaProviderContext(ctx, portPublicationRequest(request), resolved)
 	return publicationcontract.ProviderCreateResult{
 		OK: result.OK, URL: result.URL, Number: result.Number, Preview: result.Preview,
 	}, err
 }
 
-func (e *corePublicationEffects) inspect(_ context.Context, intent publicationcontract.Intent) (publicationcontract.Inventory, bool, error) {
+func (e *corePublicationEffects) inspect(ctx context.Context, intent publicationcontract.Intent) (publicationcontract.Inventory, bool, error) {
 	if e.deps.Resolve == nil {
 		return publicationcontract.Inventory{}, false, fmt.Errorf("publication provider resolver is required")
 	}
@@ -172,7 +172,7 @@ func (e *corePublicationEffects) inspect(_ context.Context, intent publicationco
 	if err != nil {
 		return publicationcontract.Inventory{}, false, err
 	}
-	result, err := issueops.ReconcileRemotePullRequestViaProvider(publicationReconcileRequest(intent.Request), resolved)
+	result, err := issueops.ReconcileRemotePullRequestViaProviderContext(ctx, publicationReconcileRequest(intent.Request), resolved)
 	inventory := publicationcontract.Inventory{AuthoritativeZero: result.AuthoritativeZero}
 	if result.Candidates != nil {
 		inventory.Candidates = make([]publicationcontract.Candidate, len(result.Candidates))

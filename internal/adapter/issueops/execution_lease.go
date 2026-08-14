@@ -541,7 +541,8 @@ func executionInventoryFingerprint(ctx context.Context, record issueops.IssueOps
 	if err != nil {
 		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
-	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
+	processSnapshot, _ := observeNativeProcessSnapshot()
+	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps, processSnapshot)
 	if err != nil {
 		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
@@ -567,7 +568,8 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	if holder == nil || holder.SessionProcess == nil {
 		return "", fmt.Errorf("revoking lease is missing its old process receipt")
 	}
-	processStatus, _, err := inspectNativeProcessReceipt(*holder.SessionProcess)
+	processSnapshot, _ := observeNativeProcessSnapshot()
+	processStatus, _, err := inspectNativeProcessReceiptForRollover(*holder.SessionProcess, processSnapshot)
 	if err != nil {
 		return "", err
 	}
@@ -577,7 +579,7 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	if processStatus != "dead" {
 		return "", fmt.Errorf("old holder process identity is unsafe to finalize: pid=%d status=%s", holder.SessionProcess.PID, processStatus)
 	}
-	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
+	orcaInventory, err := executionOrcaOwnerInventory(ctx, record, deps, processStatus)
 	if err != nil {
 		return "", err
 	}
@@ -595,7 +597,7 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	}
 	excluded := map[int]bool{}
 	for pid := range inventoryOwners {
-		for ancestor := range nativeProcessAncestryPIDs(pid) {
+		for ancestor := range nativeProcessAncestryPIDsFromSnapshot(processSnapshot, pid) {
 			excluded[ancestor] = true
 		}
 	}
@@ -603,7 +605,11 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	if err != nil {
 		return "", err
 	}
-	workspaceProcesses = dropRequesterOwnedProcesses(workspaceProcesses, requesterOwners)
+	workspaceProcesses = dropRequesterOwnedProcessesFromSnapshot(
+		workspaceProcesses,
+		requesterOwners,
+		processSnapshot,
+	)
 	if len(workspaceProcesses) > 0 {
 		process := workspaceProcesses[0]
 		return "", fmt.Errorf("workspace process is not quiescent: pid=%d command=%s fd=%s access=%s path=%s", process.PID, process.Command, process.FD, process.Access, process.Path)
@@ -624,20 +630,45 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	return hashJSON(payload)
 }
 
-func executionOwnerInventory(ctx context.Context, record issueops.IssueOpsRecord, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
+func executionOwnerInventory(
+	ctx context.Context,
+	record issueops.IssueOpsRecord,
+	deps ExecutionReplaceDependencies,
+	processSnapshot map[int]nativeProcessSnapshotEntry,
+) (string, port.ExecutionOrcaOwnerInventory, error) {
 	status := "none"
 	if holder := record.Execution.Lease.Holder; holder != nil && holder.SessionProcess != nil {
 		var err error
-		status, _, err = inspectNativeProcessReceipt(*holder.SessionProcess)
+		status, _, err = inspectNativeProcessReceiptForRollover(*holder.SessionProcess, processSnapshot)
 		if err != nil {
 			return "", port.ExecutionOrcaOwnerInventory{}, err
 		}
 	}
+	inventory, err := executionOrcaOwnerInventory(ctx, record, deps, status)
+	return status, inventory, err
+}
+
+func inspectNativeProcessReceiptForRollover(
+	receipt issueops.NativeProcessReceipt,
+	processSnapshot map[int]nativeProcessSnapshotEntry,
+) (string, issueops.NativeProcessReceipt, error) {
+	if processSnapshot != nil {
+		return inspectNativeProcessReceiptFromSnapshot(receipt, processSnapshot)
+	}
+	return inspectNativeProcessReceipt(receipt)
+}
+
+func executionOrcaOwnerInventory(
+	ctx context.Context,
+	record issueops.IssueOpsRecord,
+	deps ExecutionReplaceDependencies,
+	status string,
+) (port.ExecutionOrcaOwnerInventory, error) {
 	if record.Execution.Mode != issueops.ExecutionModeOrca {
-		return status, port.ExecutionOrcaOwnerInventory{}, nil
+		return port.ExecutionOrcaOwnerInventory{}, nil
 	}
 	if record.Execution.Orca == nil || deps.OrcaOwner == nil {
-		return "", port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca execution requires exact owner terminal and task inventory")
+		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca execution requires exact owner terminal and task inventory")
 	}
 	binding := record.Execution.Orca
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
@@ -645,7 +676,7 @@ func executionOwnerInventory(ctx context.Context, record issueops.IssueOpsRecord
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 		AllowRuntimeRollover: allowExecutionRuntimeRollover(record, status),
 	})
-	return status, inventory, err
+	return inventory, err
 }
 
 func allowExecutionRuntimeRollover(record issueops.IssueOpsRecord, processStatus string) bool {

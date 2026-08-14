@@ -25,11 +25,12 @@ func (service *Service) Prune(
 	confirm bool,
 ) (issueopsretentioncontract.Result, error) {
 	result := issueopsretentioncontract.Result{
-		StateRoot: stateRoot,
-		MaxAge:    maxAge.String(),
-		DryRun:    !confirm,
-		Pruned:    []string{},
-		Kept:      []string{},
+		StateRoot:  stateRoot,
+		MaxAge:     maxAge.String(),
+		DryRun:     !confirm,
+		Pruned:     []string{},
+		Kept:       []string{},
+		Unreadable: []string{},
 	}
 	if service == nil || service.repository == nil || service.clock == nil {
 		return result, fmt.Errorf("issueops retention dependencies are required")
@@ -46,7 +47,8 @@ func (service *Service) Prune(
 	for _, id := range ids {
 		record, err := service.repository.ReadUnchecked(ctx, stateRoot, id)
 		if err != nil {
-			return result, err
+			result.Unreadable = append(result.Unreadable, id)
+			continue
 		}
 		if !issueopsretentiondomain.IsPrunable(record, cutoff) {
 			result.Kept = append(result.Kept, id)

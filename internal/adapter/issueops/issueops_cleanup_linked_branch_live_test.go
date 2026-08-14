@@ -79,7 +79,7 @@ func TestCleanupLinkedBranchLiveGraphQLRejectsABadSelector(t *testing.T) {
 func TestCleanupLinkedBranchGateBlocksBeforeAnyProviderCall(t *testing.T) {
 	root := t.TempDir()
 	record := issueopscontract.IssueOpsRecord{
-		OK: true, SchemaVersion: 1, ID: "io-lbgate", Repo: t.TempDir(), Phase: "execution",
+		OK: true, SchemaVersion: 1, ID: "io-lbgate", Repo: t.TempDir(), Phase: issueopscontract.IssueOpsPhaseImplement,
 		CreatedAt: "2026-08-09T00:00:00Z", UpdatedAt: "2026-08-09T00:00:00Z",
 	}
 	if _, err := WriteIssueOps(root, record); err != nil {

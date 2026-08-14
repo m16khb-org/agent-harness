@@ -33,6 +33,8 @@ const (
 	FindingMessageResidue         = operationalhealthcontract.FindingMessageResidue
 	FindingNonMainBranchResidue   = operationalhealthcontract.FindingNonMainBranchResidue
 	FindingStateArtifactResidue   = operationalhealthcontract.FindingStateArtifactResidue
+	FindingExecutionFailure       = operationalhealthcontract.FindingExecutionFailure
+	FindingCleanupFailure         = operationalhealthcontract.FindingCleanupFailure
 	ProcessStatusLive             = operationalhealthcontract.ProcessStatusLive
 	ProcessStatusDead             = operationalhealthcontract.ProcessStatusDead
 	ProcessStatusIdentityMismatch = operationalhealthcontract.ProcessStatusIdentityMismatch

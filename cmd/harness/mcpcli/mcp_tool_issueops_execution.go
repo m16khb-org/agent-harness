@@ -11,15 +11,23 @@ import (
 )
 
 func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{})
+	return handleMCPIssueOpsExecutionWithContext(context.Background(), args, MCPDependencies{})
 }
 
 func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDependencies) MCPToolOutcome {
+	return handleMCPIssueOpsExecutionWithContext(context.Background(), args, deps)
+}
+
+func handleMCPIssueOpsExecutionWithContext(
+	ctx context.Context,
+	args map[string]any,
+	deps MCPDependencies,
+) MCPToolOutcome {
 	req, err := executionActionRequestFromMCP(args)
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
-	result, err := execDeps.ExecuteExecution(context.Background(), execDeps.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
+	result, err := execDeps.ExecuteExecution(ctx, execDeps.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
 	if err != nil {
 		err = bindMCPIssueOpsExecutionErrorNextCommand(err, deps.Provenance)
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))

@@ -390,16 +390,12 @@ func childHostSmokeScriptToken(token string) bool {
 }
 
 func delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue string) (string, bool) {
-	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
+	records, err := issueOpsDeps.ScanIssueOps(IssueOpsStateRoot())
 	if err != nil {
 		return "", false
 	}
 	var child *issueopscontract.IssueOpsRecord
-	for _, id := range ids {
-		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
-		if err != nil {
-			return "", false
-		}
+	for _, record := range records {
 		if record.Execution == nil || !sameExecutionPath(record.Execution.Workspace.Root, childRoot) {
 			continue
 		}
@@ -1717,15 +1713,11 @@ func containsExecutionToken(tokens []string, want string) bool {
 
 func executionGuardRecords(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string) ([]issueopscontract.IssueOpsRecord, error) {
 	records := []issueopscontract.IssueOpsRecord{}
-	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
+	inventory, err := issueOpsDeps.ScanIssueOps(IssueOpsStateRoot())
 	if err != nil {
 		return nil, err
 	}
-	for _, id := range ids {
-		record, readErr := ReadIssueOps(IssueOpsStateRoot(), id)
-		if readErr != nil {
-			return nil, readErr
-		}
+	for _, record := range inventory {
 		if executionRecordTouchesRequest(record, req, targets) {
 			records = append(records, record)
 		}

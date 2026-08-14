@@ -2,6 +2,7 @@ package issueopsretention
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -79,10 +80,42 @@ func TestServiceRejectsNonPositiveMaxAge(t *testing.T) {
 	}
 }
 
+func TestServiceReportsUnreadableRecordsAndContinues(t *testing.T) {
+	now := time.Date(2026, 8, 11, 4, 0, 0, 0, time.UTC)
+	repository := &fakeRepository{
+		ids: []string{"broken", "old"},
+		records: map[string]issueopscontract.IssueOpsRecord{
+			"old": {
+				ID:        "old",
+				Phase:     issueopscontract.IssueOpsPhaseDone,
+				UpdatedAt: now.Add(-60 * 24 * time.Hour).Format(time.RFC3339Nano),
+				Execution: &issueopscontract.Execution{
+					Lease: issueopscontract.WriteLease{Status: issueopscontract.LeaseStatusReleased},
+				},
+			},
+		},
+		readErrors: map[string]error{"broken": errors.New("invalid state")},
+	}
+	service := NewService(repository, fixedClock{now: now})
+
+	result, err := service.Prune(context.Background(), "/state", 30*24*time.Hour, false)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Unreadable) != 1 ||
+		result.Unreadable[0] != "broken" ||
+		len(result.Pruned) != 1 ||
+		result.Pruned[0] != "old" {
+		t.Fatalf("retention result = %+v", result)
+	}
+}
+
 type fakeRepository struct {
-	ids     []string
-	records map[string]issueopscontract.IssueOpsRecord
-	deleted []string
+	ids        []string
+	records    map[string]issueopscontract.IssueOpsRecord
+	readErrors map[string]error
+	deleted    []string
 }
 
 func (repository *fakeRepository) ListIDs(context.Context, string) ([]string, error) {
@@ -90,6 +123,9 @@ func (repository *fakeRepository) ListIDs(context.Context, string) ([]string, er
 }
 
 func (repository *fakeRepository) ReadUnchecked(_ context.Context, _ string, id string) (issueopscontract.IssueOpsRecord, error) {
+	if err := repository.readErrors[id]; err != nil {
+		return issueopscontract.IssueOpsRecord{}, err
+	}
 	return repository.records[id], nil
 }
 

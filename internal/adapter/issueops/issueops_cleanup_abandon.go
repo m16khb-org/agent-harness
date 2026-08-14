@@ -126,7 +126,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		if code, out := deps.Git(record.Repo, "worktree", "remove", inventory.WorktreeRoot); code != 0 {
 			if _, statErr := os.Lstat(inventory.WorktreeRoot); !os.IsNotExist(statErr) {
 				result.OK = false
-				result.FailedStep = "worktree_remove"
+				result.FailedStep = issueops.CleanupFailureStepWorktreeRemove
 				receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
 				result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
 				return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon worktree removal failed (record preserved): %s", out), receiptErr)
@@ -141,7 +141,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		if code, out := deps.Git(record.Repo, "update-ref", "-d", "refs/heads/"+inventory.Branch, inventory.BranchOID); code != 0 &&
 			branchRefPresent(deps.Git, record.Repo, inventory.Branch) {
 			result.OK = false
-			result.FailedStep = "branch_delete"
+			result.FailedStep = issueops.CleanupFailureStepBranchDelete
 			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
 			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
 			return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon branch deletion failed (record preserved): %s", out), receiptErr)
@@ -151,7 +151,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	deleted, err := deleteAbandonedIssueOps(ctx, stateRoot, record, cleanupAbandonIntentOperationIDs(record))
 	if err != nil {
 		result.OK = false
-		result.FailedStep = "record_delete"
+		result.FailedStep = issueops.CleanupFailureStepRecordDelete
 		receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, err, fingerprint, inventory)
 		result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
 		return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon deletion failed (record preserved): %v", err), receiptErr)
@@ -836,7 +836,7 @@ func armCleanupAbandon(ctx context.Context, stateRoot string, expected issueops.
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		failure := &issueops.IssueOpsCleanupAbandonFailure{
-			Step: "applying", Fingerprint: fingerprint,
+			Step: issueops.CleanupFailureStepApplying, Fingerprint: fingerprint,
 			RecordSHA:    inventory.RecordSHA,
 			WorktreePath: inventory.WorktreeRoot, Branch: inventory.Branch,
 			WorktreeHead: inventory.WorktreeHead, BranchOID: inventory.BranchOID, At: now,

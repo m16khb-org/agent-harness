@@ -146,6 +146,12 @@ func Classify(snapshot Snapshot, opts Options) Result {
 			(runtimeMismatch || repoMismatch) {
 			builder.add(FindingInventoryUnknown, "cycle", id, "cycle Orca runtime or repository identity does not match the observed inventory", clean(cycle.WorktreePath))
 		}
+		if cycle.ExecutionFailurePresent {
+			builder.add(FindingExecutionFailure, "cycle", id, "cycle has a durable execution failure; inspect issueops list and reconcile the failed operation", clean(cycle.WorktreePath))
+		}
+		if cycle.CleanupFailurePresent {
+			builder.add(FindingCleanupFailure, "cycle", id, "cycle has a durable cleanup failure; inspect issueops list and resume cleanup from preview", clean(cycle.WorktreePath))
+		}
 		switch {
 		case authority == AuthorityUnknown:
 			builder.add(FindingInventoryUnknown, "cycle", id, "cycle phase, execution lease, or durable identity is unsupported or incomplete", clean(cycle.WorktreePath))

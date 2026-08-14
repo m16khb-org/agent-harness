@@ -17,6 +17,7 @@ func configureIssueOpsReaders() {
 	hookcliiodeps.IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot
 	hookcliiodeps.ObserveNativeProcessAncestry = issueopsadapter.ObserveNativeProcessAncestry
 	hookpromptiodeps.IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot
+	hookpromptiodeps.ScanReadableIssueOps = issueopsadapter.ScanReadableIssueOps
 	hookpromptiodeps.ListIssueOpsIDs = issueopsadapter.ListIssueOpsIDs
 	hookpromptiodeps.ReadIssueOps = issueopsadapter.ReadIssueOps
 	installcliiodeps.IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot

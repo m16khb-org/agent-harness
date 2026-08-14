@@ -24,7 +24,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	if hostname != "" {
 		args = append(args, "--hostname", hostname)
 	}
-	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", args...)
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", args...)
 	if err != nil {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("glab issue snapshot read failed: %w", err)
 	}

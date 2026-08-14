@@ -40,14 +40,13 @@ func boundOrchestrationCycle(repo string) (issueopscontract.IssueOpsRecord, bool
 	if repo == "" {
 		return issueopscontract.IssueOpsRecord{}, false
 	}
-	ids, err := ListIssueOpsIDs(IssueOpsStateRoot())
+	records, err := ScanReadableIssueOps(IssueOpsStateRoot())
 	if err != nil {
 		return issueopscontract.IssueOpsRecord{}, false
 	}
 	var match issueopscontract.IssueOpsRecord
-	for _, id := range ids {
-		record, readErr := ReadIssueOps(IssueOpsStateRoot(), id)
-		if readErr != nil || !record.OK || record.Phase == issueopscontract.IssueOpsPhaseDone || record.Execution == nil {
+	for _, record := range records {
+		if !record.OK || record.Phase == issueopscontract.IssueOpsPhaseDone || record.Execution == nil {
 			continue
 		}
 		workspace := record.Execution.Workspace

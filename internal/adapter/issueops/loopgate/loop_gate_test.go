@@ -132,6 +132,7 @@ func readyIssueOpsRecordForLoopGateTest(t *testing.T) issueopscontract.IssueOpsR
 		ID:            issueops.NewIssueOpsID(repo, "main"),
 		Repo:          repo,
 		Branch:        "main",
+		Phase:         issueopscontract.IssueOpsPhasePR,
 		IssueURL:      "https://github.com/acme/repo/issues/11",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  repo,

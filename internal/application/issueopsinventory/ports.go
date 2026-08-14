@@ -8,8 +8,10 @@ import (
 )
 
 type Repository interface {
-	ListIDs(context.Context, string) ([]string, error)
-	ReadUnchecked(context.Context, string, string) (issueopsinventorycontract.Record, error)
+	Scan(
+		context.Context,
+		string,
+	) ([]issueopsinventorycontract.Record, []issueopsinventorycontract.RecordDiagnostic, error)
 }
 
 type Clock interface {

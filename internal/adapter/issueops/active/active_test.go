@@ -235,3 +235,31 @@ func TestLinkedWorktreeCyclesIncludesGitFileWorktree(t *testing.T) {
 		t.Fatalf("linked worktree with .git file should be included, got %+v", got)
 	}
 }
+
+func TestNonDoneCyclesUsesSingleBulkScan(t *testing.T) {
+	scanCalls := 0
+	store := Store{
+		StateRoot: func() string { return "/state" },
+		Scan: func(string) ([]model.IssueOpsRecord, error) {
+			scanCalls++
+			return []model.IssueOpsRecord{
+				{ID: "io-match", Repo: "/repo", Phase: model.IssueOpsPhaseImplement},
+				{ID: "io-done", Repo: "/repo", Phase: model.IssueOpsPhaseDone},
+			}, nil
+		},
+		ListIDs: func(string) ([]string, error) {
+			t.Fatal("bulk active scan must not list IDs")
+			return nil, nil
+		},
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			t.Fatal("bulk active scan must not read individual records")
+			return model.IssueOpsRecord{}, nil
+		},
+	}
+
+	records := NonDoneCyclesForRepo(store, "/repo")
+
+	if scanCalls != 1 || len(records) != 1 || records[0].ID != "io-match" {
+		t.Fatalf("scan calls=%d records=%+v", scanCalls, records)
+	}
+}

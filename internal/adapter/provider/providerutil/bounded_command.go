@@ -18,12 +18,20 @@ const (
 )
 
 func RunBoundedReadback(repo, name string, args ...string) ([]byte, error) {
-	stdout, _, err := runBoundedCommand(repo, name, args, providerReadbackTimeout, providerReadbackLimit)
+	return RunBoundedReadbackContext(context.Background(), repo, name, args...)
+}
+
+func RunBoundedReadbackContext(ctx context.Context, repo, name string, args ...string) ([]byte, error) {
+	stdout, _, err := runBoundedCommandContext(ctx, repo, name, args, providerReadbackTimeout, providerReadbackLimit)
 	return stdout, err
 }
 
 func RunBoundedMutation(repo, name string, args ...string) (stdout []byte, invoked bool, err error) {
-	return runBoundedCommand(repo, name, args, providerMutationTimeout, providerReadbackLimit)
+	return RunBoundedMutationContext(context.Background(), repo, name, args...)
+}
+
+func RunBoundedMutationContext(ctx context.Context, repo, name string, args ...string) (stdout []byte, invoked bool, err error) {
+	return runBoundedCommandContext(ctx, repo, name, args, providerMutationTimeout, providerReadbackLimit)
 }
 
 func DryRunPreview(name string, args ...string) string {
@@ -36,7 +44,14 @@ func DryRunPreview(name string, args ...string) string {
 }
 
 func runBoundedCommand(repo, name string, args []string, timeout time.Duration, outputLimit int) ([]byte, bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	return runBoundedCommandContext(context.Background(), repo, name, args, timeout, outputLimit)
+}
+
+func runBoundedCommandContext(parent context.Context, repo, name string, args []string, timeout time.Duration, outputLimit int) ([]byte, bool, error) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = repo
@@ -48,6 +63,9 @@ func runBoundedCommand(repo, name string, args []string, timeout time.Duration, 
 	}
 	err := cmd.Wait()
 	output := append([]byte(nil), stdout.data...)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return output, true, fmt.Errorf("command failed after start: %w", ctxErr)
+	}
 	if stdout.truncated {
 		return output, true, fmt.Errorf("command output exceeds %d bytes", outputLimit)
 	}

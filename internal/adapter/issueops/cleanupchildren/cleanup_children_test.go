@@ -3,7 +3,9 @@ package cleanupchildren
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
@@ -92,6 +94,59 @@ func TestCloseChildrenConfirmRecordsVerifiedEvidence(t *testing.T) {
 	}
 }
 
+func TestCloseChildrenRunsIndependentProviderCallsConcurrently(t *testing.T) {
+	record := model.IssueOpsRecord{
+		ID:       "io-close-children",
+		Repo:     "/repo",
+		IssueURL: "https://github.com/acme/repo/issues/1",
+		IssueLinks: []model.IssueOpsIssueLink{
+			{Type: "child", URL: "https://github.com/acme/repo/issues/2", Provider: "github"},
+			{Type: "child", URL: "https://github.com/acme/repo/issues/3", Provider: "github"},
+		},
+	}
+	provider := &blockingCloseChildProvider{
+		fakeCloseChildProvider: &fakeCloseChildProvider{},
+		started:                make(chan string, 2),
+		release:                make(chan struct{}),
+	}
+	released := false
+	defer func() {
+		if !released {
+			close(provider.release)
+		}
+	}()
+	store := Store{
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			return record, nil
+		},
+		TouchWrite: func(_ string, record model.IssueOpsRecord) (model.IssueOpsRecord, error) {
+			return record, nil
+		},
+		Provider: func(string) (port.IssueProvider, error) {
+			return provider, nil
+		},
+	}
+	result := make(chan error, 1)
+	go func() {
+		_, err := ByID(store, t.TempDir(), record.ID, model.IssueOpsCloseChildrenRequest{Merged: true, Confirm: true})
+		result <- err
+	}()
+
+	<-provider.started
+	select {
+	case <-provider.started:
+	case <-time.After(250 * time.Millisecond):
+		close(provider.release)
+		released = true
+		t.Fatal("second child close did not start while the first was in flight")
+	}
+	close(provider.release)
+	released = true
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+}
+
 type closeChildrenStoreForTest struct {
 	records  map[string]model.IssueOpsRecord
 	provider *fakeCloseChildProvider
@@ -132,6 +187,7 @@ func (s *closeChildrenStoreForTest) touchWrite(_ string, record model.IssueOpsRe
 }
 
 type fakeCloseChildProvider struct {
+	mu     sync.Mutex
 	result port.IssueProviderCloseChildResult
 	calls  []port.IssueProviderCloseChildRequest
 	// previewState는 preview 경로가 관측한 자식의 원격 상태다. 빈 값은 관측
@@ -163,6 +219,8 @@ func (p *fakeCloseChildProvider) CloseIssue(port.IssueProviderCloseIssueRequest)
 }
 
 func (p *fakeCloseChildProvider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueProviderCloseChildResult, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.calls = append(p.calls, req)
 	result := p.result
 	result.ChildURL = req.ChildURL
@@ -178,4 +236,23 @@ func (p *fakeCloseChildProvider) CloseChild(req port.IssueProviderCloseChildRequ
 		result.HierarchyVerified = state != ""
 	}
 	return result, nil
+}
+
+type blockingCloseChildProvider struct {
+	*fakeCloseChildProvider
+	started chan string
+	release chan struct{}
+}
+
+func (provider *blockingCloseChildProvider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueProviderCloseChildResult, error) {
+	provider.started <- req.ChildURL
+	<-provider.release
+	return port.IssueProviderCloseChildResult{
+		OK:                true,
+		Provider:          "github",
+		ChildURL:          req.ChildURL,
+		HierarchyVerified: true,
+		Closed:            true,
+		State:             "closed",
+	}, nil
 }

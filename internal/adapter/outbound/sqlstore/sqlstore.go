@@ -412,6 +412,13 @@ func isNestedSpanError(err error) bool {
 }
 
 func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, bool, error) {
+	return d.beginSpanTxAfterContention(ctx, nil)
+}
+
+func (d *DB) beginSpanTxAfterContention(
+	ctx context.Context,
+	afterFirstContention func(),
+) (*sql.Tx, bool, error) {
 	maxWait := time.NewTimer(spanLockMaxWait)
 	defer maxWait.Stop()
 	retry := time.NewTimer(time.Hour)
@@ -433,7 +440,12 @@ func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, bool, error) {
 		if !isSQLiteLockContention(err) {
 			return nil, contended, err
 		}
-		contended = true
+		if !contended {
+			contended = true
+			if afterFirstContention != nil {
+				afterFirstContention()
+			}
+		}
 		retry.Reset(retryGap)
 		select {
 		case <-ctx.Done():

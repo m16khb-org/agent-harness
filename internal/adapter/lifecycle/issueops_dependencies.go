@@ -23,6 +23,8 @@ type IssueOpsDeps struct {
 	LinkIssueOpsPlan                          func(stateRoot, id, planPath string) (issueopscontract.IssueOpsRecord, error)
 	LinkIssueOpsWorktree                      func(stateRoot, id, worktreePath string) (issueopscontract.IssueOpsRecord, error)
 	ListIssueOpsIDs                           func(stateRoot string) ([]string, error)
+	ScanIssueOps                              func(stateRoot string) ([]issueopscontract.IssueOpsRecord, error)
+	ScanReadableIssueOps                      func(stateRoot string) ([]issueopscontract.IssueOpsRecord, error)
 	NewIssueOpsID                             func(repo, branch string) string
 	PrepareIssueOpsBranch                     func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest) (issueopscontract.IssueOpsRecord, error)
 	ReadIssueOps                              func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error)
@@ -60,6 +62,12 @@ func ConfigureIssueOps(deps IssueOpsDeps) {
 	}
 	if deps.ListIssueOpsIDs != nil {
 		issueOpsDeps.ListIssueOpsIDs = deps.ListIssueOpsIDs
+	}
+	if deps.ScanIssueOps != nil {
+		issueOpsDeps.ScanIssueOps = deps.ScanIssueOps
+	}
+	if deps.ScanReadableIssueOps != nil {
+		issueOpsDeps.ScanReadableIssueOps = deps.ScanReadableIssueOps
 	}
 	if deps.NewIssueOpsID != nil {
 		issueOpsDeps.NewIssueOpsID = deps.NewIssueOpsID
@@ -109,7 +117,13 @@ func neutralIssueOpsDeps() IssueOpsDeps {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsNotConfigured
 		},
 		ListIssueOpsIDs: func(stateRoot string) ([]string, error) { return nil, errIssueOpsNotConfigured },
-		NewIssueOpsID:   func(repo, branch string) string { return "" },
+		ScanIssueOps: func(stateRoot string) ([]issueopscontract.IssueOpsRecord, error) {
+			return nil, errIssueOpsNotConfigured
+		},
+		ScanReadableIssueOps: func(stateRoot string) ([]issueopscontract.IssueOpsRecord, error) {
+			return nil, errIssueOpsNotConfigured
+		},
+		NewIssueOpsID: func(repo, branch string) string { return "" },
 		PrepareIssueOpsBranch: func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsNotConfigured
 		},

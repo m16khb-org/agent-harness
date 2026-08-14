@@ -346,16 +346,12 @@ func ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID string
 }
 
 func scanIssueOpsChildrenForParent(stateRoot string, parent issueops.IssueOpsRecord) (map[string]issueops.IssueOpsRecord, error) {
-	ids, err := ListIssueOpsIDs(stateRoot)
+	records, err := ScanReadableIssueOps(stateRoot)
 	if err != nil {
 		return nil, err
 	}
 	children := map[string]issueops.IssueOpsRecord{}
-	for _, id := range ids {
-		child, readErr := ReadIssueOps(stateRoot, id)
-		if readErr != nil {
-			continue
-		}
+	for _, child := range records {
 		if strings.TrimSpace(child.Repo) != strings.TrimSpace(parent.Repo) {
 			continue
 		}

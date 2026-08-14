@@ -34,6 +34,37 @@ func TestNativeProcessAncestryFromSnapshotWalksExactParentChain(t *testing.T) {
 	}
 }
 
+func TestQuiescenceProcessOwnershipReusesOneSnapshot(t *testing.T) {
+	snapshot, err := parseNativeProcessSnapshot(`
+200 100 Tue Jul 22 09:11:00 2026 /usr/bin/child
+100 50 Tue Jul 22 09:10:11 2026 /usr/local/bin/agent-harness
+50 1 Tue Jul 22 09:00:00 2026 /Applications/Codex.app/Contents/MacOS/Codex
+300 1 Tue Jul 22 09:12:00 2026 /usr/bin/external
+1 0 Tue Jul 22 08:00:00 2026 /sbin/launchd
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ancestry := nativeProcessAncestryPIDsFromSnapshot(snapshot, 100)
+	if !ancestry[100] || !ancestry[50] || !ancestry[1] {
+		t.Fatalf("requester ancestry = %+v", ancestry)
+	}
+	processes := []workspaceProcess{
+		{PID: 200, Command: "child"},
+		{PID: 300, Command: "external"},
+	}
+
+	got := dropRequesterOwnedProcessesFromSnapshot(
+		processes,
+		map[int]bool{100: true},
+		snapshot,
+	)
+
+	if len(got) != 1 || got[0].PID != 300 {
+		t.Fatalf("remaining processes = %+v", got)
+	}
+}
+
 func TestObserveNativeProcessAncestryIncludesCurrentExactReceipt(t *testing.T) {
 	want, err := ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {

@@ -42,8 +42,22 @@ func ReadRemoteIssueSnapshot(ctx context.Context, prov port.IssueProvider, req p
 // 같은 패키지의 CreateRemotePullRequest는 lifecycle 상태를 함께 다루는 상위 경로이고,
 // 이 함수는 provider 호출 직전의 가드만 담당한다.
 func CreateRemotePullRequestViaProvider(req port.IssueProviderCreatePullRequestRequest, prov port.IssueProvider) (port.IssueProviderCreatePullRequestResult, error) {
+	return CreateRemotePullRequestViaProviderContext(context.Background(), req, prov)
+}
+
+type contextPullRequestCreator interface {
+	CreatePullRequestContext(context.Context, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)
+}
+
+func CreateRemotePullRequestViaProviderContext(ctx context.Context, req port.IssueProviderCreatePullRequestRequest, prov port.IssueProvider) (port.IssueProviderCreatePullRequestResult, error) {
 	if prov == nil {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("no issue provider configured")
+	}
+	if creator, ok := prov.(contextPullRequestCreator); ok {
+		return creator.CreatePullRequestContext(ctx, req)
+	}
+	if err := ctx.Err(); err != nil {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, err
 	}
 	return prov.CreatePullRequest(req)
 }
@@ -51,6 +65,20 @@ func CreateRemotePullRequestViaProvider(req port.IssueProviderCreatePullRequestR
 // ReconcileRemotePullRequestViaProvider는 provider가 remote create 조정을 지원할 때만
 // 조정을 수행한다.
 func ReconcileRemotePullRequestViaProvider(req port.IssueProviderReconcilePullRequestRequest, prov port.IssueProvider) (port.IssueProviderReconcilePullRequestResult, error) {
+	return ReconcileRemotePullRequestViaProviderContext(context.Background(), req, prov)
+}
+
+type contextPullRequestReconciler interface {
+	ReconcilePullRequestContext(context.Context, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error)
+}
+
+func ReconcileRemotePullRequestViaProviderContext(ctx context.Context, req port.IssueProviderReconcilePullRequestRequest, prov port.IssueProvider) (port.IssueProviderReconcilePullRequestResult, error) {
+	if reconciler, ok := prov.(contextPullRequestReconciler); ok {
+		return reconciler.ReconcilePullRequestContext(ctx, req)
+	}
+	if err := ctx.Err(); err != nil {
+		return port.IssueProviderReconcilePullRequestResult{}, err
+	}
 	reconciler, ok := prov.(port.IssueProviderRemoteCreateReconciler)
 	if !ok {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("issue provider does not support remote create reconciliation")

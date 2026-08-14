@@ -14,6 +14,7 @@ import (
 type Store struct {
 	StateRoot func() string
 	Read      func(stateRoot, id string) (model.IssueOpsRecord, error)
+	Scan      func(stateRoot string) ([]model.IssueOpsRecord, error)
 	NewID     func(repo, branch string) string
 	ListIDs   func(stateRoot string) ([]string, error)
 }
@@ -70,16 +71,12 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		return nil
 	}
 	stateRoot := store.StateRoot()
-	ids, err := store.ListIDs(stateRoot)
+	inventory, err := scanActiveRecords(store, stateRoot)
 	if err != nil {
 		return nil
 	}
 	records := []model.IssueOpsRecord{}
-	for _, id := range ids {
-		record, err := store.Read(stateRoot, id)
-		if err != nil {
-			continue
-		}
+	for _, record := range inventory {
 		if record.Phase == model.IssueOpsPhaseDone {
 			continue
 		}
@@ -122,16 +119,12 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 		return nil
 	}
 	stateRoot := store.StateRoot()
-	ids, err := store.ListIDs(stateRoot)
+	inventory, err := scanActiveRecords(store, stateRoot)
 	if err != nil {
 		return nil
 	}
 	records := []model.IssueOpsRecord{}
-	for _, id := range ids {
-		record, err := store.Read(stateRoot, id)
-		if err != nil {
-			continue
-		}
+	for _, record := range inventory {
 		if record.Phase == model.IssueOpsPhaseDone {
 			continue
 		}
@@ -141,6 +134,25 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 		records = append(records, record)
 	}
 	return records
+}
+
+func scanActiveRecords(store Store, stateRoot string) ([]model.IssueOpsRecord, error) {
+	if store.Scan != nil {
+		return store.Scan(stateRoot)
+	}
+	ids, err := store.ListIDs(stateRoot)
+	if err != nil {
+		return nil, err
+	}
+	records := make([]model.IssueOpsRecord, 0, len(ids))
+	for _, id := range ids {
+		record, readErr := store.Read(stateRoot, id)
+		if readErr != nil {
+			continue
+		}
+		records = append(records, record)
+	}
+	return records, nil
 }
 
 // UmbrellaCycleForChildIssue returns the non-done cycle in the same repo that

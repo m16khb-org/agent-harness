@@ -465,7 +465,13 @@ func runIssueOpsList(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	fmt.Printf("cycles: %d (scanned %d records at %s)\n", len(result.Entries), result.ScannedRecords, result.GeneratedAt)
+	fmt.Printf(
+		"cycles: %d (scanned %d records, unreadable %d at %s)\n",
+		len(result.Entries),
+		result.ScannedRecords,
+		result.ReadErrors,
+		result.GeneratedAt,
+	)
 	for _, entry := range result.Entries {
 		flags := ""
 		if entry.Claimable {
@@ -476,6 +482,15 @@ func runIssueOpsList(args []string) error {
 		}
 		if entry.CompletionUnreflected {
 			flags += " [unreflected]"
+		}
+		if entry.PendingKind != "" {
+			flags += " [pending:" + entry.PendingKind + "]"
+		}
+		if entry.FailureCode != "" {
+			flags += " [failed:" + entry.FailureCode + "]"
+		}
+		if entry.CleanupFailureStep != "" {
+			flags += " [cleanup-failed:" + entry.CleanupFailureStep + "]"
 		}
 		fmt.Printf("- %s %s phase=%s lease=%s%s\n", entry.ID, entry.Branch, entry.Phase, entry.LeaseStatus, flags)
 	}

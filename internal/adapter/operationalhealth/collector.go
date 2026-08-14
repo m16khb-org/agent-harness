@@ -471,7 +471,9 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 func cycleFromRecord(record issueopscontract.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
 	cycle := corehealth.Cycle{
 		ID: strings.TrimSpace(record.ID), Repo: canonicalInventoryPath(record.Repo), Branch: strings.TrimSpace(record.Branch),
-		Phase: string(record.Phase),
+		Phase:                   string(record.Phase),
+		ExecutionFailurePresent: record.Execution != nil && record.Execution.Failure != nil,
+		CleanupFailurePresent:   record.CleanupFinishFailure != nil || record.CleanupAbandonFailure != nil,
 	}
 	var problems []corehealth.InventoryProblem
 	worktreeConflict := false

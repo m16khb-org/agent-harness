@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"testing"
 	"time"
 )
@@ -27,25 +28,25 @@ func TestSpanRetryGapUsesBoundedExponentialBackoff(t *testing.T) {
 
 func BenchmarkSpanLockShortContentionHandoff(b *testing.B) {
 	b.Run("adaptive", func(b *testing.B) {
-		benchmarkSpanLockHandoff(b, func(database *DB) (*sql.Tx, bool, error) {
-			return database.beginSpanTx(context.Background())
+		benchmarkSpanLockHandoff(b, func(database *DB, afterContention func()) (*sql.Tx, bool, error) {
+			return database.beginSpanTxAfterContention(context.Background(), afterContention)
 		})
 	})
 	b.Run("fixed_10ms_baseline", func(b *testing.B) {
-		benchmarkSpanLockHandoff(b, func(database *DB) (*sql.Tx, bool, error) {
-			transaction, err := beginSpanTxFixedGap(
+		benchmarkSpanLockHandoff(b, func(database *DB, afterContention func()) (*sql.Tx, bool, error) {
+			return beginSpanTxFixedGap(
 				context.Background(),
 				database,
 				10*time.Millisecond,
+				afterContention,
 			)
-			return transaction, true, err
 		})
 	})
 }
 
 func benchmarkSpanLockHandoff(
 	b *testing.B,
-	acquire func(*DB) (*sql.Tx, bool, error),
+	acquire func(*DB, func()) (*sql.Tx, bool, error),
 ) {
 	b.Helper()
 	root := b.TempDir()
@@ -68,13 +69,24 @@ func benchmarkSpanLockHandoff(
 		if err != nil {
 			b.Fatal(err)
 		}
-		release := time.AfterFunc(2*time.Millisecond, func() {
+		release := make(chan struct{})
+		released := make(chan struct{})
+		go func() {
+			<-release
 			_ = transaction.Rollback()
-		})
+			close(released)
+		}()
+		var releaseOnce sync.Once
+		releaseAfterContention := func() {
+			releaseOnce.Do(func() {
+				close(release)
+			})
+		}
 		started := time.Now()
-		acquired, contended, err := acquire(contender)
+		acquired, contended, err := acquire(contender, releaseAfterContention)
 		total += time.Since(started)
-		release.Stop()
+		releaseAfterContention()
+		<-released
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -90,20 +102,26 @@ func beginSpanTxFixedGap(
 	ctx context.Context,
 	database *DB,
 	gap time.Duration,
-) (*sql.Tx, error) {
+	afterFirstContention func(),
+) (*sql.Tx, bool, error) {
+	contended := false
 	for {
 		transaction, err := database.span.BeginTx(ctx, nil)
 		if err == nil {
-			return transaction, nil
+			return transaction, contended, nil
 		}
 		if !isSQLiteLockContention(err) {
-			return nil, err
+			return nil, contended, err
+		}
+		if !contended {
+			contended = true
+			afterFirstContention()
 		}
 		timer := time.NewTimer(gap)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return nil, ctx.Err()
+			return nil, contended, ctx.Err()
 		case <-timer.C:
 		}
 	}

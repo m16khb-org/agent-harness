@@ -16,6 +16,7 @@ func TestStoreReadsUpdatesRelatedDataAndDeletesAtomically(t *testing.T) {
 	data, err := json.Marshal(issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
 		ID:            id,
+		Phase:         issueopscontract.IssueOpsPhaseProblem,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,5 +61,42 @@ func TestStoreReadsUpdatesRelatedDataAndDeletesAtomically(t *testing.T) {
 	}
 	if _, found, err := database.Get("related_v1", id); err != nil || found {
 		t.Fatalf("related data survived delete: found=%v err=%v", found, err)
+	}
+}
+
+func TestStoreScansValidAndInvalidRowsInOneInventory(t *testing.T) {
+	stateRoot := t.TempDir()
+	database, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := issueopscontract.IssueOpsRecord{
+		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
+		ID:            "io-valid",
+		Phase:         issueopscontract.IssueOpsPhaseProblem,
+	}
+	encoded, err := json.Marshal(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Put(Bucket(), valid.ID, encoded); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Put(Bucket(), "io-invalid", []byte(`{"schema_version":1,"id":"io-invalid","phase":"unknown"}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	records, diagnostics, err := (Store{}).Scan(context.Background(), stateRoot)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].ID != valid.ID {
+		t.Fatalf("records = %+v", records)
+	}
+	if len(diagnostics) != 1 ||
+		diagnostics[0].ID != "io-invalid" ||
+		diagnostics[0].Code != "invalid_state" {
+		t.Fatalf("diagnostics = %+v", diagnostics)
 	}
 }

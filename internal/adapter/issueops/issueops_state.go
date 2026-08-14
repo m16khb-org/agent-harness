@@ -120,6 +120,43 @@ func ListIssueOpsIDs(stateRoot string) ([]string, error) {
 	return ids, nil
 }
 
+func ScanIssueOps(stateRoot string) ([]issueops.IssueOpsRecord, error) {
+	records, invalid, err := scanIssueOpsRows(stateRoot)
+	if err != nil {
+		return nil, err
+	}
+	if invalid {
+		return nil, statecontract.ErrInvalidState
+	}
+	return records, nil
+}
+
+func ScanReadableIssueOps(stateRoot string) ([]issueops.IssueOpsRecord, error) {
+	records, _, err := scanIssueOpsRows(stateRoot)
+	return records, err
+}
+
+func scanIssueOpsRows(stateRoot string) ([]issueops.IssueOpsRecord, bool, error) {
+	rows, err := sqlstore.GetAllExisting(stateRoot, issueOpsBucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []issueops.IssueOpsRecord{}, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	records := make([]issueops.IssueOpsRecord, 0, len(rows))
+	invalid := false
+	for _, row := range rows {
+		record, decodeErr := decodeIssueOpsRecord(row.ID, row.Data)
+		if decodeErr != nil {
+			invalid = true
+			continue
+		}
+		records = append(records, record)
+	}
+	return records, invalid, nil
+}
+
 // deleteIssueOps removes the cycle record for id; deleting an absent record is
 // not an error.
 func deleteIssueOps(stateRoot, id string) error {
@@ -215,11 +252,8 @@ func normalizeIssueOpsID(id string) (string, error) {
 }
 
 func validateIssueOpsRecord(record issueops.IssueOpsRecord) error {
-	if record.SchemaVersion != issueops.IssueOpsSchemaVersion {
+	if err := issueops.ValidateRecord(record); err != nil {
 		return statecontract.ErrInvalidState
-	}
-	if record.Execution != nil {
-		return issueops.ValidateExecution(*record.Execution)
 	}
 	return nil
 }

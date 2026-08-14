@@ -8,11 +8,12 @@ import (
 // IntentClass values control how strict the plan-prep evidence gate is.
 // trivial cycles skip the gate; every other class must satisfy it.
 var knownIntentClasses = map[string]bool{
-	"trivial":      true,
-	"standard":     true,
-	"refactoring":  true,
-	"architecture": true,
-	"research":     true,
+	"trivial":         true,
+	"standard":        true,
+	"refactoring":     true,
+	"architecture":    true,
+	"research":        true,
+	"delegated-child": true,
 }
 
 // NormalizeIntentClass lowercases and validates an intent class. Empty input
@@ -23,7 +24,7 @@ func NormalizeIntentClass(class string) (string, error) {
 		return "standard", nil
 	}
 	if !knownIntentClasses[c] {
-		return "", fmt.Errorf("unknown intent_class %q; want one of trivial, standard, refactoring, architecture, research", c)
+		return "", fmt.Errorf("unknown intent_class %q; want one of trivial, standard, refactoring, architecture, research, delegated-child", c)
 	}
 	return c, nil
 }

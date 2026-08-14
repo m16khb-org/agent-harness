@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -53,6 +54,10 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 }
 
 func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+	return Provider{}.CreatePullRequestContext(context.Background(), req)
+}
+
+func (Provider) CreatePullRequestContext(ctx context.Context, req port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("MR title is required")
@@ -90,19 +95,19 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 		}, nil
 	}
 	if gitLabProjectRequiresGlab182(projectURL) {
-		version, versionErr := providerutil.RunBoundedReadback(req.Repo, "glab", "--version")
+		version, versionErr := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", "--version")
 		if versionErr != nil || !glabCapabilityAtLeast182(string(version)) {
 			return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: fmt.Errorf("GitLab custom web authority requires proven glab >= 1.82.0 capability")}
 		}
 	}
-	result, err := runGlabMRJSON(args, req.Repo)
+	result, err := runGlabMRJSON(ctx, args, req.Repo)
 	if err != nil {
 		return result, err
 	}
 	if !validCanonicalGitLabMergeRequestURL(result.URL) {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("created artifact URL unavailable; needs reconciliation; not retried")
 	}
-	if err := verifyCreatedGitLabMergeRequest(req, result.URL); err != nil {
+	if err := verifyCreatedGitLabMergeRequest(ctx, req, result.URL); err != nil {
 		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, gitlabCreatedMergeRequestError(result.URL, err)
 	}
 	return result, nil
@@ -153,7 +158,7 @@ type gitlabMergeRequestProjection struct {
 	TargetProjectID int64            `json:"target_project_id"`
 }
 
-func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
+func verifyCreatedGitLabMergeRequest(ctx context.Context, req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
 	createdURL = strings.TrimSpace(createdURL)
 	parsedURL, err := url.Parse(createdURL)
 	if err != nil {
@@ -170,7 +175,7 @@ func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequ
 	if projectURL == "" {
 		projectURL = parsedURL.Scheme + "://" + parsedURL.Host + "/" + parts.Project
 	}
-	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", "mr", "view", parts.IID, "--repo", projectURL, "--output", "json")
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", "mr", "view", parts.IID, "--repo", projectURL, "--output", "json")
 	if err != nil {
 		return fmt.Errorf("read back created merge request: %w", err)
 	}
@@ -201,18 +206,22 @@ func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequ
 }
 
 func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
+	return Provider{}.ReconcilePullRequestContext(context.Background(), req)
+}
+
+func (Provider) ReconcilePullRequestContext(ctx context.Context, req port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 	projectURL, err := gitLabProjectURL(req.ProjectKey)
 	if err != nil || projectURL == "" {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab reconcile requires exact project authority")
 	}
 	if gitLabProjectRequiresGlab182(projectURL) {
-		version, versionErr := providerutil.RunBoundedReadback(req.Repo, "glab", "--version")
+		version, versionErr := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", "--version")
 		if versionErr != nil || !glabCapabilityAtLeast182(string(version)) {
 			return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab custom web authority requires proven glab >= 1.82.0 capability")
 		}
 	}
 	args := []string{"mr", "list", "--repo", projectURL, "--source-branch", strings.TrimSpace(req.HeadBranch), "--all", "--per-page", "2", "--output", "json"}
-	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", args...)
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", args...)
 	if err != nil {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("list GitLab reconcile candidates: %w", err)
 	}
@@ -620,8 +629,8 @@ func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCre
 	return port.IssueProviderCreateIssueResult{OK: true, URL: url, Number: number}, nil
 }
 
-func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequestResult, error) {
-	out, invoked, err := providerutil.RunBoundedMutation(repo, "glab", args...)
+func runGlabMRJSON(ctx context.Context, args []string, repo string) (port.IssueProviderCreatePullRequestResult, error) {
+	out, invoked, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", args...)
 	url, number := parseGlabOutput(string(out))
 	result := port.IssueProviderCreatePullRequestResult{OK: err == nil, URL: url, Number: number}
 	if err == nil {

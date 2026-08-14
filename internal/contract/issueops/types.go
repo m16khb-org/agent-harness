@@ -397,6 +397,14 @@ type IssueOpsImplementationReview struct {
 
 // IssueOpsCleanupFinishFailure marks the step where a destructive cleanup
 // apply stopped. finish 재실행이 이어받을 수 있도록 레코드에 남긴다(resumable).
+const (
+	CleanupFailureStepApplying       = "applying"
+	CleanupFailureStepOrcaRemove     = "orca_remove"
+	CleanupFailureStepWorktreeRemove = "worktree_remove"
+	CleanupFailureStepBranchDelete   = "branch_delete"
+	CleanupFailureStepRecordDelete   = "record_delete"
+)
+
 type IssueOpsCleanupFinishFailure struct {
 	Step    string `json:"step"`
 	Message string `json:"message"`

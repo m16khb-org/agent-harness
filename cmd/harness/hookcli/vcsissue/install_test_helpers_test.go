@@ -16,6 +16,7 @@ func init() {
 	hookclideps.IncrementIssueOpsSourceMisdirect = issueopsadapter.IncrementIssueOpsSourceMisdirect
 	hookclideps.ObserveNativeProcessAncestry = issueopsadapter.ObserveNativeProcessAncestry
 	hookpromptdeps.IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot
+	hookpromptdeps.ScanReadableIssueOps = issueopsadapter.ScanReadableIssueOps
 	hookpromptdeps.ListIssueOpsIDs = issueopsadapter.ListIssueOpsIDs
 	hookpromptdeps.ReadIssueOps = issueopsadapter.ReadIssueOps
 }

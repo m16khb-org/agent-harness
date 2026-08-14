@@ -149,17 +149,13 @@ func ensureExecutionRootUnclaimed(stateRoot, selfID, root string) error {
 		return fmt.Errorf("canonical worktree root is required")
 	}
 	self := strings.TrimSpace(selfID)
-	ids, err := ListIssueOpsIDs(stateRoot)
+	records, err := ScanIssueOps(stateRoot)
 	if err != nil {
 		return err
 	}
-	for _, id := range ids {
-		if id == self {
+	for _, record := range records {
+		if record.ID == self {
 			continue
-		}
-		record, err := readIssueOpsUnchecked(stateRoot, id)
-		if err != nil {
-			return fmt.Errorf("canonical worktree 소유권 스캔이 lifecycle %s 레코드를 읽지 못했다; 손상 레코드를 먼저 해소하라: %w", id, err)
 		}
 		for _, claimed := range []string{record.WorktreePath, executionRecordWorkspaceRoot(record)} {
 			if strings.TrimSpace(claimed) == "" || pathutil.CleanAbsPath(claimed) != target {
@@ -167,7 +163,7 @@ func ensureExecutionRootUnclaimed(stateRoot, selfID, root string) error {
 			}
 			return fmt.Errorf(
 				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: agent-harness issueops cleanup finish --id %s --preview --json",
-				target, id, strings.TrimSpace(record.Branch), id,
+				target, record.ID, strings.TrimSpace(record.Branch), record.ID,
 			)
 		}
 	}

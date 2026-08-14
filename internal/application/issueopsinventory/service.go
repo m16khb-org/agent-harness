@@ -27,22 +27,24 @@ func (service *Service) ListCycles(
 	if service == nil || service.repository == nil || service.clock == nil || service.paths == nil {
 		return issueopsinventorycontract.ListResult{OK: false}, fmt.Errorf("issueops inventory dependencies are required")
 	}
-	ids, err := service.repository.ListIDs(ctx, stateRoot)
+	records, diagnostics, err := service.repository.Scan(ctx, stateRoot)
 	if err != nil {
 		return issueopsinventorycontract.ListResult{OK: false}, err
 	}
 	repo = service.paths.Normalize(repo)
 	result := issueopsinventorycontract.ListResult{
-		OK:          true,
-		GeneratedAt: service.clock.Now().UTC().Format(time.RFC3339),
-		Entries:     []issueopsinventorycontract.ListEntry{},
+		OK:             true,
+		GeneratedAt:    service.clock.Now().UTC().Format(time.RFC3339),
+		ScannedRecords: len(records) + len(diagnostics),
+		ReadErrors:     len(diagnostics),
+		UnreadableIDs:  []string{},
+		Diagnostics:    diagnostics,
+		Entries:        []issueopsinventorycontract.ListEntry{},
 	}
-	for _, id := range ids {
-		record, readErr := service.repository.ReadUnchecked(ctx, stateRoot, id)
-		if readErr != nil {
-			continue
-		}
-		result.ScannedRecords++
+	for _, diagnostic := range diagnostics {
+		result.UnreadableIDs = append(result.UnreadableIDs, diagnostic.ID)
+	}
+	for _, record := range records {
 		if repo != "" && service.paths.Normalize(record.Repo) != repo {
 			continue
 		}

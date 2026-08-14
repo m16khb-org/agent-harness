@@ -11,6 +11,7 @@ func init() {
 	IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot
 	ObserveNativeProcessAncestry = issueopsadapter.ObserveNativeProcessAncestry
 	hookpromptiodeps.IssueOpsStateRoot = issueopsadapter.IssueOpsStateRoot
+	hookpromptiodeps.ScanReadableIssueOps = issueopsadapter.ScanReadableIssueOps
 	hookpromptiodeps.ListIssueOpsIDs = issueopsadapter.ListIssueOpsIDs
 	hookpromptiodeps.ReadIssueOps = issueopsadapter.ReadIssueOps
 }

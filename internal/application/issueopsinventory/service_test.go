@@ -30,6 +30,14 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 					Lease: issueopscontract.WriteLease{
 						Status: issueopscontract.LeaseStatusClaimable,
 					},
+					Pending: &issueopscontract.ExternalIntent{
+						Kind:      "remote_pr_create",
+						StartedAt: "2026-08-11T02:00:00Z",
+					},
+					Failure: &issueopscontract.ExecutionFailure{
+						Code: "external_operation_ambiguous",
+						At:   "2026-08-11T02:01:00Z",
+					},
 					Orca: &issueopscontract.OrcaBinding{
 						OwnerModel: "gpt-5.6-terra",
 					},
@@ -40,6 +48,10 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 				Phase: issueopscontract.IssueOpsPhaseDone,
 				RemoteArtifact: &issueopscontract.IssueOpsRemoteArtifactVerification{
 					URL: "https://github.com/acme/repo/pull/1",
+				},
+				CleanupFinishFailure: &issueopscontract.IssueOpsCleanupFinishFailure{
+					Step: "worktree_remove",
+					At:   "2026-08-11T02:02:00Z",
 				},
 			},
 			"elsewhere": {
@@ -57,8 +69,15 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 	if !result.OK || result.GeneratedAt != now.Format(time.RFC3339) {
 		t.Fatalf("unexpected result metadata: %+v", result)
 	}
-	if result.ScannedRecords != 4 {
-		t.Fatalf("scanned records = %d, want 4", result.ScannedRecords)
+	if result.ScannedRecords != 5 {
+		t.Fatalf("scanned records = %d, want 5", result.ScannedRecords)
+	}
+	if result.ReadErrors != 1 ||
+		len(result.UnreadableIDs) != 1 ||
+		result.UnreadableIDs[0] != "broken" ||
+		len(result.Diagnostics) != 1 ||
+		result.Diagnostics[0].Code != "invalid_state" {
+		t.Fatalf("unreadable records = %+v", result)
 	}
 	if len(result.Entries) != 3 {
 		t.Fatalf("entries = %d, want 3: %+v", len(result.Entries), result.Entries)
@@ -73,10 +92,14 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 	}
 	if entry := entries["claimable"]; !entry.Claimable ||
 		entry.OwnerModel != "gpt-5.6-terra" ||
-		entry.LeaseStatus != string(issueopscontract.LeaseStatusClaimable) {
+		entry.LeaseStatus != string(issueopscontract.LeaseStatusClaimable) ||
+		entry.PendingKind != "remote_pr_create" ||
+		entry.FailureCode != "external_operation_ambiguous" {
 		t.Fatalf("claimable projection: %+v", entry)
 	}
-	if entry := entries["done"]; !entry.CleanupCandidate || !entry.CompletionUnreflected {
+	if entry := entries["done"]; !entry.CleanupCandidate ||
+		!entry.CompletionUnreflected ||
+		entry.CleanupFailureStep != "worktree_remove" {
 		t.Fatalf("done projection: %+v", entry)
 	}
 }
@@ -105,15 +128,26 @@ type fakeRepository struct {
 	listError  error
 }
 
-func (f fakeRepository) ListIDs(context.Context, string) ([]string, error) {
-	return f.ids, f.listError
-}
-
-func (f fakeRepository) ReadUnchecked(_ context.Context, _ string, id string) (issueopsinventorycontract.Record, error) {
-	if err := f.readErrors[id]; err != nil {
-		return issueopscontract.IssueOpsRecord{}, err
+func (f fakeRepository) Scan(
+	context.Context,
+	string,
+) ([]issueopsinventorycontract.Record, []issueopsinventorycontract.RecordDiagnostic, error) {
+	if f.listError != nil {
+		return nil, nil, f.listError
 	}
-	return f.records[id], nil
+	records := make([]issueopsinventorycontract.Record, 0, len(f.ids))
+	diagnostics := make([]issueopsinventorycontract.RecordDiagnostic, 0)
+	for _, id := range f.ids {
+		if f.readErrors[id] != nil {
+			diagnostics = append(
+				diagnostics,
+				issueopsinventorycontract.RecordDiagnostic{ID: id, Code: "invalid_state"},
+			)
+			continue
+		}
+		records = append(records, f.records[id])
+	}
+	return records, diagnostics, nil
 }
 
 type fixedClock struct{ now time.Time }

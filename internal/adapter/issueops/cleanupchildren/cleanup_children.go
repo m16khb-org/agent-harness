@@ -3,6 +3,7 @@ package cleanupchildren
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	model "agent-harness/internal/contract/issueops"
@@ -13,6 +14,7 @@ import (
 const (
 	evidenceParentMergeVerified   = "parent_merge_verified"
 	evidenceChildrenAlreadyClosed = "children_already_closed"
+	closeChildConcurrency         = 4
 )
 
 type Store struct {
@@ -51,28 +53,37 @@ func ByID(store Store, stateRoot, id string, req model.IssueOpsCloseChildrenRequ
 	}
 	result.EvidenceBasis = basis
 
-	changed := false
+	childLinks := make([]indexedChildLink, 0)
 	for index, link := range record.IssueLinks {
 		if link.Type != "child" {
 			continue
 		}
-		childResult, linkChanged, err := closeChild(store, record, link, req)
-		result.Children = append(result.Children, childResult)
-		if err != nil {
-			return result, err
+		childLinks = append(childLinks, indexedChildLink{index: index, link: link})
+	}
+	outcomes := closeChildrenConcurrently(store, record, childLinks, req)
+	changed := false
+	var firstErr error
+	for index, outcome := range outcomes {
+		result.Children = append(result.Children, outcome.result)
+		if outcome.err != nil && firstErr == nil {
+			firstErr = outcome.err
 		}
-		if linkChanged {
+		if outcome.changed {
 			now := time.Now().UTC().Format(time.RFC3339Nano)
-			if strings.TrimSpace(record.IssueLinks[index].ClosedAt) == "" {
-				record.IssueLinks[index].ClosedAt = now
+			linkIndex := childLinks[index].index
+			if strings.TrimSpace(record.IssueLinks[linkIndex].ClosedAt) == "" {
+				record.IssueLinks[linkIndex].ClosedAt = now
 			}
-			record.IssueLinks[index].CloseVerifiedAt = now
-			record.IssueLinks[index].CloseReason = "completed"
+			record.IssueLinks[linkIndex].CloseVerifiedAt = now
+			record.IssueLinks[linkIndex].CloseReason = "completed"
 			changed = true
 		}
-		if childResult.Closed {
+		if outcome.result.Closed {
 			result.ClosedCount++
 		}
+	}
+	if firstErr != nil {
+		return result, firstErr
 	}
 	if req.Confirm && changed {
 		if _, err := store.TouchWrite(stateRoot, record); err != nil {
@@ -80,6 +91,40 @@ func ByID(store Store, stateRoot, id string, req model.IssueOpsCloseChildrenRequ
 		}
 	}
 	return result, nil
+}
+
+type indexedChildLink struct {
+	index int
+	link  model.IssueOpsIssueLink
+}
+
+type closeChildOutcome struct {
+	result  model.IssueOpsCloseChildResult
+	changed bool
+	err     error
+}
+
+func closeChildrenConcurrently(
+	store Store,
+	record model.IssueOpsRecord,
+	links []indexedChildLink,
+	req model.IssueOpsCloseChildrenRequest,
+) []closeChildOutcome {
+	outcomes := make([]closeChildOutcome, len(links))
+	limit := make(chan struct{}, closeChildConcurrency)
+	var workers sync.WaitGroup
+	workers.Add(len(links))
+	for index, item := range links {
+		go func() {
+			defer workers.Done()
+			limit <- struct{}{}
+			defer func() { <-limit }()
+			result, changed, err := closeChild(store, record, item.link, req)
+			outcomes[index] = closeChildOutcome{result: result, changed: changed, err: err}
+		}()
+	}
+	workers.Wait()
+	return outcomes
 }
 
 // resolveEvidenceBasis는 이 정리 실행이 무엇을 근거로 진행될 수 있는지를

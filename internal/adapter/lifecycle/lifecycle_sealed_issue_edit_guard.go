@@ -27,17 +27,13 @@ func sealedIssueEditBlockReason(req lifecyclecontract.HookToolUseLifecycleReques
 	if !ok {
 		return ""
 	}
-	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
+	records, err := issueOpsDeps.ScanReadableIssueOps(IssueOpsStateRoot())
 	if err != nil {
 		// 레코드를 못 읽는 상태에서 편집을 막으면 복구 작업까지 봉쇄된다.
 		// 봉인 보호는 최선 노력 가드이며 claim 시점 검증이 최종 방어선이다.
 		return ""
 	}
-	for _, id := range ids {
-		record, readErr := ReadIssueOps(IssueOpsStateRoot(), id)
-		if readErr != nil {
-			continue
-		}
+	for _, record := range records {
 		if !sealedIssueEditRecordProtects(record, target) {
 			continue
 		}

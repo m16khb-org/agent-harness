@@ -132,10 +132,10 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	// ② orca 회수 먼저(인벤토리 정합), force=false.
 	if inventory.OrcaWorktreeID != "" {
 		if deps.RemoveOrcaWorktree == nil {
-			return fail("orca_remove", fmt.Errorf("orca worktree remover is not configured"))
+			return fail(issueops.CleanupFailureStepOrcaRemove, fmt.Errorf("orca worktree remover is not configured"))
 		}
 		if err := deps.RemoveOrcaWorktree(ctx, inventory.OrcaWorktreeID); err != nil {
-			return fail("orca_remove", err)
+			return fail(issueops.CleanupFailureStepOrcaRemove, err)
 		}
 		result.OrcaRemoved = true
 	}
@@ -152,7 +152,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	if worktreePresent {
 		if code, out := deps.Git(record.Repo, "worktree", "remove", inventory.WorktreeRoot); code != 0 {
 			if _, err := os.Lstat(inventory.WorktreeRoot); !os.IsNotExist(err) {
-				return fail("worktree_remove", fmt.Errorf("git worktree remove: %s", out))
+				return fail(issueops.CleanupFailureStepWorktreeRemove, fmt.Errorf("git worktree remove: %s", out))
 			}
 		}
 		result.WorktreeRemoved = true
@@ -170,7 +170,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 			// permission, lock contention, OID drift는 ref가 남아 있으므로
 			// 그대로 실패한다.
 			if branchRefPresent(deps.Git, record.Repo, inventory.Branch) {
-				return fail("branch_delete", fmt.Errorf("git update-ref -d: %s", out))
+				return fail(issueops.CleanupFailureStepBranchDelete, fmt.Errorf("git update-ref -d: %s", out))
 			}
 		}
 		result.BranchDeleted = true
@@ -189,7 +189,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	// ⑤ 레코드 삭제 — 결정적 ID 재사용과의 충돌을 끝내는 수명 종료.
 	if err := deleteIssueOps(stateRoot, record.ID); err != nil {
-		return fail("record_delete", err)
+		return fail(issueops.CleanupFailureStepRecordDelete, err)
 	}
 	result.RecordDeleted = true
 	return result, nil

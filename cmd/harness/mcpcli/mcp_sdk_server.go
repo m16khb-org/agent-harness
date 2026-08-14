@@ -44,6 +44,18 @@ func sdkServerOptionsWithDiagnostics(diagnostics io.Writer) *mcp.ServerOptions {
 }
 
 func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName string) mcp.ToolHandler {
+	return sdkToolHandlerWithContext(
+		func(_ context.Context, call MCPToolCall) MCPToolOutcome {
+			return groupHandler(call)
+		},
+		toolName,
+	)
+}
+
+func sdkToolHandlerWithContext(
+	groupHandler func(context.Context, MCPToolCall) MCPToolOutcome,
+	toolName string,
+) mcp.ToolHandler {
 	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		var args map[string]any
 		if req.Params.Arguments != nil {
@@ -54,7 +66,7 @@ func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName stri
 		if args == nil {
 			args = map[string]any{}
 		}
-		outcome := groupHandler(MCPToolCall{Name: toolName, Arguments: args})
+		outcome := groupHandler(ctx, MCPToolCall{Name: toolName, Arguments: args})
 		if outcome.Err != nil {
 			return nil, outcome.Err
 		}
@@ -106,8 +118,8 @@ func registerAllTools(server *mcp.Server, deps MCPDependencies) {
 }
 
 func issueOpsExecutionSDKToolHandler(deps MCPDependencies) mcp.ToolHandler {
-	return sdkToolHandler(func(call MCPToolCall) MCPToolOutcome {
-		return handleIssueOpsMCPToolCallWithDependencies(call, deps)
+	return sdkToolHandlerWithContext(func(ctx context.Context, call MCPToolCall) MCPToolOutcome {
+		return handleIssueOpsMCPToolCallWithContext(ctx, call, deps)
 	}, "issueops_execution")
 }
 
