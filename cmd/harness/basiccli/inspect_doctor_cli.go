@@ -104,6 +104,7 @@ func runDoctor(args []string) error {
 			PreserveTerminalHandles: terminalHandles,
 		},
 		DaemonAdmission: doctorcontract.HarnessDoctorDaemonAdmission{
+			Observed:          daemon.Running && daemon.Reachable && daemon.IdentityVerified,
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,

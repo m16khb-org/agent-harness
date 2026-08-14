@@ -31,6 +31,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		GeneratedAt:       time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	addCheck(&result, "binary", true, "agent-harness command is running")
+	checkDaemonAdmission(&result, req.DaemonAdmission)
 
 	stateDoctor, stateDoctorErr := StateDoctor()
 	if stateDoctorErr != nil {
@@ -104,14 +105,65 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		}
 		return result.Issues[i].Path < result.Issues[j].Path
 	})
-	result.Healthy = true
-	for _, issue := range result.Issues {
-		if issue.Severity == "error" || issue.Severity == "warning" {
-			result.Healthy = false
-			break
+	result.Healthy = doctorHealthy(result.Checks, result.Issues)
+	return result, nil
+}
+
+func doctorHealthy(checks []HarnessDoctorCheck, issues []HarnessDoctorIssue) bool {
+	for _, check := range checks {
+		if !check.Healthy {
+			return false
 		}
 	}
-	return result, nil
+	for _, issue := range issues {
+		if issue.Severity == "error" || issue.Severity == "warning" {
+			return false
+		}
+	}
+	return true
+}
+
+func checkDaemonAdmission(r *HarnessDoctorResult, admission HarnessDoctorDaemonAdmission) {
+	if !admission.Observed || admission.MaxConnections <= 0 {
+		addCheck(r, "daemon_admission", true, "not evaluated")
+		return
+	}
+	summary := fmt.Sprintf(
+		"active_connections=%d max_connections=%d accepting=%t draining=%t",
+		admission.ActiveConnections,
+		admission.MaxConnections,
+		admission.Accepting,
+		admission.Draining,
+	)
+	if admission.Draining {
+		addCheck(r, "daemon_admission", true, summary)
+		return
+	}
+	if admission.ActiveConnections < 0 ||
+		(admission.ActiveConnections < admission.MaxConnections) != admission.Accepting {
+		addCheck(r, "daemon_admission", false, summary)
+		addIssue(
+			r,
+			"daemon_admission_inconsistent",
+			"warning",
+			"daemon admission telemetry is internally inconsistent",
+			"",
+			nil,
+		)
+		return
+	}
+	saturated := admission.ActiveConnections >= admission.MaxConnections
+	addCheck(r, "daemon_admission", !saturated, summary)
+	if saturated {
+		addIssue(
+			r,
+			"daemon_connection_limit_reached",
+			"warning",
+			"daemon is not accepting new MCP connections because its connection limit is exhausted",
+			"",
+			nil,
+		)
+	}
 }
 
 func addCheck(r *HarnessDoctorResult, name string, healthy bool, summary string) {

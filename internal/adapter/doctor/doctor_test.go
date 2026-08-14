@@ -24,6 +24,7 @@ func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {
 		Home:        t.TempDir(),
 		Version:     "test",
 		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
+			Observed:          true,
 			ActiveConnections: 12,
 			MaxConnections:    64,
 			Accepting:         true,
@@ -49,6 +50,50 @@ func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {
 	if result.ActiveConnections != 12 || result.MaxConnections != 64 || !result.Accepting || result.Draining {
 		t.Fatalf("doctor lost supplied daemon admission health: %#v", result)
 	}
+	for _, check := range result.Checks {
+		if check.Name == "daemon_admission" {
+			if !check.Healthy {
+				t.Fatalf("available daemon admission check must be healthy: %+v", check)
+			}
+			return
+		}
+	}
+	t.Fatalf("daemon admission check missing: %+v", result.Checks)
+}
+
+func TestHarnessDoctorMarksSaturatedDaemonUnhealthy(t *testing.T) {
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+		RepoRoot:    t.TempDir(),
+		HarnessRoot: t.TempDir(),
+		Home:        t.TempDir(),
+		Version:     "test",
+		StaticOnly:  true,
+		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
+			Observed:          true,
+			ActiveConnections: 64,
+			MaxConnections:    64,
+			Accepting:         false,
+			Draining:          false,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Healthy {
+		t.Fatalf("saturated daemon must keep doctor available but unhealthy: %+v", result)
+	}
+	if !hasHarnessDoctorIssue(result.Issues, "daemon_connection_limit_reached") {
+		t.Fatalf("saturated daemon issue missing: %+v", result.Issues)
+	}
+	for _, check := range result.Checks {
+		if check.Name == "daemon_admission" {
+			if check.Healthy {
+				t.Fatalf("saturated daemon admission check must be unhealthy: %+v", check)
+			}
+			return
+		}
+	}
+	t.Fatalf("daemon admission check missing: %+v", result.Checks)
 }
 
 func TestHarnessDoctorHealthyBaseline(t *testing.T) {

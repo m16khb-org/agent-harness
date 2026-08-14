@@ -69,6 +69,7 @@ func buildHarnessStatus(repo string) HarnessStatus {
 		Home:        home,
 		Version:     deps.Version,
 		DaemonAdmission: doctorcontract.HarnessDoctorDaemonAdmission{
+			Observed:          daemon.Running && daemon.Reachable && daemon.IdentityVerified,
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,

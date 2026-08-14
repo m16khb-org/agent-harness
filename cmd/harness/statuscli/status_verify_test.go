@@ -55,6 +55,9 @@ func TestBuildHarnessStatusSharesDaemonAdmissionWithDoctor(t *testing.T) {
 	oldDeps := deps
 	t.Cleanup(func() { Configure(oldDeps) })
 	want := daemoncli.Status{
+		Running:           true,
+		Reachable:         true,
+		IdentityVerified:  true,
 		ActiveConnections: 64,
 		MaxConnections:    64,
 		Accepting:         false,
@@ -76,6 +79,12 @@ func TestBuildHarnessStatusSharesDaemonAdmissionWithDoctor(t *testing.T) {
 	if status.Doctor.ActiveConnections != 64 || status.Doctor.MaxConnections != 64 || status.Doctor.Accepting || status.Doctor.Draining {
 		t.Fatalf("status doctor drifted from daemon admission: doctor=%#v daemon=%#v", status.Doctor, status.Daemon)
 	}
+	for _, issue := range status.Doctor.Issues {
+		if issue.Code == "daemon_connection_limit_reached" {
+			return
+		}
+	}
+	t.Fatalf("status doctor did not evaluate saturated daemon admission: %+v", status.Doctor)
 }
 
 func TestRunStatusWritesTextAndJSON(t *testing.T) {

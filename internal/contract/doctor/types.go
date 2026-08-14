@@ -19,6 +19,7 @@ type HarnessDoctorRequest struct {
 }
 
 type HarnessDoctorDaemonAdmission struct {
+	Observed          bool `json:"observed"`
 	ActiveConnections int  `json:"active_connections"`
 	MaxConnections    int  `json:"max_connections"`
 	Accepting         bool `json:"accepting"`
