@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "inventoried_at": "2026-08-11",
+  "backend_order": [
+    "claude",
+    "codex"
+  ],
+  "slack_lists_product_supported": false,
+  "tools": {
+    "slack_add_reaction": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Add an emoji reaction to a message."
+    },
+    "slack_complete_file_upload": {
+      "risk": "write",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Upload a file and optionally share it to conversations."
+    },
+    "slack_create_canvas": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Create a Slack Canvas from Markdown."
+    },
+    "slack_create_conversation": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Create a channel, DM, or group DM."
+    },
+    "slack_create_reminder": {
+      "risk": "write",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Create a reminder for the authenticated user."
+    },
+    "slack_delete_message": {
+      "risk": "destructive",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Permanently delete a message sent by the current user."
+    },
+    "slack_edit_message": {
+      "risk": "destructive",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Edit a message sent by the current user."
+    },
+    "slack_get_file_upload_url": {
+      "risk": "write",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Reserve a Slack file ID in preparation for upload."
+    },
+    "slack_get_reactions": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read reactions and reacting users for a message."
+    },
+    "slack_invite_to_conversation": {
+      "risk": "write",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Invite users to an existing public or private channel."
+    },
+    "slack_join_conversation": {
+      "risk": "write",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Join an existing public channel."
+    },
+    "slack_leave_conversation": {
+      "risk": "destructive",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Leave an existing public or private channel."
+    },
+    "slack_list_channel_members": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "List members of a channel, private channel, or group DM."
+    },
+    "slack_list_starred_items": {
+      "risk": "read",
+      "backends": [
+        "codex"
+      ],
+      "summary": "List the authenticated user's starred messages, files, and channels."
+    },
+    "slack_list_user_conversations": {
+      "risk": "read",
+      "backends": [
+        "codex"
+      ],
+      "summary": "List conversations visible to a user, including channels and DMs."
+    },
+    "slack_list_user_groups": {
+      "risk": "read",
+      "backends": [
+        "codex"
+      ],
+      "summary": "List workspace user groups and their mention syntax."
+    },
+    "slack_list_workspaces": {
+      "risk": "read",
+      "backends": [
+        "codex"
+      ],
+      "summary": "List workspaces available to the authenticated installation."
+    },
+    "slack_read_canvas": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read Canvas Markdown and section identifiers."
+    },
+    "slack_read_channel": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read messages from a channel or DM."
+    },
+    "slack_read_file": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read Slack file content and metadata."
+    },
+    "slack_read_thread": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read a thread's parent message and replies."
+    },
+    "slack_read_user_profile": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Read detailed profile information for a user."
+    },
+    "slack_schedule_message": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Schedule a message for future delivery."
+    },
+    "slack_search_channels": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Search for Slack channels and conversation identifiers."
+    },
+    "slack_search_emojis": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Search workspace custom emojis."
+    },
+    "slack_search_public": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Search messages and files in public Slack channels."
+    },
+    "slack_search_public_and_private": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Search messages and files across public channels, private channels, and DMs."
+    },
+    "slack_search_users": {
+      "risk": "read",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Search users by name, email, or profile attributes."
+    },
+    "slack_send_message": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Send a channel message, DM, or thread reply."
+    },
+    "slack_send_message_draft": {
+      "risk": "write",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Create an unsent draft attached to a conversation."
+    },
+    "slack_update_canvas": {
+      "risk": "destructive",
+      "backends": [
+        "claude",
+        "codex"
+      ],
+      "summary": "Append, prepend, or replace Canvas content."
+    },
+    "slack_update_user_profile": {
+      "risk": "destructive",
+      "backends": [
+        "codex"
+      ],
+      "summary": "Update profile fields or custom status."
+    }
+  }
+}
