@@ -19,7 +19,7 @@ description: System structure, component boundaries, and responsibilities.
 
 | Module | 책임 |
 |--------|------|
-| [`architecture/hexagonal-core.md`](architecture/hexagonal-core.md) | core/port/adapter 구조, package boundary, 의존 방향 ratchet, cross-host tool contract, operational-health boundary, hardening |
+| [`architecture/hexagonal-core.md`](architecture/hexagonal-core.md) | contract/domain/application/port/adapter 구조, package boundary, 의존 방향 ratchet, cross-host tool contract, operational-health boundary, hardening |
 | [`architecture/runtime.md`](architecture/runtime.md) | 실행 모드(CLI/MCP/daemon/issueops/loop/worker), docs/state/config/log 토폴로지, lock 직렬화, command/policy model, MCP tool 설계, standalone runtime policy |
 | [`architecture/host-integration.md`](architecture/host-integration.md) | Codex/Claude/Omo 통합 map, pioneer skills layer(host-neutral), host-adapter 변경 체크리스트 |
 | [`architecture/issueops.md`](architecture/issueops.md) | IssueOps v1 execution 상태·schema 권위, capability vertical, operational surface, next_command 권위, actor model, Orca 경계, execution threat model, execution boundary |
@@ -30,13 +30,16 @@ description: System structure, component boundaries, and responsibilities.
 [`architecture/hexagonal-core.md`](architecture/hexagonal-core.md)가 소유한다.
 모든 agent가 알아야 할 canonical 요약:
 
-- core는 port(interface/DTO/error contract)에만 의존하고, concrete adapter나
+- `internal/domain`은 contract와 순수 domain helper에만 의존하고 concrete
+  adapter나 `cmd/...`를 import하지 않는다.
+- `internal/application`은 contract/domain/port를 조합하고 concrete adapter나
   `cmd/...`를 import하지 않는다.
-- `internal/port`는 `internal/...` concrete 구현에 의존하지 않는다.
+- `internal/port`는 contract 외 `internal/...` concrete 구현에 의존하지 않는다.
 - `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만
   조립된다. legacy adapter edge는 0이다(`outbound` 하위 package 사이 정리
   edge와 공유 저장 엔진 `outbound/sqlstore` 예외만 허용).
-- 새 host 추가 시 core 수정 없이 `port.HostInstaller` 구현체만 추가한다.
+- 새 host 추가 시 공통 domain/application 정책을 복제하지 않고
+  `port.HostInstaller` 구현체와 composition-root wiring만 추가한다.
 - `internal/architecture`는 위 규칙을 production import graph 기반 test-only
   ratchet으로 강제한다. baseline을 줄이는 변경만 같은 review에서 허용한다.
 

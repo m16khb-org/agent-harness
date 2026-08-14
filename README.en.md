@@ -159,15 +159,18 @@ Each skill's `SKILL.md` is its authoritative usage contract.
 ## Repository map
 
 ```text
-cmd/harness/       Single Go binary and CLI/MCP/daemon/hook entry points
-internal/core/     Host-neutral use cases and policy/state/workflow behavior
-internal/port/     Interfaces and DTOs consumed by the core
-internal/adapter/  Filesystem, install, host, and external-boundary adapters
-configs/           Codex and Claude Code configuration templates
-skills/            Skill source shared by every host
-.agent-harness/    Architecture, operations, testing, and ADR project docs
-scripts/           Install, release, smoke, and validation scripts
-docs/              Supporting documents and assets
+cmd/harness/          Composition root and CLI/MCP/daemon/hook entry points
+internal/contract/    Versioned DTOs shared by transports and persistence
+internal/domain/      Pure rules, reducers, classifiers, and catalogs
+internal/application/ Use cases that compose domain logic with ports
+internal/port/        External capability interfaces and error contracts
+internal/adapter/     Host, filesystem, process, database, and network boundaries
+internal/architecture/ Production import-graph fitness tests
+configs/              Codex, Claude Code, and Omo configuration templates
+skills/               Skill source shared by every host
+.agent-harness/       Architecture, operations, testing, and ADR project docs
+scripts/              Install, release, smoke, and validation scripts
+docs/                 Supporting documents and assets
 ```
 
 ## Release and rollback

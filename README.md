@@ -164,15 +164,18 @@ agent-harness issueops status --id "<start 출력의 id>" --json
 ## 저장소 구조
 
 ```text
-cmd/harness/       단일 Go binary와 CLI/MCP/daemon/hook 진입점
-internal/core/     host-neutral use case와 policy/state/workflow 동작
-internal/port/     core가 의존하는 interface와 DTO
-internal/adapter/  filesystem, install, host, external boundary adapter
-configs/           Codex, Claude Code, Omo native 설정 template
-skills/            모든 host가 공유하는 skill 원본
-.agent-harness/    architecture, operations, testing, ADR 등 project docs
-scripts/           install, release, smoke, validation script
-docs/              보조 문서와 asset
+cmd/harness/          composition root와 CLI/MCP/daemon/hook 진입점
+internal/contract/    transport와 저장소가 공유하는 versioned DTO
+internal/domain/      I/O를 모르는 순수 규칙, reducer, classifier
+internal/application/ domain과 port를 조합하는 use case
+internal/port/        외부 capability interface와 error contract
+internal/adapter/     host, filesystem, process, DB 등 boundary 구현
+internal/architecture/ production import graph fitness test
+configs/              Codex, Claude Code, Omo native 설정 template
+skills/               모든 host가 공유하는 skill 원본
+.agent-harness/       architecture, operations, testing, ADR 등 project docs
+scripts/              install, release, smoke, validation script
+docs/                 보조 문서와 asset
 ```
 
 ## 릴리스와 롤백

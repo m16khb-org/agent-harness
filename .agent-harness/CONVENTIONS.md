@@ -39,13 +39,15 @@ agent가 즉시 알아야 할 canonical 요약이다.
 
 ### 의존 방향 / layer
 
-- `core`는 `port`(interface/DTO/error contract)에만 의존한다. concrete
+- `internal/domain`은 contract와 순수 domain helper에만 의존하고,
   adapter나 `cmd/...`를 import하지 않는다.
-- `internal/port`는 `internal/...` concrete 구현에 의존하지 않는다.
+- `internal/application`은 contract/domain/port를 조합하며 concrete adapter나
+  `cmd/...`를 import하지 않는다.
+- `internal/port`는 contract 외 `internal/...` concrete 구현에 의존하지 않는다.
 - `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만
   조립된다. legacy adapter edge는 0이다.
-- `cmd/harness`는 기본적으로 `internal/core` facade를 import한다. 예외는
-  cmd-local 품질/진단/fixture 도구로 제한한다.
+- `cmd/harness/*cli`는 transport parse/render/dispatch를 소유하고 공통 DTO,
+  catalog, 판정은 contract/domain/application에서 가져온다.
 - 상세 layer 책임표, boundary ratchet, concrete-adapter 제거 순서, SOLID
   적용 지침은 [`conventions/go-and-packages.md`](conventions/go-and-packages.md).
 

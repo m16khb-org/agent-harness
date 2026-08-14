@@ -126,17 +126,19 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다. 현재 daemon은 MCP proxy backend다.
 - 에이전트 state는 repo 소스와 분리한다. 추적해야 할 지식은 `.agent-harness/`에, 런타임 캐시/로그는 user state 또는 ignored workspace state에 둔다.
 
-## 8. Planned Directory Map
+## 8. Current Directory Map
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | 단일 Go 바이너리 진입점. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
-| `internal/core/` | host와 무관한 하네스 usecase. 현재 inspect, preflight, docs index, state store, command policy/fake runner 구현 위치 |
-| `internal/port/` | core가 의존하는 interface, 요청/응답 DTO |
-| `internal/adapter/cli/` | Cobra/flag 기반 CLI adapter 예정 |
-| `internal/adapter/mcp/` | MCP stdio server adapter 예정 |
-| `internal/adapter/worker/` | local daemon, job queue, Unix socket/HTTP adapter 예정 |
-| `internal/adapter/fs/` | filesystem, git, process runner 구현 예정 |
+| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `internal/contract/` | CLI, MCP, state가 공유하는 versioned DTO와 response contract |
+| `internal/domain/` | filesystem, process, DB를 모르는 순수 규칙, reducer, classifier |
+| `internal/application/` | domain과 좁은 port를 조합하는 capability use case |
+| `internal/port/` | 외부 capability interface와 error contract. contract DTO 참조만 허용 |
+| `internal/adapter/inbound/` | capability별 inbound request adapter |
+| `internal/adapter/outbound/` | state, SQL, webfetch, IssueOps persistence 등 outbound 구현 |
+| `internal/adapter/` | Codex/Claude/Omo, process, Git, provider, worker 등 concrete boundary 구현 |
+| `internal/architecture/` | production import graph와 layer dependency fitness test |
 | `configs/` | Codex/Claude/Omo/MCP 설정 템플릿 |
 | `.claude/skills/` | 명시적 `--project-local` 때만 생성되는 Claude Code project-native skill 연결. 기본 설치에서는 생성하지 않으며 git 추적 금지 |
 | `.mcp.json` | 이 하네스 repo의 dogfood/project-local Claude MCP 설정. 기본 설치는 user-scope MCP를 사용하며 대상 repo에는 쓰지 않음 |

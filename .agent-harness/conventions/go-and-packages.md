@@ -23,12 +23,12 @@
 cmd/harness/main.go
 cmd/harness/<cli>/                 # harnessapp, issueopscli, mcpcli, workercli, daemoncli, hookcli, installcli, ...
 cmd/harness/testdata/*.golden.*
-internal/core/<domain>_facade.go   # 의도된 공개 표면: issueops, issueops_remote, workflow, policy, state_trace, utility, draft_wiki, project_doc
-internal/core/doc.go               # facade 경계 규칙 codify (ADR 2026-06-16)
-internal/core/<subpackage>/        # 분할 도메인: issueops, lifecycle, state, policy, worker, docs, inspect, preflight, ...
-internal/port/
-internal/adapter/cli/
-internal/adapter/mcp/
+internal/contract/<capability>/    # transport/state가 공유하는 versioned DTO
+internal/domain/<capability>/      # I/O를 모르는 순수 규칙과 reducer
+internal/application/<capability>/ # domain과 port를 조합하는 use case
+internal/port/<capability>/        # 외부 capability interface와 error contract
+internal/adapter/inbound/          # capability inbound adapter
+internal/adapter/outbound/         # state/SQL/webfetch 등 capability outbound adapter
 internal/adapter/codex/
 internal/adapter/claude/
 internal/adapter/hook/
@@ -46,17 +46,20 @@ skills/
 
 | 레이어 | 책임 | 의존 가능 | 금지 |
 |--------|------|-----------|------|
-| `core` | workspace/docs/state/policy/preflight/inspect/worker/issueops/lifecycle usecase. host-neutral 도메인은 `internal/core/<subpackage>/`로 분할되고 `internal/core/*_facade.go`가 의도된 공개 표면이다(경계 규칙은 `internal/core/doc.go`) | `port`, 표준 라이브러리 | Codex/Claude SDK, CLI flag, MCP transport 직접 의존 |
-| `port` | interface, DTO, error contract | 표준 라이브러리 | adapter concrete type 의존 |
-| `adapter/cli` | flag/stdout/stderr/exit code | `core`, CLI library | 정책 복제 |
-| `adapter/mcp` | MCP tool schema/transport | `core`, MCP library | CLI와 다른 의미의 응답 |
-| `adapter/codex` | Codex user skill/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
-| `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
-| `adapter/hook` | host별 hook 출력 schema formatter | `core`, `port` | host schema와 다른 응답 |
-| `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | `core`, `port`, os/exec | 정책 복제, root 밖 접근 |
+| `contract` | transport/state가 공유하는 DTO, schema version, error vocabulary | 다른 contract, 표준 라이브러리 | 판정 로직, filesystem/process/DB I/O |
+| `domain` | 순수 규칙, reducer, classifier | contract, 순수 domain helper, 표준 라이브러리 | adapter/cmd, filesystem/process/DB I/O. clock은 기본 주입하되 `auditid` timestamp ID 생성은 현재 명시적 예외 |
+| `application` | domain과 좁은 port를 조합하는 use case | contract, domain, port | concrete adapter, cmd transport |
+| `port` | 외부 capability interface와 error contract | contract, 표준 라이브러리 | domain/application/adapter/cmd concrete 구현 |
+| `adapter/inbound` | capability request를 application 호출로 변환 | contract, application | outbound adapter 직접 호출 |
+| `adapter/outbound` | filesystem, process, Git, DB, network 구현 | contract, port, domain의 순수 helper | transport 정책 복제 |
+| `cmd/harness/<cli>` | flag/stdout/stderr/JSON-RPC와 command dispatch | contract, domain catalog, application, 주입된 dependency | host별 정책 복제, domain 판정 재구현 |
+| `adapter/codex` | Codex user skill/MCP 설치 구현 | contract, port, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
+| `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | contract, port, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
+| `adapter/hook` | host별 hook 출력 schema formatter | contract, domain | host schema와 다른 응답 |
+| `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | contract, port, os/exec | 정책 복제, root 밖 접근 |
 
-> Worker daemon/job lifecycle는 별도 adapter가 아니라 `internal/core/worker`(+`cmd/harness/daemoncli`)에 있다. filesystem/git/process는 전용 `adapter/fs` 없이 각 usecase가 `os/exec`로 직접 다룬다.
-> `cmd/harness`는 기본적으로 `internal/core` facade를 import한다. 예외는 cmd-local 품질/진단/fixture 도구가 subpackage 전용 메커니즘을 직접 검사하는 경우로 제한한다. `state`와 `issueops` lifecycle record 접근은 여러 command의 계약이므로 facade 경유를 유지하고, 내부 검사 helper를 숨기기 위한 새 one-line facade wrapper는 만들지 않는다.
+> `cmd/harness/harnessapp`가 concrete adapter를 조립하는 유일한 composition root다. command별 CLI와 daemon/MCP transport 구현은 현재 `cmd/harness/*cli`에 있고, 공통 catalog/판정은 `internal/domain`, DTO는 `internal/contract`가 소유한다.
+> filesystem/git/process 구현은 하나의 범용 fs adapter에 모으지 않고 capability별 outbound adapter로 둔다. `internal/adapter/install`처럼 아직 application orchestration을 함께 가진 기존 package는 새 의존을 확대하지 않고 capability vertical로 점진 이동한다.
 
 ---
 
@@ -88,10 +91,10 @@ legacy edge를 없앨 때는 **소비되는 심볼의 성격**이 처방을 결�
 - **타입 이동과 함수 주입은 대개 둘 다 필요하다.** 한 capability의 소비자가 타입과 함수를
   함께 쓰면, 타입만 옮겨도 여전히 adapter를 import하고 함수만 주입하면 시그니처에 쓸 타입이
   없다.
-- domain은 다른 domain을 import할 수 없다(`domain_must_only_import_contract`). 두 capability에
-  걸친 타입은 domain으로 옮길 수 없으므로 contract를 쓰거나 adapter에 남긴다. 공유 규칙을
-  중복 선언해 규칙을 통과시키지 않는다 — 특히 redaction 같은 보안 로직은 한쪽만 고쳐지면
-  그대로 구멍이 된다.
+- domain은 contract와 순수 domain helper를 import할 수 있으며 Go import graph는 acyclic이어야
+  한다. 특정 IssueOps vertical의 stricter ratchet이 contract-only dependency를 요구할 때만 그
+  범위를 좁힌다. 두 capability가 공유하는 wire/persisted 타입은 contract에 두고, redaction 같은
+  보안 규칙을 중복 선언해 dependency 규칙을 우회하지 않는다.
 - **주입에 default 구현을 두지 않는다.** default가 concrete를 가리키면 그 package가 다시
   adapter를 알게 된다. 미주입은 조용히 통과시키지 말고 구조화된 오류로 드러낸다.
 - 하위 package만 정리해서 상위가 대신 그 adapter를 import하게 되면 edge는 **이동만 하고 줄지
@@ -140,7 +143,7 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 설치 adapter 규칙:
 
-- `internal/core.InstallNative`가 host-neutral 설치 engine이고 `port.HostInstaller`가 SOLID 경계다.
+- `internal/adapter/install.InstallNative`가 현재 host-neutral 설치 engine이고 `port.HostInstaller`가 concrete host write의 SOLID 경계다. 새 use case는 `internal/application/<capability>`에 두되 설치 경로는 검증된 계약을 보존하며 점진 이동한다.
 - Codex/Claude adapter는 자기 host의 user/global 설정만 기본으로 쓴다. Codex는 `~/.codex/hooks.json`, Claude는 `~/.claude/settings.json`에 `SessionStart`와 `PostCompact`의 같은 context hook CLI만 등록한다. repo-local `.mcp.json`, `.claude/settings.json`, `.claude/skills`는 `--project-local` 같은 명시적 opt-in 없이는 만들지 않는다.
 - 기본 symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하거나 installer-owned command shim(`~/.local/bin/agent-harness`, `~/.local/bin/ah`)을 연결할 때만 사용한다.
 - adapter 설치 계약을 바꾸면 `internal/adapter/install_contract_matrix_test.go`와 `internal/adapter/testdata/native_install_contract_matrix.golden.json`을 함께 갱신해 user/global 기본 설치와 explicit project-local opt-in의 차이를 보존한다.
@@ -148,7 +151,7 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 self-augment/self-verify 교정 가드레일 (v1 S5/S6 승계):
 
 - 모든 self-augment/self-verify 교정 후보의 `VerifyWith`는 **외부 검증 메커니즘을 최소 1개 명시**해야 한다 — 실행 가능한 도구 신호(`go test`/`go build`/lint/golden/contract/smoke/coverage 또는 CLI 명령), 또는 문서·거버넌스 후보(`doc_artifact`)의 경우 구체적 산출물(ADR 엔트리·README 섹션·checklist·matrix·transcript). 모델 자기비판("inspection으로 확인했다", "읽어보니 맞다" 등)은 주관 축(문서 가독성)에 한해 advisory이며 **correctness 게이트로 절대 사용 금지**다.
-- 후보는 `VerificationKind`(`tool_signal`/`doc_artifact`)로 **명시 분류**하고, `qualitycatalog.VerifyWithGrounded`가 종류에 맞는 외부 메커니즘 명시를 강제한다(`internal/core/qualitycatalog`·`cmd/harness/selfworkflow/augmentcatalog` 테스트).
+- 후보는 `VerificationKind`(`tool_signal`/`doc_artifact`)로 **명시 분류**하고, `qualitycatalog.VerifyWithGrounded`가 종류에 맞는 외부 메커니즘 명시를 강제한다(`internal/domain/qualitycatalog`·`cmd/harness/selfworkflow/augmentcatalog` 테스트).
 - 본 규약은 **카탈로그 위생**(후보가 메커니즘을 *명명*하는지)을 강제한다. 메커니즘이 실제 존재·통과하는지의 *실행* 게이팅은 `agent-harness self-verify`/CI가 담당한다.
 - 근거: intrinsic self-correction은 외부 신호 없이 추론을 악화시킨다(Huang/Kamoi, CRITIC). v1 S5("measured gap or no EDIT")·S6(정직성 단서)를 문서 규약에서 Go-test 강제 불변식으로 격상한 것이다.
 
