@@ -3,10 +3,13 @@ package harnessapp
 import (
 	policycontract "agent-harness/internal/contract/policy"
 	"os"
+	"sync"
 
 	"agent-harness/cmd/harness/rootcmd"
 	guard "agent-harness/internal/adapter/guard"
 )
+
+var dependencyWiring sync.Once
 
 func RunRootCommand(args []string) int {
 	wireDependencies()
@@ -18,9 +21,12 @@ func RunRootCommand(args []string) int {
 // relying on package init() side effects, so dependency wiring is ordered,
 // visible, and not import-order sensitive.
 func wireDependencies() {
-	wireBasicCLIDeps()
-	wireHostCLIDeps()
-	wirePolicyCLIDeps()
+	dependencyWiring.Do(func() {
+		wireBasicCLIDeps()
+		wireHostCLIDeps()
+		wirePolicyCLIDeps()
+		configureMCPCLI()
+	})
 }
 
 func rootCommand() rootcmd.Command {

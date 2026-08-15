@@ -52,37 +52,30 @@ func configureMCPCLI() {
 }
 
 func runMCP() error {
-	configureMCPCLI()
 	return mcpcli.RunMCPWithDependencies(issueOpsMCPDependencies())
 }
 
 func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
-	configureMCPCLI()
 	return mcpcli.ServeMCPStreamWithDependencies(input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func serveMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
-	configureMCPCLI()
 	return mcpcli.ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func mcpTools() []map[string]any {
-	configureMCPCLI()
 	return mcpcli.MCPTools()
 }
 
 func mcpResources() []map[string]any {
-	configureMCPCLI()
 	return mcpcli.MCPResources()
 }
 
 func handleToolCall(params json.RawMessage) (any, *jsonrpc.Error) {
-	configureMCPCLI()
 	return mcpcli.HandleToolCallWithDependencies(params, issueOpsMCPDependencies())
 }
 
 func handleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
-	configureMCPCLI()
 	return mcpcli.HandleResourceRead(params)
 }
 

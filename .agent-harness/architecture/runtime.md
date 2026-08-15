@@ -20,6 +20,11 @@
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
+Daemon composition은 listener 시작 전에 MCP dependency를 한 번 구성하고
+immutable snapshot으로 각 stream에 전달한다. Connection accept 경로는 process
+global dependency를 다시 쓰지 않는다. 따라서 동시 session은 같은 contract
+snapshot을 읽고, wiring 변경은 새 daemon process에서만 효력을 갖는다.
+
 ## Docs / state / config / logs
 
 현재 `agent-harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다. `agent-harness project bootstrap`은 적용 대상 레포에 명시 실행될 때만 `AGENTS.md` marker block, `.agent-harness/*.md` 프로젝트 운영 문서, user-state repo profile metadata를 생성/갱신한다.
