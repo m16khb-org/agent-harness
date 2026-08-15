@@ -329,7 +329,7 @@ func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing
 
 func TestReleaseUserReadmeIsSatisfiedByInstallUpdateRollbackGuide(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n\n## Release User Guide: Install, Update, Rollback\n\n```bash\nagent-harness update\nscripts/release-repro-smoke.sh\ngit reset --hard <known-good-sha>\n```\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n\n## Quick start\n\n```bash\n./install.sh\nah update\n```\n\n## Release User Guide: Install, Update, Rollback\n\nReview the [release reproducibility and rollback criteria](.agent-harness/operations/release-reproducibility.md). This README does not provide destructive rollback commands.\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
@@ -346,7 +346,7 @@ func TestReleaseUserReadmeIsSatisfiedByInstallUpdateRollbackGuide(t *testing.T) 
 
 func TestReleaseUserReadmeSupportsKoreanCanonicalReadmeWithEnglishCompanion(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n\n[English](README.en.md)\n\n## 릴리스와 롤백\n\n```bash\nagent-harness update\nscripts/release-repro-smoke.sh\ngit reset --hard <known-good-sha>\n```\n\n[릴리스 재현성과 롤백](.agent-harness/operations/release-reproducibility.md)\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n\n[English](README.en.md)\n\n## 빠른 시작\n\n```bash\n./install.sh\nah update\n```\n\n## 릴리스와 롤백\n\n[릴리스 재현성과 롤백](.agent-harness/operations/release-reproducibility.md)을 확인하세요. README는 destructive rollback 명령을 제공하지 않습니다.\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, "README.en.md"), "# agent-harness\n\n[한국어](README.md)\n\n## Release and rollback\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
 
@@ -356,14 +356,25 @@ func TestReleaseUserReadmeSupportsKoreanCanonicalReadmeWithEnglishCompanion(t *t
 	}
 }
 
-func TestReleaseUserReadmeRequiresRollbackCommand(t *testing.T) {
+func TestReleaseUserReadmeRequiresCanonicalRollbackReference(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "## 릴리스와 롤백\n\nagent-harness update\nscripts/release-repro-smoke.sh\n\n[롤백](.agent-harness/operations/release-reproducibility.md)\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "## 빠른 시작\n\n./install.sh\nah update\n\n## 릴리스와 롤백\n\nREADME는 destructive rollback 명령을 제공하지 않습니다.\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
 	if signals.HasReleaseUserReadme {
-		t.Fatal("release README signal should require a concrete rollback command")
+		t.Fatal("release README signal should require the canonical rollback reference")
+	}
+}
+
+func TestReleaseUserReadmeRejectsDestructiveRollbackCommand(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "## 빠른 시작\n\n./install.sh\nah update\n\n## 릴리스와 롤백\n\n[롤백](.agent-harness/operations/release-reproducibility.md)\n\n```bash\ngit reset --hard main\n```\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if signals.HasReleaseUserReadme {
+		t.Fatal("release README signal should reject copyable destructive rollback commands")
 	}
 }
 

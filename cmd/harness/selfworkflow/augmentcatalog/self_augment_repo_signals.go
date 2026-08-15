@@ -176,11 +176,15 @@ func repoSignalRules() []repoSignalRule {
 			hasReleaseGuideHeading := readmeContainsTerm(root, "Release User Guide: Install, Update, Rollback") ||
 				readmeContainsTerm(root, "## Release and rollback") ||
 				readmeContainsTerm(root, "## 릴리스와 롤백")
-			hasRollbackCommand := readmeContainsTerm(root, "git reset --hard <known-good-sha>")
+			hasInstallCommand := readmeContainsTerm(root, "./install.sh")
+			hasUpdateCommand := readmeContainsTerm(root, "agent-harness update") ||
+				readmeContainsTerm(root, "ah update")
+			hasRollbackReference := readmeContainsTerm(root, ".agent-harness/operations/release-reproducibility.md")
 			signals.HasReleaseUserReadme = hasReleaseGuideHeading &&
-				readmeContainsTerm(root, "agent-harness update") &&
-				readmeContainsTerm(root, "scripts/release-repro-smoke.sh") &&
-				hasRollbackCommand &&
+				hasInstallCommand &&
+				hasUpdateCommand &&
+				hasRollbackReference &&
+				!readmeContainsTerm(root, "git reset --hard") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release User Guide: Install, Update, Rollback")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {

@@ -8,15 +8,15 @@
   <img src="docs/assets/agent-harness-hero.png" alt="Multiple AI coding agents sharing one local harness core" width="100%" />
 </p>
 
-**agent-harness** is a personal agent harness that gives multiple AI coding agents the same local execution rules and durable work records. Codex, Claude Code, and a human shell share one Go core, CLI/MCP contracts, command policy, user-state store, and skill source tree.
+**agent-harness** connects Codex, Claude Code, Omo native, and a human shell to one local execution contract. Every host uses the same Go core, CLI/MCP contracts, command policy, user-state store, and skill source tree.
 
-The goal is not to run more agents. It is to make every host preserve the same decisions, respect the same safety boundaries, and require the same evidence before work is considered complete.
+It does not replace a host or auto-approve work. It keeps workflow state, execution boundaries, and verification evidence outside the host so work can resume under the same rules when the session changes.
 
 ## Why it exists
 
 Capable coding agents do not make teamwork repeatable by themselves. Context can stay trapped in a conversation, ambiguous requests can become code too early, plan changes and feedback can disappear from the issue, and PRs or MRs can reach review without verifiable evidence.
 
-agent-harness addresses those failures through a shared set of surfaces:
+It addresses these problems with:
 
 - a host-neutral Go core with thin host adapters;
 - CLI and daemon-backed MCP surfaces with shared response contracts;
@@ -49,20 +49,21 @@ Refresh installed integrations from the current checkout:
 
 ```bash
 git pull --ff-only
-agent-harness update
-agent-harness inspect --json
+ah update
+ah inspect --json
 ```
 
-`agent-harness update` rebuilds the current checkout and refreshes user-level integrations. It does not run `git pull`.
+`agent-harness` is the canonical command; `ah` is the short symlink managed by the installer. Installation fails instead of overwriting an existing `ah` file or a different symlink. `ah update` rebuilds the current checkout and refreshes user-level integrations. It does not run `git pull`.
 
 ## Host integrations
 
-The default installer connects exactly two first-party host adapters to the same execution contract.
+The default installer connects three first-party host adapters to the same execution contract.
 
 | Host | Default user-level integration |
 | --- | --- |
 | Codex | `~/.codex/skills/`, MCP config, lifecycle hooks |
 | Claude Code | `~/.claude/skills/`, user-scope MCP, lifecycle hooks |
+| Omo native | `~/.omo/agent/skills/`, `~/.omo/mcp.json`, lifecycle extension |
 
 The default install does not create host configuration in target repositories. Repo-local skills, hooks, and MCP files require explicit project-local opt-in.
 
@@ -72,6 +73,7 @@ The default install does not create host configuration in target repositories. R
 flowchart LR
     Codex["Codex"] --> Host["Thin host adapters<br/>skills · hooks · MCP wiring"]
     Claude["Claude Code"] --> Host
+    Omo["Omo native"] --> Host
     Shell["Human shell"] --> Surface["agent-harness<br/>CLI · MCP proxy · daemon"]
     Host --> Surface
     Surface --> Core["Host-neutral Go core"]
@@ -102,7 +104,7 @@ The following boundaries are deliberate:
 
 Read the complete CLI and MCP contracts from the running binary:
 
-The current checkout's response-contract schema pins 29 top-level CLI commands and 100 MCP tools.
+The current checkout's response-contract schema pins 27 top-level CLI commands and 44 MCP tools.
 
 ```bash
 agent-harness --help
@@ -110,9 +112,35 @@ agent-harness contract schema --json
 agent-harness contract check --json
 ```
 
+## Current verified state
+
+These values come from the running binary's contract and quality projection. They are not a separately maintained README score.
+
+| Verification axis | Current state |
+| --- | --- |
+| Public contract | 27 CLI commands, 44 MCP tools |
+| Pioneer skill coverage | benchmark 12/12, reproduction 12/12 |
+| Fresh-context evaluation | 36 cases, 24 executions, 34 passed, 2 capability-blocked, 0 failed |
+| Deterministic benchmark | 18 fixtures, average/minimum 100, 0 critical failures |
+| Release gate | full test, full race, vet, build, contract, and self-verify passed |
+
+The two blocked cases require Boehm's Kordoc document surface and a source document, neither of which was available. Reproduction fixtures are not presented as hidden holdouts, and missing capability is not converted into a pass.
+
+Recompute the current projection with:
+
+```bash
+agent-harness contract schema --json
+agent-harness quality inspect --json
+agent-harness issueops benchmark run \
+  --fixtures testdata/issueops/fixtures \
+  --json
+```
+
+`quality inspect` reports `collection_status`, `health_status`, and `gate_status` separately. Collection failure blocks the gate; non-blocking debt such as existing low coverage remains `report_only`.
+
 ## IssueOps
 
-IssueOps moves work context out of private conversations and into issues, plans, worktrees, feedback, and verification evidence that survive session and host changes.
+IssueOps records conversational work context as issues, plans, worktrees, feedback, and verification evidence so the same work contract survives session and host changes.
 
 Its current formal phase order is:
 
@@ -121,7 +149,9 @@ problem → grill → plan → compatibility-review → implement
         → ai-slop-clean → feedback → pr → done
 ```
 
-Remote issues, branches and worktrees, design reviews, Brooks devil's-advocate reviews, plan links, and execution decisions are durable evidence and gates around those phases. Hooks can surface missing boundaries or block deterministic violations, but they do not execute workflow actions.
+Remote issues, branches and worktrees, design reviews, Brooks devil's-advocate reviews, plan links, and execution decisions are recorded as the durable evidence and gates required to pass each phase. Hooks can surface missing boundaries or block deterministic violations, but they do not execute workflow actions.
+
+Remote issue creation is a dry run by default. The `--confirm` path stores project authority, request digest, and operation marker as a durable intent before invoking the provider. An ambiguous result blocks automatic retry; `reconcile-issue` adopts only one live candidate from the same project.
 
 Start and inspect a cycle:
 
@@ -134,23 +164,29 @@ agent-harness issueops start \
 agent-harness issueops status --id "<id from the start output>" --json
 ```
 
+Without `--confirm`, `create-issue` prints a preview and does not create an intent. Use `reconcile-issue` only when a confirmed remote call has left a durable intent with an ambiguous result; adopting a candidate requires a separate `--confirm`. See the [IssueOps provider guide](.agent-harness/operations/guides/issueops-providers.md) for complete command and provider constraints.
+
 See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations map](.agent-harness/OPERATIONS.md) for the complete cycle and remote-artifact rules.
 
 ## Skills
 
 [`skills/`](skills/) is the single source of truth for shared skills. The installer links that directory into each host's user-level skill path.
 
-- Planning and critique: `von-neumann`, `brooks`, `karpathy`
+- Planning and critique: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - Execution and verification: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - Research and team memory: `berners-lee`, `engelbart`
 - Git and workflow operations: `torvalds`, `atomic-commit-push`, `issueops`, `self-verify`, `self-augment`
 
 Each skill's `SKILL.md` is its authoritative usage contract.
 
+The 12 pioneer skills are evaluated across primary, boundary, and operational cases. Committed cases are reproduction inputs, not answer fixtures. Execution receipts, case hashes, and semantic verdicts live under [`testdata/pioneer-holdouts/`](testdata/pioneer-holdouts/).
+
 ## Safety boundaries
 
 - Default installation updates user-level host configuration only. Target repositories change only through explicit bootstrap or project-local opt-in.
 - Command execution follows policy for workspace root, cwd, write/network/shell intent, timeouts, and redaction.
+- MCP tool arguments reject unknown fields and missing or incorrectly typed fields against the published schema.
+- Executable shell fences are checked without execution for syntax, swallowed failures, destructive commands, dynamic shells, and symlink bypasses.
 - Raw secrets do not belong in documentation, state responses, audit logs, or test fixtures.
 - External tools are not dependencies of native install, update, readiness, or self-verification.
 - Integrations such as Orca supervised execution are optional adapters; IssueOps remains the durable authority.
@@ -161,7 +197,7 @@ Each skill's `SKILL.md` is its authoritative usage contract.
 ```text
 cmd/harness/          Composition root and CLI/MCP/daemon/hook entry points
 internal/contract/    Versioned DTOs shared by transports and persistence
-internal/domain/      Pure rules, reducers, classifiers, and catalogs
+internal/domain/      Pure rules, reducers, and classifiers
 internal/application/ Use cases that compose domain logic with ports
 internal/port/        External capability interfaces and error contracts
 internal/adapter/     Host, filesystem, process, database, and network boundaries
@@ -175,23 +211,7 @@ docs/                 Supporting documents and assets
 
 ## Release and rollback
 
-Verify a release checkout with:
-
-```bash
-scripts/release-repro-smoke.sh
-scripts/release-build-matrix.sh
-```
-
-Current distribution decision: prefer a tarball or manual archive and defer Homebrew until the release gates have enough evidence. Rollback changes the checkout, so review the [release reproducibility and rollback criteria](.agent-harness/operations/release-reproducibility.md) before running any rollback command.
-
-After a known-good commit is selected and `git status --short` is empty, use this rollback path. `git reset --hard` deletes uncommitted changes, so do not run it before confirming a clean worktree.
-
-```bash
-git switch main
-git reset --hard <known-good-sha>
-agent-harness update
-agent-harness inspect --json
-```
+Current distribution decision: prefer a tarball or manual archive and defer Homebrew until the release gates are sufficiently validated. Release verification refreshes local build artifacts, while rollback changes the checkout and installed state. Review the [release reproducibility and rollback criteria](.agent-harness/operations/release-reproducibility.md) before either operation. This README does not provide destructive rollback commands.
 
 ## Verification
 
@@ -200,6 +220,8 @@ Quick sanity checks for README changes:
 ```bash
 ./bin/agent-harness contract check --json
 ./bin/agent-harness docs --json
+./bin/agent-harness quality inspect --json
+python3 scripts/verify-skill-shell.py skills/
 git diff --check
 ```
 
@@ -222,6 +244,7 @@ See [`.agent-harness/TESTING.md`](.agent-harness/TESTING.md) for change-specific
 | [`.agent-harness/ARCHITECTURE.md`](.agent-harness/ARCHITECTURE.md) | Component boundaries and responsibilities |
 | [`.agent-harness/OPERATIONS.md`](.agent-harness/OPERATIONS.md) | Install, host, CLI/MCP, and runtime operations map |
 | [`.agent-harness/TESTING.md`](.agent-harness/TESTING.md) | Test and verification gates |
+| [`.agent-harness/operations/quality-dashboard.md`](.agent-harness/operations/quality-dashboard.md) | Quality projections and pioneer evidence interpretation |
 | [`.agent-harness/ADR.md`](.agent-harness/ADR.md) | Structural decisions, rationale, and rejected alternatives |
 
 Installation and operational procedures are split into [install](.agent-harness/operations/install.md), [hosts](.agent-harness/operations/hosts.md), [CLI/MCP](.agent-harness/operations/cli-and-mcp.md), and [verification](.agent-harness/operations/verification.md) guides.

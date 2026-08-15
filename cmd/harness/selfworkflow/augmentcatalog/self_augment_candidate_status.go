@@ -103,7 +103,7 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 			return evidenceWhen(signals.HasReleaseReproPack, "release reproducibility checklist exists", "scripts/release-repro-smoke.sh verifies temp HOME/CODEX_HOME/HARNESS_ROOT install dry-run", "testing docs list the release install reproducibility smoke")
 		}},
 		{"release-user-readme", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasReleaseUserReadme, "README contains the release install/update/rollback user guide", "README links release verification to scripts/release-repro-smoke.sh")
+			return evidenceWhen(signals.HasReleaseUserReadme, "README contains install and update commands", "README links canonical release reproducibility and rollback criteria", "README omits copyable destructive rollback commands")
 		}},
 		{"cross-platform-build-matrix", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCrossPlatformBuildMatrix, "scripts/release-build-matrix.sh builds the supported darwin/linux amd64/arm64 matrix", "release reproducibility docs record the cross-platform matrix", "testing docs list the release build matrix smoke")

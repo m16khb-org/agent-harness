@@ -4811,8 +4811,9 @@
           "novelty": 60,
           "risk": 12,
           "satisfaction_evidence": [
-            "README contains the release install/update/rollback user guide",
-            "README links release verification to scripts/release-repro-smoke.sh"
+            "README contains install and update commands",
+            "README links canonical release reproducibility and rollback criteria",
+            "README omits copyable destructive rollback commands"
           ],
           "score": 0,
           "status": "already_satisfied",
@@ -7749,8 +7750,9 @@
                 "novelty": 60,
                 "risk": 12,
                 "satisfaction_evidence": [
-                  "README contains the release install/update/rollback user guide",
-                  "README links release verification to scripts/release-repro-smoke.sh"
+                  "README contains install and update commands",
+                  "README links canonical release reproducibility and rollback criteria",
+                  "README omits copyable destructive rollback commands"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
