@@ -397,22 +397,27 @@ func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize(t *testing.
 	logFile := daemonServerDiscardLog{Writer: io.Discard}
 	admission := newDaemonAdmission(maxConnections)
 	requests := make(chan string, maxConnections+1)
+	started := make(chan struct{}, maxConnections+1)
+	completed := make(chan error, maxConnections+1)
 	var wg sync.WaitGroup
 	loopDone := make(chan error, 1)
 	go func() {
 		loopDone <- runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
 			now: func() time.Time { return time.Now().UTC() },
 			serveConnection: func(conn net.Conn, logFile daemonServerLogFile) error {
-				return serveDaemonConnectionWithAdmission(conn, logFile, daemonInstance{}, admission, func(_ context.Context, conn net.Conn, _ daemonServerLogFile) error {
+				serveErr := serveDaemonConnectionWithAdmission(conn, logFile, daemonInstance{}, admission, func(_ context.Context, conn net.Conn, _ daemonServerLogFile) error {
+					started <- struct{}{}
 					request, err := bufio.NewReader(conn).ReadString('\n')
 					if err == nil {
 						requests <- request
 					}
 					return err
 				})
+				completed <- serveErr
+				return serveErr
 			},
 			wrapConn: func(conn net.Conn) net.Conn {
-				return &idleConn{Conn: conn, timeout: 500 * time.Millisecond}
+				return &idleConn{Conn: conn, timeout: 2 * time.Second}
 			},
 			activeWG: &wg,
 		})
@@ -426,29 +431,38 @@ func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize(t *testing.
 	})
 
 	clients := make([]net.Conn, 0, maxConnections)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	for i := 0; i < maxConnections; i++ {
 		conn, err := net.Dial("unix", socket)
 		if err != nil {
 			t.Fatal(err)
 		}
 		clients = append(clients, conn)
+		if _, err := io.WriteString(conn, "{"); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-started:
+		case <-ctx.Done():
+			t.Fatalf("only %d/%d idle sessions reached MCP dispatch: %v", i, maxConnections, ctx.Err())
+		}
 	}
 	t.Cleanup(func() {
 		for _, conn := range clients {
 			_ = conn.Close()
 		}
 	})
-	deadline := time.Now().Add(time.Second)
-	for admission.snapshot().ActiveConnections != maxConnections && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
 	if got := admission.snapshot(); got.ActiveConnections != maxConnections || got.Accepting {
 		t.Fatalf("expected saturated admission before expiry, got %#v", got)
 	}
 
-	deadline = time.Now().Add(3 * time.Second)
-	for admission.snapshot().ActiveConnections != 0 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	for i := 0; i < maxConnections; i++ {
+		select {
+		case <-completed:
+		case <-ctx.Done():
+			t.Fatalf("only %d/%d idle sessions expired: %v", i, maxConnections, ctx.Err())
+		}
 	}
 	if got := admission.snapshot(); got.ActiveConnections != 0 || !got.Accepting {
 		t.Fatalf("idle expiry did not release every slot: %#v", got)
