@@ -66,6 +66,9 @@ func sdkToolHandlerWithContext(
 		if args == nil {
 			args = map[string]any{}
 		}
+		if validationErr := validateMCPToolArguments(toolName, args); validationErr != nil {
+			return nil, validationErr
+		}
 		outcome := groupHandler(ctx, MCPToolCall{Name: toolName, Arguments: args})
 		if outcome.Err != nil {
 			return nil, outcome.Err

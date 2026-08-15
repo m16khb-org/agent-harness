@@ -101,6 +101,22 @@ func TestHandlePolicyStateMCPToolCallCoversStatePayloads(t *testing.T) {
 	}
 }
 
+func TestHandleToolCallRejectsMissingAndUnknownStateWriteArguments(t *testing.T) {
+	for _, raw := range []string{
+		`{"name":"state_write","arguments":{"key":"schema-reject"}}`,
+		`{"name":"state_write","arguments":{"key":"schema-reject","content":"value","bogus":"x"}}`,
+		`{"name":"state_write","arguments":{"key":"schema-reject","content":7}}`,
+	} {
+		result, protocolErr := HandleToolCall(json.RawMessage(raw))
+		if protocolErr == nil || protocolErr.Code != -32602 {
+			t.Fatalf("call %s result=%#v error=%v", raw, result, protocolErr)
+		}
+		if !strings.Contains(string(protocolErr.Data), "invalid_tool_arguments") {
+			t.Fatalf("call %s diagnostics=%s", raw, protocolErr.Data)
+		}
+	}
+}
+
 func TestPolicyStateMCPDoesNotHandleRetiredMigration(t *testing.T) {
 	name := strings.Join([]string{"state", "migrate"}, "_")
 	outcome := handlePolicyStateMCPToolCall(MCPToolCall{Name: name, Arguments: map[string]any{}})

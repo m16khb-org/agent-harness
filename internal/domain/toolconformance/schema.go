@@ -220,6 +220,10 @@ func supported(schema map[string]any) error {
 			if _, ok := value.(bool); !ok {
 				return fmt.Errorf("invalid_schema_keyword_shape: additionalProperties")
 			}
+		case "required":
+			if _, ok := stringValues(value); !ok {
+				return fmt.Errorf("invalid_schema_keyword_shape: required")
+			}
 		case "minimum":
 			if _, ok := numericValue(value); !ok {
 				return fmt.Errorf("invalid_schema_keyword_shape: minimum")
@@ -254,9 +258,9 @@ func validate(s map[string]any, v any, p string, out *[]toolconformancecontract.
 			return
 		}
 		props, _ := s["properties"].(map[string]any)
-		required, _ := s["required"].([]any)
+		required, _ := stringValues(s["required"])
 		for _, r := range required {
-			key := r.(string)
+			key := r
 			if _, ok := obj[key]; !ok {
 				*out = append(*out, toolconformancecontract.Diagnostic{Path: pointer(p, key), Code: "missing_required", Expected: "required property", Actual: "missing"})
 			}
@@ -334,6 +338,27 @@ func validate(s map[string]any, v any, p string, out *[]toolconformancecontract.
 				})
 			}
 		}
+	}
+}
+
+func stringValues(value any) ([]string, bool) {
+	switch values := value.(type) {
+	case nil:
+		return nil, true
+	case []string:
+		return append([]string(nil), values...), true
+	case []any:
+		result := make([]string, 0, len(values))
+		for _, value := range values {
+			text, ok := value.(string)
+			if !ok {
+				return nil, false
+			}
+			result = append(result, text)
+		}
+		return result, true
+	default:
+		return nil, false
 	}
 }
 func pointer(p, k string) string {

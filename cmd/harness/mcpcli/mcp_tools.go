@@ -1,10 +1,12 @@
 package mcpcli
 
 import (
+	"encoding/json"
+	"fmt"
+
 	executionissue "agent-harness/internal/contract/executionissue"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"encoding/json"
-
+	toolconformancedomain "agent-harness/internal/domain/toolconformance"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 
@@ -86,6 +88,12 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 	if err := json.Unmarshal(params, &call); err != nil {
 		return nil, newProtocolError(-32602, "Invalid params", err.Error())
 	}
+	if call.Arguments == nil {
+		call.Arguments = map[string]any{}
+	}
+	if validationErr := validateMCPToolArguments(call.Name, call.Arguments); validationErr != nil {
+		return nil, validationErr
+	}
 	for _, handler := range []func(MCPToolCall) MCPToolOutcome{
 		handleProjectMCPToolCall,
 		handlePolicyStateMCPToolCall,
@@ -113,6 +121,35 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 		return TextResult(string(b)), nil
 	}
 	return nil, newProtocolError(-32602, "Unknown tool", call.Name)
+}
+
+func validateMCPToolArguments(name string, arguments map[string]any) *jsonrpc.Error {
+	for _, tool := range MCPTools() {
+		toolName, _ := tool["name"].(string)
+		if toolName != name {
+			continue
+		}
+		schema, ok := tool["inputSchema"].(map[string]any)
+		if !ok {
+			return newProtocolError(-32603, "Invalid tool schema", name)
+		}
+		diagnostics, err := toolconformancedomain.Validate(
+			toolconformancedomain.ClosedProjection(schema),
+			arguments,
+		)
+		if err != nil {
+			return newProtocolError(-32603, "Invalid tool schema", fmt.Sprintf("%s: %v", name, err))
+		}
+		if len(diagnostics) == 0 {
+			return nil
+		}
+		return newProtocolError(
+			-32602,
+			"Invalid params",
+			toolconformancedomain.InvalidToolArgumentsResult(name, diagnostics),
+		)
+	}
+	return newProtocolError(-32602, "Unknown tool", name)
 }
 
 func TextResult(text string) map[string]any {
