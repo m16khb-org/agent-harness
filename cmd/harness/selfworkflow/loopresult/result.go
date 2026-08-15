@@ -13,7 +13,7 @@ func New(iterations int, baseSeed int64, targetScore float64, root string) model
 		BaseSeed:    baseSeed,
 		TargetScore: targetScore,
 		HarnessRoot: root,
-		InspiredBy:  "/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js",
+		InspiredBy:  "/Users/sample/workspace/eye-tracking-scroll/scripts/self-augment.js",
 		LoopContract: []string{
 			"quick mode runs one deterministic evidence pass before the final LLM gate",
 			"full mode requires at least 10 seeded iterations before the final LLM gate",

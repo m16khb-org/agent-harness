@@ -267,7 +267,7 @@ Read-only reviewer는 `origin/main...HEAD`의 다섯 changed path와 focused ver
 TDD로 수정한 뒤 review를 다시 실행한다. `pass`일 때만 메인 holder가 다음 record를 남긴다.
 
 ```bash
-/Users/habin/workspace/agent-harness/bin/agent-harness issueops implementation-review record \
+/Users/sample/workspace/agent-harness/bin/agent-harness issueops implementation-review record \
   --id io-60af1c5c4367 \
   --verdict pass \
   --finding '독립 구현 검토에서 blocking finding이 없다.' \
@@ -278,7 +278,7 @@ TDD로 수정한 뒤 review를 다시 실행한다. `pass`일 때만 메인 hold
   --reviewer-effort xhigh \
   --host codex \
   --session-id 019fa0f7-65da-7cb3-a7b6-6db05b21f4b5 \
-  --cwd /Users/habin/workspace/agent-harness.worktrees/207-issueops-child-help-parity \
+  --cwd /Users/sample/workspace/agent-harness.worktrees/207-issueops-child-help-parity \
   --json
 ```
 

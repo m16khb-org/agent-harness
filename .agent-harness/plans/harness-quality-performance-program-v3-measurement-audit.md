@@ -1,7 +1,7 @@
 # Agent-Harness Quality/Performance v3 Measurement Audit
 
 Date: 2026-07-03
-Worktree: `/Users/habin/workspace/agent-harness.worktrees/1-quality-performance-program-v3`
+Worktree: `/Users/sample/workspace/agent-harness.worktrees/1-quality-performance-program-v3`
 Binary: `./bin/agent-harness`
 
 This note records the live measurement evidence gathered after the v3 changes.
@@ -43,16 +43,16 @@ Current worktree lifecycle state:
 
 ```text
 repo_id: 2796cc7fbf615b7d1165c183
-queue: /Users/habin/.local/state/agent-harness/projects/2796cc7fbf615b7d1165c183/doc-upkeep-queue.jsonl
+queue: /Users/sample/.local/state/agent-harness/projects/2796cc7fbf615b7d1165c183/doc-upkeep-queue.jsonl
 queue status: missing
 ```
 
 Main checkout lifecycle state, where the original large queue still exists:
 
 ```text
-repo: /Users/habin/workspace/agent-harness
+repo: /Users/sample/workspace/agent-harness
 repo_id: feee6730cfd6453a2cb60ac7
-queue: /Users/habin/.local/state/agent-harness/projects/feee6730cfd6453a2cb60ac7/doc-upkeep-queue.jsonl
+queue: /Users/sample/.local/state/agent-harness/projects/feee6730cfd6453a2cb60ac7/doc-upkeep-queue.jsonl
 queue size: 3618 lines, 6196039 bytes
 status counts: 3618 pending
 ```

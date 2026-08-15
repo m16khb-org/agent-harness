@@ -13,12 +13,12 @@ func TestRunIssueOpsLinkChildRecordsGitLabWorkItemAfterIssuesTaskFallback(t *tes
 	bin := t.TempDir()
 	writeIssueOpsLinkChildFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
 case "$2" in
-  projects/bubble-team%2Fbackend-team%2Fapi-servers/work_items/2490)
+  projects/sample-group%2Fplatform-group%2Fservice-api/work_items/2490)
     echo "glab: HTTP 404" >&2
     exit 1
     ;;
-  projects/bubble-team%2Fbackend-team%2Fapi-servers/issues/2490)
-    printf '{"iid":2490,"type":"TASK","issue_type":"task","web_url":"https://gitlab.bubbletap.com/bubble-team/backend-team/api-servers/-/work_items/2490"}'
+  projects/sample-group%2Fplatform-group%2Fservice-api/issues/2490)
+    printf '{"iid":2490,"type":"TASK","issue_type":"task","web_url":"https://gitlab.example.test/sample-group/platform-group/service-api/-/work_items/2490"}'
     exit 0
     ;;
   *)
@@ -47,12 +47,12 @@ esac
 		return runIssueOps([]string{
 			"link-issue",
 			"--id", started.ID,
-			"--issue-url", "https://gitlab.bubbletap.com/bubble-team/backend-team/api-servers/-/issues/2435",
+			"--issue-url", "https://gitlab.example.test/sample-group/platform-group/service-api/-/issues/2435",
 			"--json",
 		})
 	})
 
-	childURL := "https://gitlab.bubbletap.com/bubble-team/backend-team/api-servers/-/work_items/2490"
+	childURL := "https://gitlab.example.test/sample-group/platform-group/service-api/-/work_items/2490"
 	_ = captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{
 			"link-child",

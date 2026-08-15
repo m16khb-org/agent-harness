@@ -16,7 +16,7 @@ func writeClaudeMCPConfigForTest(t *testing.T, home, body string) {
 
 const loopbackGatewayConfigForTest = `{
 	"mcpServers": {
-		"glab-api-servers": {"type": "http", "url": "http://127.0.0.1:7351/servers/api-servers/mcp"},
+		"glab-service-api": {"type": "http", "url": "http://127.0.0.1:7351/servers/service-api/mcp"},
 		"glab-cloud-platform": {"type": "http", "url": "http://127.0.0.1:7351/servers/cloud-platform/mcp"},
 		"remote-http": {"type": "http", "url": "https://example.com/mcp"},
 		"local-stdio": {"command": "some-binary", "args": ["mcp"]}

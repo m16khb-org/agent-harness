@@ -98,7 +98,7 @@
 
 - [ ] 2. 격리 worktree 브랜치 생성 및 작업 규약 고정
 
-  **What to do**: `git worktree add ../agent-harness-pipefix -b fix/pipe-capture-immunity` (T1 커밋 이후 시점 기준). 이후 T3–T7 전부 이 worktree에서 실행. 착수 시 `git -C /Users/habin/workspace/agent-harness status --short` 스냅샷을 evidence로 남기고, T7 병합 준비 때 재확인해 다른 세션 변경과 파일 교집합 0을 검증한다. 빌드 산출물은 worktree-로컬 `bin/`을 사용(main의 `bin/agent-harness`는 hook이 사용 중이므로 덮어쓰지 않음).
+  **What to do**: `git worktree add ../agent-harness-pipefix -b fix/pipe-capture-immunity` (T1 커밋 이후 시점 기준). 이후 T3–T7 전부 이 worktree에서 실행. 착수 시 `git -C /Users/sample/workspace/agent-harness status --short` 스냅샷을 evidence로 남기고, T7 병합 준비 때 재확인해 다른 세션 변경과 파일 교집합 0을 검증한다. 빌드 산출물은 worktree-로컬 `bin/`을 사용(main의 `bin/agent-harness`는 hook이 사용 중이므로 덮어쓰지 않음).
 
   **Must NOT do**: main tree에서의 코드 편집·golden 재생성·`go build -o bin/agent-harness` 금지.
   **Recommended Agent**: quick

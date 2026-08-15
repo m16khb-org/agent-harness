@@ -24,7 +24,7 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	}
 
 	prePROut, err := captureStdoutAndErrorForIssueOps(t, func() error {
-		return runIssueOps([]string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "habin", "--json"})
+		return runIssueOps([]string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "sample", "--json"})
 	})
 	assertIssueOpsJSONErrorContains(t, prePROut, err, "cannot verify remote artifact before pr phase")
 
@@ -36,17 +36,17 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	}{
 		{
 			name: "invalid provider",
-			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "jira", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "habin", "--json"},
+			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "jira", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "sample", "--json"},
 			want: "remote artifact provider must be github or gitlab",
 		},
 		{
 			name: "invalid kind",
-			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "mr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "habin", "--json"},
+			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "mr", "--url", "https://github.com/example/repo/pull/1", "--label", "bug", "--assignee", "sample", "--json"},
 			want: "github remote artifact kind must be pr",
 		},
 		{
 			name: "missing labels",
-			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--assignee", "habin", "--json"},
+			args: []string{"remote", "verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/example/repo/pull/1", "--assignee", "sample", "--json"},
 			want: "remote artifact labels are required",
 		},
 	}

@@ -53,7 +53,7 @@ func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
 		Kind:       "pr",
 		URL:        "https://github.com/example/repo/pull/1",
 		Labels:     []string{"issueops"},
-		Assignees:  []string{"habin"},
+		Assignees:  []string{"sample"},
 		VerifiedAt: "2026-06-05T00:00:00Z",
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {

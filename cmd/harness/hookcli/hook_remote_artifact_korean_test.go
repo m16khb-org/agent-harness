@@ -65,7 +65,7 @@ func TestRunHookPreToolUseInspectsGitLabDescriptionFile(t *testing.T) {
 		"cwd":       repo,
 		"tool_name": "Bash",
 		"tool_input": map[string]any{
-			"command": `glab issue create --title "Remote artifact check" --description-file issue.md --label bug --assignee habin`,
+			"command": `glab issue create --title "Remote artifact check" --description-file issue.md --label bug --assignee sample`,
 		},
 	})
 	if err != nil {

@@ -127,7 +127,7 @@ func TestPreToolUseAllowsIssueEditsThatDoNotTouchSealedContext(t *testing.T) {
 		{
 			name:    "issue create is not an edit",
 			repo:    sealedRepo,
-			command: `gh issue create --title "새 이슈" --body "봉인 보호는 생성 경로를 막지 않습니다." --label bug --assignee habin`,
+			command: `gh issue create --title "새 이슈" --body "봉인 보호는 생성 경로를 막지 않습니다." --label bug --assignee sample`,
 		},
 	}
 	for _, tc := range cases {

@@ -51,13 +51,13 @@ func TestRunHookStopBlocksEngelbartCanvasMissingRequiredBlocks(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
-	canvasContent := "::: {.callout}\n회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요\n:::\n\n## 메타데이터\n|Field|Value|\n|---|---|\n|Date|2026-06-26|\n\n## TL;DR\n- 요약\n\n## 결정사항\n- **결정**\n\n## 액션 보드\n- [ ] 담당: 작업\n\n## 주제별 논의\n### 주제\n- 정리\n\n## 리스크 / 열린 질문\n- 리스크"
+	canvasContent := "::: {.callout}\n회의일 2026-06-26 · 대상 #sample-platform-team · Source pasted transcript · Status Follow-up 필요\n:::\n\n## 메타데이터\n|Field|Value|\n|---|---|\n|Date|2026-06-26|\n\n## TL;DR\n- 요약\n\n## 결정사항\n- **결정**\n\n## 액션 보드\n- [ ] 담당: 작업\n\n## 주제별 논의\n### 주제\n- 정리\n\n## 리스크 / 열린 질문\n- 리스크"
 	line := map[string]any{
 		"type":           "tool_use",
 		"name":           "mcp__codex_apps__slack._slack_create_canvas",
 		"recipient_name": "mcp__codex_apps__slack._slack_create_canvas",
 		"input": map[string]any{
-			"title":   "2026-06-26 [배포] TC NCP 마이그레이션 회의",
+			"title":   "2026-06-26 [배포] 샘플 데이터 이전 회의",
 			"content": canvasContent,
 		},
 	}
@@ -68,7 +68,7 @@ func TestRunHookStopBlocksEngelbartCanvasMissingRequiredBlocks(t *testing.T) {
 	if err := os.WriteFile(transcript, append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	msg := "새 회의록 Canvas를 만들었습니다: https://bubbletap.slack.com/docs/T048JBUDF9U/F0TEST"
+	msg := "새 회의록 Canvas를 만들었습니다: https://example.slack.com/docs/T00000000/F0TEST"
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
 	})
@@ -89,7 +89,7 @@ func TestRunHookStopAllowsEngelbartCanvasWithRequiredBlocks(t *testing.T) {
 	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
 	canvasContent := strings.Join([]string{
 		"::: {.callout}",
-		"회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요",
+		"회의일 2026-06-26 · 대상 #sample-platform-team · Source pasted transcript · Status Follow-up 필요",
 		":::",
 		"",
 		"## 메타데이터",
@@ -127,7 +127,7 @@ func TestRunHookStopAllowsEngelbartCanvasWithRequiredBlocks(t *testing.T) {
 		"- 없음.",
 		"",
 		"### 참석자/화자 보정",
-		"- `참석자 1` -> `김현호`. 근거: 사용자 제공. 신뢰도: 높음. 확인 방법: source.",
+		"- `참석자 1` -> `샘플팀리더`. 근거: 사용자 제공. 신뢰도: 높음. 확인 방법: source.",
 		"",
 		"### 원문 전사본 전문",
 		"```text",
@@ -140,7 +140,7 @@ func TestRunHookStopAllowsEngelbartCanvasWithRequiredBlocks(t *testing.T) {
 		"name":           "mcp__codex_apps__slack._slack_create_canvas",
 		"recipient_name": "mcp__codex_apps__slack._slack_create_canvas",
 		"input": map[string]any{
-			"title":   "2026-06-26 [배포] TC NCP 마이그레이션 회의",
+			"title":   "2026-06-26 [배포] 샘플 데이터 이전 회의",
 			"content": canvasContent,
 		},
 	}
@@ -151,7 +151,7 @@ func TestRunHookStopAllowsEngelbartCanvasWithRequiredBlocks(t *testing.T) {
 	if err := os.WriteFile(transcript, append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	msg := "새 회의록 Canvas를 만들었습니다: https://bubbletap.slack.com/docs/T048JBUDF9U/F0TEST"
+	msg := "새 회의록 Canvas를 만들었습니다: https://example.slack.com/docs/T00000000/F0TEST"
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
 	})
@@ -165,13 +165,13 @@ func TestRunHookStopAllowsEngelbartCanvasWithWebAPISafeStatusQuote(t *testing.T)
 	repo := t.TempDir()
 	calloutHeader := strings.Join([]string{
 		"::: {.callout}",
-		"회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요",
+		"회의일 2026-06-26 · 대상 #sample-platform-team · Source pasted transcript · Status Follow-up 필요",
 		":::",
 	}, "\n")
-	quoteHeader := "> 회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요"
+	quoteHeader := "> 회의일 2026-06-26 · 대상 #sample-platform-team · Source pasted transcript · Status Follow-up 필요"
 	canvasContent := strings.Replace(completeEngelbartCanvasContent(), calloutHeader, quoteHeader, 1)
 	transcript := writeTranscriptForTest(t, writeCanvasToolLine(t, "mcp__codex_apps__slack._slack_create_canvas", canvasContent))
-	msg := "새 회의록 Canvas를 만들었습니다: https://bubbletap.slack.com/docs/T048JBUDF9U/F0TEST"
+	msg := "새 회의록 Canvas를 만들었습니다: https://example.slack.com/docs/T00000000/F0TEST"
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
 	})
@@ -409,7 +409,7 @@ func TestRunHookStopDoesNotRequireFullEngelbartTemplateForCanvasUpdates(t *testi
 	if err := os.WriteFile(transcript, append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	msg := "회의록 Canvas를 업데이트했습니다: https://bubbletap.slack.com/docs/T048JBUDF9U/F0TEST"
+	msg := "회의록 Canvas를 업데이트했습니다: https://example.slack.com/docs/T00000000/F0TEST"
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
 	})

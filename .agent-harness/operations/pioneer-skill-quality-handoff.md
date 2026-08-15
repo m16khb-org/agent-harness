@@ -156,8 +156,8 @@ cycle	skill	batch	before_score	after_score	gates_removed	gates_added	cases_rerun
 
 ## Verification Already Run
 
-- `python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/habin/workspace/agent-harness`
-- `python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/habin/workspace/agent-harness`
+- `python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/sample/workspace/agent-harness`
+- `python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/sample/workspace/agent-harness`
 - `rg` checks for rubric, holdout, scorecard, and ledger references
 - Fresh-context `shannon` smoke without fixture
 - Fresh-context `shannon` smoke with isolated git fixture

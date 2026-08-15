@@ -656,7 +656,7 @@ for _, want := range []string{
 }
 ```
 
-Also assert the files do not contain `/Users/habin`, `glab-mcp-wrapper` path,
+Also assert the files do not contain `/Users/sample`, `glab-mcp-wrapper` path,
 profile names, or token variable names as required behavior.
 
 - [ ] **Step 2: Run skill contract tests and confirm RED**
@@ -780,8 +780,8 @@ No field may expose server namespace, wrapper path, profile, token, or config.
 
 - [ ] **Step 6: Run live generic capability smoke**
 
-From `/Users/habin/workspace/api-servers`, use the currently exposed trusted
-`glab_api` leaf that successfully reads GitLab project `bubble-team/backend-team/api-servers`
+From `/Users/sample/workspace/service-api`, use the currently exposed trusted
+`glab_api` leaf that successfully reads GitLab project `sample-group/platform-group/service-api`
 issue IID `2609`. Verify response `web_url`, project, IID, description, and state,
 then pass only the normalized evidence to:
 
@@ -801,7 +801,7 @@ Do not create the #2609 worktree or claim the lease in this smoke.
 - [ ] **Step 7: Record the successful recipe only in the authorized worktree**
 
 If #2609 still has no active canonical holder worktree, do not write
-`api-servers/.agent-harness/VCS.md` from its source checkout. Revalidate and record
+`service-api/.agent-harness/VCS.md` from its source checkout. Revalidate and record
 the recipe when the #2609 worktree is created. For the current `agent-harness`
 repo, create/update `.agent-harness/VCS.md` only if this task actually performed a
 successful GitHub provider read.

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- support-plane 수정은 `/Users/habin/workspace/agent-harness`의 `main`에서 메인 에이전트가 직접 수행한다.
+- support-plane 수정은 `/Users/sample/workspace/agent-harness`의 `main`에서 메인 에이전트가 직접 수행한다.
 - production code를 쓰기 전에 해당 동작의 focused RED를 실행하고 예상한 이유로 실패하는지 확인한다.
 - 새 Go 주석은 비자명한 identity/CAS 이유만 한글로 작성한다.
 - 특정 lifecycle ID, issue number, repository path, failure message를 production 분기에 하드코딩하지 않는다.
@@ -819,7 +819,7 @@ agent-harness issueops execution reconcile \
   --host "$actor_host" --session-id "$actor_session" \
   --session-pid "$actor_pid" --session-started-at "$actor_started" \
   --session-executable "$actor_executable" \
-  --cwd /Users/habin/workspace/api-servers.worktrees/2646-unify-guest-promotion-api \
+  --cwd /Users/sample/workspace/service-api.worktrees/2646-unify-guest-promotion-api \
   --json
 ```
 
@@ -831,8 +831,8 @@ Run the same command with `--confirm` instead of `--preview`. Then read:
 
 ```bash
 agent-harness issueops execution status --id io-803741d62baf --json
-orca worktree show --worktree path:/Users/habin/workspace/api-servers.worktrees/2646-unify-guest-promotion-api --json
-git -C /Users/habin/workspace/api-servers.worktrees/2646-unify-guest-promotion-api status --short --branch
+orca worktree show --worktree path:/Users/sample/workspace/service-api.worktrees/2646-unify-guest-promotion-api --json
+git -C /Users/sample/workspace/service-api.worktrees/2646-unify-guest-promotion-api status --short --branch
 ```
 
 Expected:
@@ -843,11 +843,11 @@ Expected:
 - pending clears only after dispatch receipt,
 - lease remains generation 2 and claimable,
 - Orca binding points to the new generation-2 owner resources,
-- the api-servers worktree diff remains unchanged.
+- the service-api worktree diff remains unchanged.
 
 If external inventory is ambiguous, stop with the durable pending intact. Do not rerun confirm, edit SQLite, or bypass the guard.
 
-- [ ] **Step 7: Resume the interrupted api-servers work**
+- [ ] **Step 7: Resume the interrupted service-api work**
 
 Only after Step 6 proves claimable authority and the exact Orca binding, use the returned next command/claim token path to resume #2646. Keep code delivery, push/MR publication, and IssueOps durable completion as separate readbacks.
 

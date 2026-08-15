@@ -1,6 +1,6 @@
 # Workpool One-Shot Removal Implementation Plan
 
-> **For the execution agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans`, `superpowers:test-driven-development`, and `superpowers:verification-before-completion`. Execute in `/Users/habin/workspace/agent-harness.worktrees/remove-workpool` only.
+> **For the execution agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans`, `superpowers:test-driven-development`, and `superpowers:verification-before-completion`. Execute in `/Users/sample/workspace/agent-harness.worktrees/remove-workpool` only.
 
 **Goal:** Remove the `workpool` feature in one source change, including its Go core, CLI, MCP, IssueOps gate, hook reminder, public contracts, tests, and active documentation.
 
@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Work only in `/Users/habin/workspace/agent-harness.worktrees/remove-workpool` on branch `m16khb/remove-workpool`.
+- Work only in `/Users/sample/workspace/agent-harness.worktrees/remove-workpool` on branch `m16khb/remove-workpool`.
 - Baseline is exact commit `9650fc908a085697b2caedc0d922b5267bda25a5`; `go test ./... -count=1` passed before implementation.
-- Do not touch `/Users/habin/workspace/agent-harness` or copy its uncommitted changes into this worktree.
+- Do not touch `/Users/sample/workspace/agent-harness` or copy its uncommitted changes into this worktree.
 - Remove the feature in one branch change. Do not add deprecation aliases, compatibility shims, hidden MCP aliases, or recovery commands.
 - Do not delete or mutate `~/.local/state/agent-harness/workpool/harness.db`; do not call mutating legacy `workpool status/reap/close` commands.
 - Do not commit, push, create a PR, merge, or clean either worktree.
@@ -424,7 +424,7 @@
 - [ ] **Step 6: Prove boundaries were respected**
 
   ```bash
-  git -C /Users/habin/workspace/agent-harness status --short
+  git -C /Users/sample/workspace/agent-harness status --short
   git status --short --branch
   ```
 

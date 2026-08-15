@@ -34,9 +34,9 @@ GitHub contributor attribution follows commit author/committer email, not just t
 
 주의:
 - Before committing or pushing contributor-sensitive history, run `git config --show-origin --get-regexp '^user\.'` and `git var GIT_AUTHOR_IDENT && git var GIT_COMMITTER_IDENT`.
-- In this repo, `m16khb@bubbletap.com` maps to the unwanted `habinkim-bubbletap` contributor. Use `m16khb@gmail.com` or `43867832+m16khb@users.noreply.github.com` instead.
+- Do not encode contributor-specific email addresses in tracked project guidance. Use an address already verified on the intended hosting account, or its verified no-reply form.
 - If a tool may bypass repo-local config, set `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, and `GIT_COMMITTER_EMAIL` explicitly for the commit command.
-- After push, verify `git log --all --format='%an <%ae> %cn <%ce>' | rg 'bubbletap'` is empty and check GitHub contributors when attribution matters.
+- After push, inspect `git log --all --format='%an <%ae> %cn <%ce>'` for unintended organization identities and check the hosting platform's contributor view when attribution matters.
 
 ## publication Git config authority를 diagnostic buffer나 platform 암묵성에 맡기지 말 것
 

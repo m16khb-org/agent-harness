@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Work only in `/Users/habin/workspace/agent-harness` on the current `main`.
+- Work only in `/Users/sample/workspace/agent-harness` on the current `main`.
 - Preserve existing user changes.
 - Do not commit, push, publish, mutate user configuration, or edit durable IssueOps state.
 - Do not add an unsafe execution reset or abandonment command.

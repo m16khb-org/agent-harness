@@ -3,7 +3,7 @@
 - Status: blocked
 - Lifecycle: io-60af1c5c4367
 - Mode/host/model: direct / codex / current main session
-- Worktree/branch/final HEAD: /Users/habin/workspace/agent-harness.worktrees/207-issueops-child-help-parity / 207-issueops-child-help-parity / implementation HEAD ddc4215c9efec07dc0131d09e6bf99099069def1, execution final HEAD는 이 증거 파일 커밋을 포함한 HEAD로 봉인
+- Worktree/branch/final HEAD: /Users/sample/workspace/agent-harness.worktrees/207-issueops-child-help-parity / 207-issueops-child-help-parity / implementation HEAD ddc4215c9efec07dc0131d09e6bf99099069def1, execution final HEAD는 이 증거 파일 커밋을 포함한 HEAD로 봉인
 - Lease generation/completion: generation 1 active; completion receipt는 아직 없으며 최종 원격 CI 성공 뒤 이 커밋된 보고서와 PR #208로 execution complete를 기록
 - Issue/packet digests: direct 모드이므로 Orca packet digest는 해당 없음; lifecycle/issue/worktree/branch/generation은 IssueOps status와 Git readback으로 일치 확인
 - Commits: b208036f docs(issueops): define child help parity design; 600ad943 docs(issueops): define child help implementation plan; ddc4215c fix(issueops): align child help actor flags

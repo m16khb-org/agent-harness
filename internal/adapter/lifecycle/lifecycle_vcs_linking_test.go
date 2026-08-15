@@ -79,7 +79,7 @@ func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug --assignee m16khb`,
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨 복사와 담당자를 함께 지정합니다." --copy-issue-labels --assignee-id 100`,
 		`glab mr for 2385 --with-labels --assignee 100`,
-		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a habin`,
+		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a sample`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Repo:              t.TempDir(),
@@ -126,7 +126,7 @@ func TestPreToolUseVCSLinkingBlocksGitHubPRBaseBranchMismatch(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
-		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR은 기록된 부모 작업 브랜치로 합류해야 합니다." --head 12-child --base main --label bug --assignee habin`,
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR은 기록된 부모 작업 브랜치로 합류해야 합니다." --head 12-child --base main --label bug --assignee sample`,
 		EnforceVCSLinking: true,
 	})
 
@@ -141,7 +141,7 @@ func TestPreToolUseVCSLinkingAllowsPRTargetBranchFromBranchPrepare(t *testing.T)
 	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
-		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기록된 부모 작업 브랜치로 합류합니다." --head 12-child --base 2435-parent --label bug --assignee habin`,
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기록된 부모 작업 브랜치로 합류합니다." --head 12-child --base 2435-parent --label bug --assignee sample`,
 		EnforceVCSLinking: true,
 	})
 
@@ -156,7 +156,7 @@ func TestPreToolUseVCSLinkingBlocksMissingPRTargetBranchWhenBranchPrepareExists(
 	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
-		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기본 브랜치로 새지 않도록 target을 명시해야 합니다." --head 12-child --label bug --assignee habin`,
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기본 브랜치로 새지 않도록 target을 명시해야 합니다." --head 12-child --label bug --assignee sample`,
 		EnforceVCSLinking: true,
 	})
 

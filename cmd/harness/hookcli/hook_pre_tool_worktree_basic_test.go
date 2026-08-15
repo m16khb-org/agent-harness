@@ -21,8 +21,8 @@ func TestRunHookPreToolUseBlocksSourceOutsideExpectedIssueOpsWorktree(t *testing
 
 func TestRunHookPreToolUseAllowsApplyPatchInsideExpectedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	source := filepath.Join(t.TempDir(), "api-servers")
-	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
+	source := filepath.Join(t.TempDir(), "service-api")
+	worktree := filepath.Join(filepath.Dir(source), "service-api.worktrees", "2193-demo")
 	patch := "*** Begin Patch\n*** Add File: " + filepath.Join(worktree, "SMOKE.go") + "\n+package smoke\n*** End Patch\n"
 	payload, err := json.Marshal(map[string]any{
 		"cwd":       source,
@@ -44,8 +44,8 @@ func TestRunHookPreToolUseAllowsApplyPatchInsideExpectedWorktree(t *testing.T) {
 
 func TestRunHookPreToolUseBlocksSourceApplyPatchOutsideExpectedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	source := filepath.Join(t.TempDir(), "api-servers")
-	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
+	source := filepath.Join(t.TempDir(), "service-api")
+	worktree := filepath.Join(filepath.Dir(source), "service-api.worktrees", "2193-demo")
 	patch := "*** Begin Patch\n*** Add File: " + filepath.Join(source, "SMOKE.go") + "\n+package smoke\n*** End Patch\n"
 	payload, err := json.Marshal(map[string]any{
 		"cwd":       source,

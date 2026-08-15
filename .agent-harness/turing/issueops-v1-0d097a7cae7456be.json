@@ -2,7 +2,7 @@
   "lifecycle_id": "io-5bdee93886b2",
   "issue_url": "https://github.com/m16khb/agent-harness/issues/191",
   "branch": "191-issueops-lease-differential-spike",
-  "worktree_root": "/Users/habin/workspace/agent-harness.worktrees/191-issueops-lease-differential-spike",
+  "worktree_root": "/Users/sample/workspace/agent-harness.worktrees/191-issueops-lease-differential-spike",
   "owner": {
     "host": "codex",
     "model": "gpt-5.6-sol",

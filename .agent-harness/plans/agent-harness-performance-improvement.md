@@ -28,7 +28,7 @@
 ### Confirmed Evidence
 
 - `git status --short --branch` 결과: `## main...origin/main`; 현재 working tree는 이 계획 파일 작성 전 clean 상태였다.
-- `./bin/agent-harness daemon status --json` 결과: daemon reachable, 현재 PID `95419`, socket `/Users/habin/.local/state/agent-harness/daemon/agent-harness.sock`.
+- `./bin/agent-harness daemon status --json` 결과: daemon reachable, 현재 PID `95419`, socket `/Users/sample/.local/state/agent-harness/daemon/agent-harness.sock`.
 - `go test ./cmd/harness/mcpcli -count=1` 결과: 통과, `ok agent-harness/cmd/harness/mcpcli 1.109s`.
 - `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` 결과: 실패. `go test ./... -count=1`은 self-verify 내부에서 통과했고 69,818ms가 걸렸지만, `MCP smoke`가 `expected 12 MCP responses, got 1`로 실패했다. self-verify의 `MCP smoke` duration은 84ms라서 느린 병목이 아니라 response contract/transport 문제다.
 - 같은 self-verify 결과에서 slowest steps는 `go test` 69,818ms, `go build` 1,336ms, `binary drift` 398ms, `harness invariants` 115ms, `MCP smoke` 84ms였다.

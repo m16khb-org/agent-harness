@@ -23,7 +23,7 @@ main-stop count=10 min=19.1 p50=19.3 max=20.8
 The remaining P-3 gap is file-size policy. The main checkout queue evidence is:
 
 ```text
-queue: /Users/habin/.local/state/agent-harness/projects/feee6730cfd6453a2cb60ac7/doc-upkeep-queue.jsonl
+queue: /Users/sample/.local/state/agent-harness/projects/feee6730cfd6453a2cb60ac7/doc-upkeep-queue.jsonl
 queue size: 3618 lines, 6196039 bytes
 status counts: 3618 pending
 ```

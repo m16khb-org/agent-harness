@@ -4,7 +4,7 @@
   "scope": "Issue #196 execution lease release production vertical",
   "constraints": {
     "full_local_suite": "not run by approved issue constraint; focused and race gates below passed, and PR CI is the full-regression gate",
-    "mutation_root": "/Users/habin/workspace/agent-harness.worktrees/196-issueops-lease-release-vertical"
+    "mutation_root": "/Users/sample/workspace/agent-harness.worktrees/196-issueops-lease-release-vertical"
   },
   "deviations": [
     {

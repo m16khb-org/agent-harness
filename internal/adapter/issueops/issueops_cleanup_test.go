@@ -79,7 +79,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/2",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}, issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestIssueOpsCleanupStatusBlocksWhenRemoteBranchCheckUnavailable(t *testing.
 			Kind:      "pr",
 			URL:       "https://github.com/example/repo/pull/2",
 			Labels:    []string{"bug"},
-			Assignees: []string{"habin"},
+			Assignees: []string{"sample"},
 		},
 	}
 	status := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})

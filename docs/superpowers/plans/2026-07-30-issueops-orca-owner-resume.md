@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 현재 사용자가 명시한 대로 support-plane 수정은 `/Users/habin/workspace/agent-harness`의 `main`에서 수행한다.
+- 현재 사용자가 명시한 대로 support-plane 수정은 `/Users/sample/workspace/agent-harness`의 `main`에서 수행한다.
 - 모든 production edit는 먼저 예상 이유의 RED를 확인한 뒤 최소 구현으로 GREEN을 만든다.
 - 새 코드 주석은 비자명한 authority/CAS 이유만 한국어로 작성한다.
 - direct mode, branch/base/parent lineage, active lease replacement, cleanup 동작은 변경하지 않는다.
@@ -826,8 +826,8 @@ fix(issueops): admit generation-bound owner resume
 **Interfaces:**
 - Installed CLI: `agent-harness issueops execution resume`.
 - Dogfood lifecycle: `io-6e932f2e6c54`.
-- Canonical worktree: `/Users/habin/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`.
-- Parent worktree: `/Users/habin/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration`.
+- Canonical worktree: `/Users/sample/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`.
+- Parent worktree: `/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration`.
 - Current released generation before dogfood: 2.
 - Owner: `codex / gpt-5.6-terra / xhigh`.
 
@@ -855,8 +855,8 @@ Do not substitute a local full suite.
 Run:
 
 ```bash
-python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/habin/workspace/agent-harness
-python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/habin/workspace/agent-harness
+python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/sample/workspace/agent-harness
+python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/sample/workspace/agent-harness
 git status --short --branch
 git log --oneline origin/main..HEAD
 git diff origin/main...HEAD --stat
@@ -923,7 +923,7 @@ next_command = execution resume for generation 3
 
 Run the exact `.next_command` returned by reseed after appending the first
 literal `claim_actor_flags` entry from `execution whoami`, canonical
-`--cwd /Users/habin/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`,
+`--cwd /Users/sample/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`,
 and `--json`. Do not use shell expansion.
 
 Verify:

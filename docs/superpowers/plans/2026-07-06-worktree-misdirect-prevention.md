@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** IssueOps 사이클이 격리 워크트리를 보유한 상태에서, 에이전트의 기본 cwd(메인 체크아웃) 때문에 패치가 워크트리 대신 메인 체크아웃에 조용히 적용되는 사고(2026-07-06 api-servers #2519 사례)를 재발 방지한다.
+**Goal:** IssueOps 사이클이 격리 워크트리를 보유한 상태에서, 에이전트의 기본 cwd(메인 체크아웃) 때문에 패치가 워크트리 대신 메인 체크아웃에 조용히 적용되는 사고(2026-07-06 sample service #2519 사례)를 재발 방지한다.
 
 **Architecture:** 가드는 `internal/core/lifecycle`(worktree guard), 훅 CLI는 `cmd/harness/hookcli`. 개선은 기존 차단 정책을 바꾸지 않고 (1) PostToolUse 사후 감지 경고, (2) PreToolUse ask 승격, (3) 세션/프롬프트 힌트, (4) env 인체공학의 4개 레이어를 추가한다. CAUTIONS §21의 교착 방지 결정은 유지한다.
 
@@ -10,7 +10,7 @@
 
 ## 사고 원인 분석 (2026-07-06 조사, 증거 기반)
 
-**사고**: Codex 에이전트가 api-servers #2519 사이클(worktree `/Users/habin/workspace/api-servers.worktrees/2519-test-quality-comprehensive`) 작업 중, 기본 cwd가 메인 체크아웃이라 패치가 메인 체크아웃에 적용됨. 차단도 경고도 없었고 에이전트가 나중에 스스로 발견.
+**사고**: Codex 에이전트가 sample service #2519 사이클(worktree `/Users/sample/workspace/service-api.worktrees/2519-test-quality-comprehensive`) 작업 중, 기본 cwd가 메인 체크아웃이라 패치가 메인 체크아웃에 적용됨. 차단도 경고도 없었고 에이전트가 나중에 스스로 발견.
 
 **검증된 인과 사슬** (모두 소스로 확인):
 1. **의도 신호 부재**: 강한 가드(`expectedWorktreeGuardBlockReason`)는 `HARNESS_EXPECTED_WORKTREE` env 또는 `--expected-worktree` 플래그가 있어야 작동하는데, 이 env는 세션에 설정되어 있지 않았다. `resolveExpectedWorktree`(`hook_pre_tool_use.go:74-82`)는 **의도적으로** 세션 바인딩을 읽지 않는다(브랜치 가드 없이 읽으면 같은 repo의 무관한 작업을 차단하므로 — 주석에 문서화됨).

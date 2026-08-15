@@ -1,7 +1,7 @@
 {
   "lifecycle_id": "io-17a57cc2b08b",
   "generation": 1,
-  "worktree": "/Users/habin/workspace/agent-harness.worktrees/190-architecture-fitness-ratchet",
+  "worktree": "/Users/sample/workspace/agent-harness.worktrees/190-architecture-fitness-ratchet",
   "branch": "190-architecture-fitness-ratchet",
   "success_criteria": [
     {

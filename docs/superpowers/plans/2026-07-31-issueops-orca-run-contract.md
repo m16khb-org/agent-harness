@@ -828,7 +828,7 @@ Expected:
 Parent worktree:
 
 ```text
-/Users/habin/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
+/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
 ```
 
 순서:
@@ -851,7 +851,7 @@ mode=orca
 owner_host=codex
 owner_model=gpt-5.6-terra
 owner_effort=xhigh
-parent_worktree=/Users/habin/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
+parent_worktree=/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
 ```
 
 Expected preview:

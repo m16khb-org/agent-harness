@@ -2,7 +2,7 @@
   "schema_version": 1,
   "lifecycle_id": "io-6e932f2e6c54",
   "generation": 4,
-  "worktree": "/Users/habin/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical",
+  "worktree": "/Users/sample/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical",
   "acceptance": [
     {
       "id": "AC-01",

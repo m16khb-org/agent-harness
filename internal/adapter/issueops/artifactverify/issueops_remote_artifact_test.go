@@ -47,7 +47,7 @@ func TestValidateChecksWithoutPersisting(t *testing.T) {
 		Kind:      "pull_request",
 		URL:       "https://github.com/example/repo/pull/7",
 		Labels:    []string{" enhancement ", "issueops"},
-		Assignees: []string{" habin "},
+		Assignees: []string{" sample "},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestValidateRejectsInvalidRecord(t *testing.T) {
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/7",
 		Labels:    []string{"issueops"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "before pr phase") {
 		t.Fatalf("expected phase validation error, got record %+v err %v", got, err)
@@ -100,7 +100,7 @@ func TestVerifyRemoteArtifactURLMatchesProvider(t *testing.T) {
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/9",
 		Labels:    []string{"issueops"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "match linked issue provider") {
 		t.Fatalf("expected provider mismatch error, got %v", err)
 	}
@@ -109,7 +109,7 @@ func TestVerifyRemoteArtifactURLMatchesProvider(t *testing.T) {
 		Kind:      "pr",
 		URL:       "https://gitlab.example/group/project/-/merge_requests/4",
 		Labels:    []string{"issueops"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "gitlab remote artifact kind must be mr") {
 		t.Fatalf("expected gitlab kind error, got %v", err)
 	}
@@ -118,7 +118,7 @@ func TestVerifyRemoteArtifactURLMatchesProvider(t *testing.T) {
 		Kind:      "merge_request",
 		URL:       "https://gitlab.example/group/project/-/merge_requests/4",
 		Labels:    []string{"issueops"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestVerifyGitLabRemoteArtifactURLShape(t *testing.T) {
 		Kind:      "mr",
 		URL:       "https://github.com/example/repo/pull/2",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "GitLab merge request URL") {
 		t.Fatalf("gitlab remote artifact should reject GitHub PR URL, got %v", err)
 	}
@@ -182,7 +182,7 @@ func TestVerifyGitLabRemoteArtifactURLShape(t *testing.T) {
 		Kind:      "mr",
 		URL:       "https://gitlab.example/group/project/-/merge_requests/2",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	})
 	if err != nil {
 		t.Fatalf("gitlab remote artifact should accept GitLab MR URL: %v", err)
@@ -209,7 +209,7 @@ func TestVerifyRejectsMalformedLinkedIssue(t *testing.T) {
 			_, store := newArtifactStoreForTest(tt.record)
 			_, err := Verify(store, t.TempDir(), tt.record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
 				Provider: "gitlab", Kind: "mr", URL: "https://gitlab.example/group/project/-/merge_requests/2",
-				Labels: []string{"bug"}, Assignees: []string{"habin"}, TargetBranch: "main",
+				Labels: []string{"bug"}, Assignees: []string{"sample"}, TargetBranch: "main",
 			})
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("Verify error = %v, want %q", err, tt.want)

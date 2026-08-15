@@ -18,7 +18,7 @@ func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
 		"cwd":        repo,
 		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee habin`},
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee sample`},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestRunHookPreToolUseBlocksStructuredGitLabRelatedIssuesBodySection(t *test
 			"title":       "한국어 제목입니다 충분합니다",
 			"description": "관련 이슈\n- #1\n문제 설명입니다. 한국어 본문을 충분히 작성합니다.",
 			"labels":      []any{"bug"},
-			"assignee":    "habin",
+			"assignee":    "sample",
 		},
 	})
 	if err != nil {
@@ -89,7 +89,7 @@ func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
 		"cwd":        repo,
 		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee habin`},
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee sample`},
 	})
 	if err != nil {
 		t.Fatal(err)

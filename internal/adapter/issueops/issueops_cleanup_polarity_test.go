@@ -137,7 +137,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/2",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}, issueOpsActorForTest(worktree)); err != nil {
 		t.Fatal(err)
 	}

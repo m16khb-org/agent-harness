@@ -22,7 +22,7 @@ func TestByIDReadsRecordAndReportsMissingEvidence(t *testing.T) {
 			Kind:      "pr",
 			URL:       "https://github.com/example/repo/pull/1",
 			Labels:    []string{"issueops"},
-			Assignees: []string{"habin"},
+			Assignees: []string{"sample"},
 		},
 	})
 
@@ -162,7 +162,7 @@ func completeCleanupRecord(t *testing.T) model.IssueOpsRecord {
 			Kind:      "pr",
 			URL:       "https://github.com/example/repo/pull/1",
 			Labels:    []string{"issueops"},
-			Assignees: []string{"habin"},
+			Assignees: []string{"sample"},
 		},
 	}
 }
