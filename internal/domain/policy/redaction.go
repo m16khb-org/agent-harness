@@ -12,6 +12,8 @@ var secretArgRe = regexp.MustCompile(`(?i)((token|password|passwd|secret|api[_-]
 
 var diagnosticURLPattern = regexp.MustCompile(`https?://[^\s]+`)
 
+const maxBoundedDiagnosticBytes = 4096
+
 func CleanEnvAllowlist(items []string) []string {
 	out := []string{}
 	for _, item := range items {
@@ -62,6 +64,17 @@ func RedactDiagnostic(s string) string {
 		return redacted
 	}
 	return diagnosticURLPattern.ReplaceAllString(s, "[REDACTED_URL]")
+}
+
+func BoundedDiagnostic(value string, limit int) string {
+	if limit <= 0 || limit > maxBoundedDiagnosticBytes {
+		limit = maxBoundedDiagnosticBytes
+	}
+	value = strings.TrimSpace(RedactDiagnostic(value))
+	if len(value) > limit {
+		value = value[:limit] + "...[truncated]"
+	}
+	return value
 }
 
 func SecretLikeArg(arg string) bool {

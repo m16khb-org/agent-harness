@@ -105,12 +105,5 @@ func boundedDiagnostic(value string) string {
 }
 
 func BoundedDiagnostic(value string, limit int) string {
-	if limit <= 0 || limit > providerDiagnosticLimit {
-		limit = providerDiagnosticLimit
-	}
-	value = strings.TrimSpace(policy.RedactDiagnostic(value))
-	if len(value) > limit {
-		value = value[:limit] + "...[truncated]"
-	}
-	return value
+	return policy.BoundedDiagnostic(value, limit)
 }
