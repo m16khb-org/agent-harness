@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "boehm",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a0027b",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "5f71d7b7bb1550e3827875700ed3f05e3a34367d543a608064aaa1ad380b7546",
+      "receipt_bytes": 2886
+    },
+    {
+      "task_id": "st_01a002c7",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "319fa807573eb3273042020e7b442f9e0b3b8bcd826d23c1b369f54807537d73",
+      "receipt_bytes": 3816
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "boehm/TASK.md",
+      "fixture_sha256": "356b2f65c428e04f35f11c292cf974ed25eed2290b6f34f67b5721a413f0f90a",
+      "verdict": "blocked",
+      "blocked_reason": "Kordoc MCP and source screenshot were unavailable",
+      "deterministic_assertions": [
+        "capability_probe",
+        "blocked_evidence_inventory"
+      ],
+      "semantic_grade": "honest_capability_block",
+      "host_capability": "blocked:kordoc_document_surface_unavailable"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "boehm/BOUNDARY.md",
+      "fixture_sha256": "6dc0cdcececca1cdc1360b52b80c5fb141369c21f5c881cd755a33290e98e458",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "correct_refusal",
+        "not_visible_claim"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "unavailable_expected_refusal"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "boehm/OPERATIONAL.md",
+      "fixture_sha256": "f4c1bba6c1b42e410d55d4a2d5fb4a1b5aa584e0f9aecba9b131e15c4a43a3db",
+      "verdict": "blocked",
+      "blocked_reason": "Kordoc document surface and source document were unavailable",
+      "deterministic_assertions": [
+        "conflict_matrix",
+        "blocked_source_surface"
+      ],
+      "semantic_grade": "honest_capability_block",
+      "host_capability": "blocked:kordoc_document_surface_unavailable"
+    }
+  ]
+}

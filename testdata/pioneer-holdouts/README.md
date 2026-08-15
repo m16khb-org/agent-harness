@@ -14,8 +14,21 @@ scenario can be re-run, but it is no longer a blind holdout.
 - **Committed (input only):** the broken/seed files (`run.sh`, `greet.py`,
   `startup.py`, `profile.txt`, README/notes) or a `setup.sh` that rebuilds a
   git working-tree state, plus a `TASK.md` stating the user request.
-- **NOT committed (answer):** the recorded scores, root-cause analysis, exact
-  fix, gaming-resistance notes and provenance. Those live in
+- **Committed (redacted run manifest):** `evaluation-manifest.json` records
+  36 primary/boundary/operational case rows (three per namesake): fixture
+  paths/hashes, isolated child IDs, pass/blocked/fail verdicts, host/model route,
+  capability-block reasons, and SHA-256/byte-count receipts for 24 unique child
+  executions. Primary uses 12 independent children; each namesake's boundary
+  and operational prompts share one additional child. It never stores answer
+  content, never presents 36 rows as 36 independent executions, and marks every
+  committed case as `hidden_holdout=false`.
+- **Committed (reviewable evidence records):** `evidence-records/<skill>.json`
+  binds each namesake's two fresh-context runs to all three case hashes,
+  deterministic assertion IDs, semantic grade, and host-capability outcome.
+  The manifest stores and validates each evidence-record SHA-256. These records
+  are evaluation receipts, not answer text.
+- **NOT committed (answer):** root-cause analysis, exact fix, evaluator prose,
+  and answer artifacts. Those live in
   `.agent-harness/evidence/pioneer-skills-quality/reruns/<skill>/result.yaml`,
   which stays blanket-gitignored (`.gitignore: evidence`). A Go test
   (`internal/holdoutdeleak`) mechanically asserts no file here leaks an answer
@@ -23,11 +36,13 @@ scenario can be re-run, but it is no longer a blind holdout.
 
 ## Coverage and honesty caveats
 
-- **6 of 9 are filesystem fixtures** (dijkstra, hopper, shannon, torvalds,
+- Each namesake has `TASK.md` (primary), `BOUNDARY.md`, and `OPERATIONAL.md`.
+  The latter two are independent prompts rather than answer variants.
+- **6 of 12 primary cases are filesystem fixtures** (dijkstra, hopper, shannon, torvalds,
   turing, von-neumann). `shannon` and `torvalds` need a git working-tree state,
   so they ship a `setup.sh` builder rather than a committable nested `.git`.
-- **2 are in-prompt** (codd, karpathy): there is no filesystem input, only the
-  prompt text in `TASK.md`.
+- **5 are in-prompt** (boehm, brooks, codd, engelbart, karpathy): there is no
+  filesystem input beyond the prompt text in `TASK.md`.
 - **1 is live-web** (berners-lee): it depended on live network state and is
   **NOT reproducible offline** — recorded for provenance only.
 - **Provenance gap:** these inputs are RE-AUTHORED from the recorded specs. The

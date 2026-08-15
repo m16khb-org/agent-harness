@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "hopper",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a00280",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "c6b0f3ddff28d22c4fbb4aa688b138be12c06f4969ba98f392e2dc93d7876fdf",
+      "receipt_bytes": 2819
+    },
+    {
+      "task_id": "st_01a002cc",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "97a5ef470d68d431dcad533f1e23402faff0f3a9bb3f2a40f2e98d4b32a21553",
+      "receipt_bytes": 7425
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "hopper/TASK.md",
+      "fixture_sha256": "84a8373616856f963ad516fa3db38be61ebda4551f3ffbeb6897761a084f4452",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "deterministic_reproduction",
+        "minimal_dependency_fix"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "hopper/BOUNDARY.md",
+      "fixture_sha256": "c5aba09f353d3aa73a1f1c85dc5600b551b8a6a727ac91759b46f91a93eed5d8",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "three_hypotheses",
+        "event_fenced_reproduction"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "hopper/OPERATIONAL.md",
+      "fixture_sha256": "d5e128df59806cfb19a5290305f4d8660cf0863e014d720282c28b6a6702125f",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "proxy_trace_divergence",
+        "live_fix_qa"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

@@ -1,0 +1,1010 @@
+{
+  "schema_version": 2,
+  "run_id": "fresh-context-2026-08-14",
+  "generated_at": "2026-08-15T03:08:29Z",
+  "host": "omo",
+  "model_route": "zai/glm-5.2:xhigh",
+  "evaluation_method": "isolated fresh-context child; case fixture only; no answer content committed",
+  "provenance": {
+    "host": "omo",
+    "execution_count": 24,
+    "case_count": 36,
+    "receipt_algorithm": "sha256",
+    "receipt_source": "task_output status text",
+    "answers_committed": false,
+    "hidden_holdouts": false,
+    "evidence_record_count": 12,
+    "evidence_record_algorithm": "sha256",
+    "semantic_grading": "case-contract assertions with host capability"
+  },
+  "runs": [
+    {
+      "task_id": "st_01a0027a",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "7a988a4bf2c5194c6fd215300a58a3249737cb7d5f06ff432de4f04438febff3",
+      "receipt_bytes": 3425,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/berners-lee.json",
+      "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0"
+    },
+    {
+      "task_id": "st_01a0027b",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "5f71d7b7bb1550e3827875700ed3f05e3a34367d543a608064aaa1ad380b7546",
+      "receipt_bytes": 2886,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04"
+    },
+    {
+      "task_id": "st_01a0027c",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "57c8ed2fe2abb757aa98db7ed0dc7700f6c5bfa12b5cd011f4686b7c75cd4231",
+      "receipt_bytes": 7520,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/brooks.json",
+      "evidence_sha256": "3bd2198d4ca03068a55e370059cee6ddf9d5f417df31e8b2db898baf48fc7fc9"
+    },
+    {
+      "task_id": "st_01a0027d",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "c33356b6194479bf560d3de54c30ca3e07e382e95baff24e58ffe272fb3539b9",
+      "receipt_bytes": 10344,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/codd.json",
+      "evidence_sha256": "d98e13de9eaf409903517deec6c6fb932eab56099877cf0d8d8a48414065003a"
+    },
+    {
+      "task_id": "st_01a0027e",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "7ce6a8178fedbfd1088f512e9cd0bd708e7044988afd90561ef6e204535277c6",
+      "receipt_bytes": 2347,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/dijkstra.json",
+      "evidence_sha256": "a56f7473689f3b2d13332fee403e34b026262025e4392dc20d08affa9c238a99"
+    },
+    {
+      "task_id": "st_01a0027f",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "fca2738b272cd457cd6329794c9e262c5b23d1e5fa8facdd71cb8050757c422a",
+      "receipt_bytes": 3350,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/engelbart.json",
+      "evidence_sha256": "dc91895fb5ad6f7493f293a15b3645132089e8c15694e64f56653fe02c59ecc2"
+    },
+    {
+      "task_id": "st_01a00280",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "c6b0f3ddff28d22c4fbb4aa688b138be12c06f4969ba98f392e2dc93d7876fdf",
+      "receipt_bytes": 2819,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/hopper.json",
+      "evidence_sha256": "2353bb828fea41740484d38b2c47bc5b410ed0f23e344a0f9c9b865156077b35"
+    },
+    {
+      "task_id": "st_01a00281",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "ab3de4728656d229430aa5e005f5a6b4fdd113a430c3e724493278f886ea48df",
+      "receipt_bytes": 4200,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/karpathy.json",
+      "evidence_sha256": "3a764e253236f0a8ea967637fb289c6bab457b15e620887cb19fd22d30e5bb51"
+    },
+    {
+      "task_id": "st_01a00282",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "5a406d1af824eb379f5ba6f3406167ac82e568215acd37d9457fab26c15a996e",
+      "receipt_bytes": 2325,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/shannon.json",
+      "evidence_sha256": "622a9dc1cff26f31a3faf691875c910974c3302fc6e6d39dab81e9aa59ffe40b"
+    },
+    {
+      "task_id": "st_01a00283",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "158e8cdb24f281d8ee38721f457e3e383f8d1b759d3e398cf267251d4d0c4ed7",
+      "receipt_bytes": 1871,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/torvalds.json",
+      "evidence_sha256": "846e2ca0338dd6d985ae27060da68f2c2716dfe4f02cfcd48cc17441c49d61da"
+    },
+    {
+      "task_id": "st_01a00284",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "4e8b14c992517943481719a02c80bb8ea443e5688f5169e06782cb6e9025bf43",
+      "receipt_bytes": 1247,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/turing.json",
+      "evidence_sha256": "e6cc59750166f1e835b60b07a00000e2fbdfd3986f14d911f04ec8034aa79c08"
+    },
+    {
+      "task_id": "st_01a00285",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "a790cbc5a751f7122e9a316eeab67f186d34d938c9e5d01b184fba99fc4e30fc",
+      "receipt_bytes": 869,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/von-neumann.json",
+      "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0"
+    },
+    {
+      "task_id": "st_01a002c6",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "dcbc27fa358c273d77a92ec5899277f4bfdd0172fdfbca4b62fb8659c22f5764",
+      "receipt_bytes": 3965,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/berners-lee.json",
+      "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0"
+    },
+    {
+      "task_id": "st_01a002c7",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "319fa807573eb3273042020e7b442f9e0b3b8bcd826d23c1b369f54807537d73",
+      "receipt_bytes": 3816,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04"
+    },
+    {
+      "task_id": "st_01a002c8",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "116114588d63ace499b23cc5c4d771796e53cb8af496e01bb24986e41c6129e3",
+      "receipt_bytes": 10951,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/brooks.json",
+      "evidence_sha256": "3bd2198d4ca03068a55e370059cee6ddf9d5f417df31e8b2db898baf48fc7fc9"
+    },
+    {
+      "task_id": "st_01a002c9",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "4c2a7b93dea10d8ab34e4faaecc5335762c9a9d0719a57fa3982e432c8fef4e8",
+      "receipt_bytes": 11445,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/codd.json",
+      "evidence_sha256": "d98e13de9eaf409903517deec6c6fb932eab56099877cf0d8d8a48414065003a"
+    },
+    {
+      "task_id": "st_01a002ca",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "8cab45aeb683e864e744ce6c2194f8621e1682dcb72af69c8c660021b69dc591",
+      "receipt_bytes": 8860,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/dijkstra.json",
+      "evidence_sha256": "a56f7473689f3b2d13332fee403e34b026262025e4392dc20d08affa9c238a99"
+    },
+    {
+      "task_id": "st_01a002cb",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "9e67ece444efd54f565eba28c03a01ed305e2d666db08f52fbb37cc8029c3d67",
+      "receipt_bytes": 25645,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/engelbart.json",
+      "evidence_sha256": "dc91895fb5ad6f7493f293a15b3645132089e8c15694e64f56653fe02c59ecc2"
+    },
+    {
+      "task_id": "st_01a002cc",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "97a5ef470d68d431dcad533f1e23402faff0f3a9bb3f2a40f2e98d4b32a21553",
+      "receipt_bytes": 7425,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/hopper.json",
+      "evidence_sha256": "2353bb828fea41740484d38b2c47bc5b410ed0f23e344a0f9c9b865156077b35"
+    },
+    {
+      "task_id": "st_01a002cd",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "fa2b4c7ebe36064058065b5c96e921a1c57b9c547c8482c649bf56d05408071d",
+      "receipt_bytes": 6398,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/karpathy.json",
+      "evidence_sha256": "3a764e253236f0a8ea967637fb289c6bab457b15e620887cb19fd22d30e5bb51"
+    },
+    {
+      "task_id": "st_01a002ce",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "4c865a2e53bba6fe1cca5af898069d0bd8cbb06a4c8d16e32538f7795be65bf1",
+      "receipt_bytes": 4602,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/shannon.json",
+      "evidence_sha256": "622a9dc1cff26f31a3faf691875c910974c3302fc6e6d39dab81e9aa59ffe40b"
+    },
+    {
+      "task_id": "st_01a002cf",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "9064d9f77dd1d6941199eff686085b876bd55c522a8b831a1524fc72fb38465b",
+      "receipt_bytes": 4878,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/torvalds.json",
+      "evidence_sha256": "846e2ca0338dd6d985ae27060da68f2c2716dfe4f02cfcd48cc17441c49d61da"
+    },
+    {
+      "task_id": "st_01a002d0",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "52149484a565cc39c8fafd75f7704409f76ab7a9c183d823e1f66129f3e7970b",
+      "receipt_bytes": 4034,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/turing.json",
+      "evidence_sha256": "e6cc59750166f1e835b60b07a00000e2fbdfd3986f14d911f04ec8034aa79c08"
+    },
+    {
+      "task_id": "st_01a002d1",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.2 (reasoning xhigh, variant max)",
+      "receipt_sha256": "23cc26e21db99aa501dc8e8ccf14cd545018360a221534289bd64889270a6d9e",
+      "receipt_bytes": 10050,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/von-neumann.json",
+      "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0"
+    }
+  ],
+  "cases": [
+    {
+      "skill": "berners-lee",
+      "axis": "primary",
+      "case_path": "berners-lee/TASK.md",
+      "case_sha256": "c50a89d31c30d00b8875b3edd8ac54ec6efe3b529114e3ee58e583c0718cffa0",
+      "task_id": "st_01a0027a",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/berners-lee.json",
+      "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0",
+      "deterministic_assertions": [
+        "multi_source_claim_labels",
+        "runtime_backoff_check"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "boehm",
+      "axis": "primary",
+      "case_path": "boehm/TASK.md",
+      "case_sha256": "356b2f65c428e04f35f11c292cf974ed25eed2290b6f34f67b5721a413f0f90a",
+      "task_id": "st_01a0027b",
+      "verdict": "blocked",
+      "blocked_reason": "Kordoc MCP and source screenshot were unavailable",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "deterministic_assertions": [
+        "capability_probe",
+        "blocked_evidence_inventory"
+      ],
+      "semantic_grade": "honest_capability_block",
+      "host_capability": "blocked:kordoc_document_surface_unavailable"
+    },
+    {
+      "skill": "brooks",
+      "axis": "primary",
+      "case_path": "brooks/TASK.md",
+      "case_sha256": "95c2c12d3a556c5071ceca23eafc78cbeddb35ae74a86520a155b6c45f13095e",
+      "task_id": "st_01a0027c",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/brooks.json",
+      "evidence_sha256": "3bd2198d4ca03068a55e370059cee6ddf9d5f417df31e8b2db898baf48fc7fc9",
+      "deterministic_assertions": [
+        "five_gate_no_go",
+        "smaller_plan"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "codd",
+      "axis": "primary",
+      "case_path": "codd/TASK.md",
+      "case_sha256": "6b3b3141389a8f36ccf44c0a183890e6dbd6321a182ee9b0c2ad7a7c6a93b5b4",
+      "task_id": "st_01a0027d",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/codd.json",
+      "evidence_sha256": "d98e13de9eaf409903517deec6c6fb932eab56099877cf0d8d8a48414065003a",
+      "deterministic_assertions": [
+        "read_write_cost_model",
+        "verification_commands"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "dijkstra",
+      "axis": "primary",
+      "case_path": "dijkstra/TASK.md",
+      "case_sha256": "27e0bfe13fa4900567ca287b06f920fa70ef0018d6fc1843cc23958b47144170",
+      "task_id": "st_01a0027e",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/dijkstra.json",
+      "evidence_sha256": "a56f7473689f3b2d13332fee403e34b026262025e4392dc20d08affa9c238a99",
+      "deterministic_assertions": [
+        "profile_hot_path",
+        "quadratic_scaling"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "engelbart",
+      "axis": "primary",
+      "case_path": "engelbart/TASK.md",
+      "case_sha256": "06d3f14356370d8a0228759c48bbdc8cadda57802ffa22d83a5bb87762c67345",
+      "task_id": "st_01a0027f",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/engelbart.json",
+      "evidence_sha256": "dc91895fb5ad6f7493f293a15b3645132089e8c15694e64f56653fe02c59ecc2",
+      "deterministic_assertions": [
+        "decision_fact_separation",
+        "canvas_handoff"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "hopper",
+      "axis": "primary",
+      "case_path": "hopper/TASK.md",
+      "case_sha256": "84a8373616856f963ad516fa3db38be61ebda4551f3ffbeb6897761a084f4452",
+      "task_id": "st_01a00280",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/hopper.json",
+      "evidence_sha256": "2353bb828fea41740484d38b2c47bc5b410ed0f23e344a0f9c9b865156077b35",
+      "deterministic_assertions": [
+        "deterministic_reproduction",
+        "minimal_dependency_fix"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "karpathy",
+      "axis": "primary",
+      "case_path": "karpathy/TASK.md",
+      "case_sha256": "867694e00330a13dca5d910d5290ec2aa63fbdc2ecf2af4384779ed351f6efc2",
+      "task_id": "st_01a00281",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/karpathy.json",
+      "evidence_sha256": "3a764e253236f0a8ea967637fb289c6bab457b15e620887cb19fd22d30e5bb51",
+      "deterministic_assertions": [
+        "cot_boundary",
+        "tool_honesty"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "shannon",
+      "axis": "primary",
+      "case_path": "shannon/TASK.md",
+      "case_sha256": "83e8cf4bbbfa4edb5f3b472b63da584255b34d3682a9048e057de87aeac1fb7c",
+      "task_id": "st_01a00282",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/shannon.json",
+      "evidence_sha256": "622a9dc1cff26f31a3faf691875c910974c3302fc6e6d39dab81e9aa59ffe40b",
+      "deterministic_assertions": [
+        "working_tree_regions",
+        "producer_failure_propagation"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "torvalds",
+      "axis": "primary",
+      "case_path": "torvalds/TASK.md",
+      "case_sha256": "2f80246eb5072befaf2145009bdac6772dece8c701a19d897318448f0f5e8e34",
+      "task_id": "st_01a00283",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/torvalds.json",
+      "evidence_sha256": "846e2ca0338dd6d985ae27060da68f2c2716dfe4f02cfcd48cc17441c49d61da",
+      "deterministic_assertions": [
+        "loss_surface_inventory",
+        "backup_and_stash_receipts"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "turing",
+      "axis": "primary",
+      "case_path": "turing/TASK.md",
+      "case_sha256": "1c02a343d0a5960f9d7a4c7d1d69ee3c4b784658de1d7a85dc6be3faba3fcad0",
+      "task_id": "st_01a00284",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/turing.json",
+      "evidence_sha256": "e6cc59750166f1e835b60b07a00000e2fbdfd3986f14d911f04ec8034aa79c08",
+      "deterministic_assertions": [
+        "untrusted_note_probe",
+        "single_line_fix"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "von-neumann",
+      "axis": "primary",
+      "case_path": "von-neumann/TASK.md",
+      "case_sha256": "b9070125db7ddff8bb2151cfc86555d3b580201f64434a172cfd651ce6183c22",
+      "task_id": "st_01a00285",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/von-neumann.json",
+      "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0",
+      "deterministic_assertions": [
+        "proportional_plan",
+        "binary_acceptance"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "berners-lee",
+      "axis": "boundary",
+      "case_path": "berners-lee/BOUNDARY.md",
+      "case_sha256": "a2ce8b6a8e3b52e69590a0014489ab4c90049a95de0dc99b309d6251113e5ad9",
+      "task_id": "st_01a002c6",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/berners-lee.json",
+      "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0",
+      "deterministic_assertions": [
+        "fr2_safe_stop",
+        "independent_source_classes"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "boehm",
+      "axis": "boundary",
+      "case_path": "boehm/BOUNDARY.md",
+      "case_sha256": "6dc0cdcececca1cdc1360b52b80c5fb141369c21f5c881cd755a33290e98e458",
+      "task_id": "st_01a002c7",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "deterministic_assertions": [
+        "correct_refusal",
+        "not_visible_claim"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "unavailable_expected_refusal"
+    },
+    {
+      "skill": "brooks",
+      "axis": "boundary",
+      "case_path": "brooks/BOUNDARY.md",
+      "case_sha256": "73691d2df752d8415d72884ebf16c3db0263f7a08c8b4ad9adabd362aa3f8f0f",
+      "task_id": "st_01a002c8",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/brooks.json",
+      "evidence_sha256": "3bd2198d4ca03068a55e370059cee6ddf9d5f417df31e8b2db898baf48fc7fc9",
+      "deterministic_assertions": [
+        "proportional_go",
+        "reviewer_overengineering_refusal"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "codd",
+      "axis": "boundary",
+      "case_path": "codd/BOUNDARY.md",
+      "case_sha256": "a0450701cb026b8c9568c033ede98d8e1e6cab64ac56700e013500ea264e9dae",
+      "task_id": "st_01a002c9",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/codd.json",
+      "evidence_sha256": "d98e13de9eaf409903517deec6c6fb932eab56099877cf0d8d8a48414065003a",
+      "deterministic_assertions": [
+        "advisory_mode_labels",
+        "reversal_evidence"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "dijkstra",
+      "axis": "boundary",
+      "case_path": "dijkstra/BOUNDARY.md",
+      "case_sha256": "52ede4bd1ce0207c233a83b1693482fb2c971d829af47d1554943cb8d66be63e",
+      "task_id": "st_01a002ca",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/dijkstra.json",
+      "evidence_sha256": "a56f7473689f3b2d13332fee403e34b026262025e4392dc20d08affa9c238a99",
+      "deterministic_assertions": [
+        "no_change_threshold",
+        "crossover_evidence"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "engelbart",
+      "axis": "boundary",
+      "case_path": "engelbart/BOUNDARY.md",
+      "case_sha256": "1b3cfc8c13b016e79251d06c0d7a6409c21f590fa33657b17fcdc1a2f9b77fdc",
+      "task_id": "st_01a002cb",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/engelbart.json",
+      "evidence_sha256": "dc91895fb5ad6f7493f293a15b3645132089e8c15694e64f56653fe02c59ecc2",
+      "deterministic_assertions": [
+        "no_fabricated_decision",
+        "relative_date_preserved"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "hopper",
+      "axis": "boundary",
+      "case_path": "hopper/BOUNDARY.md",
+      "case_sha256": "c5aba09f353d3aa73a1f1c85dc5600b551b8a6a727ac91759b46f91a93eed5d8",
+      "task_id": "st_01a002cc",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/hopper.json",
+      "evidence_sha256": "2353bb828fea41740484d38b2c47bc5b410ed0f23e344a0f9c9b865156077b35",
+      "deterministic_assertions": [
+        "three_hypotheses",
+        "event_fenced_reproduction"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "karpathy",
+      "axis": "boundary",
+      "case_path": "karpathy/BOUNDARY.md",
+      "case_sha256": "7603dfd84c1fed34ca598954f25a5a3666b234c7dcf307d5ac871de704be8ae8",
+      "task_id": "st_01a002cd",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/karpathy.json",
+      "evidence_sha256": "3a764e253236f0a8ea967637fb289c6bab457b15e620887cb19fd22d30e5bb51",
+      "deterministic_assertions": [
+        "fictional_tool_correction",
+        "auditable_trace"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "shannon",
+      "axis": "boundary",
+      "case_path": "shannon/BOUNDARY.md",
+      "case_sha256": "c759ac6c6a8b8c4194f9f4dadafdead22234fdd2704bbdd6c5276f2a39c38b79",
+      "task_id": "st_01a002ce",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/shannon.json",
+      "evidence_sha256": "622a9dc1cff26f31a3faf691875c910974c3302fc6e6d39dab81e9aa59ffe40b",
+      "deterministic_assertions": [
+        "zero_diff_guard",
+        "grep_failure_propagation"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "torvalds",
+      "axis": "boundary",
+      "case_path": "torvalds/BOUNDARY.md",
+      "case_sha256": "8dd5ad8cc1e4941b04c2c0d09652511ef2b3a73f70eed7e5c2f7deb6f6d14c16",
+      "task_id": "st_01a002cf",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/torvalds.json",
+      "evidence_sha256": "846e2ca0338dd6d985ae27060da68f2c2716dfe4f02cfcd48cc17441c49d61da",
+      "deterministic_assertions": [
+        "hard_reset_recovery",
+        "byte_identity_restored"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "turing",
+      "axis": "boundary",
+      "case_path": "turing/BOUNDARY.md",
+      "case_sha256": "be208fbeb545de653eca7531ebfaad9490b5fc1ee6d9107629327d05ed86dfa4",
+      "task_id": "st_01a002d0",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/turing.json",
+      "evidence_sha256": "e6cc59750166f1e835b60b07a00000e2fbdfd3986f14d911f04ec8034aa79c08",
+      "deterministic_assertions": [
+        "no_scaffolding",
+        "cleanup_receipt"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "von-neumann",
+      "axis": "boundary",
+      "case_path": "von-neumann/BOUNDARY.md",
+      "case_sha256": "950c9fa150aa732b0345ddcb13a15b0a1020d4d9efc2ac86ad9c8dd98f2a407f",
+      "task_id": "st_01a002d1",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/von-neumann.json",
+      "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0",
+      "deterministic_assertions": [
+        "three_line_plan",
+        "no_interview"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "berners-lee",
+      "axis": "operational",
+      "case_path": "berners-lee/OPERATIONAL.md",
+      "case_sha256": "c1861f1d5c1af3b73b9482be110ca8cbd90cdc3c88cc5b32eef2a74cb4e67fde",
+      "task_id": "st_01a002c6",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/berners-lee.json",
+      "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0",
+      "deterministic_assertions": [
+        "version_pinned_sources",
+        "local_retry_default_check"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "boehm",
+      "axis": "operational",
+      "case_path": "boehm/OPERATIONAL.md",
+      "case_sha256": "f4c1bba6c1b42e410d55d4a2d5fb4a1b5aa584e0f9aecba9b131e15c4a43a3db",
+      "task_id": "st_01a002c7",
+      "verdict": "blocked",
+      "blocked_reason": "Kordoc document surface and source document were unavailable",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "deterministic_assertions": [
+        "conflict_matrix",
+        "blocked_source_surface"
+      ],
+      "semantic_grade": "honest_capability_block",
+      "host_capability": "blocked:kordoc_document_surface_unavailable"
+    },
+    {
+      "skill": "brooks",
+      "axis": "operational",
+      "case_path": "brooks/OPERATIONAL.md",
+      "case_sha256": "c1497a323096e32ca4bd4a71ddaa7435bb5170632c8d933879c497eb15277d74",
+      "task_id": "st_01a002c8",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/brooks.json",
+      "evidence_sha256": "3bd2198d4ca03068a55e370059cee6ddf9d5f417df31e8b2db898baf48fc7fc9",
+      "deterministic_assertions": [
+        "serial_critical_path",
+        "falsification_experiment"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "codd",
+      "axis": "operational",
+      "case_path": "codd/OPERATIONAL.md",
+      "case_sha256": "b57d7ff97f308de032246731a32b507b4c6b94766fe4bae2139083f0c176706b",
+      "task_id": "st_01a002c9",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/codd.json",
+      "evidence_sha256": "d98e13de9eaf409903517deec6c6fb932eab56099877cf0d8d8a48414065003a",
+      "deterministic_assertions": [
+        "partition_canary",
+        "rollback_thresholds"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "dijkstra",
+      "axis": "operational",
+      "case_path": "dijkstra/OPERATIONAL.md",
+      "case_sha256": "a830f8df2cef9c8ea94eeb3953c5413a989b5b68f4c3033b7e31acc0d52de642",
+      "task_id": "st_01a002ca",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/dijkstra.json",
+      "evidence_sha256": "a56f7473689f3b2d13332fee403e34b026262025e4392dc20d08affa9c238a99",
+      "deterministic_assertions": [
+        "complexity_bound",
+        "memory_budget_invariant"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "engelbart",
+      "axis": "operational",
+      "case_path": "engelbart/OPERATIONAL.md",
+      "case_sha256": "2dd47e02264e7e8fb5a48e7b45aa6e4ce6ea347d49ccd758e8abe14b5c53f45b",
+      "task_id": "st_01a002cb",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/engelbart.json",
+      "evidence_sha256": "dc91895fb5ad6f7493f293a15b3645132089e8c15694e64f56653fe02c59ecc2",
+      "deterministic_assertions": [
+        "decision_action_question_counts",
+        "publication_boundary"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "content_available_external_write_prohibited"
+    },
+    {
+      "skill": "hopper",
+      "axis": "operational",
+      "case_path": "hopper/OPERATIONAL.md",
+      "case_sha256": "d5e128df59806cfb19a5290305f4d8660cf0863e014d720282c28b6a6702125f",
+      "task_id": "st_01a002cc",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/hopper.json",
+      "evidence_sha256": "2353bb828fea41740484d38b2c47bc5b410ed0f23e344a0f9c9b865156077b35",
+      "deterministic_assertions": [
+        "proxy_trace_divergence",
+        "live_fix_qa"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "karpathy",
+      "axis": "operational",
+      "case_path": "karpathy/OPERATIONAL.md",
+      "case_sha256": "145f015971393d1004b47bad2919afe8e6f2727cd61e648202b8fd0446ef6160",
+      "task_id": "st_01a002cd",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/karpathy.json",
+      "evidence_sha256": "3a764e253236f0a8ea967637fb289c6bab457b15e620887cb19fd22d30e5bb51",
+      "deterministic_assertions": [
+        "conflict_free_prompt",
+        "adversarial_rubric"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "structural_evaluation_available_live_model_not_required"
+    },
+    {
+      "skill": "shannon",
+      "axis": "operational",
+      "case_path": "shannon/OPERATIONAL.md",
+      "case_sha256": "ab8bcf723d09da84c238d0e831d0a8a68dc1b9965172c9f259c475b4f58ce9d0",
+      "task_id": "st_01a002ce",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/shannon.json",
+      "evidence_sha256": "622a9dc1cff26f31a3faf691875c910974c3302fc6e6d39dab81e9aa59ffe40b",
+      "deterministic_assertions": [
+        "four_metrics_before_after",
+        "behavior_sweep"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "torvalds",
+      "axis": "operational",
+      "case_path": "torvalds/OPERATIONAL.md",
+      "case_sha256": "83fe75104b8b2c74bb512d2d893525fe0943fe6e984611c1a74347be48552007",
+      "task_id": "st_01a002cf",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/torvalds.json",
+      "evidence_sha256": "846e2ca0338dd6d985ae27060da68f2c2716dfe4f02cfcd48cc17441c49d61da",
+      "deterministic_assertions": [
+        "atomic_rebase",
+        "force_with_lease_rejection"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "turing",
+      "axis": "operational",
+      "case_path": "turing/OPERATIONAL.md",
+      "case_sha256": "72ac94fc8a448af6d345084e1ddffde58d1195e1cd0fb7e51d2ba6ed2a5e4e1c",
+      "task_id": "st_01a002d0",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/turing.json",
+      "evidence_sha256": "e6cc59750166f1e835b60b07a00000e2fbdfd3986f14d911f04ec8034aa79c08",
+      "deterministic_assertions": [
+        "red_green_race",
+        "misleading_success_guard"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "skill": "von-neumann",
+      "axis": "operational",
+      "case_path": "von-neumann/OPERATIONAL.md",
+      "case_sha256": "0435bf422e4d74d335bc21272fcdd14eb426b4c8afd6e0124a7e4bf2fc842751",
+      "task_id": "st_01a002d1",
+      "verdict": "pass",
+      "hidden_holdout": false,
+      "evidence_path": "evidence-records/von-neumann.json",
+      "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0",
+      "deterministic_assertions": [
+        "repo_grounded_plan",
+        "dependency_matrix_acceptance"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

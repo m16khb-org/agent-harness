@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "von-neumann",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a00285",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "a790cbc5a751f7122e9a316eeab67f186d34d938c9e5d01b184fba99fc4e30fc",
+      "receipt_bytes": 869
+    },
+    {
+      "task_id": "st_01a002d1",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "23cc26e21db99aa501dc8e8ccf14cd545018360a221534289bd64889270a6d9e",
+      "receipt_bytes": 10050
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "von-neumann/TASK.md",
+      "fixture_sha256": "b9070125db7ddff8bb2151cfc86555d3b580201f64434a172cfd651ce6183c22",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "proportional_plan",
+        "binary_acceptance"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "von-neumann/BOUNDARY.md",
+      "fixture_sha256": "950c9fa150aa732b0345ddcb13a15b0a1020d4d9efc2ac86ad9c8dd98f2a407f",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "three_line_plan",
+        "no_interview"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "von-neumann/OPERATIONAL.md",
+      "fixture_sha256": "0435bf422e4d74d335bc21272fcdd14eb426b4c8afd6e0124a7e4bf2fc842751",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "repo_grounded_plan",
+        "dependency_matrix_acceptance"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}
