@@ -2,7 +2,6 @@ package issueopsretention
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -18,12 +17,13 @@ func TestRepositoryReadsListsAndDeletesRecordWithStagedArtifact(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops_v1")
 	id := "io-retention01"
 	record := issueopscontract.IssueOpsRecord{
+		OK:            true,
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
 		ID:            id,
 		Phase:         issueopscontract.IssueOpsPhaseDone,
 		UpdatedAt:     "2026-06-01T00:00:00Z",
 	}
-	data, err := json.Marshal(record)
+	data, err := issueopsrecord.Encode(record)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestRepositoryReadsListsAndDeletesRecordWithStagedArtifact(t *testing.T) {
 	if err != nil || !got.OK || got.ID != id {
 		t.Fatalf("read returned %+v, %v", got, err)
 	}
-	if err := repository.Delete(context.Background(), stateRoot, id); err != nil {
+	if err := repository.DeleteIfUnchanged(context.Background(), stateRoot, id, got); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok, err := database.Get(issueopsrecord.Bucket(), id); err != nil || ok {

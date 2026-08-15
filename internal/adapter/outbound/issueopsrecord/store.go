@@ -226,6 +226,40 @@ func (Store) Delete(
 	return database.Apply(ctx, mutations)
 }
 
+func (Store) DeleteIfUnchanged(
+	ctx context.Context,
+	stateRoot string,
+	id string,
+	expected issueopscontract.IssueOpsRecord,
+	relatedBuckets ...string,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	id, err := NormalizeID(id)
+	if err != nil {
+		return err
+	}
+	expectedData, err := Encode(expected)
+	if err != nil {
+		return err
+	}
+	database, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	mutations := make([]port.RecordMutation, 0, len(relatedBuckets)+1)
+	for _, relatedBucket := range relatedBuckets {
+		mutations = append(mutations, port.RecordMutation{Bucket: relatedBucket, ID: id, Delete: true})
+	}
+	mutations = append(mutations, port.RecordMutation{Bucket: bucket, ID: id, Delete: true})
+	return database.CompareAndApply(
+		ctx,
+		[]port.ExpectedRecord{{Bucket: bucket, ID: id, Data: expectedData}},
+		mutations,
+	)
+}
+
 func open(ctx context.Context, stateRoot, id string) (string, *sqlstore.DB, error) {
 	if err := ctx.Err(); err != nil {
 		return id, nil, err

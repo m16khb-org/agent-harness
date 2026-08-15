@@ -10,7 +10,7 @@ import (
 type Repository interface {
 	ListIDs(context.Context, string) ([]string, error)
 	ReadUnchecked(context.Context, string, string) (issueopsretentioncontract.Record, error)
-	Delete(context.Context, string, string) error
+	DeleteIfUnchanged(context.Context, string, string, issueopsretentioncontract.Record) error
 }
 
 type Clock interface {

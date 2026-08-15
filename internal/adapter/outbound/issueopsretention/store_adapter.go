@@ -25,6 +25,11 @@ func (repository Repository) ReadUnchecked(
 	return repository.Store.Read(ctx, stateRoot, id)
 }
 
-func (repository Repository) Delete(ctx context.Context, stateRoot, id string) error {
-	return repository.Store.Delete(ctx, stateRoot, id, artifactStageBucket)
+func (repository Repository) DeleteIfUnchanged(
+	ctx context.Context,
+	stateRoot string,
+	id string,
+	record issueopsretentioncontract.Record,
+) error {
+	return repository.Store.DeleteIfUnchanged(ctx, stateRoot, id, record, artifactStageBucket)
 }

@@ -25,9 +25,18 @@ func runIssueOpsPrune(args []string) error {
 	result, err := issueOpsCLIDeps.PruneIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), age, *confirm)
 	if err != nil {
 		if *jsonOut {
-			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+			if printErr := printJSON(result); printErr != nil {
 				return printErr
 			}
+		} else {
+			fmt.Printf(
+				"incomplete: %d done cycles pruned, %d kept, %d unreadable, %d delete failures (cutoff %s)\n",
+				len(result.Pruned),
+				len(result.Kept),
+				result.ReadErrors,
+				result.DeleteErrors,
+				result.Cutoff,
+			)
 		}
 		return err
 	}

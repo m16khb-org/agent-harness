@@ -3,6 +3,7 @@ package issueopsretention
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -100,22 +101,100 @@ func TestServiceReportsUnreadableRecordsAndContinues(t *testing.T) {
 
 	result, err := service.Prune(context.Background(), "/state", 30*24*time.Hour, false)
 
-	if err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, ErrIncomplete) {
+		t.Fatalf("error = %v, want ErrIncomplete", err)
+	}
+	if result.OK {
+		t.Fatal("retention with unreadable records must not report OK")
 	}
 	if len(result.Unreadable) != 1 ||
 		result.Unreadable[0] != "broken" ||
+		result.ReadErrors != 1 ||
+		len(result.UnreadableDiagnostics) != 1 ||
+		result.UnreadableDiagnostics[0].Code != "read_failed" ||
 		len(result.Pruned) != 1 ||
 		result.Pruned[0] != "old" {
 		t.Fatalf("retention result = %+v", result)
 	}
 }
 
+func TestServiceBoundsUnreadableDiagnosticsWithoutStoppingPrune(t *testing.T) {
+	now := time.Date(2026, 8, 11, 4, 0, 0, 0, time.UTC)
+	ids := make([]string, 0, unreadableReportLimit+6)
+	readErrors := make(map[string]error, unreadableReportLimit+5)
+	for index := 0; index < unreadableReportLimit+5; index++ {
+		id := fmt.Sprintf("broken-%02d", index)
+		ids = append(ids, id)
+		readErrors[id] = errors.New("invalid state")
+	}
+	ids = append(ids, "old")
+	repository := &fakeRepository{
+		ids: ids,
+		records: map[string]issueopscontract.IssueOpsRecord{
+			"old": {
+				ID:        "old",
+				Phase:     issueopscontract.IssueOpsPhaseDone,
+				UpdatedAt: now.Add(-60 * 24 * time.Hour).Format(time.RFC3339Nano),
+				Execution: &issueopscontract.Execution{Lease: issueopscontract.WriteLease{Status: issueopscontract.LeaseStatusReleased}},
+			},
+		},
+		readErrors: readErrors,
+	}
+
+	result, err := NewService(repository, fixedClock{now: now}).Prune(context.Background(), "/state", 30*24*time.Hour, false)
+	if !errors.Is(err, ErrIncomplete) {
+		t.Fatalf("error = %v, want ErrIncomplete", err)
+	}
+	if result.ReadErrors != unreadableReportLimit+5 ||
+		len(result.Unreadable) != unreadableReportLimit ||
+		len(result.UnreadableDiagnostics) != unreadableReportLimit ||
+		len(result.Pruned) != 1 || result.Pruned[0] != "old" {
+		t.Fatalf("bounded retention result = %+v", result)
+	}
+}
+
+func TestServiceReturnsPartialReceiptWhenLaterDeleteFails(t *testing.T) {
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	old := issueopscontract.IssueOpsRecord{
+		SchemaVersion: issueopscontract.IssueOpsCurrentSchemaVersion,
+		ID:            "old",
+		Phase:         issueopscontract.IssueOpsPhaseDone,
+		UpdatedAt:     now.Add(-60 * 24 * time.Hour).Format(time.RFC3339Nano),
+	}
+	later := old
+	later.ID = "later"
+	repository := &fakeRepository{
+		ids:          []string{"old", "later"},
+		records:      map[string]issueopscontract.IssueOpsRecord{"old": old, "later": later},
+		deleteErrors: map[string]error{"later": errors.New("compare-and-swap failed")},
+	}
+
+	result, err := NewService(repository, fixedClock{now: now}).Prune(
+		context.Background(),
+		"/state",
+		30*24*time.Hour,
+		true,
+	)
+
+	if !errors.Is(err, ErrIncomplete) {
+		t.Fatalf("error = %v", err)
+	}
+	if result.OK ||
+		result.Error != ErrIncomplete.Error() ||
+		result.DeleteErrors != 1 ||
+		len(result.Pruned) != 1 || result.Pruned[0] != "old" ||
+		len(result.Failed) != 1 || result.Failed[0] != "later" ||
+		len(result.DeleteDiagnostics) != 1 || result.DeleteDiagnostics[0].Code != "delete_failed" {
+		t.Fatalf("partial retention result = %+v", result)
+	}
+}
+
 type fakeRepository struct {
-	ids        []string
-	records    map[string]issueopscontract.IssueOpsRecord
-	readErrors map[string]error
-	deleted    []string
+	ids          []string
+	records      map[string]issueopscontract.IssueOpsRecord
+	readErrors   map[string]error
+	deleteErrors map[string]error
+	deleted      []string
 }
 
 func (repository *fakeRepository) ListIDs(context.Context, string) ([]string, error) {
@@ -129,7 +208,10 @@ func (repository *fakeRepository) ReadUnchecked(_ context.Context, _ string, id 
 	return repository.records[id], nil
 }
 
-func (repository *fakeRepository) Delete(_ context.Context, _ string, id string) error {
+func (repository *fakeRepository) DeleteIfUnchanged(_ context.Context, _ string, id string, _ issueopscontract.IssueOpsRecord) error {
+	if err := repository.deleteErrors[id]; err != nil {
+		return err
+	}
 	repository.deleted = append(repository.deleted, id)
 	return nil
 }
