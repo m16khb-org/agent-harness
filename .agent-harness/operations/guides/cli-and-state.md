@@ -67,6 +67,12 @@ agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git st
 agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 ```
 
+`policy check` is a predictive inspection command. A successfully computed
+evaluation exits `0` even when its payload says `allowed: false`; automation
+must parse `allowed` and `deny_reasons`. Use `policy fake-run` or the
+enforcement surface when the process exit code must reject a denied command;
+those return a nonzero policy-denied exit after printing the evaluation.
+
 For deeper verification, use `.agent-harness/operations/verification.md` and `.agent-harness/TESTING.md`.
 
 ## Related references

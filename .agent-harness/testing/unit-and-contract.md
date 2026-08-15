@@ -76,6 +76,19 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - **shape 불변식 테스트는 우연한 수치를 고정하지 않는다.** #176에서 `TestStepsKeepTheirExistingShape`가 "3단계"를 불변식으로 검사했지만, 실제 계약은 첫 단계가 MCP이고 마지막이 `fail`이며 사이에 provider CLI `fallback_api`가 오고 `Order`가 연속이라는 것이었다. 단계를 하나 늘리는 정당한 변경이 그 테스트를 깨뜨렸다. 이름이 "shape"인 테스트는 구조를 검사하고, 개수·인덱스는 그 구조가 요구할 때만 고정한다.
 - filesystem test는 temporary directory를 사용하고, workspace root 밖 접근 거부를 검증한다.
 - secret redaction test는 token-like fixture가 로그/응답에 남지 않는지 확인한다.
+- shipped skill의 executable shell fence는
+  `python3 scripts/verify-skill-shell.py`로 syntax, swallowed failure,
+  fabricated zero, unsafe command expansion/word splitting, destructive
+  annotation을 검사한다. Markdown 설명용 `text` fence는 실행 대상으로 취급하지
+  않는다. 명시한 input path가 없거나 skill contract Markdown을 하나도 찾지
+  못하면 exit 2로 실패하고, `--help`는 usage를 출력한다. 따라서 CI path typo가
+  `0 file(s)` green으로 통과할 수 없다.
+- Parent issue create 회귀는 provider 호출 전 intent 존재, concurrent begin
+  차단, proven non-invocation만 retry, started/unknown 자동 재시도 차단,
+  zero/one/many marker candidate, delayed candidate, title/body digest mismatch,
+  live verification failure, URL+receipt atomic write, dry-run no-mutation을
+  고정한다. Provider command test는 start failure와 post-start ambiguity를
+  `IssueProviderCreateError.Invoked`로 구분한다.
 
 ## Contract / Golden tests
 
@@ -111,6 +124,8 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `agent-harness inspect/doctor/docs/preflight/policy/state` 실제 JSON response normalization 결과
 - `agent-harness doctor --json` comprehensive diagnostics output shape
 - `agent-harness state write/read/list/prune/doctor/migrate` output shape
+- `issueops prune` unreadable-row total과 bounded `{id,code}` diagnostics
+- `issueops remote create-issue/reconcile-issue` intent and adoption fields
 - command policy allow/deny 결과
 - command policy catalog table과 `CommandPolicySummary().catalog` 노출
 - state write/read/prune/doctor/migrate serialization
