@@ -135,6 +135,27 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"계획 세워", "플랜 짜", "설계해줘", "계획해줘"},
 	},
 	{
+		Tool:           "turing",
+		Reason:         "Secondary hint: use the turing skill for evidence-bound execution with measurable criteria and cleanup receipts.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"evidence-bound", "cleanup receipt", "success criteria and evidence"},
+		PromptKeywords: []string{"완료 기준별 증거", "증거와 완료 기준", "정리 영수증"},
+	},
+	{
+		Tool:           "boehm",
+		Reason:         "Secondary hint: use the boehm skill for risk-driven planning-document, OCR, table, and screenshot analysis.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"kordoc", "ocr uncertainty", "planning document screenshot", "planning document table"},
+		PromptKeywords: []string{"기획 문서의 스크린샷", "기획 문서 캡처", "기획 문서 표", "OCR 불확실성"},
+	},
+	{
+		Tool:           "engelbart",
+		Reason:         "Secondary hint: use the engelbart skill to turn meeting transcripts into durable team memory and Canvas-ready handoffs.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"meeting transcript", "meeting minutes", "slack canvas handoff"},
+		PromptKeywords: []string{"회의 전사본", "회의 녹취", "회의록과 Slack Canvas", "회의록 만들어"},
+	},
+	{
 		Tool:           "shannon",
 		Reason:         "Secondary hint: use the shannon skill for quantitative code-quality measurement — SNR/entropy/redundancy before and after cleanup.",
 		Priority:       PrioritySecondary,

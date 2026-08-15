@@ -77,6 +77,24 @@ func issueOpsPioneerSkillEvidenceComplete(fixture issueopscontract.IssueOpsBench
 			hasStructuredClause(evidence, "destructive confirmation", "confirmation gate") &&
 			hasStructuredClause(evidence, "atomic scope", "atomic") &&
 			hasStructuredClause(evidence, "force-with-lease", "--force-with-lease")
+	case "boehm":
+		return hasStructuredClause(evidence, "document scope") &&
+			hasStructuredClause(evidence, "ocr evidence", "screenshot evidence") &&
+			hasStructuredClause(evidence, "requirement ledger") &&
+			hasStructuredClause(evidence, "contradiction") &&
+			hasStructuredClause(evidence, "risk-driven recommendation")
+	case "brooks":
+		return hasStructuredClause(evidence, "essential complexity") &&
+			hasStructuredClause(evidence, "accidental complexity") &&
+			hasStructuredClause(evidence, "second-system effect") &&
+			hasStructuredClause(evidence, "conceptual integrity") &&
+			hasStructuredClause(evidence, "go/no-go verdict", "no-go verdict")
+	case "engelbart":
+		return hasStructuredClause(evidence, "source fidelity") &&
+			hasStructuredClause(evidence, "decision log") &&
+			hasStructuredClause(evidence, "action owners") &&
+			hasStructuredClause(evidence, "uncertainty") &&
+			hasStructuredClause(evidence, "canvas handoff")
 	case "issueops":
 		return hasStructuredClause(evidence, "durable state record", "state record") &&
 			hasStructuredClause(evidence, "phase routing", "routing") &&

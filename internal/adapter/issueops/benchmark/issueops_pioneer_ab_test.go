@@ -2,6 +2,7 @@ package benchmark
 
 import (
 	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/pioneerskill"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,8 +26,9 @@ func pioneerABFixturesForTest(t *testing.T) []issueopscontract.IssueOpsBenchmark
 			pioneers = append(pioneers, fixture)
 		}
 	}
-	if len(pioneers) != 10 {
-		t.Fatalf("expected 10 pioneer fixtures, got %d", len(pioneers))
+	expected := len(pioneerskill.Names()) + 1
+	if len(pioneers) != expected {
+		t.Fatalf("expected %d targeted fixtures, got %d", expected, len(pioneers))
 	}
 	return pioneers
 }
@@ -51,6 +53,12 @@ func pioneerABEvidenceForTest(target string) string {
 		return "Input/output contract: prompt receives issue text returns JSON\nTest suite: 3 happy cases and 2 edge cases\nAdversarial cases: hidden reasoning and fake tool injection\nOne-variable iteration: only moved output spec\nPrivacy/tool truth: no hidden chain-of-thought; tools verified or illustrative"
 	case "torvalds":
 		return "Git state proof: status branch log and worktree list captured\nRecovery path: backup ref verified\nDestructive confirmation gate: exact reset command requires approval\nAtomic scope: one intent per commit\nForce-with-lease rule: no raw force push"
+	case "boehm":
+		return "Document scope: Korean planning document and embedded visuals\nOCR evidence: small text marked uncertain\nRequirement ledger: body table and implementation requirements mapped\nContradiction: email-only table conflicts with social-login body\nRisk-driven recommendation: confirm conflict before implementation"
+	case "brooks":
+		return "Essential complexity: one bounded CLI behavior change\nAccidental complexity: workflow engine queue and policy DSL removed\nSecond-system effect: broad platform rewrite rejected\nConceptual integrity: one existing command path retained\nGO/NO-GO verdict: NO-GO broad plan; GO narrowed change"
+	case "engelbart":
+		return "Source fidelity: synthetic transcript preserved without invented facts\nDecision log: production deployment remains undecided\nAction owners: backend owner checks the error dashboard\nUncertainty: deployment date is explicitly unknown\nCanvas handoff: minutes and tracking fields prepared"
 	case "issueops":
 		return "Durable state record: issueops id and readiness gates recorded\nPhase routing: problem issue plan implement feedback pr cleanup\nFlow evidence: issue plan TDD subagent decision feedback PR linked\nHook boundary: hooks do not create issues edit files or run tests\nCleanup/readiness evidence: strict readiness and cleanup choices recorded"
 	default:
@@ -95,8 +103,8 @@ func TestPioneerSignaturePresentVsAbsentAB(t *testing.T) {
 	if present.CriticalFailureCount != 0 {
 		t.Fatalf("present run must clear criticals, got %d", present.CriticalFailureCount)
 	}
-	if absent.CriticalFailureCount != 10 {
-		t.Fatalf("absent run must trip the pioneer critical on all 10 fixtures, got %d", absent.CriticalFailureCount)
+	if absent.CriticalFailureCount != len(fixtures) {
+		t.Fatalf("absent run must trip the pioneer critical on all %d fixtures, got %d", len(fixtures), absent.CriticalFailureCount)
 	}
 }
 

@@ -37,6 +37,9 @@ func TestPioneerSkillRoutingHintsFireOnMatchingPrompts(t *testing.T) {
 		{"변경사항 커밋하고 푸시해줘", "atomic-commit-push"},
 		{"이 기능 구현 계획 세워줘", "von-neumann"},
 		{"draft a decision-complete work plan", "von-neumann"},
+		{"완료 기준별 증거와 cleanup receipt를 남겨줘", "turing"},
+		{"기획 문서의 스크린샷과 OCR 불확실성을 분석해줘", "boehm"},
+		{"이 회의 전사본을 회의록과 Slack Canvas handoff로 만들어줘", "engelbart"},
 		{"이 diff 슬롭 정리 전후 품질 측정해줘", "shannon"},
 		{"이 프롬프트 최적화해줘", "karpathy"},
 	}
@@ -51,7 +54,7 @@ func TestPioneerSkillRoutingHintsFireOnMatchingPrompts(t *testing.T) {
 
 func TestPioneerSkillRoutingHintsStayQuietOnUnrelatedPrompts(t *testing.T) {
 	tools := hintToolsFor(t, "안녕하세요, 오늘 날씨 어때요?")
-	for _, skill := range []string{"berners-lee", "hopper", "dijkstra", "codd", "torvalds", "atomic-commit-push", "von-neumann", "shannon", "karpathy"} {
+	for _, skill := range []string{"berners-lee", "hopper", "dijkstra", "codd", "torvalds", "atomic-commit-push", "von-neumann", "turing", "boehm", "engelbart", "shannon", "karpathy"} {
 		if tools[skill] {
 			t.Fatalf("unrelated prompt must not surface %s", skill)
 		}

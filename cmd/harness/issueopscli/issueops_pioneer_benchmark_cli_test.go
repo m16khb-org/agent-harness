@@ -25,8 +25,8 @@ func TestRunIssueOpsBenchmarkRunCoversPioneerFixturesViaCLI(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("parse benchmark run output: %v\n%s", err, out)
 	}
-	if result.FixtureCount != 15 {
-		t.Fatalf("expected 15 fixtures through the CLI path, got %d", result.FixtureCount)
+	if result.FixtureCount != 18 {
+		t.Fatalf("expected 18 fixtures through the CLI path, got %d", result.FixtureCount)
 	}
 	if result.CriticalFailureCount != 0 {
 		t.Fatalf("expected zero critical failures, got %d: %+v", result.CriticalFailureCount, result.Scores)
@@ -50,8 +50,8 @@ func TestRunIssueOpsBenchmarkRunCoversPioneerFixturesViaCLI(t *testing.T) {
 			}
 		}
 	}
-	if pioneerSeen != 10 {
-		t.Fatalf("expected 10 pioneer fixtures scored via CLI, got %d", pioneerSeen)
+	if pioneerSeen != 13 {
+		t.Fatalf("expected 13 targeted fixtures scored via CLI, got %d", pioneerSeen)
 	}
 }
 
