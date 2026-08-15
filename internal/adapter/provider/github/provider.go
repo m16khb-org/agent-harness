@@ -25,9 +25,20 @@ func NewProvider() Provider { return Provider{} }
 func (Provider) Name() string { return "github" }
 
 func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.IssueProviderCreateIssueResult, error) {
+	return Provider{}.CreateIssueContext(context.Background(), req)
+}
+
+func (Provider) CreateIssueContext(ctx context.Context, req port.IssueProviderCreateIssueRequest) (port.IssueProviderCreateIssueResult, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		return port.IssueProviderCreateIssueResult{OK: false}, fmt.Errorf("issue title is required")
+	}
+	projectSelector, err := githubProjectSelector(req.ProjectKey)
+	if err != nil {
+		return port.IssueProviderCreateIssueResult{OK: false}, err
+	}
+	if req.Confirm && projectSelector == "" {
+		return port.IssueProviderCreateIssueResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: fmt.Errorf("GitHub project authority is required")}
 	}
 	body := strings.TrimSpace(req.Body)
 	args := []string{"issue", "create", "--title", title}
@@ -40,15 +51,22 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 	for _, assignee := range req.Assignees {
 		args = append(args, "--assignee", assignee)
 	}
+	if projectSelector != "" {
+		args = append(args, "--repo", projectSelector)
+	}
 	if !req.Confirm {
 		return port.IssueProviderCreateIssueResult{
 			OK:      true,
 			Preview: providerutil.DryRunPreview("gh", args...),
 		}, nil
 	}
-	result, err := runGhJSON(args, req.Repo, "issue")
+	result, err := runGhJSONContext(ctx, args, req.Repo, "issue")
 	if err != nil {
-		return port.IssueProviderCreateIssueResult{OK: false}, err
+		return port.IssueProviderCreateIssueResult{
+			OK:     false,
+			URL:    result.URL,
+			Number: createdArtifactNumber(result.URL),
+		}, err
 	}
 	// #314: public contract가 선언한 number를 canonical URL에서 투영한다.
 	// 판정하지 못하면 성공으로 오인하지 않고 reconciliation을 요구한다 —
@@ -56,12 +74,44 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 	number := createdArtifactNumber(result.URL)
 	if number == "" {
 		return port.IssueProviderCreateIssueResult{OK: false, URL: result.URL},
-			fmt.Errorf("created issue URL %q has no canonical number; needs reconciliation; not retried", result.URL)
+			&port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("created issue URL %q has no canonical number; needs reconciliation; not retried", result.URL)}
 	}
 	return port.IssueProviderCreateIssueResult{
 		OK:     true,
 		URL:    result.URL,
 		Number: number,
+	}, nil
+}
+
+func (Provider) FindIssueCreateCandidates(ctx context.Context, req port.IssueProviderFindIssueCreateCandidatesRequest) (port.IssueProviderFindIssueCreateCandidatesResult, error) {
+	const searchLimit = 100
+	authority := strings.TrimSpace(req.ProjectAuthority)
+	projectSelector, err := githubProjectSelector(authority)
+	if err != nil || projectSelector == "" || strings.TrimSpace(req.Marker) == "" {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("invalid GitHub issue create reconciliation request")
+	}
+	args := []string{"issue", "list", "--repo", projectSelector, "--state", "all", "--limit", strconv.Itoa(searchLimit), "--search", req.Marker, "--json", "url,title,body"}
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "gh", args...)
+	if err != nil {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("gh issue reconciliation failed: %w", err)
+	}
+	var rows []struct {
+		URL   string `json:"url"`
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+	if err := json.Unmarshal(out, &rows); err != nil {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("parse gh issue reconciliation response: %w", err)
+	}
+	candidates := make([]port.IssueProviderIssueCreateCandidate, 0, len(rows))
+	for _, row := range rows {
+		if strings.Contains(row.Body, req.Marker) {
+			candidates = append(candidates, port.IssueProviderIssueCreateCandidate{URL: row.URL, Title: row.Title, Body: row.Body})
+		}
+	}
+	return port.IssueProviderFindIssueCreateCandidatesResult{
+		Candidates: candidates,
+		Truncated:  len(rows) >= searchLimit,
 	}, nil
 }
 
@@ -494,22 +544,27 @@ type githubAssignee struct {
 }
 
 func runGhJSON(args []string, repo string, kind string) (ghResult, error) {
-	if _, err := exec.LookPath("gh"); err != nil {
-		return ghResult{}, fmt.Errorf("gh CLI is not installed; install it from https://cli.github.com")
+	return runGhJSONContext(context.Background(), args, repo, kind)
+}
+
+func runGhJSONContext(ctx context.Context, args []string, repo string, kind string) (ghResult, error) {
+	out, invoked, err := providerutil.RunBoundedMutationContext(ctx, repo, "gh", args...)
+	result := parseGhOutput(string(out))
+	if err == nil {
+		return result, nil
 	}
-	cmd := exec.Command("gh", args...)
-	if repo != "" {
-		cmd.Dir = repo
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		stderr := err.Error()
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr = strings.TrimSpace(string(exitErr.Stderr))
+	if !invoked {
+		cause := err
+		if strings.Contains(err.Error(), "executable file not found") {
+			cause = fmt.Errorf("gh CLI is not installed; install it from https://cli.github.com")
 		}
-		return ghResult{}, fmt.Errorf("gh %s create failed: %s", kind, stderr)
+		return ghResult{}, &port.IssueProviderCreateError{Invoked: false, Err: cause}
 	}
-	return parseGhOutput(string(out)), nil
+	diagnostic := strings.TrimPrefix(providerutil.BoundedDiagnostic(err.Error(), 384), "command failed after start: ")
+	if createdArtifactNumber(result.URL) != "" {
+		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("gh %s create failed: %s; outcome unknown with a canonical URL returned separately; do not retry", kind, diagnostic)}
+	}
+	return ghResult{}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("gh %s create failed: %s; outcome unknown; do not retry", kind, diagnostic)}
 }
 
 // parseGhOutput extracts the created artifact's URL from gh output. No create

@@ -1,12 +1,19 @@
 package remoteverify
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 	"time"
+
+	policydomain "agent-harness/internal/domain/policy"
 )
+
+const maxRemoteVerifyDiagnosticBytes = 2048
+const maxRemoteVerifyOutputBytes = 256 * 1024
+const remoteVerifyCommandTimeout = 30 * time.Second
 
 // remoteVerifyAttempts is the bounded number of times a load-bearing gh/glab
 // verification exec is attempted before a transient failure is surfaced. It is a
@@ -27,7 +34,12 @@ var remoteVerifyBackoff = 50 * time.Millisecond
 // definitively-not-found failure is returned immediately (fail-fast) so the
 // documented fallback (MCP, or the work_items->issues fallback) can engage
 // without burning retries.
-func runRemoteVerifyCommand(build func() *exec.Cmd) ([]byte, error) {
+func runRemoteVerifyCommand(ctx context.Context, build func(context.Context) *exec.Cmd) ([]byte, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, remoteVerifyCommandTimeout)
+	defer cancel()
 	attempts := remoteVerifyAttempts
 	if attempts < 1 {
 		attempts = 1
@@ -35,19 +47,96 @@ func runRemoteVerifyCommand(build func() *exec.Cmd) ([]byte, error) {
 	var lastOut []byte
 	var lastErr error
 	for attempt := 0; attempt < attempts; attempt++ {
-		out, err := build().Output()
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		out, err := executeBoundedRemoteVerifyCommand(build(ctx))
 		if err == nil {
 			return out, nil
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return out, ctxErr
 		}
 		lastOut, lastErr = out, err
 		if !isRetryableCommandError(err) || attempt == attempts-1 {
 			break
 		}
 		if remoteVerifyBackoff > 0 {
-			time.Sleep(remoteVerifyBackoff)
+			timer := time.NewTimer(remoteVerifyBackoff)
+			select {
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return lastOut, ctx.Err()
+			case <-timer.C:
+			}
 		}
 	}
 	return lastOut, lastErr
+}
+
+func executeBoundedRemoteVerifyCommand(cmd *exec.Cmd) ([]byte, error) {
+	stdout := &remoteVerifyBuffer{limit: maxRemoteVerifyOutputBytes}
+	stderr := &remoteVerifyBuffer{limit: maxRemoteVerifyDiagnosticBytes}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	err := cmd.Wait()
+	if stdout.truncated {
+		return append([]byte(nil), stdout.data...),
+			fmt.Errorf("remote verification output exceeds %d bytes", maxRemoteVerifyOutputBytes)
+	}
+	if err != nil {
+		diagnostic := policydomain.BoundedDiagnostic(stderr.String()+" "+err.Error(), maxRemoteVerifyDiagnosticBytes)
+		return append([]byte(nil), stdout.data...), &remoteVerifyCommandError{
+			cause:          err,
+			diagnostic:     diagnostic,
+			classification: strings.ToLower(stderr.String()),
+		}
+	}
+	return append([]byte(nil), stdout.data...), nil
+}
+
+type remoteVerifyBuffer struct {
+	data      []byte
+	limit     int
+	truncated bool
+}
+
+func (buffer *remoteVerifyBuffer) Write(value []byte) (int, error) {
+	size := len(value)
+	remaining := buffer.limit - len(buffer.data)
+	if remaining > 0 {
+		if len(value) > remaining {
+			value = value[:remaining]
+		}
+		buffer.data = append(buffer.data, value...)
+	}
+	if size > remaining {
+		buffer.truncated = true
+	}
+	return size, nil
+}
+
+func (buffer *remoteVerifyBuffer) String() string {
+	return string(buffer.data)
+}
+
+type remoteVerifyCommandError struct {
+	cause          error
+	diagnostic     string
+	classification string
+}
+
+func (err *remoteVerifyCommandError) Error() string {
+	return err.diagnostic
+}
+
+func (err *remoteVerifyCommandError) Unwrap() error {
+	return err.cause
 }
 
 // nonRetryableCommandSignals are lowercased stderr fragments that mark a gh/glab
@@ -85,6 +174,13 @@ func isRetryableCommandError(err error) bool {
 		// Binary missing or not executable on PATH: retrying won't help.
 		return false
 	}
+	if bounded, ok := errors.AsType[*remoteVerifyCommandError](err); ok {
+		for _, signal := range nonRetryableCommandSignals {
+			if strings.Contains(bounded.classification, signal) {
+				return false
+			}
+		}
+	}
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		stderr := strings.ToLower(string(exitErr.Stderr))
 		for _, signal := range nonRetryableCommandSignals {
@@ -120,9 +216,16 @@ func requireRemoteValues(kind string, required []string, actual []string) error 
 }
 
 func commandOutputError(err error) error {
-	if exitErr, ok := err.(*exec.ExitError); ok {
+	if bounded, ok := errors.AsType[*remoteVerifyCommandError](err); ok {
+		return fmt.Errorf("%s", policydomain.BoundedDiagnostic(bounded.diagnostic, maxRemoteVerifyDiagnosticBytes))
+	}
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		if stderr := strings.TrimSpace(string(exitErr.Stderr)); stderr != "" {
-			return fmt.Errorf("%s", stderr)
+			diagnostic := policydomain.RedactDiagnostic(stderr)
+			if len(diagnostic) > maxRemoteVerifyDiagnosticBytes {
+				diagnostic = diagnostic[:maxRemoteVerifyDiagnosticBytes]
+			}
+			return fmt.Errorf("%s", diagnostic)
 		}
 	}
 	return err

@@ -492,6 +492,9 @@ func runIssueOpsList(args []string) error {
 		if entry.CleanupFailureStep != "" {
 			flags += " [cleanup-failed:" + entry.CleanupFailureStep + "]"
 		}
+		if entry.IssueCreateStatus != "" {
+			flags += " [issue-create:" + entry.IssueCreateStatus + "]"
+		}
 		fmt.Printf("- %s %s phase=%s lease=%s%s\n", entry.ID, entry.Branch, entry.Phase, entry.LeaseStatus, flags)
 	}
 	return nil

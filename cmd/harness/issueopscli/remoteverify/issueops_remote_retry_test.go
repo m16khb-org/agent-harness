@@ -1,11 +1,14 @@
 package remoteverify
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 // withInstantBackoff drops the inter-attempt sleep so retry behaviour is tested
@@ -67,6 +70,45 @@ exit 1
 	}
 	if got := readCount(t, countPath); got != 1 {
 		t.Fatalf("gh invocation count = %d, want 1 (auth error must fail fast without retry)", got)
+	}
+}
+
+func TestRunRemoteVerifyCommandRejectsOversizedOutput(t *testing.T) {
+	withInstantBackoff(t)
+	bin := t.TempDir()
+	writeFakeCommand(t, filepath.Join(bin, "gh"), `#!/bin/sh
+dd if=/dev/zero bs=1024 count=300 2>/dev/null
+`)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	err := VerifyGitHubIssueLive("https://github.com/example/repo/issues/7")
+	if err == nil || !strings.Contains(err.Error(), "output exceeds") {
+		t.Fatalf("oversized output error = %v", err)
+	}
+}
+
+func TestVerifyRemoteArtifactLiveContextCancelsPullRequestReadback(t *testing.T) {
+	bin := t.TempDir()
+	countPath := filepath.Join(t.TempDir(), "count")
+	writeFakeCommand(t, filepath.Join(bin, "gh"), `#!/bin/sh
+printf called > "$HARNESS_FAKE_COUNT"
+exit 0
+`)
+	t.Setenv("HARNESS_FAKE_COUNT", countPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := VerifyRemoteArtifactLiveContext(ctx, issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		Provider: "github",
+		Kind:     "pr",
+		URL:      "https://github.com/example/repo/pull/1",
+	})
+	if err == nil || !strings.Contains(err.Error(), context.Canceled.Error()) {
+		t.Fatalf("canceled verification error = %v", err)
+	}
+	if _, statErr := os.Stat(countPath); !os.IsNotExist(statErr) {
+		t.Fatalf("provider command should not run after cancellation: %v", statErr)
 	}
 }
 

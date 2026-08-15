@@ -22,6 +22,9 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 			"claimable": {
 				ID: "claimable", Repo: "/repo", Branch: "84-claimable",
 				Phase: issueopscontract.IssueOpsPhaseImplement,
+				IssueCreateIntent: &issueopscontract.IssueOpsIssueCreateIntent{
+					Status: issueopscontract.IssueCreateIntentInvokedUnknown,
+				},
 				Execution: &issueopscontract.Execution{
 					Mode: issueopscontract.ExecutionModeOrca,
 					Workspace: issueopscontract.Workspace{
@@ -93,6 +96,7 @@ func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {
 	if entry := entries["claimable"]; !entry.Claimable ||
 		entry.OwnerModel != "gpt-5.6-terra" ||
 		entry.LeaseStatus != string(issueopscontract.LeaseStatusClaimable) ||
+		entry.IssueCreateStatus != issueopscontract.IssueCreateIntentInvokedUnknown ||
 		entry.PendingKind != "remote_pr_create" ||
 		entry.FailureCode != "external_operation_ambiguous" {
 		t.Fatalf("claimable projection: %+v", entry)

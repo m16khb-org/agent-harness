@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	issueopscore "agent-harness/internal/contract/issueops"
+	"context"
 )
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
@@ -12,6 +13,10 @@ func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
 
 func verifyIssueOpsRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	return remoteverify.VerifyRemoteArtifactLive(req)
+}
+
+func verifyIssueOpsRemoteArtifactLiveContext(ctx context.Context, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+	return remoteverify.VerifyRemoteArtifactLiveContext(ctx, req)
 }
 
 func verifyIssueOpsRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) error {

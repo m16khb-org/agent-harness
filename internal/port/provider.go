@@ -1,10 +1,38 @@
 package port
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 type IssueProviderCreateError struct {
 	Invoked bool
 	Err     error
+}
+
+type IssueProviderCreateIssueContexter interface {
+	CreateIssueContext(context.Context, IssueProviderCreateIssueRequest) (IssueProviderCreateIssueResult, error)
+}
+
+type IssueProviderIssueCreateCandidate struct {
+	URL   string
+	Title string
+	Body  string
+}
+
+type IssueProviderFindIssueCreateCandidatesRequest struct {
+	Repo             string
+	ProjectAuthority string
+	Marker           string
+}
+
+type IssueProviderIssueCreateReconciler interface {
+	FindIssueCreateCandidates(context.Context, IssueProviderFindIssueCreateCandidatesRequest) (IssueProviderFindIssueCreateCandidatesResult, error)
+}
+
+type IssueProviderFindIssueCreateCandidatesResult struct {
+	Candidates []IssueProviderIssueCreateCandidate
+	Truncated  bool
 }
 
 func (e *IssueProviderCreateError) Error() string {
@@ -14,20 +42,24 @@ func (e *IssueProviderCreateError) Unwrap() error { return e.Err }
 
 // IssueProviderCreateIssueRequest describes a request to create a remote issue.
 type IssueProviderCreateIssueRequest struct {
-	Repo      string   `json:"repo"`      // local repo path for provider auth context
-	Title     string   `json:"title"`     // issue title
-	Body      string   `json:"body"`      // issue body (markdown)
-	Labels    []string `json:"labels"`    // labels to apply
-	Assignees []string `json:"assignees"` // assignee usernames
-	Confirm   bool     `json:"confirm"`   // must be true to execute; false = dry-run preview
+	Repo       string   `json:"repo"`        // local repo path for provider auth context
+	ProjectKey string   `json:"project_key"` // verified canonical HOST/OWNER[/NAMESPACE]/REPO authority
+	Title      string   `json:"title"`       // issue title
+	Body       string   `json:"body"`        // issue body (markdown)
+	Labels     []string `json:"labels"`      // labels to apply
+	Assignees  []string `json:"assignees"`   // assignee usernames
+	Confirm    bool     `json:"confirm"`     // must be true to execute; false = dry-run preview
 }
 
 // IssueProviderCreateIssueResult reports the outcome of a remote issue creation.
 type IssueProviderCreateIssueResult struct {
-	OK      bool   `json:"ok"`
-	URL     string `json:"url"`               // created issue URL
-	Number  string `json:"number"`            // issue number
-	Preview string `json:"preview,omitempty"` // dry-run preview of what would be created
+	OK        bool     `json:"ok"`
+	Provider  string   `json:"provider"`
+	URL       string   `json:"issue_url"`         // created issue URL
+	Number    string   `json:"issue_number"`      // issue number
+	Labels    []string `json:"labels"`            // canonical requested labels
+	Assignees []string `json:"assignees"`         // canonical requested assignees
+	Preview   string   `json:"preview,omitempty"` // dry-run preview of what would be created
 }
 
 // IssueProviderCreatePullRequestRequest describes a request to create a remote PR/MR.

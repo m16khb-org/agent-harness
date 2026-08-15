@@ -1,7 +1,10 @@
 package remoteverify
 
 import (
+	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -10,6 +13,53 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
+func TestVerifyRemoteArtifactLiveRejectsUnsupportedCombination(t *testing.T) {
+	err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		Provider: "other",
+		Kind:     "issue",
+		URL:      "https://example.com/acme/repo/issues/1",
+	})
+	if err == nil || !strings.Contains(err.Error(), "unsupported") {
+		t.Fatalf("error = %v, want unsupported verifier error", err)
+	}
+}
+
+func TestVerifyRemoteArtifactLiveContextHonorsCancellation(t *testing.T) {
+	bin := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "invoked")
+	writeFakeCommand(t, filepath.Join(bin, "gh"), "#!/bin/sh\ntouch \"$VERIFY_MARKER\"\n")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("VERIFY_MARKER", marker)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := VerifyRemoteArtifactLiveContext(ctx, issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		Provider: "github",
+		Kind:     "issue",
+		URL:      "https://github.com/acme/repo/issues/1",
+	})
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+	if _, statErr := os.Stat(marker); !os.IsNotExist(statErr) {
+		t.Fatalf("verification command ran after cancellation: %v", statErr)
+	}
+}
+
+func TestCommandOutputErrorRedactsAndCapsProviderDiagnostics(t *testing.T) {
+	raw := "token=super-secret https://internal.example/path " + strings.Repeat("x", 4096)
+
+	err := commandOutputError(&exec.ExitError{Stderr: []byte(raw)})
+
+	if strings.Contains(err.Error(), "super-secret") || strings.Contains(err.Error(), "internal.example") {
+		t.Fatalf("diagnostic was not redacted: %q", err)
+	}
+	if len(err.Error()) > maxRemoteVerifyDiagnosticBytes {
+		t.Fatalf("diagnostic length = %d, want <= %d", len(err.Error()), maxRemoteVerifyDiagnosticBytes)
+	}
+}
+
 func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
 	err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
@@ -17,7 +67,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/9999",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("expected missing GitHub PR to fail live verification, got %v", err)
@@ -31,7 +81,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err != nil {
 		t.Fatalf("expected matching GitHub PR evidence to pass: %v", err)
 	}
@@ -40,7 +90,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
 		Labels:    []string{"missing"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "label") {
 		t.Fatalf("expected missing label to fail live verification, got %v", err)
 	}
@@ -78,7 +128,7 @@ func TestFetchGitLabMergeRequestArtifactParsesLivePayload(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "glab.log")
 	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
 printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
-printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","labels":["ready","refactor"],"assignees":[{"id":123,"username":"habin","name":"Ha Bin"},{"id":0,"username":"reviewer","name":"Reviewer"}]}'
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","labels":["ready","refactor"],"assignees":[{"id":123,"username":"sample","name":"Ha Bin"},{"id":0,"username":"reviewer","name":"Reviewer"}]}'
 `)
 	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -104,7 +154,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 			t.Fatalf("missing label %q in %#v", want, artifact.Labels)
 		}
 	}
-	for _, want := range []string{"123", "habin", "Ha Bin", "reviewer", "Reviewer"} {
+	for _, want := range []string{"123", "sample", "Ha Bin", "reviewer", "Reviewer"} {
 		if !slices.Contains(artifact.Assignees, want) {
 			t.Fatalf("missing assignee %q in %#v", want, artifact.Assignees)
 		}

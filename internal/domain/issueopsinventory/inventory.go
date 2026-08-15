@@ -58,6 +58,9 @@ func ProjectEntry(record issueopsinventorycontract.Record) issueopsinventorycont
 		entry.CleanupFailureStep = record.CleanupAbandonFailure.Step
 		entry.CleanupFailureAt = record.CleanupAbandonFailure.At
 	}
+	if record.IssueCreateIntent != nil && record.IssueCreateIntent.Status != "completed" {
+		entry.IssueCreateStatus = record.IssueCreateIntent.Status
+	}
 	entry.CleanupCandidate = record.Phase == issueopsinventorycontract.PhaseDone
 	return entry
 }

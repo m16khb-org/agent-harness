@@ -152,6 +152,9 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		if cycle.CleanupFailurePresent {
 			builder.add(FindingCleanupFailure, "cycle", id, "cycle has a durable cleanup failure; inspect issueops list and resume cleanup from preview", clean(cycle.WorktreePath))
 		}
+		if cycle.IssueCreateFailurePresent {
+			builder.add(FindingIssueCreateFailure, "cycle", id, "cycle has an ambiguous or failed durable issue creation; run issueops remote reconcile-issue", clean(cycle.WorktreePath))
+		}
 		switch {
 		case authority == AuthorityUnknown:
 			builder.add(FindingInventoryUnknown, "cycle", id, "cycle phase, execution lease, or durable identity is unsupported or incomplete", clean(cycle.WorktreePath))

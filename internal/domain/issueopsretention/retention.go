@@ -13,6 +13,10 @@ func IsPrunable(record issueopsretentioncontract.Record, cutoff time.Time) bool 
 	if record.Execution != nil && record.Execution.Lease.Status != issueopsretentioncontract.LeaseStatusReleased {
 		return false
 	}
+	if record.IssueCreateIntent != nil &&
+		record.IssueCreateIntent.Status != issueopsretentioncontract.IssueCreateCompleted {
+		return false
+	}
 	if record.RemoteArtifact != nil &&
 		(record.RemoteCompletion == nil || record.RemoteCompletion.ReflectedAt == "") {
 		return false

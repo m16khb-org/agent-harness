@@ -26,6 +26,12 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - local repository symbols는 `.codegraph/`가 있으면 CodeGraph로 먼저 찾고, 없으면 `rg`와 직접 읽기로만 찾는다. web search는 local symbol discovery의 fallback이 아니다.
 - `auto` fallback은 read-only readiness probe가 mutation 전에 실패한 경우에만 허용한다.
 - cycle lock 안에서는 record CAS만 수행하고 외부 Orca CLI를 호출하지 않는다.
+- Parent issue create도 provider 호출 전에 marker/provider/project
+  authority/request digest를 durable하게 봉인한다. `gh`/`glab`가 시작된 뒤
+  timeout, nonzero, malformed URL, live verification 실패가 발생하면 같은 create를
+  다시 호출하지 않는다. `issueops remote reconcile-issue`에서 marker 후보가
+  정확히 하나이고 sealed title/body digest와 live label/assignee가 모두 맞을
+  때만 채택한다. Zero/many는 absence/identity 증거가 아니다.
 - durable record equality만으로는 checkout/context/report TOCTOU를 막지 못한다. context persist와 terminal/task/dispatch first-time journal은 lock 안에서 source fingerprint + exact branch/attempt-base HEAD + clean status를 다시 확인하고, claim/acknowledge/complete도 자기 filesystem evidence를 record equality 직후와 write 직전에 다시 검증한다. 단계 사이 drift가 나면 이미 완료된 terminal/task identity는 보존하고 새 pending journal 없이 멈춘다. 외부 호출 전 `started_at`을 post-call completion timestamp로 재사용하지 않는다.
 - fresh Orca terminal의 native hook은 기본 IssueOps state root를 조회한다. custom `HARNESS_STATE_DIR` cycle은 별도 전파 없이는 SessionStart/PreToolUse에서 보이지 않으므로 hook을 우회하거나 성공으로 간주하지 않는다. 안전한 custom state-root 전파는 issue #17 범위이며, live hook 증거는 기본 state에서 수집한다.
 - Codex 0.144.1 공식 `rust-v0.144.1`(44918ea)은 session setup에서 hook을 초기화하지만 `refresh_runtime_config`가 hook을 다시 build/store하는 경로도 제공하고, `pre_tool_use.rs`는 현재 session id를 payload에 넣는다. 관측된 live worker에서는 install-native가 `~/.codex/hooks.json`을 교체해도 active session command가 갱신되지 않았다. 따라서 파일 readback만으로 runtime 적용을 주장하지 말고 current-session live probe를 권위로 삼는다. installer의 `--host codex`는 유지하고, retained command 호환은 payload host와 CLI `--host`가 모두 비었을 때만 Codex로 정규화한다. 이 경우에도 exact nonempty session, canonical cwd/repo, persisted fence, in-tree target 검사를 모두 유지하며 명시 host는 절대 덮어쓰지 않는다. binary 재설치 후 같은 worker에 허용하는 mutation 재시도는 정확히 한 번뿐이다.

@@ -26,9 +26,10 @@ func TestGitHubCreateIssueRequiresTitle(t *testing.T) {
 
 func TestGitHubCreateIssueDryRunDoesNotExecute(t *testing.T) {
 	res, err := NewProvider().CreateIssue(port.IssueProviderCreateIssueRequest{
-		Title:  "Fix bug",
-		Body:   "details",
-		Labels: []string{"bug"},
+		ProjectKey: "github.com/acme/repo",
+		Title:      "Fix bug",
+		Body:       "details",
+		Labels:     []string{"bug"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -39,7 +40,9 @@ func TestGitHubCreateIssueDryRunDoesNotExecute(t *testing.T) {
 	if !strings.HasPrefix(res.Preview, "[dry-run]") {
 		t.Errorf("expected dry-run preview, got %q", res.Preview)
 	}
-	if !strings.Contains(res.Preview, "issue create") || !strings.Contains(res.Preview, "--label bug") {
+	if !strings.Contains(res.Preview, "issue create") ||
+		!strings.Contains(res.Preview, "--label bug") ||
+		!strings.Contains(res.Preview, "--repo github.com/acme/repo") {
 		t.Errorf("preview missing expected args: %q", res.Preview)
 	}
 	if res.URL != "" || res.Number != "" {

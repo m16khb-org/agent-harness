@@ -250,7 +250,7 @@
           "name": "version"
         }
       ],
-      "hash": "dedf3280ef51b64395d01861ea723fc2a48ecc8bc0673dd8b08967a9ad5bef31",
+      "hash": "13be07692be8c3f12cac5ae4e8ac31a45d9260872030b2f4906876e97db2c366",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -494,6 +494,7 @@
           "design_review",
           "domain_review",
           "issue_url",
+          "issue_create_intent",
           "plan_path",
           "worktree_path",
           "issue_links",
@@ -546,6 +547,14 @@
           "labels",
           "assignees",
           "preview"
+        ],
+        "issueops_remote_reconcile_issue": [
+          "ok",
+          "candidate_count",
+          "candidate_url",
+          "would_adopt",
+          "issue_url",
+          "issue_create_intent"
         ],
         "issueops_remote_render_template": [
           "kind",
@@ -3222,10 +3231,15 @@
       "provider": "gitlab"
     },
     "issueops_remote_create_issue": {
-      "number": "",
+      "assignees": [],
+      "issue_number": "",
+      "issue_url": "",
+      "labels": [
+        "contract"
+      ],
       "ok": true,
       "preview": "[dry-run] would execute: glab issue create --title contract issue --description contract body --label contract",
-      "url": ""
+      "provider": "gitlab"
     },
     "issueops_remote_create_pr": {
       "number": "",
@@ -6398,7 +6412,7 @@
                 "name": "version"
               }
             ],
-            "hash": "dedf3280ef51b64395d01861ea723fc2a48ecc8bc0673dd8b08967a9ad5bef31",
+            "hash": "13be07692be8c3f12cac5ae4e8ac31a45d9260872030b2f4906876e97db2c366",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6642,6 +6656,7 @@
                 "design_review",
                 "domain_review",
                 "issue_url",
+                "issue_create_intent",
                 "plan_path",
                 "worktree_path",
                 "issue_links",
@@ -6694,6 +6709,14 @@
                 "labels",
                 "assignees",
                 "preview"
+              ],
+              "issueops_remote_reconcile_issue": [
+                "ok",
+                "candidate_count",
+                "candidate_url",
+                "would_adopt",
+                "issue_url",
+                "issue_create_intent"
               ],
               "issueops_remote_render_template": [
                 "kind",

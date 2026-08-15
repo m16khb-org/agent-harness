@@ -1,12 +1,17 @@
 package remoteverify
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	issueopscore "agent-harness/internal/contract/issueops"
+	policydomain "agent-harness/internal/domain/policy"
 )
+
+const remoteArtifactVerifyTimeout = 30 * time.Second
 
 type liveRemoteArtifact struct {
 	URL       string
@@ -24,6 +29,18 @@ type liveRemoteArtifact struct {
 }
 
 func VerifyRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+	return VerifyRemoteArtifactLiveContext(context.Background(), req)
+}
+
+func VerifyRemoteArtifactLiveContext(ctx context.Context, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, remoteArtifactVerifyTimeout)
+	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	kind := strings.ToLower(strings.TrimSpace(req.Kind))
 	switch kind {
@@ -36,18 +53,24 @@ func VerifyRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerific
 	var err error
 	switch provider + ":" + kind {
 	case "github:issue":
-		artifact, err = fetchGitHubIssueArtifact(strings.TrimSpace(req.URL))
+		artifact, err = fetchGitHubIssueArtifactContext(ctx, strings.TrimSpace(req.URL))
 	case "gitlab:issue":
-		artifact, err = fetchGitLabIssueArtifact(strings.TrimSpace(req.URL))
+		artifact, err = fetchGitLabIssueArtifactContext(ctx, strings.TrimSpace(req.URL))
 	case "github:pr":
-		artifact, err = fetchGitHubPullRequestArtifact(strings.TrimSpace(req.URL))
+		artifact, err = fetchGitHubPullRequestArtifactContext(ctx, strings.TrimSpace(req.URL))
 	case "gitlab:mr":
-		artifact, err = fetchGitLabMergeRequestArtifact(strings.TrimSpace(req.URL))
+		artifact, err = fetchGitLabMergeRequestArtifactContext(ctx, strings.TrimSpace(req.URL))
 	default:
-		return nil
+		return fmt.Errorf("unsupported remote artifact verification: %s:%s", provider, kind)
 	}
 	if err != nil {
 		return err
+	}
+	if strings.TrimSuffix(strings.TrimSpace(artifact.URL), "/") != strings.TrimSuffix(strings.TrimSpace(req.URL), "/") {
+		return fmt.Errorf(
+			"verified remote artifact URL %q does not match requested URL",
+			policydomain.BoundedDiagnostic(artifact.URL, maxRemoteVerifyDiagnosticBytes),
+		)
 	}
 	if err := requireRemoteValues("label", req.Labels, artifact.Labels); err != nil {
 		return err

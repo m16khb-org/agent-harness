@@ -346,6 +346,7 @@ type IssueOpsRecord struct {
 	DesignReview            *IssueOpsDesignReview               `json:"design_review,omitempty"`
 	DomainReview            *IssueOpsDomainReview               `json:"domain_review,omitempty"`
 	IssueURL                string                              `json:"issue_url,omitempty"`
+	IssueCreateIntent       *IssueOpsIssueCreateIntent          `json:"issue_create_intent,omitempty"`
 	PlanPath                string                              `json:"plan_path,omitempty"`
 	WorktreePath            string                              `json:"worktree_path,omitempty"`
 	IssueLinks              []IssueOpsIssueLink                 `json:"issue_links,omitempty"`

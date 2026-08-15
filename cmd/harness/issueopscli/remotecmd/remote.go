@@ -3,16 +3,19 @@ package remotecmd
 import (
 	artifacttemplate "agent-harness/internal/domain/artifacttemplate"
 	issueopsremote "agent-harness/internal/domain/issueopsremote"
+	policydomain "agent-harness/internal/domain/policy"
 	port "agent-harness/internal/port"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/issueopsremote"
 )
 
 type Deps struct {
@@ -20,6 +23,7 @@ type Deps struct {
 	PrintResult            func(issueopscontract.IssueOpsRecord, bool, error) error
 	PrintError             func(error) error
 	VerifyLive             func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error
+	VerifyLiveContext      func(context.Context, issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error
 	VerifyMerged           func(issueopscontract.IssueOpsRemoteArtifactVerification) error
 	ObserveProcessAncestry func(int) ([]issueopscontract.NativeProcessReceipt, error)
 	Publication            PublicationHandlers
@@ -32,6 +36,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--provider github|gitlab] [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote reconcile-issue --id ID [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude|omo --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude|omo --session-id SESSION [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
@@ -141,7 +146,7 @@ func Run(args []string, deps Deps) error {
 		_, err := remoteDeps.ValidateIssueOpsRemoteArtifactVerification(remoteDeps.IssueOpsStateRoot(), *id, req)
 		var record issueopscontract.IssueOpsRecord
 		if err == nil {
-			err = deps.verifyLive(req)
+			err = deps.verifyLive(context.Background(), req)
 		}
 		if err == nil {
 			var ancestry []issueopscontract.NativeProcessReceipt
@@ -156,7 +161,9 @@ func Run(args []string, deps Deps) error {
 	case "render-template":
 		return runRemoteRenderTemplate(args[1:], deps)
 	case "create-issue":
-		return runRemoteCreateIssue(args[1:], deps)
+		return runRemoteCreateIssue(context.Background(), args[1:], deps)
+	case "reconcile-issue":
+		return runRemoteReconcileIssue(context.Background(), args[1:], deps)
 	case "create-child":
 		return runRemoteCreateChild(args[1:], deps)
 	case "create-pr":
@@ -340,11 +347,26 @@ func (deps Deps) printErrorResult(jsonOut bool, err error) error {
 	return err
 }
 
-func (deps Deps) verifyLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+func (deps Deps) verifyLive(ctx context.Context, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+	if deps.VerifyLiveContext != nil {
+		return deps.VerifyLiveContext(ctx, req)
+	}
 	if deps.VerifyLive != nil {
 		return deps.VerifyLive(req)
 	}
-	return nil
+	return fmt.Errorf("live remote artifact verifier is not configured")
+}
+
+func durableIssueCreateFailure(err error) string {
+	if err == nil {
+		return ""
+	}
+	const maxBytes = 2048
+	diagnostic := policydomain.RedactDiagnostic(strings.TrimSpace(err.Error()))
+	if len(diagnostic) > maxBytes {
+		diagnostic = diagnostic[:maxBytes]
+	}
+	return diagnostic
 }
 
 func parseFlags(fs *flag.FlagSet, args []string) (bool, error) {
@@ -465,7 +487,7 @@ func firstNonEmptyMain(values ...string) string {
 	return ""
 }
 
-func runRemoteCreateIssue(args []string, deps Deps) error {
+func runRemoteCreateIssue(ctx context.Context, args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops remote create-issue", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	title := fs.String("title", "", "issue title")
@@ -488,6 +510,9 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
+	}
+	if strings.TrimSpace(*title) == "" {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("issue title is required"))
 	}
 	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
@@ -517,31 +542,118 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	if err := rejectSecretLikeIssueCreateInputs(*title, finalBody, labels, assignees); err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := remoteDeps.CreateRemoteIssue(port.IssueProviderCreateIssueRequest{
-		Repo:      record.Repo,
-		Title:     *title,
-		Body:      finalBody,
-		Labels:    labels,
-		Assignees: assignees,
-		Confirm:   *confirm,
-	}, prov)
+	requestBody := finalBody
+	projectAuthority := ""
+	if *confirm {
+		startedAt := time.Now().UTC().Format(time.RFC3339Nano)
+		operationID := ""
+		marker := ""
+		if record.IssueCreateIntent != nil {
+			operationID = record.IssueCreateIntent.OperationID
+			marker = record.IssueCreateIntent.Marker
+		} else {
+			operationSeed := sha256.Sum256([]byte(record.ID + "\n" + startedAt + "\n" + *title))
+			operationID = fmt.Sprintf("%x", operationSeed[:16])
+			marker = "<!-- agent-harness:issue-create:" + operationID + " -->"
+		}
+		requestBody = strings.TrimSpace(finalBody)
+		if requestBody == "" {
+			requestBody = marker
+		} else {
+			requestBody += "\n\n" + marker
+		}
+		bodyDigest := sha256.Sum256([]byte(requestBody))
+		var authorityErr error
+		projectAuthority, authorityErr = remoteDeps.ResolveProviderProjectAuthority(record.Repo, providerName)
+		if authorityErr != nil {
+			return deps.printErrorResult(*jsonOut, authorityErr)
+		}
+		if _, err := remoteDeps.BeginIssueCreateIntent(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateIntentRequest{
+			OperationID:      operationID,
+			Provider:         providerName,
+			ProjectAuthority: projectAuthority,
+			Title:            *title,
+			BodySHA256:       fmt.Sprintf("%x", bodyDigest[:]),
+			Labels:           append([]string(nil), labels...),
+			Assignees:        append([]string(nil), assignees...),
+			StartedAt:        startedAt,
+		}); err != nil {
+			return deps.printErrorResult(*jsonOut, err)
+		}
+	}
+	request := port.IssueProviderCreateIssueRequest{
+		Repo:       record.Repo,
+		ProjectKey: projectAuthority,
+		Title:      *title,
+		Body:       requestBody,
+		Labels:     labels,
+		Assignees:  assignees,
+		Confirm:    *confirm,
+	}
+	var result port.IssueProviderCreateIssueResult
+	if *confirm {
+		result, err = remoteDeps.CreateRemoteIssueContext(ctx, request, prov)
+	} else {
+		result, err = remoteDeps.CreateRemoteIssue(request, prov)
+	}
 	if err != nil {
+		if *confirm {
+			status := issueopscontract.IssueCreateIntentInvokedUnknown
+			if createErr, ok := errors.AsType[*port.IssueProviderCreateError](err); ok && !createErr.Invoked {
+				status = issueopscontract.IssueCreateIntentNotInvoked
+			} else if strings.TrimSpace(result.URL) != "" {
+				status = issueopscontract.IssueCreateIntentURLObserved
+			}
+			if _, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+				Status:       status,
+				CanonicalURL: result.URL,
+				Failure:      durableIssueCreateFailure(err),
+				ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			}); stateErr != nil {
+				err = errors.Join(err, stateErr)
+			}
+		}
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	result.Provider = providerName
+	result.Labels = issueopsremote.CleanValues(labels)
+	result.Assignees = issueopsremote.CleanValues(assignees)
 	// Mirror create-child's verification gate: once an issue is really created,
 	// confirm the live issue carries the requested labels/assignees before the
 	// command reports success. Without --confirm this is a dry-run preview only.
 	if *confirm && strings.TrimSpace(result.URL) != "" {
-		if err := deps.verifyLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		if err := deps.verifyLive(ctx, issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 			Provider:  providerName,
 			Kind:      "issue",
 			URL:       result.URL,
 			Labels:    labels,
 			Assignees: assignees,
 		}); err != nil {
+			if _, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+				Status:       issueopscontract.IssueCreateIntentVerificationFailed,
+				CanonicalURL: result.URL,
+				Failure:      durableIssueCreateFailure(err),
+				ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			}); stateErr != nil {
+				err = errors.Join(err, stateErr)
+			}
+			return deps.printErrorResult(*jsonOut, err)
+		}
+		if _, err := remoteDeps.CompleteIssueCreateIntent(remoteDeps.IssueOpsStateRoot(), record.ID, result.URL, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+			if _, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+				Status:       issueopscontract.IssueCreateIntentReceiptFailed,
+				CanonicalURL: result.URL,
+				Failure:      durableIssueCreateFailure(err),
+				ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			}); stateErr != nil {
+				err = errors.Join(err, stateErr)
+			}
 			return deps.printErrorResult(*jsonOut, err)
 		}
 	}
@@ -553,6 +665,157 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	} else {
 		fmt.Println(result.Preview)
 	}
+	return nil
+}
+
+func rejectSecretLikeIssueCreateInputs(title, body string, labels, assignees []string) error {
+	values := []struct {
+		field string
+		value string
+	}{
+		{field: "title", value: title},
+		{field: "body", value: body},
+	}
+	for _, label := range labels {
+		values = append(values, struct {
+			field string
+			value string
+		}{field: "label", value: label})
+	}
+	for _, assignee := range assignees {
+		values = append(values, struct {
+			field string
+			value string
+		}{field: "assignee", value: assignee})
+	}
+	for _, candidate := range values {
+		if policydomain.RedactFreeform(candidate.value) != candidate.value {
+			return fmt.Errorf("issue create %s contains secret-like content", candidate.field)
+		}
+	}
+	return nil
+}
+
+func runRemoteReconcileIssue(ctx context.Context, args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote reconcile-issue", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	confirm := fs.Bool("confirm", false, "adopt the unique live verified issue")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	if record.IssueCreateIntent == nil {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("no issue create intent to reconcile"))
+	}
+	if record.IssueCreateIntent.Status == issueopscontract.IssueCreateIntentCompleted {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("issue create intent is already completed"))
+	}
+	prov, err := Resolve(record.IssueCreateIntent.Provider)
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	reconciler, ok := prov.(port.IssueProviderIssueCreateReconciler)
+	if !ok {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("provider %s does not support issue create reconciliation", record.IssueCreateIntent.Provider))
+	}
+	searchResult, err := reconciler.FindIssueCreateCandidates(ctx, port.IssueProviderFindIssueCreateCandidatesRequest{
+		Repo:             record.Repo,
+		ProjectAuthority: record.IssueCreateIntent.ProjectAuthority,
+		Marker:           record.IssueCreateIntent.Marker,
+	})
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	if searchResult.Truncated {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("issue create reconciliation search was truncated; uniqueness is indeterminate"))
+	}
+	candidates := searchResult.Candidates
+	if len(candidates) != 1 {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("issue create reconciliation found %d live candidates; exactly one is required", len(candidates)))
+	}
+	candidate := candidates[0]
+	candidateAuthority := issueopsremote.ProjectKey(candidate.URL, record.IssueCreateIntent.Provider, "issue")
+	if candidateAuthority == "" || candidateAuthority != record.IssueCreateIntent.ProjectAuthority {
+		err := fmt.Errorf(
+			"issue create reconciliation candidate authority %q does not match sealed authority %q",
+			candidateAuthority,
+			record.IssueCreateIntent.ProjectAuthority,
+		)
+		if *confirm {
+			_, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+				Status:       issueopscontract.IssueCreateIntentVerificationFailed,
+				CanonicalURL: candidate.URL,
+				Failure:      durableIssueCreateFailure(err),
+				ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			})
+			err = errors.Join(err, stateErr)
+		}
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	bodyDigest := sha256.Sum256([]byte(candidate.Body))
+	if candidate.Title != record.IssueCreateIntent.Title ||
+		fmt.Sprintf("%x", bodyDigest[:]) != record.IssueCreateIntent.BodySHA256 {
+		err := fmt.Errorf("issue create reconciliation candidate does not match sealed title and body digest")
+		if *confirm {
+			_, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+				Status:       issueopscontract.IssueCreateIntentVerificationFailed,
+				CanonicalURL: candidate.URL,
+				Failure:      durableIssueCreateFailure(err),
+				ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			})
+			err = errors.Join(err, stateErr)
+		}
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	if !*confirm {
+		result := issueopscontract.IssueOpsIssueCreateReconcileResult{
+			OK:                true,
+			CandidateCount:    1,
+			CandidateURL:      candidate.URL,
+			WouldAdopt:        true,
+			IssueURL:          record.IssueURL,
+			IssueCreateIntent: record.IssueCreateIntent,
+		}
+		if *jsonOut {
+			return deps.printJSON(result)
+		}
+		fmt.Printf("would adopt: %s\n", candidate.URL)
+		return nil
+	}
+	if err := deps.verifyLive(ctx, issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  record.IssueCreateIntent.Provider,
+		Kind:      "issue",
+		URL:       candidate.URL,
+		Labels:    record.IssueCreateIntent.Labels,
+		Assignees: record.IssueCreateIntent.Assignees,
+	}); err != nil {
+		_, stateErr := remoteDeps.RecordIssueCreateOutcome(remoteDeps.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateOutcome{
+			Status:       issueopscontract.IssueCreateIntentVerificationFailed,
+			CanonicalURL: candidate.URL,
+			Failure:      durableIssueCreateFailure(err),
+			ObservedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+		})
+		return deps.printErrorResult(*jsonOut, errors.Join(err, stateErr))
+	}
+	updated, err := remoteDeps.CompleteIssueCreateIntent(remoteDeps.IssueOpsStateRoot(), record.ID, candidate.URL, time.Now().UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	if *jsonOut {
+		return deps.printJSON(issueopscontract.IssueOpsIssueCreateReconcileResult{
+			OK:                true,
+			CandidateCount:    1,
+			CandidateURL:      candidate.URL,
+			WouldAdopt:        false,
+			IssueURL:          updated.IssueURL,
+			IssueCreateIntent: updated.IssueCreateIntent,
+		})
+	}
+	fmt.Printf("adopted: %s\n", candidate.URL)
 	return nil
 }
 
@@ -849,8 +1112,8 @@ func validateConfirmRemoteCreate(confirm bool, labels, assignees []string) error
 	if !confirm {
 		return nil
 	}
-	labels = remote.CleanValues(labels)
-	assignees = remote.CleanValues(assignees)
+	labels = issueopsremote.CleanValues(labels)
+	assignees = issueopsremote.CleanValues(assignees)
 	if len(labels) == 0 {
 		return fmt.Errorf("at least one label is required with --confirm")
 	}

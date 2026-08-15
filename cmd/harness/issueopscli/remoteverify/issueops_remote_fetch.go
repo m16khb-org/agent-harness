@@ -1,6 +1,7 @@
 package remoteverify
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,8 +13,12 @@ import (
 )
 
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
-	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt,headRefName,headRefOid,baseRefName")
+	return fetchGitHubPullRequestArtifactContext(context.Background(), artifactURL)
+}
+
+func fetchGitHubPullRequestArtifactContext(ctx context.Context, artifactURL string) (liveRemoteArtifact, error) {
+	out, err := runRemoteVerifyCommand(ctx, func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt,headRefName,headRefOid,baseRefName")
 	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitHub PR through gh failed: %w", commandOutputError(err))
@@ -53,8 +58,12 @@ func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, err
 }
 
 func fetchGitHubIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
-	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("gh", "issue", "view", artifactURL, "--json", "url,labels,assignees,state")
+	return fetchGitHubIssueArtifactContext(context.Background(), artifactURL)
+}
+
+func fetchGitHubIssueArtifactContext(ctx context.Context, artifactURL string) (liveRemoteArtifact, error) {
+	out, err := runRemoteVerifyCommand(ctx, func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "gh", "issue", "view", artifactURL, "--json", "url,labels,assignees,state")
 	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitHub issue through gh failed: %w", commandOutputError(err))
@@ -86,6 +95,10 @@ func fetchGitHubIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
 }
 
 func fetchGitLabIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
+	return fetchGitLabIssueArtifactContext(context.Background(), artifactURL)
+}
+
+func fetchGitLabIssueArtifactContext(ctx context.Context, artifactURL string) (liveRemoteArtifact, error) {
 	parsed, err := url.Parse(artifactURL)
 	if err != nil {
 		return liveRemoteArtifact{}, err
@@ -95,8 +108,8 @@ func fetchGitLabIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
 		return liveRemoteArtifact{}, fmt.Errorf("remote artifact url must be a GitLab issue URL")
 	}
 	endpoint := "projects/" + url.PathEscape(parts.Project) + "/issues/" + parts.IID
-	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
+	out, err := runRemoteVerifyCommand(ctx, func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "glab", "api", endpoint, "--hostname", parsed.Hostname())
 	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitLab issue through glab failed: %w", commandOutputError(err))
@@ -125,6 +138,10 @@ func fetchGitLabIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
 }
 
 func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
+	return fetchGitLabMergeRequestArtifactContext(context.Background(), artifactURL)
+}
+
+func fetchGitLabMergeRequestArtifactContext(ctx context.Context, artifactURL string) (liveRemoteArtifact, error) {
 	parsed, err := url.Parse(artifactURL)
 	if err != nil {
 		return liveRemoteArtifact{}, err
@@ -134,8 +151,8 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 		return liveRemoteArtifact{}, fmt.Errorf("remote artifact url must be a GitLab merge request URL")
 	}
 	endpoint := "projects/" + url.PathEscape(parts.Project) + "/merge_requests/" + parts.IID
-	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
+	out, err := runRemoteVerifyCommand(ctx, func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "glab", "api", endpoint, "--hostname", parsed.Hostname())
 	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitLab MR through glab failed: %w", commandOutputError(err))

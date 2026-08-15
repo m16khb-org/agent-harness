@@ -29,6 +29,7 @@ type Record struct {
 	DesignReview            json.RawMessage `json:"design_review,omitempty"`
 	DomainReview            json.RawMessage `json:"domain_review,omitempty"`
 	IssueURL                string          `json:"issue_url,omitempty"`
+	IssueCreateIntent       json.RawMessage `json:"issue_create_intent,omitempty"`
 	PlanPath                string          `json:"plan_path,omitempty"`
 	WorktreePath            string          `json:"worktree_path,omitempty"`
 	IssueLinks              json.RawMessage `json:"issue_links,omitempty"`

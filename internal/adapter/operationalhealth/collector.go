@@ -38,6 +38,7 @@ type GitRunner interface {
 type NativeProcessInspector func(issueopscontract.NativeProcessReceipt) (string, issueopscontract.NativeProcessReceipt, error)
 
 const gitInventoryCommandTimeout = 15 * time.Second
+const staleIssueCreatePendingAfter = 5 * time.Minute
 
 type ExecGitRunner struct {
 	timeout time.Duration
@@ -469,11 +470,16 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 }
 
 func cycleFromRecord(record issueopscontract.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
+	return cycleFromRecordAt(record, inspect, time.Now().UTC())
+}
+
+func cycleFromRecordAt(record issueopscontract.IssueOpsRecord, inspect NativeProcessInspector, now time.Time) (corehealth.Cycle, []corehealth.InventoryProblem) {
 	cycle := corehealth.Cycle{
 		ID: strings.TrimSpace(record.ID), Repo: canonicalInventoryPath(record.Repo), Branch: strings.TrimSpace(record.Branch),
-		Phase:                   string(record.Phase),
-		ExecutionFailurePresent: record.Execution != nil && record.Execution.Failure != nil,
-		CleanupFailurePresent:   record.CleanupFinishFailure != nil || record.CleanupAbandonFailure != nil,
+		Phase:                     string(record.Phase),
+		ExecutionFailurePresent:   record.Execution != nil && record.Execution.Failure != nil,
+		CleanupFailurePresent:     record.CleanupFinishFailure != nil || record.CleanupAbandonFailure != nil,
+		IssueCreateFailurePresent: issueCreateIntentNeedsReconciliationAt(record.IssueCreateIntent, now),
 	}
 	var problems []corehealth.InventoryProblem
 	worktreeConflict := false
@@ -532,6 +538,35 @@ func cycleFromRecord(record issueopscontract.IssueOpsRecord, inspect NativeProce
 		cycle.DispatchID = strings.TrimSpace(execution.Orca.DispatchID)
 	}
 	return cycle, problems
+}
+
+func issueCreateIntentNeedsReconciliation(intent *issueopscontract.IssueOpsIssueCreateIntent) bool {
+	return issueCreateIntentNeedsReconciliationAt(intent, time.Now().UTC())
+}
+
+func issueCreateIntentNeedsReconciliationAt(intent *issueopscontract.IssueOpsIssueCreateIntent, now time.Time) bool {
+	if intent == nil {
+		return false
+	}
+	switch intent.Status {
+	case issueopscontract.IssueCreateIntentPending:
+		updatedAt := strings.TrimSpace(intent.UpdatedAt)
+		if updatedAt == "" {
+			updatedAt = strings.TrimSpace(intent.StartedAt)
+		}
+		observedAt, err := time.Parse(time.RFC3339Nano, updatedAt)
+		if err != nil {
+			return true
+		}
+		return now.UTC().Sub(observedAt.UTC()) > staleIssueCreatePendingAfter
+	case issueopscontract.IssueCreateIntentInvokedUnknown,
+		issueopscontract.IssueCreateIntentURLObserved,
+		issueopscontract.IssueCreateIntentVerificationFailed,
+		issueopscontract.IssueCreateIntentReceiptFailed:
+		return true
+	default:
+		return false
+	}
 }
 
 func recordOwnsOrca(record issueopscontract.IssueOpsRecord) bool {

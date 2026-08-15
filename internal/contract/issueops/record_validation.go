@@ -78,6 +78,15 @@ func ValidateRecord(record IssueOpsRecord) error {
 		!knownCleanupAbandonFailureStep(record.CleanupAbandonFailure.Step) {
 		return fmt.Errorf("issueops cleanup abandon failure step is invalid")
 	}
+	if record.IssueCreateIntent != nil {
+		if err := ValidateIssueCreateIntent(*record.IssueCreateIntent); err != nil {
+			return err
+		}
+		if record.IssueCreateIntent.Status == IssueCreateIntentCompleted &&
+			strings.TrimSpace(record.IssueURL) != strings.TrimSpace(record.IssueCreateIntent.CanonicalURL) {
+			return fmt.Errorf("completed issue create intent canonical_url must match issue_url")
+		}
+	}
 	if record.Execution != nil {
 		if err := ValidateExecution(*record.Execution); err != nil {
 			return err

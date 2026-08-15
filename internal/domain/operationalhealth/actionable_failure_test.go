@@ -9,6 +9,7 @@ func TestClassifySurfacesDurableIssueOpsFailures(t *testing.T) {
 	snapshot := healthyDirectSnapshot()
 	snapshot.Cycles[0].ExecutionFailurePresent = true
 	snapshot.Cycles[0].CleanupFailurePresent = true
+	snapshot.Cycles[0].IssueCreateFailurePresent = true
 
 	result := Classify(snapshot, Options{Now: time.Now()})
 
@@ -17,5 +18,8 @@ func TestClassifySurfacesDurableIssueOpsFailures(t *testing.T) {
 	}
 	if !hasFinding(result, FindingCleanupFailure, "cycle") {
 		t.Fatalf("cleanup failure was not surfaced: %+v", result.Findings)
+	}
+	if !hasFinding(result, FindingIssueCreateFailure, "cycle") {
+		t.Fatalf("issue create failure was not surfaced: %+v", result.Findings)
 	}
 }

@@ -1,12 +1,14 @@
 package remoteverify
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os/exec"
 	"strings"
 
+	policydomain "agent-harness/internal/domain/policy"
 	"agent-harness/internal/domain/remoteparse"
 )
 
@@ -34,8 +36,8 @@ func VerifyChildIssueLive(childURL string) error {
 }
 
 func VerifyGitHubIssueLive(issueURL string) error {
-	if _, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title")
+	if _, err := runRemoteVerifyCommand(context.Background(), func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title")
 	}); err != nil {
 		return fmt.Errorf("verify GitHub child issue through gh failed: %w", commandOutputError(err))
 	}
@@ -72,8 +74,8 @@ func VerifyGitLabIssueLive(parsed *url.URL) error {
 
 func fetchGitLabIssueEndpoint(hostname, project, kind, iid string) ([]byte, error) {
 	endpoint := "projects/" + url.PathEscape(project) + "/" + kind + "/" + iid
-	return runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("glab", "api", endpoint, "--hostname", hostname)
+	return runRemoteVerifyCommand(context.Background(), func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, "glab", "api", endpoint, "--hostname", hostname)
 	})
 }
 
@@ -92,7 +94,12 @@ func verifyGitLabIssuePayloadIsTask(out []byte, iid string) error {
 	if strings.EqualFold(payload.Type, "TASK") || strings.EqualFold(payload.IssueType, "task") {
 		return nil
 	}
-	return fmt.Errorf("gitlab issues/%s fallback did not return a Task work item: type=%q issue_type=%q web_url=%q", iid, payload.Type, payload.IssueType, payload.WebURL)
+	return fmt.Errorf(
+		"gitlab issues/%s fallback did not return a Task work item: type=%q issue_type=%q",
+		iid,
+		policydomain.BoundedDiagnostic(payload.Type, 256),
+		policydomain.BoundedDiagnostic(payload.IssueType, 256),
+	)
 }
 
 func SetChildIssueVerifier(verifier func(string) error) func(string) error {

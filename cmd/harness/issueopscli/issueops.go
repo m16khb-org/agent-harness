@@ -177,12 +177,13 @@ func issueOpsRemoteDeps() remotecmd.Deps {
 
 func issueOpsRemoteDepsWithPublication(publication remotecmd.PublicationHandlers) remotecmd.Deps {
 	return remotecmd.Deps{
-		PrintJSON:    printJSON,
-		PrintResult:  printIssueOpsResult,
-		PrintError:   printIssueOpsErrorJSON,
-		VerifyLive:   verifyIssueOpsRemoteArtifactLive,
-		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
-		Publication:  publication,
+		PrintJSON:         printJSON,
+		PrintResult:       printIssueOpsResult,
+		PrintError:        printIssueOpsErrorJSON,
+		VerifyLive:        verifyIssueOpsRemoteArtifactLive,
+		VerifyLiveContext: verifyIssueOpsRemoteArtifactLiveContext,
+		VerifyMerged:      verifyIssueOpsRemoteArtifactMergedLive,
+		Publication:       publication,
 	}
 }
 

@@ -83,12 +83,12 @@ func TestVerifyIssueOpsChildIssueLiveAcceptsGitLabWorkItemWhenIssuesEndpointRetu
 	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
 printf '%s\n' "$*" >> "$HARNESS_FAKE_GLAB_LOG"
 case "$2" in
-  projects/bubble-team%2Fbackend-team%2Fapi-servers/work_items/2490)
+  projects/sample-group%2Fplatform-group%2Fservice-api/work_items/2490)
     echo "glab: HTTP 404" >&2
     exit 1
     ;;
-  projects/bubble-team%2Fbackend-team%2Fapi-servers/issues/2490)
-    printf '{"iid":2490,"type":"TASK","issue_type":"task","web_url":"https://gitlab.bubbletap.com/bubble-team/backend-team/api-servers/-/work_items/2490"}'
+  projects/sample-group%2Fplatform-group%2Fservice-api/issues/2490)
+    printf '{"iid":2490,"type":"TASK","issue_type":"task","web_url":"https://gitlab.example.test/sample-group/platform-group/service-api/-/work_items/2490"}'
     exit 0
     ;;
   *)
@@ -100,7 +100,7 @@ esac
 	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	err := VerifyChildIssueLive("https://gitlab.bubbletap.com/bubble-team/backend-team/api-servers/-/work_items/2490")
+	err := VerifyChildIssueLive("https://gitlab.example.test/sample-group/platform-group/service-api/-/work_items/2490")
 	if err != nil {
 		t.Fatalf("verify GitLab child work item through issues fallback: %v", err)
 	}
@@ -110,8 +110,8 @@ esac
 	}
 	got := strings.TrimSpace(string(log))
 	want := strings.Join([]string{
-		"api projects/bubble-team%2Fbackend-team%2Fapi-servers/work_items/2490 --hostname gitlab.bubbletap.com",
-		"api projects/bubble-team%2Fbackend-team%2Fapi-servers/issues/2490 --hostname gitlab.bubbletap.com",
+		"api projects/sample-group%2Fplatform-group%2Fservice-api/work_items/2490 --hostname gitlab.example.test",
+		"api projects/sample-group%2Fplatform-group%2Fservice-api/issues/2490 --hostname gitlab.example.test",
 	}, "\n")
 	if got != want {
 		t.Fatalf("glab calls = %q, want %q", got, want)

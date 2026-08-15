@@ -32,6 +32,7 @@ type Result struct {
 }
 
 const (
-	LeaseStatusReleased = issueopscontract.LeaseStatusReleased
-	PhaseDone           = issueopscontract.IssueOpsPhaseDone
+	LeaseStatusReleased  = issueopscontract.LeaseStatusReleased
+	PhaseDone            = issueopscontract.IssueOpsPhaseDone
+	IssueCreateCompleted = issueopscontract.IssueCreateIntentCompleted
 )

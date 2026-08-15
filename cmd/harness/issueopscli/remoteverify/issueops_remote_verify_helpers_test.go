@@ -13,15 +13,15 @@ func installFakeGHForRemoteArtifactTest(t *testing.T) {
 	script := `#!/bin/sh
 case "$3" in
   *"/pull/1")
-    printf '%s\n' '{"url":"https://github.com/example/repo/pull/1","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"OPEN"}'
+    printf '%s\n' '{"url":"https://github.com/example/repo/pull/1","labels":[{"name":"bug"}],"assignees":[{"login":"sample","name":"Habin"}],"state":"OPEN"}'
     exit 0
     ;;
   *"/pull/2")
-    printf '%s\n' '{"url":"https://github.com/example/repo/pull/2","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"CLOSED","mergedAt":null}'
+    printf '%s\n' '{"url":"https://github.com/example/repo/pull/2","labels":[{"name":"bug"}],"assignees":[{"login":"sample","name":"Habin"}],"state":"CLOSED","mergedAt":null}'
     exit 0
     ;;
   *"/pull/3")
-    printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"MERGED","mergedAt":"2026-06-05T11:00:00Z"}'
+    printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","labels":[{"name":"bug"}],"assignees":[{"login":"sample","name":"Habin"}],"state":"MERGED","mergedAt":"2026-06-05T11:00:00Z"}'
     exit 0
     ;;
   *)

@@ -13,6 +13,36 @@ and owner workflow live in
 
 ## Preparation and Provider Publication Contracts
 
+### Durable parent issue creation and recovery
+
+`create-issue --confirm` requires a started IssueOps record and a canonical
+`origin` remote. The command stores a sealed intent before invoking `gh` or
+`glab`, appends an operation marker to the issue body, performs live
+label/assignee verification, then records the canonical issue URL and completed
+intent atomically.
+
+```bash
+agent-harness issueops remote create-issue \
+  --id ID --provider github --title "Title" --body "Body" \
+  --label bug --assignee USER --confirm --json
+```
+
+If the provider process did not start, rerun the exact request; changed title,
+body, labels, assignees, provider, or project authority are rejected. If the
+process started but the result is unknown, do not rerun create. Search and
+adopt through the durable marker:
+
+```bash
+agent-harness issueops remote reconcile-issue --id ID --json
+agent-harness issueops remote reconcile-issue --id ID --confirm --json
+```
+
+Zero or multiple marker candidates remain blocked. One candidate is accepted
+only when its title and full body digest match the sealed request and live
+labels/assignees verify. `issueops list` shows
+`[issue-create:<status>]`; `doctor` reports ambiguous, verification-failed, and
+receipt-failed states. Normal short-lived `pending` intent is not unhealthy.
+
 Orca is user-installed and optional. Preview
 `agent-harness issueops execution prepare --id ID --mode auto ... --json` preview 후 반환된 `next_command`의 동일 입력과 `--expected-readiness-fingerprint`로 confirm한다. `--mode direct`는 예외 경로이며 정규화된 `--direct-reason` 없이는 거부된다. 완료 전 status의 `execution.selection`에서 requested/resolved mode, probe booleans/code, fallback, fingerprint, selected_at, explicit-direct reason을 다시 읽는다.
 review the mode, branch, base SHA, canonical worktree, and owner model, then

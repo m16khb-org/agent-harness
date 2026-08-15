@@ -13,6 +13,7 @@ type stableV1Record struct {
 	DesignReview            *stableV1DesignReview          `json:"design_review,omitempty"`
 	DomainReview            *stableV1DomainReview          `json:"domain_review,omitempty"`
 	IssueURL                string                         `json:"issue_url,omitempty"`
+	IssueCreateIntent       *stableV1IssueCreateIntent     `json:"issue_create_intent,omitempty"`
 	PlanPath                string                         `json:"plan_path,omitempty"`
 	WorktreePath            string                         `json:"worktree_path,omitempty"`
 	IssueLinks              []stableV1IssueLink            `json:"issue_links,omitempty"`
@@ -42,6 +43,23 @@ type stableV1Record struct {
 	PhaseLedger             map[string]stableV1LedgerEntry `json:"phase_ledger,omitempty"`
 	CreatedAt               string                         `json:"created_at"`
 	UpdatedAt               string                         `json:"updated_at"`
+}
+
+type stableV1IssueCreateIntent struct {
+	OperationID      string   `json:"operation_id"`
+	Marker           string   `json:"marker"`
+	Provider         string   `json:"provider"`
+	ProjectAuthority string   `json:"project_authority"`
+	Title            string   `json:"title"`
+	BodySHA256       string   `json:"body_sha256"`
+	Labels           []string `json:"labels,omitempty"`
+	Assignees        []string `json:"assignees,omitempty"`
+	Status           string   `json:"status"`
+	Attempt          int      `json:"attempt"`
+	CanonicalURL     string   `json:"canonical_url,omitempty"`
+	Failure          string   `json:"failure,omitempty"`
+	StartedAt        string   `json:"started_at"`
+	UpdatedAt        string   `json:"updated_at"`
 }
 
 type stableV1Feedback struct {

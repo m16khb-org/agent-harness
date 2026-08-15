@@ -20,7 +20,7 @@ func installFakeGHIssueForRemoteArtifactTest(t *testing.T) {
 	script := `#!/bin/sh
 case "$3" in
   *"/issues/1")
-    printf '%s\n' '{"url":"https://github.com/example/repo/issues/1","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"OPEN"}'
+    printf '%s\n' '{"url":"https://github.com/example/repo/issues/1","labels":[{"name":"bug"}],"assignees":[{"login":"sample","name":"Habin"}],"state":"OPEN"}'
     exit 0
     ;;
   *)
@@ -42,7 +42,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubIssue(t *testing.T)
 		Kind:      "issue",
 		URL:       "https://github.com/example/repo/issues/9999",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("expected missing GitHub issue to fail live verification, got %v", err)
@@ -56,7 +56,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresGitHubIssueLabelsAndAssignees(t
 		Kind:      "issue",
 		URL:       "https://github.com/example/repo/issues/1",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err != nil {
 		t.Fatalf("expected matching GitHub issue evidence to pass: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresGitHubIssueLabelsAndAssignees(t
 		Kind:      "issue",
 		URL:       "https://github.com/example/repo/issues/1",
 		Labels:    []string{"missing"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "label") {
 		t.Fatalf("expected missing label to fail live verification, got %v", err)
 	}
@@ -85,7 +85,7 @@ func TestFetchGitLabIssueArtifactParsesLivePayload(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "glab.log")
 	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
 printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
-printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42","state":"opened","labels":["ready","bug"],"assignees":[{"id":123,"username":"habin","name":"Ha Bin"},{"id":0,"username":"reviewer","name":"Reviewer"}]}'
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42","state":"opened","labels":["ready","bug"],"assignees":[{"id":123,"username":"sample","name":"Ha Bin"},{"id":0,"username":"reviewer","name":"Reviewer"}]}'
 `)
 	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -111,7 +111,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42"
 			t.Fatalf("missing label %q in %#v", want, artifact.Labels)
 		}
 	}
-	for _, want := range []string{"123", "habin", "Ha Bin", "reviewer", "Reviewer"} {
+	for _, want := range []string{"123", "sample", "Ha Bin", "reviewer", "Reviewer"} {
 		if !slices.Contains(artifact.Assignees, want) {
 			t.Fatalf("missing assignee %q in %#v", want, artifact.Assignees)
 		}
@@ -121,7 +121,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42"
 func TestVerifyIssueOpsRemoteArtifactLiveRequiresGitLabIssueLabelsAndAssignees(t *testing.T) {
 	bin := t.TempDir()
 	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
-printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42","state":"opened","labels":["bug"],"assignees":[{"id":1,"username":"habin","name":"Habin"}]}'
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42","state":"opened","labels":["bug"],"assignees":[{"id":1,"username":"sample","name":"Habin"}]}'
 `)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
@@ -130,7 +130,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42"
 		Kind:      "issue",
 		URL:       "https://gitlab.example.com/group/project/-/issues/42",
 		Labels:    []string{"bug"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err != nil {
 		t.Fatalf("expected matching GitLab issue evidence to pass: %v", err)
 	}
@@ -139,7 +139,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/issues/42"
 		Kind:      "issue",
 		URL:       "https://gitlab.example.com/group/project/-/issues/42",
 		Labels:    []string{"missing"},
-		Assignees: []string{"habin"},
+		Assignees: []string{"sample"},
 	}); err == nil || !strings.Contains(err.Error(), "label") {
 		t.Fatalf("expected missing label to fail live verification, got %v", err)
 	}

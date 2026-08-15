@@ -171,3 +171,15 @@ func InferProviderFromRepoRemotes(repo string) (string, error) {
 	}
 	return remote.ProviderFromRemoteURLs(urls)
 }
+
+func ResolveProviderProjectAuthority(repo, provider string) (string, error) {
+	code, out := defaultExecutionSyncBaseGit(context.Background(), repo, "remote", "get-url", "origin")
+	if code != 0 {
+		return "", fmt.Errorf("cannot determine project authority from origin remote")
+	}
+	projectKey, err := remote.ProjectKeyFromGitRemoteURL(strings.TrimSpace(out), provider)
+	if err != nil {
+		return "", fmt.Errorf("cannot determine project authority: %w", err)
+	}
+	return projectKey, nil
+}

@@ -29,9 +29,20 @@ func NewProvider() Provider { return Provider{} }
 func (Provider) Name() string { return "gitlab" }
 
 func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.IssueProviderCreateIssueResult, error) {
+	return Provider{}.CreateIssueContext(context.Background(), req)
+}
+
+func (Provider) CreateIssueContext(ctx context.Context, req port.IssueProviderCreateIssueRequest) (port.IssueProviderCreateIssueResult, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		return port.IssueProviderCreateIssueResult{OK: false}, fmt.Errorf("issue title is required")
+	}
+	projectURL, err := gitLabProjectURL(req.ProjectKey)
+	if err != nil {
+		return port.IssueProviderCreateIssueResult{OK: false}, err
+	}
+	if req.Confirm && projectURL == "" {
+		return port.IssueProviderCreateIssueResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: fmt.Errorf("GitLab project authority is required")}
 	}
 	args := []string{"issue", "create", "--title", title}
 	body := strings.TrimSpace(req.Body)
@@ -44,13 +55,52 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 	for _, assignee := range req.Assignees {
 		args = append(args, "--assignee", assignee)
 	}
+	if projectURL != "" {
+		args = append(args, "--repo", projectURL)
+	}
 	if !req.Confirm {
 		return port.IssueProviderCreateIssueResult{
 			OK:      true,
 			Preview: providerutil.DryRunPreview("glab", args...),
 		}, nil
 	}
-	return runGlabJSON(args, req.Repo, "issue")
+	return runGlabJSONContext(ctx, args, req.Repo, "issue")
+}
+
+func (Provider) FindIssueCreateCandidates(ctx context.Context, req port.IssueProviderFindIssueCreateCandidatesRequest) (port.IssueProviderFindIssueCreateCandidatesResult, error) {
+	const searchLimit = 100
+	authority := strings.TrimSpace(req.ProjectAuthority)
+	parts := strings.SplitN(authority, "/", 2)
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(req.Marker) == "" {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("invalid GitLab issue create reconciliation request")
+	}
+	endpoint := "projects/" + url.PathEscape(parts[1]) + "/issues?scope=all&per_page=" + strconv.Itoa(searchLimit) + "&in=description&search=" + url.QueryEscape(req.Marker)
+	args := []string{"api", endpoint}
+	if parts[0] != "gitlab.com" {
+		args = append(args, "--hostname", parts[0])
+	}
+	out, err := providerutil.RunBoundedReadbackContext(ctx, req.Repo, "glab", args...)
+	if err != nil {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("glab issue reconciliation failed: %w", err)
+	}
+	var rows []struct {
+		URL         string `json:"web_url"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(out, &rows); err != nil {
+		return port.IssueProviderFindIssueCreateCandidatesResult{}, fmt.Errorf("parse glab issue reconciliation response: %w", err)
+	}
+	candidates := make([]port.IssueProviderIssueCreateCandidate, 0, len(rows))
+	for _, row := range rows {
+		if strings.Contains(row.Description, req.Marker) {
+			candidates = append(candidates, port.IssueProviderIssueCreateCandidate{URL: row.URL, Title: row.Title, Body: row.Description})
+		}
+	}
+	return port.IssueProviderFindIssueCreateCandidatesResult{
+		Candidates: candidates,
+		Truncated:  len(rows) >= searchLimit,
+	}, nil
 }
 
 func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
@@ -608,25 +658,31 @@ const gitlabWorkItemCloseMutation = `mutation workItemUpdate($childId: WorkItemI
 const gitlabChildCloseVerifyQuery = `query childCloseVerify($childId: WorkItemID!) { workItem(id: $childId) { id iid webUrl state } }`
 
 func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCreateIssueResult, error) {
-	if _, err := exec.LookPath("glab"); err != nil {
-		return port.IssueProviderCreateIssueResult{OK: false},
-			fmt.Errorf("glab CLI is not installed; install it from https://gitlab.com/gitlab-org/cli")
-	}
-	cmd := exec.Command("glab", args...)
-	if repo != "" {
-		cmd.Dir = repo
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		stderr := err.Error()
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr = strings.TrimSpace(string(exitErr.Stderr))
-		}
-		return port.IssueProviderCreateIssueResult{OK: false},
-			fmt.Errorf("glab %s create failed: %s", kind, stderr)
-	}
+	return runGlabJSONContext(context.Background(), args, repo, kind)
+}
+
+func runGlabJSONContext(ctx context.Context, args []string, repo string, kind string) (port.IssueProviderCreateIssueResult, error) {
+	out, invoked, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", args...)
 	url, number := parseGlabOutput(string(out))
-	return port.IssueProviderCreateIssueResult{OK: true, URL: url, Number: number}, nil
+	result := port.IssueProviderCreateIssueResult{OK: err == nil, URL: url, Number: number}
+	if err == nil {
+		if strings.TrimSpace(url) == "" {
+			return port.IssueProviderCreateIssueResult{OK: false}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("glab %s creation returned no canonical URL; do not retry", kind)}
+		}
+		return result, nil
+	}
+	if !invoked {
+		cause := err
+		if strings.Contains(err.Error(), "executable file not found") {
+			cause = fmt.Errorf("glab CLI is not installed; install it from https://gitlab.com/gitlab-org/cli")
+		}
+		return port.IssueProviderCreateIssueResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: cause}
+	}
+	diagnostic := strings.TrimPrefix(providerutil.BoundedDiagnostic(err.Error(), 384), "command failed after start: ")
+	if strings.TrimSpace(url) != "" {
+		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("glab %s create failed: %s; outcome unknown with a canonical URL returned separately; do not retry", kind, diagnostic)}
+	}
+	return port.IssueProviderCreateIssueResult{OK: false}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("glab %s create failed: %s; outcome unknown; do not retry", kind, diagnostic)}
 }
 
 func runGlabMRJSON(ctx context.Context, args []string, repo string) (port.IssueProviderCreatePullRequestResult, error) {

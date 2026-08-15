@@ -38,6 +38,7 @@ type ListEntry struct {
 	FailureAt             string                         `json:"failure_at,omitempty"`
 	CleanupFailureStep    string                         `json:"cleanup_failure_step,omitempty"`
 	CleanupFailureAt      string                         `json:"cleanup_failure_at,omitempty"`
+	IssueCreateStatus     string                         `json:"issue_create_status,omitempty"`
 	Claimable             bool                           `json:"claimable,omitempty"`
 	CleanupCandidate      bool                           `json:"cleanup_candidate,omitempty"`
 	CompletionUnreflected bool                           `json:"completion_unreflected,omitempty"`

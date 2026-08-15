@@ -5,8 +5,12 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	port "agent-harness/internal/port"
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -101,6 +105,45 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	if len(printed) != 4 {
 		t.Fatalf("expected four JSON dry-run outputs, got %d", len(printed))
 	}
+	createPayload, err := json.Marshal(printed[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var createShape map[string]any
+	if err := json.Unmarshal(createPayload, &createShape); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"ok", "provider", "issue_url", "issue_number", "labels", "assignees", "preview"} {
+		if _, ok := createShape[key]; !ok {
+			t.Fatalf("create-issue response missing %q: %s", key, createPayload)
+		}
+	}
+	if _, legacy := createShape["url"]; legacy {
+		t.Fatalf("create-issue response exposes legacy url key: %s", createPayload)
+	}
+}
+
+func TestRunRemoteCreateIssueRejectsSecretLikeFields(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "title", args: []string{"--title", "token=private-value"}},
+		{name: "body", args: []string{"--title", "Title", "--body", "password=private-value"}},
+		{name: "label", args: []string{"--title", "Title", "--label", "api_key=private-value"}},
+		{name: "assignee", args: []string{"--title", "Title", "--assignee", "credential=private-value"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"create-issue", "--id", record.ID}, test.args...)
+			err := Run(args, Deps{})
+			if err == nil || !strings.Contains(err.Error(), "issue create "+test.name+" contains secret-like content") {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
 }
 
 func TestRunRenderTemplateAndCreateIssueBodyFileTemplateValidation(t *testing.T) {
@@ -148,6 +191,23 @@ func TestRunRenderTemplateAndCreateIssueBodyFileTemplateValidation(t *testing.T)
 	}
 	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--template", "feature", "--body-file", bodyFile, "--label", "bug", "--assignee", "octocat", "--confirm"}, deps); err == nil || !strings.Contains(err.Error(), "plan_link_section_forbidden") {
 		t.Fatalf("expected template validation error for forbidden Plan Link, got %v", err)
+	}
+}
+
+func TestRunRemoteCreateIssueValidatesTitleBeforeProviderInference(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{
+		Repo:   t.TempDir(),
+		Branch: "1234-title-validation",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Run([]string{"create-issue", "--id", record.ID}, Deps{})
+
+	if err == nil || !strings.Contains(err.Error(), "issue title is required") {
+		t.Fatalf("error = %v, want title validation before provider inference", err)
 	}
 }
 
@@ -402,8 +462,8 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	if err := deps.printResult(issueopscontract.IssueOpsRecord{}, false, errors.New("x")); err == nil {
 		t.Fatal("default printResult should return input error")
 	}
-	if err := deps.verifyLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{}); err != nil {
-		t.Fatalf("default verifyLive should allow: %v", err)
+	if err := deps.verifyLive(context.Background(), issueopscontract.IssueOpsRemoteArtifactVerificationRequest{}); err == nil {
+		t.Fatal("default verifyLive must fail closed")
 	}
 	var flags repeatedFlag
 	if flags.String() != "" {
@@ -445,6 +505,19 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	}
 	if err := Run([]string{"unknown"}, deps); err == nil || !strings.Contains(err.Error(), "unknown issueops remote") {
 		t.Fatalf("expected unknown command error, got %v", err)
+	}
+}
+
+func TestDurableIssueCreateFailureRedactsAndCapsDiagnostics(t *testing.T) {
+	got := durableIssueCreateFailure(errors.New(
+		"token=super-secret https://internal.example/path " + strings.Repeat("x", 4096),
+	))
+
+	if strings.Contains(got, "super-secret") || strings.Contains(got, "internal.example") {
+		t.Fatalf("durable diagnostic was not redacted: %q", got)
+	}
+	if len(got) > 2048 {
+		t.Fatalf("durable diagnostic length = %d, want <= 2048", len(got))
 	}
 }
 
@@ -524,6 +597,25 @@ func remoteIssueOpsRecordWithoutChild(t *testing.T) issueopscontract.IssueOpsRec
 	return record
 }
 
+func remoteIssueOpsRecordForCreate(t *testing.T) issueopscontract.IssueOpsRecord {
+	t.Helper()
+	repo := t.TempDir()
+	for _, args := range [][]string{
+		{"init"},
+		{"remote", "add", "origin", "https://github.com/acme/repo.git"},
+	} {
+		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "1234-remote-create"})
+	if err != nil {
+		t.Fatalf("StartIssueOps: %v", err)
+	}
+	return record
+}
+
 func activateRemoteIssueOpsRecordForCurrentProcess(t *testing.T, record *issueopscontract.IssueOpsRecord) (string, []issueopscontract.NativeProcessReceipt) {
 	t.Helper()
 	ancestry, err := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
@@ -589,10 +681,10 @@ exit 2
 
 func TestRunRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record := remoteIssueOpsRecordWithoutChild(t)
+	record := remoteIssueOpsRecordForCreate(t)
 	binDir := t.TempDir()
 	writeFakeGhForCreateIssue(t, binDir)
-	t.Setenv("PATH", binDir)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	var verified []issueopscontract.IssueOpsRemoteArtifactVerificationRequest
 	deps := Deps{
@@ -603,7 +695,7 @@ func TestRunRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
 			return nil
 		},
 	}
-	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm", "--json"}, deps); err != nil {
+	if err := Run([]string{"create-issue", "--id", record.ID, "--provider", "github", "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm", "--json"}, deps); err != nil {
 		t.Fatalf("create-issue confirm returned error: %v", err)
 	}
 	if len(verified) != 1 {
@@ -616,14 +708,21 @@ func TestRunRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
 	if strings.Join(got.Labels, ",") != "bug" || strings.Join(got.Assignees, ",") != "octocat" {
 		t.Fatalf("labels/assignees not forwarded to verification: %+v", got)
 	}
+	stored, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.IssueURL != "https://github.com/acme/repo/issues/77" || stored.IssueCreateIntent == nil || stored.IssueCreateIntent.Status != issueopscontract.IssueCreateIntentCompleted {
+		t.Fatalf("created issue receipt was not committed atomically: %+v", stored)
+	}
 }
 
 func TestRunRemoteCreateIssueConfirmFailsWhenLiveVerificationFails(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record := remoteIssueOpsRecordWithoutChild(t)
+	record := remoteIssueOpsRecordForCreate(t)
 	binDir := t.TempDir()
 	writeFakeGhForCreateIssue(t, binDir)
-	t.Setenv("PATH", binDir)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	deps := Deps{
 		PrintError: func(error) error { return nil },
@@ -631,8 +730,184 @@ func TestRunRemoteCreateIssueConfirmFailsWhenLiveVerificationFails(t *testing.T)
 			return errors.New("remote artifact missing verified label(s): bug")
 		},
 	}
-	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm"}, deps); err == nil || !strings.Contains(err.Error(), "missing verified label") {
+	if err := Run([]string{"create-issue", "--id", record.ID, "--provider", "github", "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm"}, deps); err == nil || !strings.Contains(err.Error(), "missing verified label") {
 		t.Fatalf("expected live verification failure to propagate, got %v", err)
+	}
+	stored, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.IssueURL != "" || stored.IssueCreateIntent == nil || stored.IssueCreateIntent.Status != issueopscontract.IssueCreateIntentVerificationFailed {
+		t.Fatalf("verification failure did not remain recoverable: %+v", stored)
+	}
+}
+
+func TestRunRemoteReconcileIssueRequiresExactlyOneMatchingCandidate(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, body := remoteIssueOpsRecordWithCreateIntent(t)
+	binDir := t.TempDir()
+	writeFakeGhForReconcileIssue(t, binDir)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	t.Setenv("RECONCILE_JSON", `[]`)
+	if err := Run([]string{"reconcile-issue", "--id", record.ID, "--json"}, Deps{}); err == nil || !strings.Contains(err.Error(), "found 0 live candidates") {
+		t.Fatalf("expected zero-candidate block, got %v", err)
+	}
+
+	row := map[string]string{"url": "https://github.com/acme/repo/issues/77", "title": "Title", "body": body}
+	rows, err := json.Marshal([]map[string]string{row, row})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RECONCILE_JSON", string(rows))
+	if err := Run([]string{"reconcile-issue", "--id", record.ID, "--json"}, Deps{}); err == nil || !strings.Contains(err.Error(), "found 2 live candidates") {
+		t.Fatalf("expected many-candidate block, got %v", err)
+	}
+}
+
+func TestRunRemoteReconcileIssueAdoptsDelayedUniqueVerifiedCandidate(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, body := remoteIssueOpsRecordWithCreateIntent(t)
+	binDir := t.TempDir()
+	writeFakeGhForReconcileIssue(t, binDir)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	t.Setenv("RECONCILE_JSON", `[]`)
+	if err := Run([]string{"reconcile-issue", "--id", record.ID}, Deps{}); err == nil {
+		t.Fatal("expected delayed zero-candidate result to remain unresolved")
+	}
+	rows, err := json.Marshal([]map[string]string{{
+		"url":   "https://github.com/acme/repo/issues/77",
+		"title": "Title",
+		"body":  body,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RECONCILE_JSON", string(rows))
+	var verified int
+	var printed []any
+	deps := Deps{
+		PrintJSON: func(value any) error {
+			printed = append(printed, value)
+			return nil
+		},
+		VerifyLive: func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+			verified++
+			return nil
+		},
+	}
+	if err := Run([]string{"reconcile-issue", "--id", record.ID, "--json"}, deps); err != nil {
+		t.Fatalf("preview unique candidate: %v", err)
+	}
+	if err := Run([]string{"reconcile-issue", "--id", record.ID, "--confirm", "--json"}, deps); err != nil {
+		t.Fatalf("reconcile unique candidate: %v", err)
+	}
+	if len(printed) != 2 {
+		t.Fatalf("printed %d reconcile results, want 2", len(printed))
+	}
+	preview, ok := printed[0].(issueopscontract.IssueOpsIssueCreateReconcileResult)
+	if !ok || !preview.OK || preview.CandidateCount != 1 || preview.CandidateURL == "" || !preview.WouldAdopt ||
+		preview.IssueURL != "" || preview.IssueCreateIntent == nil {
+		t.Fatalf("preview reconcile result = %#v", printed[0])
+	}
+	confirmed, ok := printed[1].(issueopscontract.IssueOpsIssueCreateReconcileResult)
+	if !ok || !confirmed.OK || confirmed.CandidateCount != 1 || confirmed.CandidateURL == "" || confirmed.WouldAdopt ||
+		confirmed.IssueURL == "" || confirmed.IssueCreateIntent == nil ||
+		confirmed.IssueCreateIntent.Status != issueopscontract.IssueCreateIntentCompleted {
+		t.Fatalf("confirmed reconcile result = %#v", printed[1])
+	}
+	if verified != 1 {
+		t.Fatalf("expected one live verification, got %d", verified)
+	}
+	stored, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.IssueURL != "https://github.com/acme/repo/issues/77" || stored.IssueCreateIntent == nil || stored.IssueCreateIntent.Status != issueopscontract.IssueCreateIntentCompleted {
+		t.Fatalf("unique candidate was not adopted atomically: %+v", stored)
+	}
+}
+
+func TestRunRemoteReconcileIssueRejectsTruncatedAndForeignProjectCandidates(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, body := remoteIssueOpsRecordWithCreateIntent(t)
+	binDir := t.TempDir()
+	writeFakeGhForReconcileIssue(t, binDir)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	rows := make([]map[string]string, 100)
+	for index := range rows {
+		rows[index] = map[string]string{
+			"url":   fmt.Sprintf("https://github.com/acme/repo/issues/%d", index+1),
+			"title": "Title",
+			"body":  body,
+		}
+	}
+	raw, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RECONCILE_JSON", string(raw))
+	if err := Run([]string{"reconcile-issue", "--id", record.ID}, Deps{}); err == nil || !strings.Contains(err.Error(), "truncated") {
+		t.Fatalf("error = %v, want truncated search rejection", err)
+	}
+
+	raw, err = json.Marshal([]map[string]string{{
+		"url":   "https://github.com/other/repo/issues/77",
+		"title": "Title",
+		"body":  body,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RECONCILE_JSON", string(raw))
+	if err := Run([]string{"reconcile-issue", "--id", record.ID, "--confirm"}, Deps{
+		VerifyLive: func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
+			t.Fatal("foreign project candidate reached live verification")
+			return nil
+		},
+	}); err == nil || !strings.Contains(err.Error(), "sealed authority") {
+		t.Fatalf("error = %v, want foreign project rejection", err)
+	}
+}
+
+func remoteIssueOpsRecordWithCreateIntent(t *testing.T) (issueopscontract.IssueOpsRecord, string) {
+	t.Helper()
+	record := remoteIssueOpsRecordForCreate(t)
+	operationID := "0123456789abcdef0123456789abcdef"
+	marker := "<!-- agent-harness:issue-create:" + operationID + " -->"
+	body := "Body\n\n" + marker
+	digest := sha256.Sum256([]byte(body))
+	updated, err := issueopscore.BeginIssueCreateIntent(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsIssueCreateIntentRequest{
+		OperationID:      operationID,
+		Provider:         "github",
+		ProjectAuthority: "github.com/acme/repo",
+		Title:            "Title",
+		BodySHA256:       fmt.Sprintf("%x", digest[:]),
+		Labels:           []string{"bug"},
+		Assignees:        []string{"octocat"},
+		StartedAt:        "2026-08-14T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return updated, body
+}
+
+func writeFakeGhForReconcileIssue(t *testing.T, binDir string) {
+	t.Helper()
+	path := filepath.Join(binDir, "gh")
+	script := `#!/bin/sh
+if [ "$1 $2" = "issue list" ]; then
+  printf '%s' "$RECONCILE_JSON"
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
 	}
 }
 
