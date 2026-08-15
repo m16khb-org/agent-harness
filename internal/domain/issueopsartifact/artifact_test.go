@@ -24,6 +24,13 @@ func TestCanStageOnlyRecoveryPlanAfterExecutionPrepare(t *testing.T) {
 	}
 }
 
+func TestCanStageRejectsTerminalRecordWithoutExecution(t *testing.T) {
+	record := issueopscontract.IssueOpsRecord{Phase: issueopscontract.IssueOpsPhaseDone}
+	if CanStage(record, "plan") {
+		t.Fatal("terminal record must reject new staged artifacts")
+	}
+}
+
 func TestValidateContentRejectsSecretLikeValue(t *testing.T) {
 	if err := ValidateContent([]byte("token=secret-value")); err == nil {
 		t.Fatal("secret-like artifact must be rejected")

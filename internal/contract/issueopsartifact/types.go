@@ -12,6 +12,7 @@ const (
 	MaxBytes            = issueopsleasecontract.OwnerArtifactMaxBytes
 	ExecutionModeOrca   = issueopscontract.ExecutionModeOrca
 	LeaseStatusReleased = issueopscontract.LeaseStatusReleased
+	PhaseDone           = issueopscontract.IssueOpsPhaseDone
 )
 
 type RecoveryError struct {

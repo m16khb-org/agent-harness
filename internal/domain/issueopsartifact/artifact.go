@@ -32,6 +32,9 @@ func ValidateContent(content []byte) error {
 }
 
 func CanStage(record issueopsartifactcontract.Record, name string) bool {
+	if record.Phase == issueopsartifactcontract.PhaseDone {
+		return false
+	}
 	if record.Execution == nil {
 		return true
 	}
