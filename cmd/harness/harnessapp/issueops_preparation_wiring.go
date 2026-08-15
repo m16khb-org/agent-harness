@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/adapter/provider"
 	preparationapp "agent-harness/internal/application/issueopspreparation"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/port"
@@ -23,6 +24,7 @@ type issueOpsPreparationCompositionDeps struct {
 	ReadIssue      issueops.ExecutionIssueSnapshotReadFunc
 	Now            func() time.Time
 	NewOperationID func() (string, error)
+	ValidateActor  func(issueopscontract.NativeActor) error
 }
 
 type issueOpsExecutionCompositionDeps struct {
@@ -38,6 +40,7 @@ func productionIssueOpsExecutionDependencies() issueOpsExecutionCompositionDeps 
 	return issueOpsExecutionCompositionDeps{
 		Prepare: newIssueOpsPreparationHandler(issueOpsPreparationCompositionDeps{
 			Direct: gitworktree.New(), Orca: orcaExecution, ReadIssue: readIssue,
+			ValidateActor: issueops.ValidateNativeActorProcess,
 		}),
 		Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: readIssue,
 	}
@@ -45,6 +48,11 @@ func productionIssueOpsExecutionDependencies() issueOpsExecutionCompositionDeps 
 
 func newIssueOpsPreparationHandler(deps issueOpsPreparationCompositionDeps) issueops.ExecutionPrepareHandler {
 	return func(ctx context.Context, stateRoot string, request issueops.ExecutionPrepareRequest, invocation issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
+		if deps.ValidateActor != nil {
+			if err := deps.ValidateActor(request.Actor); err != nil {
+				return issueops.ExecutionPrepareResult{ID: request.ID}, err
+			}
+		}
 		requestDeps := deps
 		if invocation.ReadIssue != nil {
 			requestDeps.ReadIssue = invocation.ReadIssue

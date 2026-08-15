@@ -3,6 +3,7 @@ package harnessapp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,6 +141,38 @@ func TestIssueOpsPrepareWiringUsesRequestScopedIssueSnapshot(t *testing.T) {
 	}
 	if fallbackCalls != 0 {
 		t.Fatalf("validated request snapshot called provider fallback %d times", fallbackCalls)
+	}
+}
+
+func TestIssueOpsPrepareWiringRejectsActorBeforeStateMutation(t *testing.T) {
+	stateRoot := t.TempDir()
+	called := false
+	handler := newIssueOpsPreparationHandler(issueOpsPreparationCompositionDeps{
+		ValidateActor: func(issueopscontract.NativeActor) error {
+			called = true
+			return errors.New("native session process receipt is not in the local process ancestry")
+		},
+	})
+
+	result, err := handler(
+		context.Background(),
+		stateRoot,
+		issueopscontract.ExecutionPrepareRequest{ID: "io-forged-actor"},
+		issueopscore.ExecutionPrepareInvocation{},
+	)
+
+	if err == nil || !strings.Contains(err.Error(), "not in the local process ancestry") {
+		t.Fatalf("prepare error = %v", err)
+	}
+	if !called || result.ID != "io-forged-actor" {
+		t.Fatalf("validator called=%v result=%+v", called, result)
+	}
+	entries, readErr := os.ReadDir(stateRoot)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("state root mutated before actor validation: %v", entries)
 	}
 }
 

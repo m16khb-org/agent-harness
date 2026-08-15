@@ -470,6 +470,13 @@ func normalizeNativeActor(actor issueops.NativeActor) (issueops.NativeActor, err
 	return actor, nil
 }
 
+// ValidateNativeActorProcess applies the same ancestry and live-process receipt
+// checks used by lease transitions before preparation can persist a new holder.
+func ValidateNativeActorProcess(actor issueops.NativeActor) error {
+	_, err := normalizeNativeActor(actor)
+	return err
+}
+
 // refuseSelfRevoke는 살아 있는 홀더가 자기 lease를 revoke하는 것을 막는다.
 //
 // revoke의 존재 이유는 응답 없는 홀더에게서 제3자가 lease를 뺏는 것이다. 그런데
