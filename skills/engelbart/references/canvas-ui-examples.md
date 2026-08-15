@@ -8,7 +8,7 @@ Raw Slack Web API `canvases.create`/`canvases.edit` does not support `::: {.call
 Use the quote form when publishing with `.zshrc` token or `publish_meeting_canvas.py`.
 
 ```markdown
-> 회의일 YYYY-MM-DD · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요
+> 회의일 YYYY-MM-DD · 대상 #sample-platform-team · Source synthetic transcript · Status Follow-up 필요
 ```
 
 Use the callout form only for Slack MCP Canvas-flavored Markdown, and only after
@@ -16,7 +16,7 @@ read-back confirms it renders as callout UI instead of literal text.
 
 ```markdown
 ::: {.callout}
-회의일 YYYY-MM-DD · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요
+회의일 YYYY-MM-DD · 대상 #sample-platform-team · Source synthetic transcript · Status Follow-up 필요
 :::
 ```
 
@@ -32,7 +32,7 @@ and move detail to `### 메타데이터 메모`.
 | Date | YYYY-MM-DD |
 | Topic | 온보딩 |
 | Status | Follow-up 필요 |
-| Participants | 김하빈 외 4명 |
+| Participants | 회의진행자 외 4명 |
 | Source | 붙여넣은 화자분리 전사본 |
 | Tracking | Slack List / GitLab |
 | Last updated | YYYY-MM-DD |
@@ -40,7 +40,7 @@ and move detail to `### 메타데이터 메모`.
 
 ```markdown
 ### 메타데이터 메모
-- Participants: 김하빈, 김현호, 김승민, 이푸름, 김관식
+- Participants: 회의진행자, 백엔드리더, 데이터담당, 플랫폼담당, 신규팀원
 - Source: 붙여넣은 회의 전사본. 긴 원문은 부록의 `원문 전사본 전문`에 보존.
 - Tracking: Slack List row와 GitLab/런북 링크는 Canvas 검증 후 별도 바인딩.
 ```
@@ -58,7 +58,7 @@ and move detail to `### 메타데이터 메모`.
 
 ```markdown
 ## 액션 보드
-- [ ] 김현호 팀리더: GitLab issue에 추천 시스템 데이터 파이프라인 태스크를 작성한다. 기한: 미정. Tracking: GitLab.
+- [ ] 데이터담당: 샘플 이슈에 이벤트 파이프라인 태스크를 작성한다. 기한: 미정. Tracking: 샘플 이슈.
 ```
 
 ## Short Evidence Quote

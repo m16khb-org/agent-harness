@@ -5,7 +5,7 @@ publish_meeting_canvas.py
 Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다:
 
   1) canvases.create        - 회의록 Canvas 생성 (markdown 본문)
-  2) canvases.access.set     - Bubbletap 누구나 볼 수 있음 정책:
+  2) canvases.access.set     - 워크스페이스 공개 채널 구성원 열람 정책:
                                public channel_ids 로 read 권한 부여
   3) slackLists.items.list   - 기존 회의 인덱스 List 컨벤션 확인
   4) slackLists.items.create - 회의 인덱스 List에 한 행 자동 등록
@@ -19,8 +19,8 @@ Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다
   MEETING_LIST_ID           회의 인덱스 List의 list_id (예: F0BDM7J7AV6)  (필수)
   PARTICIPANT_NAMES         회의 참여자 이름, 콤마 구분 (이름 기반 자동 조회)
   PARTICIPANT_USER_IDS      회의 참여자 user_id, 콤마 구분 (직접 지정 시)
-  CANVAS_ACCESS_MODE        bubbletap_anyone | channel | participants (기본: bubbletap_anyone)
-  CANVAS_ACCESS_CHANNEL_IDS Bubbletap 누구나 볼 수 있음 대상 public channel_id, 콤마 구분
+  CANVAS_ACCESS_MODE        workspace_anyone | channel | participants (기본: workspace_anyone)
+  CANVAS_ACCESS_CHANNEL_IDS 워크스페이스 공개 열람 대상 public channel_id, 콤마 구분
   PARTICIPANT_ACCESS_LEVEL  read | write (기본: read)
 
 기본 access grant는 channel_ids 를 사용한다. Slack API는 channel_ids 와 user_ids 를
@@ -58,7 +58,7 @@ def usage() -> str:
   CANVAS_MARKDOWN    완성된 회의록 Markdown. Web API-safe `> 회의일 ...` 상태줄,
                      `### 원문 전사본 전문`, ```text 코드블록 포함.
   PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS
-  CANVAS_ACCESS_CHANNEL_IDS  기본 CANVAS_ACCESS_MODE=bubbletap_anyone 에서 필요
+  CANVAS_ACCESS_CHANNEL_IDS  기본 CANVAS_ACCESS_MODE=workspace_anyone 에서 필요
 
 선택 환경변수:
   MEETING_TITLE, MEETING_DATE, CANVAS_ACCESS_MODE, PARTICIPANT_ACCESS_LEVEL,
@@ -71,8 +71,8 @@ def split_env_list(name: str) -> list[str]:
 
 
 def canvas_access_mode() -> str:
-    mode = os.environ.get("CANVAS_ACCESS_MODE", "bubbletap_anyone").strip()
-    return mode or "bubbletap_anyone"
+    mode = os.environ.get("CANVAS_ACCESS_MODE", "workspace_anyone").strip()
+    return mode or "workspace_anyone"
 
 
 def display_width(text: str) -> int:
@@ -161,9 +161,9 @@ def validate_required_inputs() -> None:
         missing.extend(validate_metadata_table_shape(canvas_markdown))
 
     mode = canvas_access_mode()
-    if mode not in {"bubbletap_anyone", "channel", "participants"}:
-        missing.append("CANVAS_ACCESS_MODE 값은 bubbletap_anyone, channel, participants 중 하나")
-    if mode in {"bubbletap_anyone", "channel"} and not split_env_list("CANVAS_ACCESS_CHANNEL_IDS"):
+    if mode not in {"workspace_anyone", "channel", "participants"}:
+        missing.append("CANVAS_ACCESS_MODE 값은 workspace_anyone, channel, participants 중 하나")
+    if mode in {"workspace_anyone", "channel"} and not split_env_list("CANVAS_ACCESS_CHANNEL_IDS"):
         missing.append("CANVAS_ACCESS_CHANNEL_IDS")
 
     if missing:
@@ -414,7 +414,7 @@ def main(argv: list[str] | None = None):
         if status == "resolved":
             print(f"    참석자 '{name}' -> {val} (자동 부여)")
         elif status == "metadata_only":
-            print(f"    참석자 '{name}' -> metadata_only: 기본 Bubbletap 공유는 channel_ids 사용")
+            print(f"    참석자 '{name}' -> metadata_only: 기본 워크스페이스 공유는 channel_ids 사용")
         else:
             print(f"    참석자 '{name}' -> {status}: 자동 부여 생략, 수동 확인 필요 ({val})")
     if access_mode == "participants" and not participant_ids:
@@ -446,8 +446,8 @@ def main(argv: list[str] | None = None):
     meeting["canvas_url"] = canvas_url
     print(f"[1/4] canvas 생성 완료: {canvas_id}")
 
-    # 2) Bubbletap 누구나 볼 수 있음: public channel_ids 로 read 부여 ---------
-    if access_mode in {"bubbletap_anyone", "channel"}:
+    # 2) 워크스페이스 공개 채널 구성원 열람: public channel_ids 로 read 부여 ---------
+    if access_mode in {"workspace_anyone", "channel"}:
         slack_call(
             "canvases.access.set",
             {
@@ -457,7 +457,7 @@ def main(argv: list[str] | None = None):
             },
             token,
         )
-        print(f"[2/4] Bubbletap 누구나 볼 수 있음 공유({access_level}): {access_channel_ids}")
+        print(f"[2/4] 워크스페이스 공개 채널 구성원 열람({access_level}): {access_channel_ids}")
     elif participant_ids:
         slack_call(
             "canvases.access.set",

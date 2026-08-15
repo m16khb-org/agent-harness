@@ -38,7 +38,7 @@ Slack Canvas is a fully formatted surface for information that does not fit in a
 
 Use these proven patterns:
 
-- **Top status block UI:** after the title, add one short scope/status block. The syntax depends on the write path: Slack MCP Canvas-flavored Markdown may use `::: {.callout}` after read-back confirms it renders as a callout UI, but raw Slack Web API `canvases.create`/`canvases.edit` does not support that callout syntax and renders it literally. When using `.zshrc` token or `scripts/publish_meeting_canvas.py`, use a Web API-safe quote line such as `> 회의일 YYYY-MM-DD · 대상 #dev-team-backend · Source pasted transcript · Follow-up 필요`.
+- **Top status block UI:** after the title, add one short scope/status block. The syntax depends on the write path: Slack MCP Canvas-flavored Markdown may use `::: {.callout}` after read-back confirms it renders as a callout UI, but raw Slack Web API `canvases.create`/`canvases.edit` does not support that callout syntax and renders it literally. When using `.zshrc` token or `scripts/publish_meeting_canvas.py`, use a Web API-safe quote line such as `> 회의일 YYYY-MM-DD · 대상 #sample-platform-team · Source synthetic transcript · Follow-up 필요`.
 - **Progressive disclosure:** put the answer first (`TL;DR`, decisions, actions), then topic detail, then follow-up, then uncertainty and appendix. Readers should understand the meeting without reaching the transcript.
 - **Layer-cake headings:** headings must be meaningful on their own. A reader scanning only headings should see the meeting flow.
 - **Chunk dense facts:** split long decision/action/risk lines into short nested bullets with labels. Do not pack decision, evidence, owner, impact, and status into one sentence.
@@ -96,7 +96,7 @@ Reject these outputs before they reach Slack:
 
 - Do not use one dense paragraph for TL;DR in multi-topic meetings. Use 2-4 bullets so a reader can scan the outcome.
 - Do not use tables for decisions, actions, risks, or corrections by default. Use titled bullets and checklists; tables are only for metadata or short comparisons.
-- Do not put long values into the metadata table. Slack Canvas table width follows the longest cell, so `Participants`, `Source`, `Tracking`, and `Access` must be summaries such as `김하빈 외 4명`, `붙여넣은 화자분리 전사본`, `Slack List / GitLab / 런북`, and `#dev-team-backend`; put exact long detail below in `### 메타데이터 메모`.
+- Do not put long values into the metadata table. Slack Canvas table width follows the longest cell, so `Participants`, `Source`, `Tracking`, and `Access` must be summaries such as `플랫폼담당 외 4명`, `붙여넣은 화자분리 전사본`, `Slack List / issue tracker / 런북`, and `#sample-platform-team`; put exact long detail below in `### 메타데이터 메모`.
 - Do not put callouts, tables, or code blocks inside layout columns. Slack Canvas does not support those nested combinations reliably.
 - Do not create a skeleton Canvas and stop there. If a fallback skeleton is created, it must be followed by section updates until the full readable meeting Canvas is present.
 - Do not hide uncertainty in decisions. Keep uncertain speaker mappings, term mappings, policy details, and architecture assumptions in `리스크/열린 질문` or the correction appendix.
@@ -105,8 +105,8 @@ Reject these outputs before they reach Slack:
 
 ## Default Slack Target
 
-- 기본 대상 채널: `#dev-team-backend`.
-- Default artifact: create the individual meeting Canvas for `#dev-team-backend`, grant Bubbletap 누구나 볼 수 있음 access, and register the meeting in the existing Slack List using that List's current convention.
+- 기본 대상 채널: `#sample-platform-team`.
+- Default artifact: create the individual meeting Canvas for `#sample-platform-team`, grant workspace-wide view access, and register the meeting in the existing Slack List using that List's current convention.
 - Slack List registration is automatic for published meeting Canvases. Inspect the existing List convention first, then create/update exactly one row through the verified Web API path. Use Slack's built-in `이름` field for the meeting title and do not create a duplicate index List. Manual handoff is a fallback only when API/tool permission is actually unavailable after verification.
 - 다른 채널 can be used when the user names one. Treat the named channel as a channel override for the meeting Canvas.
 - When drafting only, write the target as metadata and do not claim a Canvas was created.
@@ -116,11 +116,11 @@ Do not claim to have created, shared, pinned, attached, or updated a Slack Canva
 
 ## Participant Access Grant
 
-Meeting canvases are created with default "invited people only" access, so a freshly created Canvas can be creator-only until sharing is applied. The default sharing policy is **Bubbletap 누구나 볼 수 있음**: give the Canvas public channel based `read` access so anyone in the Bubbletap workspace who can use that public channel visibility path can view it.
+Meeting canvases are created with default "invited people only" access, so a freshly created Canvas can be creator-only until sharing is applied. The default sharing policy is **워크스페이스 공개 채널 구성원 열람**: give the Canvas public channel based `read` access so anyone in the workspace who can use that public channel visibility path can view it.
 
-- Use `#dev-team-backend` as the default public-channel sharing target unless the user names another channel. The API call needs Slack channel IDs, so set `CANVAS_ACCESS_CHANNEL_IDS` (comma-separated `C...` IDs) before using the Web API helper.
+- Use `#sample-platform-team` as the default public-channel sharing target unless the user names another channel. The API call needs Slack channel IDs, so set `CANVAS_ACCESS_CHANNEL_IDS` (comma-separated `C...` IDs) before using the Web API helper.
 - Granting access needs the Slack Web API `canvases.access.set` with `channel_ids` and `access_level: read`. Access level defaults to `read`; use `write` only when the user asks for collaborative editing.
-- Do not pass `channel_ids` and `user_ids` together. Slack rejects mixed target types in one `canvases.access.set` call. Use `channel_ids` for the default Bubbletap visibility path.
+- Do not pass `channel_ids` and `user_ids` together. Slack rejects mixed target types in one `canvases.access.set` call. Use `channel_ids` for the default workspace visibility path.
 - The participant list remains required metadata: include it in the Canvas metadata, use it for owner/speaker correction, and record unresolved or ambiguous participant/speaker mappings in `참석자/화자 보정`. Do not silently convert generic speaker labels to real people.
 - Use participant `user_ids` only when the user explicitly asks for restricted participant-only sharing or the public-channel target cannot be provided. In that restricted mode, only auto-resolve users on a single unambiguous match; on no match or multiple matches (동명이인), do not guess.
 - The current MCP surface has no `canvases.access.set` tool. Create/read the Canvas via MCP when available, but run the access grant through the Web API path in `scripts/publish_meeting_canvas.py`. Requires a token with `canvases:write` and `lists:write` for the default published artifact (plus `users:read` only for restricted participant lookup); Lists/Canvas are paid-plan features.
@@ -129,7 +129,7 @@ Meeting canvases are created with default "invited people only" access, so a fre
 
 Before resolving terms, services, participants, or speaker labels, check for `skills/engelbart/background.local.md`. That file is gitignored on purpose; use `skills/engelbart/background.local.example.md` as the tracked template and keep team-specific names, service names, and private operating context out of `SKILL.md`.
 
-Use local background as high-confidence correction candidates for product names, team rosters, explicitly listed aliases, confirmed roles, and domain terms. Product and service names from local background are preferred over phonetically similar unknown terms when the meeting context matches the product/service domain; for example, if local background lists `팅글`, then transcript variants such as `킹글 스테이징` should resolve to `팅글 staging`, not to an invented project name. If the local background explicitly gives an alias such as `{alias}: {name}`, apply that alias consistently in decisions, actions, topic summaries, and correction maps. Standalone Korean honorific-like words may be name misrecognitions when they phonetically match exactly one roster member; for example, `프로님` can resolve to `이푸름 님` when `이푸름` is in the local roster or alias list. But `{name} 프로님` should be treated as a title/honorific, not as `이푸름 님`, unless the local background explicitly says otherwise. If the local background confirms a role such as `{name}: 팀리더`, do not write `{name} 팀리더 추정`; write the confirmed role directly. Do not silently convert a generic speaker label such as `참석자 N` to a real name from the roster alone. A real-name speaker mapping still needs transcript evidence, user-provided context, an explicit alias entry, a unique phonetic roster match for a standalone name-like expression, or a clear meeting role; otherwise write it as `{이름} 추정` or keep `참석자 N` and record the uncertainty in `참석자/화자 보정`.
+Use local background as high-confidence correction candidates for product names, team rosters, explicitly listed aliases, confirmed roles, and domain terms. Product and service names from local background are preferred over phonetically similar unknown terms when the meeting context matches the product/service domain; for example, if local background lists `{product}`, then a matching transcript variant should resolve to `{product} staging`, not to an invented project name. If the local background explicitly gives an alias such as `{alias}: {name}`, apply that alias consistently in decisions, actions, topic summaries, and correction maps. Standalone Korean honorific-like words may be name misrecognitions when they phonetically match exactly one roster member; for example, `프로님` can resolve to `{sample_name} 님` when `{sample_name}` is in the local roster or alias list. But `{name} 프로님` should be treated as a title/honorific, not as the alias target, unless the local background explicitly says otherwise. If the local background confirms a role such as `{name}: 팀리더`, do not write `{name} 팀리더 추정`; write the confirmed role directly. Do not silently convert a generic speaker label such as `참석자 N` to a real name from the roster alone. A real-name speaker mapping still needs transcript evidence, user-provided context, an explicit alias entry, a unique phonetic roster match for a standalone name-like expression, or a clear meeting role; otherwise write it as `{이름} 추정` or keep `참석자 N` and record the uncertainty in `참석자/화자 보정`.
 
 ## Workflow
 
@@ -139,10 +139,10 @@ Use local background as high-confidence correction candidates for product names,
    - If a participant list is present but the transcript is missing, confirm the received participants, ask for the meeting transcript text, and stop.
    - If both participant list and transcript are present, continue with the normal Engelbart workflow.
 3. Resolve Canvas target:
-   - Use `#dev-team-backend` by default.
+   - Use `#sample-platform-team` by default.
    - Apply a user-provided 채널 override when present.
    - Record target channel, access assumption, source, and last-updated metadata in the output.
-   - Use the required participant list as Canvas metadata and correction evidence; use the public-channel target for the default Bubbletap access grant.
+   - Use the required participant list as Canvas metadata and correction evidence; use the public-channel target for the default workspace access grant.
 4. Read optional local background, then read the transcript and build correction maps:
    - technical terms
    - uncertain words or sentences
@@ -156,7 +156,7 @@ Use local background as high-confidence correction candidates for product names,
 6. Render the meeting in reader order: executive summary, decisions, actions, topic discussion, follow-up checks, then risks/open questions immediately before the correction appendix.
 7. Group discussion by topic, not by timestamp, unless exact timeline matters.
 8. Produce the requested Korean artifact. When creating an individual meeting Canvas, return the verified List binding values and row/item ID separately after read-back verification.
-9. Grant Canvas access through the Bubbletap public-channel visibility path by default (see `Participant Access Grant`). Report unresolved or ambiguous participant/speaker mappings instead of guessing.
+9. Grant Canvas access through the workspace public-channel visibility path by default (see `Participant Access Grant`). Report unresolved or ambiguous participant/speaker mappings instead of guessing.
 10. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
 
 ## Canvas Naming Rules
@@ -178,7 +178,7 @@ Use short topic labels such as `배포`, `테스트품질`, `장애`, `온보딩
 
 Before calling Slack `create_canvas`, sanitize the API title separately from the human-readable title:
 
-- Avoid literal `&` in the `title` parameter. Use `and`, `및`, or remove the ampersand. For example, send `AI DevOps R and R 및 추천 시스템 온보딩` as the Slack API title instead of `AI DevOps R&R 및 추천 시스템 온보딩`.
+- Avoid literal `&` in the `title` parameter. Use `and`, `및`, or remove the ampersand. For example, send `Sample Platform R and R 및 이벤트 파이프라인 온보딩` as the Slack API title instead of `Sample Platform R&R 및 이벤트 파이프라인 온보딩`.
 - Preserve the canonical human-readable title in the Canvas body, metadata, and Slack List row when needed.
 - If `create_canvas` returns `Invalid text passed`, retry once with a sanitized title before assuming the body Markdown is invalid.
 
@@ -187,7 +187,7 @@ Before calling Slack `create_canvas`, sanitize the API title separately from the
 The default published artifact is not complete until both surfaces are done:
 
 - Create/read back the individual meeting Canvas.
-- Grant Bubbletap 누구나 볼 수 있음 access through the target public channel.
+- Grant workspace-wide public-channel access through the target public channel.
 - Inspect the existing Slack List convention.
 - Create or update one Slack List row with the verified Canvas URL.
 - Read back or otherwise verify the row/item ID.
@@ -208,7 +208,7 @@ Rules:
 
 - Do not skip Slack List registration for a published meeting Canvas. If List tooling or permission fails, verify the failure and report the blocker; only then provide the manual handoff fallback.
 - Read/inspect the existing List fields and row convention first; preserve its field names, date format, status values, and title convention.
-- Store the Canvas link in the List as the workspace docs URL: `https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`. For Bubbletap this is `https://bubbletap.slack.com/docs/T048JBUDF9U/{canvas_id}`. Do not store `https://slack.com/canvas/{canvas_id}` in the List; that fallback can open the wrong surface or fail to match the team's existing List convention. If needed, call Slack `auth.test` to derive the workspace URL and team ID before creating or updating the row.
+- Store the Canvas link in the List as the workspace docs URL: `https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`. Do not hard-code a real workspace or team ID. Do not store `https://slack.com/canvas/{canvas_id}` in the List; that fallback can open the wrong surface or fail to match the team's existing List convention. If needed, call Slack `auth.test` to derive the workspace URL and team ID before creating or updating the row.
 - Do not create an index Canvas as a substitute for the List.
 - Do not put an index row preview in the meeting Canvas body by default.
 - If the source has no explicit meeting date and the user did not provide one, set the List `Date` to the same value as `Last updated`.
@@ -221,7 +221,7 @@ Use this exact structure for every individual meeting Canvas. Keep section names
 ````markdown
 # YYYY-MM-DD [Topic] Title
 
-> 회의일 YYYY-MM-DD · 대상 #dev-team-backend or {channel override} · Source {source} · Status {Draft/Follow-up 필요/완료/확인 필요}
+> 회의일 YYYY-MM-DD · 대상 #sample-platform-team or {channel override} · Source {source} · Status {Draft/Follow-up 필요/완료/확인 필요}
 
 ## 메타데이터
 |Field|Value|
@@ -230,11 +230,11 @@ Use this exact structure for every individual meeting Canvas. Keep section names
 | Topic | {배포/테스트품질/장애/온보딩/AI/인프라/정책/리뷰/확인필요} |
 | Status | {Draft / Follow-up 필요 / 완료 / 확인 필요} |
 | Owner | {짧은 owner 또는 미정} |
-| Participants | {짧은 요약. 예: 김하빈 외 4명} |
+| Participants | {짧은 요약. 예: 플랫폼담당 외 4명} |
 | Source | {짧은 source. 예: 붙여넣은 화자분리 전사본} |
 | Slack thread | {링크 또는 미정} |
 | Tracking | {짧은 tracker 요약. 예: Slack List / GitLab / 런북} |
-| Access | {#dev-team-backend / channel override / restricted / 미정} |
+| Access | {#sample-platform-team / channel override / restricted / 미정} |
 | Last updated | YYYY-MM-DD |
 
 ### 메타데이터 메모
@@ -311,7 +311,7 @@ The full transcript must remain a verbatim block with visible speaker/timestamp 
 - Keep actions as checklist bullets so they remain readable on narrow Canvas widths.
 - If an action is long-term tracking 대상, keep the meeting-time checklist item in Canvas and put the live tracker in `Tracking` as a Slack/GitLab/문서 링크.
 - Use one accountable owner when possible. If the transcript implies a team owner but not a person, write `미정` and add an open question.
-- If local background and meeting role identify a team lead owner for a follow-up or risk, use the confirmed role in executable fields. Do not leave team-lead-owned follow-ups as `참석자 1` while separately saying the person is 김현호 팀리더 elsewhere. Speaker mapping can stay uncertain in the appendix, but owner/decision fields should use the best confirmed role.
+- If local background and meeting role identify a team lead owner for a follow-up or risk, use the confirmed role in executable fields. Do not leave team-lead-owned follow-ups as `참석자 1` while separately naming a confirmed team lead elsewhere. Speaker mapping can stay uncertain in the appendix, but owner/decision fields should use the best confirmed role.
 - Prefer deliverables over vague verbs: `검토한다` is weak; `GitLab 이슈 본문에 검증 체크리스트를 추가한다` is strong.
 - Include a due date only when the transcript states or clearly implies one. Otherwise use `미정`.
 - Correction maps must contain the fields `원문 표현`, `보정 표현`, `근거`, `신뢰도`, `확인 방법`, but render them as bullets in Slack Canvas unless the list is short enough for a 5-column table to stay readable.
@@ -343,7 +343,7 @@ For List row repair, Slack `slackLists.items.update` uses `cells`, and each cell
 Use a rubric before calling a meeting-minutes output good enough. Treat the first run as the baseline score and keep improving until the current output meets the pass line.
 
 - Baseline: record the first output's baseline score before edits. A weak but structurally valid first pass is expected to be around 25-70/100.
-- Pass line: a reusable meeting Canvas must score at least 92/100 before it is treated as ready for `#dev-team-backend`.
+- Pass line: a reusable meeting Canvas must score at least 92/100 before it is treated as ready for `#sample-platform-team`.
 - Do not fabricate meeting dates from the transcript. If the source has no explicit meeting date and the user did not provide one, set `Date` to the same value as `Last updated`. Do not add a separate open question just to confirm the meeting date unless the user asks for calendar reconciliation.
 - 실명이 전사본만으로 확정되지 않으면 speaker labels remain uncertain. Use `참석자 1(팀 리드 추정)` or similar wording, then put the exact mapping in `참석자/화자 보정`.
 - 용어 보정 후보를 먼저 작성, then use only high-confidence corrected terms in decisions/actions. Low-confidence terms stay in `불확실 단어/문장 보정` and open questions.
@@ -352,7 +352,7 @@ Use a rubric before calling a meeting-minutes output good enough. Treat the firs
 - If a hard Slack/API limit prevents inserting the complete transcript after trying the skeleton-create plus targeted section update path, do not label the appendix `원문 전사본 전문`. Rename it to `원문 전사본 발췌`, state that the full source is linked in `Source`, and include the exact source location. This is a degraded output and must be called out before treating the Canvas as ready.
 - A passable output must create/read back the meeting Canvas, register it in the existing Slack List, and provide separate List binding values that use Slack's built-in `이름` field as the title plus the verified row/item ID. The Canvas body itself should focus on meeting content, not index maintenance.
 - A passable created/read-back output must not contain Canvas URL placeholders such as `미정`, `{Canvas 링크}`, or `생성 후 인덱스 참조` after the Canvas URL exists.
-- A passable output must not leave known team-lead follow-ups or risks as `참석자 1` when local background and meeting role evidence identify the owner as `김현호 팀리더`.
+- A passable output must not leave known team-lead follow-ups or risks as `참석자 1` when local background and meeting role evidence identify the owner as `{sample_team_lead} 팀리더`.
 - A passable output must render risks/open questions as separated fields, not dense one-line records containing `확인 담당`, `확인 방법`, and `상태` in the same bullet.
 - A passable output must contain exactly one `### 원문 전사본 전문` heading and one top-level `text` transcript code block under it. Duplicate adjacent transcript headings are a Slack Canvas write-path failure.
 - A passable output must include a compact top status block before metadata. For MCP Canvas creation this may be `::: {.callout}` only when read-back confirms it renders as callout UI. For raw Slack Web API creation or repair, it must be a `>` quote line; visible literal `::: {.callout}` is a failed Canvas.
@@ -371,7 +371,7 @@ Use this when the user asks for a channel message to accompany the Canvas:
 ```markdown
 회의록 Canvas입니다: {Canvas 링크}
 
-- 대상 채널: #dev-team-backend or {channel override}
+- 대상 채널: #sample-platform-team or {channel override}
 - 핵심 결론: {1문장}
 - 결정사항:
   - {결정}

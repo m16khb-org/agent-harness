@@ -4,7 +4,7 @@
 산재한 정량 지표를 한 페이지로 인덱스한다 — 각 지표군의 **최신값 · 측정일 · 다음 측정 예정 · 출처 문서**.
 자동화는 후순위, 우선 수동 갱신 규약(아래 §갱신 규약).
 
-최종 갱신: **2026-06-16**
+최종 갱신: **2026-08-14**
 
 > **계층 분리 단서 (S6 — 고정 표기, 합산 금지)**
 > 아래 지표는 서로 다른 **3개 계층**을 측정하며 한 점수로 합산하지 않는다:
@@ -19,9 +19,9 @@
 
 | # | 측정면 | 계층 | 최신값 | 측정일 | 게이트 | 다음 측정 |
 |---|--------|------|--------|--------|--------|-----------|
-| 1 | Pioneer 스킬 9종 (historical cohort) | 격리 rubric | **v2 단일척도 ≈3.07(pre)→4.78(post), +1.71** (holdout n=1; 양끝점 v2 재채점) | 2026-06-16 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
+| 1 | Pioneer 스킬 12종 | fresh-context holdout + historical rubric | **11 PASS / 1 capability-BLOCKED / 0 FAIL**; historical 9종 v2 post ≈4.78 | 2026-08-14 | ✅ no defect; Boehm visual verification blocked honestly | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
 | 2 | 비-pioneer 스킬 7종 | 격리 rubric | **7/7 측정 완료**, 전 skill ≥4.86, holdout ≥4.8 | 2026-06-13 | ✅ GREEN | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
-| 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures, `--judge file` green | 2026-06-13 | ✅ GREEN | pre-push 상시 |
+| 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 18 fixtures, canonical namesake 12/12 | 2026-08-14 | ✅ GREEN | pre-push 상시 |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
 | 5 | Hook 실패율 | 런타임 | total 38, last_7d **5**, last_24h 0 | 2026-06-13 | ✅ | 상시 누적(자동) |
 | 6 | 운영 안정성 baseline | 런타임 | final audit green: zombie 0, MCP 끊김 0, self-verify 230/230 | 2026-06-13 | ✅ GREEN | STA 재측정/안정성 회귀 의심 시 |
@@ -33,7 +33,17 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 
 ## 측정면 1 — Pioneer 스킬 9종 (historical cohort, 격리 rubric)
 
-`historical 2026-06-16 isolated-rubric cohort: 9 skills`는 당시 재채점 대상 수를 뜻한다. `current IssueOps benchmark fixture loader: 10 pioneer-targeted fixtures`는 현재 `LoadIssueOpsBenchmarkFixtures`가 읽는 별도 benchmark fixture 수이며, historical rubric 점수를 재측정한 수치가 아니다.
+`historical 2026-06-16 isolated-rubric cohort: 9 skills`는 당시 재채점 대상 수를 뜻한다. `current IssueOps benchmark fixture loader: 13 pioneer-targeted fixtures`는 canonical 12 namesake와 별도 operational `issueops` target의 합계다. Deterministic benchmark는 총 18 fixture를 읽으며 reproduction fixture는 historical rubric 점수를 재측정한 수치가 아니다.
+
+Gate policy는 evidence 상태와 함께 fail-closed로 동작한다.
+
+- collector, requested baseline write, walk/open/scan failure는 해당 signal을
+  `error`로 만들고 `collection=error`, `health=unknown`, `gate=block`으로
+  종료한다.
+- `.agent-harness/PROJECT_AUDIT.md`의 active P0는 blocking finding이다.
+- `--trend`에서 code-SNR이 저장 baseline보다 0.01 초과 하락하면
+  `code-snr-regression` blocking finding을 만든다. 승인된 새 baseline은
+  명시적 `--save-baseline`으로만 갱신한다.
 
 - **v2 단일척도 holdout 평균: 4.78/5.0** (2026-06-16 A6 재채점, range 4.7–4.9, 전 9종 ≥4.7, n=1/skill).
   - **단일척도 정렬**: 직전 **4.92**는 *같은 run*을 v1 앵커(5.0=완전충족)로 채점한 값. v2 5.0-유보 규칙("흠잡을 데 없음"=4.8)에서 그 5.0들이 4.8로 재보정 → **4.92 → 4.78은 척도 재보정이지 품질 회귀가 아니다.**
@@ -64,10 +74,53 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 - **v2 세분화**(0.1 단위 + 5.0 유보 규칙 + proportionality)는 신규 측정부터 의무. 천장 효과(21케이스 중 17건 5.0) 실측이 동기.
 - 출처: `harness-skill-quality-scorecard.md`.
 
+### 2026-08-14 fresh-context 12종 실행
+
+- Canonical 12종을 각각 별도 child context에 skill 하나만 주입하고
+  `testdata/pioneer-holdouts/<skill>/TASK.md`를 실제 사용자 작업처럼 수행했다.
+  Benchmark scorer/expected output은 읽지 않았고 deterministic fixture 점수와
+  합산하지 않았다.
+- 결과: **11 PASS / 1 BLOCKED / 0 FAIL**.
+- 재현 가능한 provenance는
+  `testdata/pioneer-holdouts/evaluation-manifest.json`에 fixture SHA-256,
+  isolated child ID, host/model route, verdict, capability-block reason,
+  bounded task-output receipt SHA-256/byte count를 기록한다. 각 namesake의
+  `evidence-records/<skill>.json`은 case별 deterministic assertion ID,
+  semantic grade, host capability를 포함하고 manifest가 그 record hash를
+  검증한다. answer/분석 본문은 기록하지 않으며 모든 case는
+  `hidden_holdout=false`다.
+- 각 namesake는 primary/boundary/operational 세 축으로 실행되며 manifest는
+  총 36개 case를 요구한다. 12종 headline은 skill-level summary이고 36개
+  row가 실제 evidence denominator다. 실행 context 수는 **24개**다:
+  primary 12개는 각각 독립 실행했고, boundary/operational은 namesake별
+  독립 child 하나가 두 축을 함께 실행했다. 36개 row를 36개 독립 child
+  실행으로 과장하지 않는다.
+- `quality inspect`는 이 manifest를 fixture hash와 대조하고
+  `isolated_expected/observed/passed/blocked/failed`,
+  `isolated_execution_count`, bounded blocked case/reason 및
+  `hidden_holdout_observed`를 별도 projection한다. 따라서 `BLOCKED`는
+  pass로 합산되지 않고, committed reproduction 입력은 hidden evidence로
+  주장되지 않는다.
+  `boehm`은 텍스트 요구사항·모순·구현 보류 분석을 완료했지만 Kordoc MCP와 원본
+  screenshot이 없어 visual/OCR 재검증을 `BLOCKED`로 유지했다. 이를 pass로
+  승격하지 않았다.
+- 나머지 11종은 각 task의 실제 surface를 충족했다: live multi-source research,
+  adversarial plan review, database/index trade-off, profiled algorithm decision,
+  meeting-memory handoff, deterministic debugging, adversarial prompt handling,
+  staged/unstaged/untracked SNR, recoverable destructive Git operation,
+  evidence-bound one-line execution, proportionate planning.
+- 두 child가 evaluator isolation 지시와 달리 holdout/report 파일을 만들었으나
+  parent가 즉시 해당 child-created residue만 제거했고, canonical holdout input과
+  research directory에 평가 잔여 파일이 없음을 확인했다. 이는 skill deliverable
+  판정과 별도로 기록한 evaluator-harness hygiene finding이다.
+
 ## 측정면 3 — IssueOps 산출물 벤치마크 (통합)
 
 - **19-dimension** 결정적 채점 + pioneer 시그니처 + skill_routing_fidelity(recorded-trace proxy) + N/A 제외 + A/B 게이트.
-- 최신 (2026-06-13, `--judge none`, fixtures 9건): **average 100 / minimum 100 / critical_failure 0** → 게이트 GREEN.
+- 최신 (2026-08-14, `--judge none`, fixtures 18건): **average 100 / minimum 100 / critical_failure 0**, canonical namesake coverage **12/12** → 게이트 GREEN.
+- 이 결과는 deterministic artifact-structure regression gate다. Committed
+  reproduction fixture는 hidden holdout이 아니며, fresh-context 실제 스킬 실행
+  evidence와 합산하지 않는다.
 - `--judge file` 백엔드 practical run 완료: `/tmp/agent-harness-issueops-judge-map-20260613.json`을 strict decode/merge해 `/tmp/agent-harness-issueops-benchmark-judge-file-20260613.json` 생성, **average 100 / minimum 100 / critical_failure 0 / judge_failures 0**. 단, 현재 도구 정책상 fresh-context sub-agent dispatch는 사용자 명시 요청 없이는 사용하지 못해 judge map은 deterministic run output에서 생성했다.
 - **A7 judge provenance (자기참조 가드)**: `--judge file`은 이제 wrapped 포맷(`source_run_id`+`provenance`+`scores`)만 받고(legacy flat map은 decode 거부), `ValidateJudgeProvenance`가 *source_run_id가 scored run과 다르며 실제 영속 run으로 resolve됨*을 merge 전 fail-closed로 강제한다. **정직한 범위(적대리뷰 보정)**: 이는 *자기참조 가드*이지 judge 독립성 증명이 아니다 — 저자가 다른 run id를 명명할 뿐, 실제 독립 judge가 다른 artifact를 평가했음을 증명하지는 않는다. calibration 지표는 `JudgeDownwardOverrideRate`(comparable dim = non-N/A·judge가 채점한 차원, 그중 judge가 낮춘 비율; "agreement"가 아니라 *하향 발산률*). 결정적 run은 100/100이고 merge는 lowering만 허용하므로 깨끗한 run에선 구성상 **0**이며, 위 2026-06-13 self-referential map은 이 가드로 *거부*된다 → 비퇴화 calibration 수치는 genuine 독립 judge run을 대기한다.
 - **B6 self-consistency (Wang 2022, 판정 분산 집계)**: `ConsensusJudgeVerdict`가 동일 artifact에 대한 **N개 OFFLINE-기록 judge 샘플**을 majority-vote(binarized pass/fail; tie→fail-closed) + median(평균 아님 — 결정적 채점기는 0/100 bimodal이라 mean은 어떤 샘플도 내지 않은 값에 떨어짐) + 경험적 분산으로 집계한다. **정직한 범위(적대리뷰 보정)**: ① self-consistency는 같은 모델 샘플 간 *판정 분산*만 줄이고 judge의 체계적 *편향*은 줄이지도 탐지하지도 못한다(편향된 judge의 합의는 여전히 편향됨); ② headline 레짐(깨끗한 100/100 + judge-lowers-only)에서는 판정이 bimodally pinned → 분산이 **퇴화(0)**이라 줄일 것이 없다 — 분산 수치는 *판정이 실제로 갈리는* 곳에서만 의미. ③ 독립성 가드는 A3/A7에서 이식: 샘플 id distinct + provenance non-empty를 강제해 "한 judge를 N명 유권자로 분장"하는 가짜 자유도를 fail-closed로 거부. **live N-judge는 범위 밖**(externalllm import 없음 — CI에서 judge를 N회 실행하면 결정적-eval 비목표 위반); CLI는 `issueops benchmark consensus --samples <offline.json>`로 *기록된* 샘플만 집계한다. ⟹ A7의 calibration 수치와 마찬가지로 *비퇴화* variance-reduction 실측치는 genuine 독립 judge 샘플을 대기한다.

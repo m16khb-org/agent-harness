@@ -212,7 +212,8 @@ func TestGitLabSnapshotSkillsPinPortableVCSContract(t *testing.T) {
 		filepath.Join(".agent-harness", "AGENT_WORKFLOW.md"),
 	} {
 		body := readRepoFileForTest(t, relPath)
-		for _, privateIdentity := range []string{"/Users/habin", "glab-mcp-wrapper"} {
+		privateHome := "/Users/" + "ha" + "bin"
+		for _, privateIdentity := range []string{privateHome, "glab-mcp-wrapper"} {
 			if strings.Contains(body, privateIdentity) {
 				t.Fatalf("%s must not hardcode private VCS tool identity %q", relPath, privateIdentity)
 			}
@@ -351,5 +352,22 @@ func TestAllSkillsFrontmatterValidates(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("no skills/* directory with a SKILL.md was validated")
+	}
+}
+
+func TestAllSkillShellFencesValidate(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skipf("python3 not available: %v", err)
+	}
+	repoRoot := filepath.Join("..", "..", "..")
+	validator := filepath.Join(repoRoot, "scripts", "verify-skill-shell.py")
+	skillsDir := filepath.Join(repoRoot, "skills")
+	out, err := exec.Command(python, validator, skillsDir).CombinedOutput()
+	if err != nil {
+		t.Fatalf("verify-skill-shell.py failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "skill shell verification passed") {
+		t.Fatalf("unexpected verifier output: %s", out)
 	}
 }

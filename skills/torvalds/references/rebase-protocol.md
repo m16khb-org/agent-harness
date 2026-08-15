@@ -31,6 +31,7 @@ echo "Backup created: $BACKUP"
 ## During Rebase
 
 ### When a conflict occurs:
+<!-- skill-shell: destructive recovery="the verified pre-rebase backup branch remains available for rollback" -->
 ```bash
 # Identify conflicted files
 git status --short | grep '^UU'
@@ -45,6 +46,7 @@ git rebase --continue
 ```
 
 ### Abort if needed:
+<!-- skill-shell: destructive recovery="git rebase --abort returns to the pre-rebase state and preserves the backup branch" -->
 ```bash
 git rebase --abort
 # Returns to the pre-rebase state. 
@@ -53,6 +55,7 @@ git rebase --abort
 
 ## Post-Rebase Verification
 
+<!-- skill-shell: destructive recovery="retain and verify the backup ref before optional deletion" -->
 ```bash
 # 1. Verify no unintended changes
 git diff <backup-branch>..HEAD --stat

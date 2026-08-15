@@ -28,4 +28,4 @@ This file is a template for local, non-portable meeting-minutes context. Copy it
 ## Aliases
 
 - `{alias}`: `{name}`. Apply explicit aliases consistently in decisions, actions, topic summaries, and correction maps.
-- Standalone Korean honorific-like words can be name misrecognitions when they phonetically match one roster member. Example: `프로님` may be an alias for `{푸름님}` when `{이푸름}` is in the roster. But `{name} 프로님` should be treated as a title/honorific unless the local file explicitly says otherwise.
+- Standalone Korean honorific-like words can be name misrecognitions when they phonetically match one roster member. Example: `프로님` may be an alias for `{sample_name}` when that synthetic name is in the roster. But `{name} 프로님` should be treated as a title/honorific unless the local file explicitly says otherwise.

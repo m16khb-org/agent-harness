@@ -78,14 +78,27 @@ git diff --stat HEAD | tail -1
 # before scoring; `git diff` cannot measure files Git does not know about.
 git ls-files --others --exclude-standard
 
-# 3. Estimate noise lines in tracked diff (comments, dead code, debug prints).
-git diff HEAD | grep '^+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))' || true
+# 3. Capture added tracked lines once so a failed git diff cannot become a
+# plausible zero. awk returns success when there are no matching lines.
+TRACKED_DIFF=$(git diff HEAD --) || exit
+ADDED_LINES=$(printf '%s\n' "$TRACKED_DIFF" | command awk '/^\+[^+]/')
 
-# 4. Estimate signal lines (rough: total minus noise)
-# More precise: remove signal line candidates and check if tests break
-SIGNAL=$(git diff HEAD | grep '^\+[^+]' | grep -cvE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
-NOISE=$(git diff HEAD | grep '^\+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
-TOTAL=$((SIGNAL + NOISE))
+# 4. Count matches while distinguishing grep's legitimate no-match status (1)
+# from a real grep error (>1).
+count_matches() {
+  pattern=$1
+  count=$(command grep -cE "$pattern")
+  status=$?
+  case "$status" in
+    0) printf '%s\n' "$count" ;;
+    1) printf '0\n' ;;
+    *) return "$status" ;;
+  esac
+}
+
+NOISE=$(printf '%s\n' "$ADDED_LINES" | count_matches '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))') || exit
+TOTAL=$(printf '%s\n' "$ADDED_LINES" | command awk 'NF { count++ } END { print count + 0 }') || exit
+SIGNAL=$((TOTAL - NOISE))
 if [ "$TOTAL" -eq 0 ]; then
   echo "SNR: insufficient-input (signal=0, noise=0, total=0)"
 else
@@ -196,17 +209,28 @@ Logic:       Business rules, algorithmic code, type contracts, error handling wi
 git diff --name-only HEAD
 git ls-files --others --exclude-standard
 
-for f in $(git diff --name-only HEAD; git ls-files --others --exclude-standard); do
+FILE_LIST=$(mktemp)
+trap 'rm -f "$FILE_LIST"' EXIT
+git diff --name-only -z HEAD > "$FILE_LIST" || exit
+git ls-files --others --exclude-standard -z >> "$FILE_LIST" || exit
+
+while IFS= read -r -d '' f; do
   [ -f "$f" ] || continue
   TOTAL=$(wc -l < "$f")
   [ "$TOTAL" -gt 0 ] || { echo "SKIP EMPTY: $f"; continue; }
-  BOILER=$(grep -cE '^[[:space:]]*(import|package|@|//|/\*|type.*struct|func.*return|func \(.*\) .*return)' "$f" || echo 0)
+  BOILER=$(command grep -cE '^[[:space:]]*(import|package|@|//|/\*|type.*struct|func.*return|func \(.*\) .*return)' "$f")
+  grep_status=$?
+  case "$grep_status" in
+    0) : ;;
+    1) BOILER=0 ;;
+    *) exit "$grep_status" ;;
+  esac
   LOGIC=$((TOTAL - BOILER))
   OVERHEAD=$(echo "scale=2; $BOILER / $TOTAL" | bc)
   if (( $(echo "$OVERHEAD > 0.5" | bc -l) )); then
     echo "HIGH OVERHEAD: $f — $BOILER/$TOTAL lines boilerplate (overhead=$OVERHEAD)"
   fi
-done
+done < "$FILE_LIST"
 ```
 
 ---
@@ -389,7 +413,9 @@ go test -cover ./... 2>&1 | grep -E 'coverage: [0-9]'
 # 5. Dead code via unused. Use an installed or project-local tool. Ask before
 # installing global tools; do not run `go install ...@latest` as a default.
 if command -v staticcheck >/dev/null 2>&1; then
-  staticcheck ./... 2>&1 | grep 'U1000' || true
+  # Preserve staticcheck's exit status and inspect all reported findings.
+  # Filter U1000 only after recording whether the complete command succeeded.
+  staticcheck ./...
 else
   echo "staticcheck unavailable; use project-local tooling or ask before installing"
 fi

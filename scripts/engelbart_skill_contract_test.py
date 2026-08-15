@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -60,11 +63,11 @@ class EngelbartSkillContractTest(unittest.TestCase):
     def test_canvas_defaults_and_channel_override_are_documented(self) -> None:
         content = self.read_skill()
 
-        self.assertIn("#dev-team-backend", content)
+        self.assertIn("#sample-platform-team", content)
         self.assertIn("기본 대상 채널", content)
         self.assertIn("다른 채널", content)
         self.assertIn("채널 override", content)
-        self.assertIn("Default artifact: create the individual meeting Canvas for `#dev-team-backend`", content)
+        self.assertIn("Default artifact: create the individual meeting Canvas for `#sample-platform-team`", content)
         self.assertIn("register the meeting in the existing Slack List", content)
         self.assertIn("Slack List registration is automatic for published meeting Canvases", content)
         self.assertIn("After a Canvas is created and read back, register or update the existing Slack List row", content)
@@ -81,7 +84,7 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("speaker labels", content)
         self.assertIn("high-confidence correction candidates", content)
         self.assertIn("Standalone Korean honorific-like words", content)
-        self.assertIn("`프로님` can resolve to `이푸름 님`", content)
+        self.assertIn("Standalone Korean honorific-like words may be name misrecognitions", content)
         self.assertIn("`{name} 프로님` should be treated as a title/honorific", content)
         self.assertIn("Do not silently convert a generic speaker label", content)
         self.assertIn("skills/*/background.local.md", gitignore)
@@ -95,10 +98,7 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("## Team", local_background)
         self.assertIn("## Products And Services", local_background)
         self.assertIn("## Aliases", local_background)
-        self.assertTrue(
-            "프로님: 이푸름" in local_background or "`프로님`: `이푸름`" in local_background,
-            "local background should map 프로님 to 이푸름",
-        )
+        self.assertRegex(local_background, r"(?m)^.*프로님.*$", "local background should define the 프로님 alias")
 
     def test_required_meeting_inputs_are_requested_sequentially(self) -> None:
         content = self.read_skill()
@@ -111,11 +111,86 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("then ask for the meeting transcript text", content)
         self.assertIn("When both inputs are present, continue with the normal Engelbart workflow", content)
 
-    def test_canvas_access_defaults_to_bubbletap_anyone_can_view(self) -> None:
+    def test_synthetic_fixture_family_has_no_identified_meeting_data(self) -> None:
+        forbidden_fingerprints = (
+            (6, 264263212423224, "0e3df5670eda1a187577a904e72466d118a48df6e1b81925dc7ea2d1a09a9e23"),
+            (6, 266323265947531, "061cdcb5a59894767355f44c46e53da39ff9ac1778a00126d375e73883dd0ff7"),
+            (6, 267491847855948, "cd07f8a79313c9b09aede56be3de3511dfab486f307fa57b0cc0df7d2f9f2016"),
+            (10, 12948026869183762353, "90c1dbd608e3775069ed0d85efa3ee5de8d81b1967898c92dc4e078220687120"),
+            (3, 4577505, "25f0f2b3c3a7ee2320155ec701726bac70102b7913ea2ab94db8dc28bed6a4eb"),
+            (5, 310860962933, "327ff10ffaff80e02b02d84cb5d8e2224d26c5955bb5601f5c858c97eedef35b"),
+            (12, 6330130600746392734, "57e699bb5ee6477c577b89f0b1e80b6ca35aa36aabc4bccd82fa2c3120ec921d"),
+            (10, 12750189356887995490, "0ac875879aec9e4c761b531fe2f7b43c1dbb5bccb959bf107760f91051a6ee58"),
+            (15, 10931722883136722, "b465c860684913c52bdb50b0f8391f16d96469c56fadaab652286a6595c36b36"),
+            (17, 17524967233299049020, "4fb98d750c37ac63990945f14ed34a1a6b9365002efb2d5065f3f83201054fae"),
+            (9, 3571922820466116722, "d04a926d0b5f5620279af27a48c70ded03df9a5216ba9bdc433acb66b71f30ec"),
+            (9, 2682281289702676113, "327f595a0c22e75310f4d4f5d6cf6fa68a8180a2a86ef20f43558d6591a1fa8a"),
+            (11, 18082672136676787444, "755efbe5fafe6d2d6abcd77db6691d50439dff688a983b31aa1e51f13f788720"),
+            (19, 7713303281797564269, "8a73bd1e4fe0b2287b1167958c09be3a3919041bfaf9e3aa0d928b5eea20ad8d"),
+            (9, 11282430282381183162, "aeac23962a5b369384bd399221cd1f01811541418b04a60bce353c1547dcb7ce"),
+            (11, 117375040596452939, "ce61aa9aa1b75b926a8665183d31c8688a2b2b5a721c4420974082f8104c11c9"),
+            (12, 10975145978023288744, "c053ef24eb19cfeab807405bcd0024f8c0e841fb732b408baa87164a2be7caf6"),
+            (11, 15383415639973988732, "c483723d14e8691990f8d6676205166e885e803cf582e7940f4e6156437c8c1f"),
+            (7, 31751348347462992, "68c212025519e0efb1009cc068490ee34edce510089ae51fbace4902c504f31a"),
+            (5, 459729468423, "322888f88a59b930b950650ae9ded400a09859b52ee325d67c4427e11687a871"),
+        )
+        fingerprint_index = {
+            (length, rolling): digest
+            for length, rolling, digest in forbidden_fingerprints
+        }
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout.split(b"\0")
+        for relative in tracked:
+            if not relative:
+                continue
+            path = ROOT / relative.decode()
+            try:
+                content_bytes = path.read_bytes()
+                content = content_bytes.decode("utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for length in {item[0] for item in forbidden_fingerprints}:
+                if len(content_bytes) < length:
+                    continue
+                power = pow(257, length - 1, 1 << 64)
+                rolling = 0
+                for value in content_bytes[:length]:
+                    rolling = (rolling * 257 + value + 1) & ((1 << 64) - 1)
+                for index in range(len(content_bytes) - length + 1):
+                    digest = fingerprint_index.get((length, rolling))
+                    if digest is not None:
+                        candidate = content_bytes[index : index + length]
+                        self.assertNotEqual(
+                            hashlib.sha256(candidate).hexdigest(),
+                            digest,
+                            f"{path} contains identified fixture data",
+                        )
+                    if index + length == len(content_bytes):
+                        break
+                    rolling = (
+                        (rolling - (content_bytes[index] + 1) * power) * 257
+                        + content_bytes[index + length]
+                        + 1
+                    ) & ((1 << 64) - 1)
+            for workspace, team_id in re.findall(
+                r"https://([a-z0-9-]+)\.slack\.com/docs/(T[A-Z0-9]+)",
+                content,
+            ):
+                self.assertEqual(
+                    (workspace, team_id),
+                    ("example", "T00000000"),
+                    f"{path} contains a non-synthetic Slack workspace identity",
+                )
+
+    def test_canvas_access_defaults_to_workspace_anyone_can_view(self) -> None:
         content = self.read_skill()
         script = PUBLISH_SCRIPT.read_text(encoding="utf-8")
 
-        self.assertIn("Bubbletap 누구나 볼 수 있음", content)
+        self.assertIn("워크스페이스 공개 채널 구성원 열람", content)
         self.assertIn("participant list remains required metadata", content)
         self.assertIn("public channel based `read` access", content)
         self.assertIn("CANVAS_ACCESS_CHANNEL_IDS", content)
@@ -123,7 +198,7 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertNotIn("Do NOT grant via a public-channel `channel_ids` share", content)
 
         self.assertIn("CANVAS_ACCESS_MODE", script)
-        self.assertIn('"bubbletap_anyone"', script)
+        self.assertIn('"workspace_anyone"', script)
         self.assertIn("def canvas_document_body", script)
         self.assertIn("Slack Web API title", script)
         self.assertIn('"markdown": canvas_document_body(meeting["canvas_markdown"])', script)
@@ -167,12 +242,12 @@ class EngelbartSkillContractTest(unittest.TestCase):
 
         self.assertEqual(
             module.build_workspace_docs_canvas_url(
-                "F0BE78HN5P1",
-                {"url": "https://bubbletap.slack.com/", "team_id": "T048JBUDF9U"},
+                "F00000000",
+                {"url": "https://example.slack.com/", "team_id": "T00000000"},
             ),
-            "https://bubbletap.slack.com/docs/T048JBUDF9U/F0BE78HN5P1",
+            "https://example.slack.com/docs/T00000000/F00000000",
         )
-        module.validate_list_canvas_url("https://bubbletap.slack.com/docs/T048JBUDF9U/F0BE78HN5P1")
+        module.validate_list_canvas_url("https://example.slack.com/docs/T00000000/F00000000")
         with self.assertRaises(SystemExit):
             module.validate_list_canvas_url("https://slack.com/canvas/F0BE78HN5P1")
 
@@ -187,12 +262,12 @@ class EngelbartSkillContractTest(unittest.TestCase):
 
         for field in [
             "수동 List 바인딩 값",
-            "- 이름: AI DevOps R&R 및 추천 시스템 온보딩",
+            "- 이름: 샘플 플랫폼 자동화 및 이벤트 파이프라인 온보딩",
             "- Date: 2026-06-24",
             "- Topic: 온보딩",
             "- Status: Follow-up 필요",
-            "- Counts: 결정 9 / 액션 10 / 질문 6",
-            "- Meeting Canvas: https://bubbletap.slack.com/docs/T048JBUDF9U/F0BDLM3631N",
+            "- Counts: 결정 7 / 액션 8 / 질문 4",
+            "- Meeting Canvas: https://example.slack.com/docs/T00000000/F00000000",
         ]:
             self.assertIn(field, handoff)
         self.assertNotIn("- Title:", handoff)
@@ -355,7 +430,7 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("prefer direct Canvas creation", content)
         self.assertIn("Sanitize the Slack API title", content)
         self.assertIn("literal `&`", content)
-        self.assertIn("AI DevOps R and R", content)
+        self.assertIn("Sample Platform R and R", content)
         self.assertIn("create the complete Canvas in one `create_canvas` call", content)
         self.assertIn("Read the created Canvas back", content)
         self.assertIn("retry once with a sanitized title", content)

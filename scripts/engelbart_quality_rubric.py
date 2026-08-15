@@ -38,8 +38,8 @@ RUBRIC: tuple[RubricItem, ...] = (
         name="canvas_target_and_renderable_structure",
         weight=10,
         required=(
-            "#dev-team-backend",
-            "회의일 2026-06-24 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요",
+            "#sample-platform-team",
+            "회의일 2026-06-24 · 대상 #sample-platform-team · Source synthetic transcript · Status Follow-up 필요",
             "## 메타데이터",
             "## TL;DR",
         ),
@@ -57,36 +57,36 @@ RUBRIC: tuple[RubricItem, ...] = (
         name="decisions_are_specific_and_attributed",
         weight=14,
         required=(
-            "팀 R&R을 백엔드 아키텍처 설계/구현, 인텔리전트 인프라 운영, AI 에이전트 개발/서비스 융합으로 정리한다.",
-            "팀 방향은 AI DevOps로 가져간다.",
-            "업무는 GitLab issue 기반, feature branch 기반, agent-assisted spec-driven workflow로 진행한다.",
-            "Weave Unlimited 대응은 1차적으로 이푸름 님이 맡는 것으로 정리한다.",
-            "master 변경분을 release/stg로 가져오고 conflict는 김현호 팀리더가 해결한다.",
+            "팀 역할을 서비스 아키텍처, 자동화 인프라 운영, 에이전트 도구 통합으로 정리한다.",
+            "업무는 이슈 기반, 기능 브랜치 기반, agent-assisted spec-driven workflow로 진행한다.",
+            "샘플 플랜 Unlimited 대응은 1차적으로 플랫폼담당이 맡는다.",
+            "금요일부터 Aurora Sandbox staging migration 준비를 시작한다.",
+            "main 변경분을 release/stg로 가져오고 conflict는 백엔드담당이 해결한다.",
         ),
     ),
     RubricItem(
         name="actions_are_executable",
         weight=14,
         required=(
-            "관식 님을 GitLab 프로젝트와 Slack 채널에 초대한다.",
-            "추천 시스템 사용자 소비 데이터 타임시리즈 구축 태스크를 GitLab issue로 구체화한다.",
-            "마일리지 production 배포를 오전 중 진행한다.",
-            "reward/affiliate 정책 변경을 agent 쪽에 반영한다.",
-            "Vertex cache storage 비용과 429 이슈에 대한 외부 답변을 follow-up한다.",
+            "신규담당을 샘플 저장소와 #sample-platform-team 채널에 초대한다.",
+            "샘플 이벤트 타임시리즈 구축 태스크를 이슈로 구체화한다.",
+            "포인트 production 배포를 오전 중 진행한다.",
+            "정책 A와 정책 B 변경을 에이전트 문서에 반영한다.",
+            "샘플 캐시 서비스 비용과 429 응답을 외부 지원팀에 문의한다.",
         ),
     ),
     RubricItem(
         name="domain_fidelity",
         weight=16,
         required=(
-            "팅글 staging migration",
-            "DMM/FANZA",
-            "Vertex cache storage",
+            "Aurora Sandbox staging migration",
+            "외부 콘텐츠 소스 A/B",
+            "샘플 캐시 서비스",
             "Flask 기반 Python microservice",
             "trainer pod와 serving pod",
-            "NCP Object Storage",
-            "gRPC Home",
-            "cache 도입",
+            "Harbor Object Store",
+            "gRPC Gateway",
+            "Nimbus Cache",
         ),
     ),
     RubricItem(
@@ -95,9 +95,9 @@ RUBRIC: tuple[RubricItem, ...] = (
         required=(
             "참석자 실명",
             "확인 필요",
-            "DMM/FANZA 무료 모델 정책",
-            "Recommendation target architecture",
-            "Agent 반영 강제화",
+            "외부 콘텐츠 소스 A/B 무료 모델 정책",
+            "Sample target architecture",
+            "Agent 문서 반영 강제화",
         ),
     ),
     RubricItem(
@@ -106,8 +106,8 @@ RUBRIC: tuple[RubricItem, ...] = (
         required=(
             "### 용어 보정",
             "`RNR` -> `R&R`",
-            "`대부/대보/대부 업수` -> `DevOps`",
-            "`gipc 홈` -> `gRPC Home`",
+            "`대부/대보/대부 업수` -> `플랫폼 자동화`",
+            "`gipc 게이트` -> `gRPC Gateway`",
             "### 불확실 단어/문장 보정",
             "### 참석자/화자 보정",
         ),
@@ -118,8 +118,8 @@ RUBRIC: tuple[RubricItem, ...] = (
         required=(
             "### 원문 전사본 전문",
             "```text",
-            "참석자 1 00:00",
-            "참석자 1 33:06",
+            "진행자 00:00",
+            "진행자 08:00",
         ),
     ),
     RubricItem(
@@ -175,7 +175,7 @@ RUBRIC: tuple[RubricItem, ...] = (
             "literal `&`",
             "retry once with a sanitized title",
             "Standalone Korean honorific-like words",
-            "`프로님` can resolve to `이푸름 님`",
+            "Standalone Korean honorific-like words may be name misrecognitions",
             "`{name} 프로님` should be treated as a title/honorific",
             "top-level divider before the audit appendix",
             "Render `TL;DR` as 2-4 bullets",
@@ -199,7 +199,7 @@ RUBRIC: tuple[RubricItem, ...] = (
             "After the participant list is provided, confirm the received participants",
             "then ask for the meeting transcript text",
             "When both inputs are present, continue with the normal Engelbart workflow",
-            "Bubbletap 누구나 볼 수 있음",
+            "워크스페이스 공개 채널 구성원 열람",
             "participant list remains required metadata",
             "public channel based `read` access",
             "CANVAS_ACCESS_CHANNEL_IDS",
@@ -397,12 +397,12 @@ def manual_handoff_failures(path: Path) -> list[str]:
     failures: list[str] = []
     required = (
         "수동 List 바인딩 값",
-        "- 이름: AI DevOps R&R 및 추천 시스템 온보딩",
+        "- 이름: 샘플 플랫폼 자동화 및 이벤트 파이프라인 온보딩",
         "- Date: 2026-06-24",
         "- Topic: 온보딩",
         "- Status: Follow-up 필요",
-        "- Counts: 결정 9 / 액션 10 / 질문 6",
-        "- Meeting Canvas: https://bubbletap.slack.com/docs/T048JBUDF9U/F0BDLM3631N",
+        "- Counts: 결정 7 / 액션 8 / 질문 4",
+        "- Meeting Canvas: https://example.slack.com/docs/T00000000/F00000000",
     )
     missing = [item for item in required if item not in handoff]
     if missing:
@@ -414,7 +414,7 @@ def manual_handoff_failures(path: Path) -> list[str]:
     placeholder_markers = ("미정", "생성 후 인덱스 참조", "{Canvas URL}", "{Canvas 링크}")
     if any(marker in handoff for marker in placeholder_markers):
         failures.append("manual_handoff_placeholder: handoff must not contain placeholders after Canvas URL exists")
-    if "https://bubbletap.slack.com/docs/" not in handoff:
+    if "https://example.slack.com/docs/" not in handoff:
         failures.append("manual_handoff_missing_canvas_url: handoff must include the verified Canvas URL")
     return failures
 
@@ -456,7 +456,7 @@ def publish_script_required_input_failures() -> list[str]:
 def known_team_lead_owner_leaks(output: str) -> bool:
     followup_block = section_between(output, "## 후속 확인", "## 리스크/열린 질문")
     risk_block = section_between(output, "## 리스크/열린 질문", "## 보정 및 원문 부록")
-    known_team_lead_topics = ("Recommendation target architecture", "Agent 반영 강제화")
+    known_team_lead_topics = ("Sample target architecture", "Agent 문서 반영 강제화")
     for block in (followup_block, risk_block):
         for topic in known_team_lead_topics:
             topic_pos = block.find(topic)
@@ -464,7 +464,7 @@ def known_team_lead_owner_leaks(output: str) -> bool:
                 continue
             next_topic = block.find("\n- **", topic_pos + len(topic))
             topic_text = block[topic_pos:] if next_topic == -1 else block[topic_pos:next_topic]
-            if "참석자 1" in topic_text and "김현호 팀리더" not in topic_text:
+            if "참석자 1" in topic_text and "백엔드리더 팀리더" not in topic_text:
                 return True
     return False
 
@@ -529,7 +529,7 @@ def evaluate(path: Path) -> tuple[int, list[str]]:
             failures.append("meeting_canvas_placeholder: Canvas body must not include index-row sections or Canvas URL placeholders after creation")
             score = max(0, score - 12)
         if known_team_lead_owner_leaks(output):
-            failures.append("known_role_owner_mapping: use 김현호 팀리더 for team-lead-owned follow-ups/risks when local background and meeting role establish it")
+            failures.append("known_role_owner_mapping: use 백엔드리더 팀리더 for team-lead-owned follow-ups/risks when local background and meeting role establish it")
             score = max(0, score - 12)
         risk_violations = dense_risk_lines(output)
         if risk_violations:

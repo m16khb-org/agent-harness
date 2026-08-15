@@ -48,6 +48,13 @@ agent-harness는 12개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 - **Language/tech agnostic**: 어떤 스킬도 특정 언어·프레임워크를 강제하지 않는다(6f31c55에서 검증 완료). 모든 언어별 예시는 여러 언어의 동등한 명령어를 나란히 제시한다.
 - **Namesake philosophy**: 각 스킬의 방법론은 그 이름이 된 과학자의 핵심 기여에서 파생된다(예: Codd → 정규화 이론, Dijkstra → 구조적 프로그래밍 + 최단 경로).
 - **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex, Claude Code, Omo native에서 동일하게 사용된다.
+- **Executable-fence contract**: shipped `sh`/`bash`/`zsh`/`shell` fences는
+  `scripts/verify-skill-shell.py`의 syntax·failure propagation·safe expansion
+  gate를 통과한다. MCP pseudo-call이나 설명용 예시는 `text` fence로 둔다.
+- **Evaluation honesty**: canonical catalog 12종 coverage, deterministic
+  reproduction fixtures, fresh-context/real-artifact evaluation은 서로 다른
+  evidence layer다. Fixture 통과를 blind holdout 또는 실제 skill invocation으로
+  부르지 않는다.
 
 ## Architecture change checklist
 

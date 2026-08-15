@@ -69,6 +69,7 @@ The commit message must answer **why**, not **what**. The diff already shows wha
 Torvalds's iron rule: `git bisect` must work. Every commit between `good` and `bad` must compile and pass tests. If a commit introduces a regression, the commit is wrong — **revert it, don't patch around it.**
 
 Before pushing, verify the entire series:
+<!-- skill-shell: destructive recovery="create and verify a backup branch before rewriting the series" -->
 ```bash
 git rebase -i --exec "go test ./..." <base>
 ```
@@ -128,6 +129,7 @@ Trigger: "bisect", "find which commit broke X", "regression search"
 - The test must be automated — no manual inspection per step
 
 **Execution:**
+<!-- skill-shell: destructive recovery="record the original HEAD and always run git bisect reset after diagnosis" -->
 ```bash
 git bisect start
 git bisect bad HEAD          # or <known-bad-sha>

@@ -149,7 +149,7 @@ func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce b
 
 func looksLikeEngelbartCanvasContext(text string) bool {
 	lower := strings.ToLower(text)
-	hasCanvas := strings.Contains(lower, "canvas") || strings.Contains(text, "캔버스") || strings.Contains(lower, "bubbletap.slack.com/docs")
+	hasCanvas := strings.Contains(lower, "canvas") || strings.Contains(text, "캔버스") || strings.Contains(lower, ".slack.com/docs/")
 	hasMeeting := strings.Contains(text, "회의록") || strings.Contains(text, "회의") || strings.Contains(text, "전사") || strings.Contains(lower, "clova") || strings.Contains(lower, "engelbart")
 	return hasCanvas && hasMeeting
 }

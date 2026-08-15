@@ -86,7 +86,9 @@ Use `lint_diagnose` (Gemini-assisted root cause analysis) as a first pass. This 
 ```bash
 # agent-harness CLI (Go example):
 agent-harness project lint-diagnose --json -- go test ./pkg/auth -run TestLoginFlow -count=1
+```
 
+```text
 # MCP form uses a structured argv field:
 lint_diagnose(command_argv: ["go", "test", "./pkg/auth", "-run", "TestLoginFlow", "-count=1"])
 # Works with any command: pytest, jest, cargo test, npm test, make, etc.

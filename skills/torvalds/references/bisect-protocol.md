@@ -18,31 +18,30 @@ git log --oneline -30  # scan for the last known-good state
 ```
 
 ### 2. Define the Test Command
-The test command MUST be:
-- A single shell command or script
+The test command MUST be an executable wrapper script:
+- A checked-in or temporary executable with a fixed argv
 - Read-only (no file changes, no network side effects)
 - Exit 0 = good, exit non-0 = bad
 
 ```bash
-# Example: a specific test that used to pass
-TEST_CMD="go test ./pkg/auth -run TestLoginFlow -count=1"
-
-# Example: a build that used to succeed
-TEST_CMD="go build ./..."
-
-# Example: a custom script
-TEST_CMD="bash -c 'grep -q \"expected-string\" src/config.go'"
+# Example wrapper prepared and reviewed before starting bisect.
+# Its contents may run:
+#   exec go test ./pkg/auth -run TestLoginFlow -count=1
+BISECT_TEST="./scripts/bisect-login-flow.sh"
+test -x "$BISECT_TEST"
 ```
 
 ### 3. Run Bisect
+<!-- skill-shell: destructive recovery="record the original HEAD and complete the reset step below after diagnosis" -->
 ```bash
 git bisect start
 git bisect bad HEAD
 git bisect good <known-good-sha-or-tag>
-git bisect run $TEST_CMD
+git bisect run "$BISECT_TEST"
 ```
 
 ### 4. Record and Reset
+<!-- skill-shell: destructive recovery="git bisect reset returns to the original recorded HEAD" -->
 ```bash
 # Record the bisect session
 git bisect log > .agent-harness/evidence/bisect-<slug>.log
