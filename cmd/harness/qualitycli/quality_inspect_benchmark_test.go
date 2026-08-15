@@ -13,7 +13,7 @@ func BenchmarkQualityInspectSignals(benchmark *testing.B) {
 		{name: "self_verify_open", run: func() error { _, err := collectSelfVerifyOpenCount(root); return err }},
 		{name: "quality_candidates", run: func() error { _ = collectQualityCandidates(root); return nil }},
 		{name: "branch_functions", run: func() error { _, _ = collectBranchFunctions(root); return nil }},
-		{name: "code_snr", run: func() error { _ = computeCodeSNR(root); return nil }},
+		{name: "code_snr", run: func() error { _, err := computeCodeSNR(root); return err }},
 	}
 	for _, item := range benchmarks {
 		benchmark.Run(item.name, func(benchmark *testing.B) {

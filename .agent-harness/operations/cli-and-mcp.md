@@ -16,7 +16,18 @@ agent-harness docs --json
 agent-harness doctor --repo . --json
 agent-harness guard check --staged --json
 agent-harness verify-work --json -- git status --short
+agent-harness quality inspect --json
 ```
+
+`quality inspect`는 수집 성공(`collection_status`), repository health
+(`health_status`), automation gate(`gate_status`)를 분리한다. Collector 오류는
+`ok=false`, `health_status=unknown`, `gate_status=block`이고 repository debt는
+`health_status=needs_attention`, `gate_status=report_only`다. 각 finding은 stable
+ID, severity, evidence, remediation, verification command를 가지며
+`pioneer_coverage`는 canonical 12종 missing name을 그대로 노출한다.
+`gate_status=block`은 JSON/text 결과를 먼저 출력한 뒤 process exit를 nonzero로
+끝내므로 CI는 payload와 exit code를 함께 사용할 수 있다. `report_only`는
+repository debt를 보이되 exit 0을 유지한다.
 
 ## Command Policy
 

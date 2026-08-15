@@ -616,8 +616,18 @@ func qualityInspectDepsForHarnessAppTest() qualitycli.InspectDeps {
 		Coverage:             func(string) (string, error) { return "ok\tpkg\tcoverage: 100.0% of statements\n", nil },
 		SelfAugmentOpenCount: func(string) (int, error) { return 0, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
-		CodeSNR: func(string) qualitycli.SNRResult {
-			return qualitycli.SNRResult{SignalLines: 70, NoiseLines: 30, TotalLines: 100, Ratio: 0.7}
+		PioneerCoverage: func(string) (qualitycli.PioneerCoverage, error) {
+			return qualitycli.PioneerCoverage{
+				Expected:             12,
+				BenchmarkObserved:    12,
+				ReproductionObserved: 12,
+				IsolatedExpected:     12,
+				IsolatedObserved:     12,
+				IsolatedPassed:       12,
+			}, nil
+		},
+		CodeSNR: func(string) (qualitycli.SNRResult, error) {
+			return qualitycli.SNRResult{SignalLines: 70, NoiseLines: 30, TotalLines: 100, Ratio: 0.7}, nil
 		},
 	}
 }

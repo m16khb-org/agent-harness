@@ -4066,9 +4066,40 @@
           ]
         }
       ],
+      "collection_status": "ok",
+      "findings": [
+        {
+          "blocking": false,
+          "evidence": [
+            "agent-harness/internal/core/commandguard 54.3%"
+          ],
+          "id": "low-coverage-packages",
+          "remediation": "Add behavior-focused boundary tests to the highest-risk packages before promotion.",
+          "severity": "p2",
+          "title": "Packages remain below the coverage observation threshold",
+          "verify_command": "go test -cover ./... -count=1"
+        }
+      ],
+      "gate_status": "report_only",
       "generated_at": "$TIMESTAMP",
       "harness_root": "$WORKSPACE",
+      "health_status": "needs_attention",
       "ok": true,
+      "pioneer_coverage": {
+        "benchmark_missing": null,
+        "benchmark_observed": 12,
+        "expected": 12,
+        "hidden_holdout_observed": 0,
+        "isolated_blocked": 0,
+        "isolated_blocked_cases": null,
+        "isolated_execution_count": 0,
+        "isolated_expected": 0,
+        "isolated_failed": 0,
+        "isolated_observed": 0,
+        "isolated_passed": 0,
+        "reproduction_missing": null,
+        "reproduction_observed": 12
+      },
       "signals": [
         {
           "category": "candidate",
@@ -4123,8 +4154,34 @@
           "evidence": [
             ".agent-harness/PROJECT_AUDIT.md"
           ],
-          "id": "audit-p1-p2-items",
+          "id": "audit-p0-p1-p2-items",
           "status": "ok",
+          "value": 0
+        },
+        {
+          "category": "skill",
+          "evidence": null,
+          "id": "pioneer-benchmark-coverage",
+          "status": "ok",
+          "threshold": 12,
+          "value": 12
+        },
+        {
+          "category": "skill",
+          "evidence": null,
+          "id": "pioneer-reproduction-coverage",
+          "status": "ok",
+          "threshold": 12,
+          "value": 12
+        },
+        {
+          "category": "skill",
+          "evidence": [
+            "observed=0 expected=0 pass=0 blocked=0 fail=0 hidden=0",
+            "fresh-context fixtures are committed reproduction inputs, not hidden holdouts"
+          ],
+          "id": "pioneer-isolated-evaluation",
+          "status": "unknown",
           "value": 0
         },
         {

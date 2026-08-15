@@ -2,12 +2,15 @@ package qualitycli
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -19,9 +22,13 @@ func snrEvidence(snr SNRResult) []string {
 	}
 }
 
-// snrBaselineStateKey is the harness-state key under which the most recent
-// code-SNR ratio is persisted so a later run can report a trend delta.
-const snrBaselineStateKey = "quality-snr-baseline"
+const snrBaselineSchemaVersion = 1
+
+type snrBaselineRecord struct {
+	SchemaVersion int     `json:"schema_version"`
+	Repository    string  `json:"repository"`
+	Ratio         float64 `json:"ratio"`
+}
 
 // SNRResult is a deterministic Shannon-style signal-to-noise measure over the
 // repository's production Go source: signal lines (logic) versus noise lines
@@ -37,11 +44,11 @@ type SNRResult struct {
 
 // computeCodeSNR walks root for production (non-test) Go files and computes the
 // signal-to-noise ratio. It is deterministic for a given file tree.
-func computeCodeSNR(root string) SNRResult {
+func computeCodeSNR(root string) (SNRResult, error) {
 	var signal, noise int
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if d.IsDir() {
 			switch d.Name() {
@@ -53,23 +60,29 @@ func computeCodeSNR(root string) SNRResult {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		s, n := snrCountFile(path)
+		s, n, err := snrCountFile(path)
+		if err != nil {
+			return err
+		}
 		signal += s
 		noise += n
 		return nil
 	})
+	if err != nil {
+		return SNRResult{}, err
+	}
 	total := signal + noise
 	ratio := 0.0
 	if total > 0 {
 		ratio = math.Round(float64(signal)/float64(total)*10000) / 10000
 	}
-	return SNRResult{SignalLines: signal, NoiseLines: noise, TotalLines: total, Ratio: ratio}
+	return SNRResult{SignalLines: signal, NoiseLines: noise, TotalLines: total, Ratio: ratio}, nil
 }
 
-func snrCountFile(path string) (signal, noise int) {
+func snrCountFile(path string) (signal, noise int, err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return 0, 0
+		return 0, 0, err
 	}
 	defer f.Close()
 	sc := bufio.NewScanner(f)
@@ -98,7 +111,10 @@ func snrCountFile(path string) (signal, noise int) {
 			signal++
 		}
 	}
-	return signal, noise
+	if err := sc.Err(); err != nil {
+		return 0, 0, err
+	}
+	return signal, noise, nil
 }
 
 // snrStructuralOnly reports whether a line carries only block-structure runes
@@ -114,29 +130,77 @@ func snrStructuralOnly(line string) bool {
 	return line != ""
 }
 
-// readSNRBaseline returns the persisted baseline ratio, or false when none is
-// stored or it cannot be parsed.
-func readSNRBaseline() (float64, bool) {
+// readSNRBaseline distinguishes an absent baseline from corrupted or
+// unavailable state so --trend cannot silently suppress a regression.
+func readSNRBaseline(root string) (float64, bool, error) {
 	if hostDeps.StateRead == nil {
-		return 0, false
+		return 0, false, fmt.Errorf("quality SNR baseline store is not configured")
 	}
-	res, err := hostDeps.StateRead(snrBaselineStateKey)
-	if err != nil || !res.OK {
-		return 0, false
-	}
-	v, err := strconv.ParseFloat(strings.TrimSpace(res.Record.Content), 64)
+	repository, key, err := snrBaselineIdentity(root)
 	if err != nil {
-		return 0, false
+		return 0, false, err
 	}
-	return v, true
+	res, err := hostDeps.StateRead(key)
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	if !res.OK {
+		return 0, false, fmt.Errorf("quality SNR baseline read returned no record")
+	}
+	var baseline snrBaselineRecord
+	if err := json.Unmarshal([]byte(res.Record.Content), &baseline); err != nil {
+		return 0, false, fmt.Errorf("parse quality SNR baseline: %w", err)
+	}
+	if baseline.SchemaVersion != snrBaselineSchemaVersion ||
+		baseline.Repository != repository ||
+		!validSNRRatio(baseline.Ratio) {
+		return 0, false, fmt.Errorf("quality SNR baseline identity or ratio is invalid")
+	}
+	return baseline.Ratio, true, nil
 }
 
 // saveSNRBaseline persists the current ratio as the new baseline for trend
 // comparison on a later run.
-func saveSNRBaseline(ratio float64) error {
+func saveSNRBaseline(root string, ratio float64) error {
 	if hostDeps.StateWrite == nil {
 		return fmt.Errorf("quality SNR baseline store is not configured")
 	}
-	_, err := hostDeps.StateWrite(snrBaselineStateKey, strconv.FormatFloat(ratio, 'f', 4, 64))
+	if !validSNRRatio(ratio) {
+		return fmt.Errorf("quality SNR baseline ratio must be finite and between zero and one")
+	}
+	repository, key, err := snrBaselineIdentity(root)
+	if err != nil {
+		return err
+	}
+	content, err := json.Marshal(snrBaselineRecord{
+		SchemaVersion: snrBaselineSchemaVersion,
+		Repository:    repository,
+		Ratio:         ratio,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = hostDeps.StateWrite(key, string(content))
 	return err
+}
+
+func snrBaselineIdentity(root string) (string, string, error) {
+	repository, err := filepath.Abs(root)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve quality SNR repository: %w", err)
+	}
+	repository, err = filepath.EvalSymlinks(repository)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve quality SNR repository symlinks: %w", err)
+	}
+	repository = filepath.Clean(repository)
+	sum := sha256.Sum256([]byte(repository))
+	return repository, "quality-snr-baseline-" + hex.EncodeToString(sum[:8]), nil
+}
+
+func validSNRRatio(ratio float64) bool {
+	return !math.IsNaN(ratio) && !math.IsInf(ratio, 0) && ratio >= 0 && ratio <= 1
 }
