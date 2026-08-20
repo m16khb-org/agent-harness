@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aside Functional QA"
+  short_description: "Verify browser requirements with Aside evidence"
+default_prompt: "Use $aside-functional-qa to map these requirements to browser tests, execute them through Aside, and produce a client-facing functional QA report with reproducible evidence."

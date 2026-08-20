@@ -1,0 +1,43 @@
+{
+  "run": {
+    "executed_at": "2026-08-20T04:03:43Z",
+    "aside_version": "1.26.717.1619",
+    "target": "http://127.0.0.1:8765/client-qa-fixture.html",
+    "test_data": "QA item 2026-08-20",
+    "test_owned_tab_closed": true
+  },
+  "results": {
+    "FQA-001": {
+      "requirement": "R-001",
+      "observed_count": "1",
+      "observed_items": [
+        "QA item 2026-08-20"
+      ],
+      "observed_status": "Added QA item 2026-08-20",
+      "status": "Pass"
+    },
+    "FQA-002": {
+      "requirement": "R-002",
+      "observed_count": "1",
+      "observed_status": "Added QA item 2026-08-20",
+      "input_aria_invalid": null,
+      "input_aria_describedby": null,
+      "status": "Fail"
+    },
+    "FQA-003": {
+      "requirement": "R-003",
+      "observed_count_after_reload": "0",
+      "observed_items_after_reload": [],
+      "observed_status_after_reload": "",
+      "status": "Fail"
+    }
+  },
+  "screenshot": {
+    "captured_before_reload": true,
+    "jpeg_bytes": 83795
+  },
+  "unsupported_or_not_run": [
+    "Browser console history",
+    "Network status and response body"
+  ]
+}

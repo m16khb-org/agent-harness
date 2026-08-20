@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aside Visual QA"
+  short_description: "Review browser UI and UX with Aside evidence"
+default_prompt: "Use $aside-visual-qa to inspect this browser experience against its design intent, accessibility and usability standards, then produce a client-facing evidence report."

@@ -735,6 +735,20 @@
       "ok": true,
       "skills": [
         {
+          "description": "Client-facing functional QA through the installed Aside CLI. Use when asked to verify that a browser feature, acceptance criterion, user journey, validation rule, state transition, persistence behavior, authorization rule, or error-recovery path works as intended and needs a reproducible evidence report. Triggers include functional QA, browser test, acceptance test, requirement verification, regression check, 기능 QA, 요구사항 검증, 의도대로 동작하는지 확인, and client QA report.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "aside-functional-qa",
+          "path": "$HARNESS_ROOT/skills/aside-functional-qa"
+        },
+        {
+          "description": "Client-facing UI/UX QA through the installed Aside CLI. Use when asked to review whether a web page, flow, or responsive state matches product or design intent; follows accessibility and usability standards; feels coherent rather than awkward; or needs an evidence-backed visual QA report. Triggers include UI QA, UX review, visual review, design intent check, accessibility review, responsive review, 어색한지 확인, 화면 QA, UI/UX 검수, and client QA report.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "aside-visual-qa",
+          "path": "$HARNESS_ROOT/skills/aside-visual-qa"
+        },
+        {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5132,6 +5146,8 @@
         "has_worker_mvp": true,
         "has_worker_stuck_running_detection": true,
         "skills": [
+          "aside-functional-qa",
+          "aside-visual-qa",
           "atomic-commit-push",
           "berners-lee",
           "boehm",
@@ -6975,6 +6991,20 @@
             "ok": true,
             "skills": [
               {
+                "description": "Client-facing functional QA through the installed Aside CLI. Use when asked to verify that a browser feature, acceptance criterion, user journey, validation rule, state transition, persistence behavior, authorization rule, or error-recovery path works as intended and needs a reproducible evidence report. Triggers include functional QA, browser test, acceptance test, requirement verification, regression check, 기능 QA, 요구사항 검증, 의도대로 동작하는지 확인, and client QA report.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "aside-functional-qa",
+                "path": "$HARNESS_ROOT/skills/aside-functional-qa"
+              },
+              {
+                "description": "Client-facing UI/UX QA through the installed Aside CLI. Use when asked to review whether a web page, flow, or responsive state matches product or design intent; follows accessibility and usability standards; feels coherent rather than awkward; or needs an evidence-backed visual QA report. Triggers include UI QA, UX review, visual review, design intent check, accessibility review, responsive review, 어색한지 확인, 화면 QA, UI/UX 검수, and client QA report.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "aside-visual-qa",
+                "path": "$HARNESS_ROOT/skills/aside-visual-qa"
+              },
+              {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8080,6 +8110,8 @@
               "has_worker_mvp": true,
               "has_worker_stuck_running_detection": true,
               "skills": [
+                "aside-functional-qa",
+                "aside-visual-qa",
                 "atomic-commit-push",
                 "berners-lee",
                 "boehm",

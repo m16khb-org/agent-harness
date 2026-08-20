@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Aside Client QA Fixture</title>
+    <style>
+      :root {
+        color: #222;
+        background: #f5f7fb;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: 720px;
+        min-width: 720px;
+        margin: 48px auto;
+        padding: 32px;
+        border: 1px solid #d9deea;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 12px 32px rgb(42 55 88 / 10%);
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+
+      .lede {
+        margin: 0 0 28px;
+        color: #b3b3b3;
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 650;
+      }
+
+      input,
+      button {
+        min-height: 36px;
+        border: 1px solid #b9c1d4;
+        border-radius: 8px;
+        font: inherit;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px 10px;
+      }
+
+      button {
+        padding: 6px 14px;
+        color: white;
+        background: #5662d9;
+        cursor: pointer;
+      }
+
+      input:focus,
+      button:focus {
+        outline: none;
+      }
+
+      .status {
+        min-height: 24px;
+        margin: 10px 0 0;
+        color: #4d5874;
+      }
+
+      .summary {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid #e4e7ef;
+      }
+
+      ul {
+        padding-left: 22px;
+      }
+
+      .requirements {
+        margin-top: 36px;
+        padding: 18px;
+        border-radius: 10px;
+        background: #f3f5fa;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Release checklist</h1>
+      <p class="lede">Add items that must be verified before the client release.</p>
+
+      <form id="checklist-form" novalidate>
+        <label for="item">Checklist item</label>
+        <div class="composer">
+          <input id="item" name="item" autocomplete="off">
+          <button type="submit">Add item</button>
+        </div>
+        <p id="status" class="status"></p>
+      </form>
+
+      <div class="summary">
+        <strong>Items</strong>
+        <span><span id="count">0</span> total</span>
+      </div>
+      <ul id="items" aria-label="Checklist items"></ul>
+
+      <section class="requirements" aria-labelledby="requirements-title">
+        <h2 id="requirements-title">Fixture requirements</h2>
+        <ol>
+          <li>R-001: A non-empty item appears in the list and increments the count.</li>
+          <li>R-002: Empty submission shows an inline error linked to the input.</li>
+          <li>R-003: Added items remain after a page reload.</li>
+        </ol>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#checklist-form");
+      const input = document.querySelector("#item");
+      const items = document.querySelector("#items");
+      const count = document.querySelector("#count");
+      const status = document.querySelector("#status");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = input.value.trim();
+        if (!value) {
+          return;
+        }
+
+        const item = document.createElement("li");
+        item.textContent = value;
+        items.append(item);
+        count.textContent = String(items.children.length);
+        status.textContent = `Added ${value}`;
+        input.value = "";
+      });
+    </script>
+  </body>
+</html>

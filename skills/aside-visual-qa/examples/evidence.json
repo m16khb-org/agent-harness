@@ -1,0 +1,52 @@
+{
+  "run": {
+    "captured_at": "2026-08-20T04:03:43Z",
+    "aside_version": "1.26.717.1619",
+    "target": "http://127.0.0.1:8765/client-qa-fixture.html",
+    "title": "Aside Client QA Fixture",
+    "account_state": "signed in",
+    "test_owned_tab_closed": true
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "device_pixel_ratio": 2
+  },
+  "observations": {
+    "supporting_text": {
+      "computed_color": "rgb(179, 179, 179)",
+      "background": "rgb(255, 255, 255)",
+      "contrast_ratio": 2.096704890560357
+    },
+    "focused_input": {
+      "active_element_id": "item",
+      "outline_style": "none"
+    },
+    "layout": {
+      "main_width": "720px",
+      "main_min_width": "720px",
+      "scroll_width": 1440,
+      "client_width": 1440
+    },
+    "accessibility_snapshot": {
+      "heading": "Release checklist",
+      "textbox_name": "Checklist item",
+      "button_name": "Add item",
+      "requirements_region_present": true
+    }
+  },
+  "screenshot": {
+    "inspected_in_memory": true,
+    "jpeg_bytes": 26176,
+    "decoded_pixels": {
+      "width": 1440,
+      "height": 1046
+    },
+    "note": "The inspection copy repositioned the card to x=0 only to work around the installed REPL clip-offset behavior. It was not used to judge page centering or outer spacing."
+  },
+  "unsupported_or_not_run": [
+    "Physical narrow-viewport resize",
+    "Browser console history",
+    "Network interception"
+  ]
+}
