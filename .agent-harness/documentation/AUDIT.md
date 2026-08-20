@@ -151,6 +151,39 @@ and zero violations. The runtime docs index reported all six required roots and
 manifest-declared module documents are intentionally discoverable during
 authoring; unrelated untracked research remains excluded.
 
+## Re-audit 2026-08-20
+
+Re-ran `skills/project-docs-optimize` against the current tree without
+finding new violations: 319 documents inspected, six families validated, zero
+violations. All required roots remain valid entrypoints and every relative
+link resolves.
+
+| Family | Root lines | Modules | Largest module |
+|---|---:|---:|---:|
+| ADR | 83 | 47 | 238 (`adr/roadmap.md`) |
+| Architecture | 108 | 4 | 157 (`architecture/issueops.md`) |
+| Cautions | 90 | 23 | 164 (`cautions/issueops-orchestration.md`) |
+| Conventions | 104 | 3 | 158 (`conventions/go-and-packages.md`) |
+| Operations | 86 | 6 | 178 (`operations/guides/issueops-execution.md`) |
+| Testing | 71 | 6 | 149 (`testing/issueops-execution.md`) |
+
+Growth since 2026-08-11 is one new ADR decision plus minor root index edits;
+everything stays within the 250-line root and module budgets.
+
+## Non-family root snapshots (2026-08-20)
+
+The checker budgets only manifest families, so non-family root documents were
+measured and classified separately:
+
+| Document | Lines | Disposition |
+|---|---:|---|
+| `.agent-harness/ISSUEOPS_AUDIT.md` | 507 | Moved verbatim to `archive/issueops-audit.md`; self-declared historical snapshot with no machine or markdown-link dependents |
+| `.agent-harness/PROJECT_AUDIT.md` | 368 | Retained at root: `quality inspect` parses it in place (`cmd/harness/qualitycli/quality_inspect.go`, `collectAuditItems`) for the `audit-p0-p1-p2-items` signal and quality-catalog candidates cite it as evidence |
+| `.agent-harness/SUB_AGENT_PATTERNS.md` | 192 | Within budget; single owner, unchanged |
+
+Both audit files are dated snapshots, not operating documents; the ownership
+map in `README.md` and `manifest.json` records them as such.
+
 ## Acceptance criteria
 
 The modularization is complete when:

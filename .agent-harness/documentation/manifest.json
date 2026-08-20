@@ -39,6 +39,8 @@
     "constitutional priority and safety": ".agent-harness/CONSTITUTION.md",
     "OpenAPI requirements": ".agent-harness/OPEN_API_SPEC.md",
     "technology selection": ".agent-harness/TECH_STACK.md",
-    "agent execution sequence": ".agent-harness/AGENT_WORKFLOW.md"
+    "agent execution sequence": ".agent-harness/AGENT_WORKFLOW.md",
+    "issueops historical audit": ".agent-harness/archive/issueops-audit.md",
+    "whole-project audit snapshot": ".agent-harness/PROJECT_AUDIT.md"
   }
 }

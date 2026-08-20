@@ -31,6 +31,7 @@ project-doc contract discovers those exact filenames:
 ├── TESTING.md
 ├── adr/
 ├── architecture/
+├── archive/
 ├── cautions/
 ├── conventions/
 ├── operations/guides/
@@ -63,9 +64,18 @@ normative rules.
 | technology selection | `TECH_STACK.md` |
 | agent execution sequence | `AGENT_WORKFLOW.md` |
 | constitutional priority and safety | `CONSTITUTION.md` |
+| issueops historical audit | `archive/issueops-audit.md` |
+| whole-project audit snapshot | `PROJECT_AUDIT.md` (root-retained exception) |
 
 References outside the canonical owner carry only a link plus
 workflow-specific context.
+
+Two dated audit snapshots are records, not operating documents.
+`PROJECT_AUDIT.md` stays at its root path because `quality inspect` parses it
+in place (`cmd/harness/qualitycli/quality_inspect.go`, `collectAuditItems`)
+for the `audit-p0-p1-p2-items` signal and quality-catalog candidates cite it
+as evidence. `archive/issueops-audit.md` is the retired IssueOps audit kept
+verbatim under `archive/`.
 
 ## Size and structure budgets
 
@@ -132,6 +142,15 @@ host, release, and installation procedures linked by `OPERATIONS.md`.
 - `self-verification.md`: single-pass self-verification contract
 - `api-documentation.md`: OpenAPI static and agent review gates
 - `issueops-execution.md`: IssueOps and Orca execution verification
+
+### `archive/`
+
+Retired dated snapshots moved verbatim from living documents:
+
+- `adr-history.md`: superseded ADR history
+- `cautions-incidents.md`: superseded incident ledger
+- `issueops-audit.md`: retired IssueOps audit snapshot (moved from
+  `.agent-harness/ISSUEOPS_AUDIT.md` on 2026-08-20)
 
 ## Link rules
 
