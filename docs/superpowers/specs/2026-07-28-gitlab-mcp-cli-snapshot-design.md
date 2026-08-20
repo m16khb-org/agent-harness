@@ -189,7 +189,7 @@ project doc**으로 추가한다. 다음 경계를 지킨다.
   read/update allowlist만 두 목록의 합집합을 사용한다.
 - 기존 `ProjectDocNames`/`PrefixedProjectDocNames`는 required 목록을 유지해
   bootstrap과 doctor의 의미를 바꾸지 않는다.
-- `project_docs_read`와 SHA-checked `project_docs_update`가 읽기·쓰기를 지원한다.
+- `project_docs_read`와 SHA-checked `project_docs_revise`가 읽기·쓰기를 지원한다.
 - GitLab, GitHub, `glab`, `gh`, MCP, IssueOps remote 작업을 route할 때 파일이
   존재하면 우선 참고한다.
 - 일반 bootstrap/doctor가 모든 repo에 빈 `VCS.md`를 강제로 만들거나 missing
@@ -304,7 +304,7 @@ Successful provider read를 실제로 확인한 main agent는:
 2. `project_docs_read(VCS.md)`로 current content/SHA를 읽는다.
 3. 같은 recipe fingerprint가 있으면 no-op한다.
 4. 새 recipe면 기존 내용을 보존해 병합하고
-   `project_docs_update(expected_sha256, confirm=true)`로 쓴다.
+   `project_docs_revise(expected_sha256, confirm=true)`로 쓴다.
 5. Active IssueOps cycle이면 source checkout을 더럽히지 않고 active holder의
    canonical worktree에서만 갱신한다. 아직 holder/worktree가 없으면 문서를
    쓰지 않고 worktree 생성 뒤 successful read를 다시 검증한다.

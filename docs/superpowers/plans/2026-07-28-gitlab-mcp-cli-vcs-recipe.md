@@ -19,7 +19,7 @@
 - `.agent-harness/VCS.md`는 read/update/route 가능한 optional doc이며 bootstrap과 doctor의 required 목록에는 포함하지 않는다.
 - GitHub recipe는 exact `gh issue view` 또는 실제 호출해 검증한 MCP schema만 기록한다. 공통 GitHub MCP 이름을 추측하지 않는다.
 - Hook은 network read, git mutation, shared-doc write, cross-worktree queue handoff를 수행하지 않는다.
-- Active IssueOps 문서 변경은 canonical holder worktree에서 main agent가 `project_docs_read` 후 SHA-CAS `project_docs_update`로 수행한다.
+- Active IssueOps 문서 변경은 canonical holder worktree에서 main agent가 `project_docs_read` 후 SHA-CAS `project_docs_revise`로 수행한다.
 - 사용자의 명시적 자원 제한에 따라 `go test ./...`, 전체 `-race`, full self-verify를 실행하지 않는다.
 - OpenWiki 자동 update를 실행하지 않는다.
 - 구현은 메인 에이전트가 직접 수행하고, sub-agent는 read-only 검토에만 사용한다.
@@ -89,7 +89,7 @@ if hasHarnessDoctorIssue(result.Issues, "project_docs_missing") {
 검증한다.
 
 ```go
-created, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+created, err := ReviseProjectDoc(ProjectDocsReviseRequest{
 	RepoRoot: root,
 	RelPath:  ".agent-harness/VCS.md",
 	Content:  "# VCS\n\n## GitHub\n",
@@ -179,7 +179,7 @@ for _, want := range []string{
 	"glab_api",
 	"server namespace",
 	"glab api fallback",
-	"record a successful exact-identity recipe with project_docs_read/project_docs_update",
+	"record a successful exact-identity recipe with project_docs_read/project_docs_revise",
 } {
 	if !strings.Contains(got.AdditionalContext, want) {
 		t.Fatalf("VCS capability hint missing %q:\n%s", want, got.AdditionalContext)
@@ -205,7 +205,7 @@ Expected: route와 hook output에 VCS/capability 안내가 없어 FAIL.
 
 ```go
 addPriority(
-	"project_docs_read/project_docs_update",
+	"project_docs_read/project_docs_revise",
 	"Read .agent-harness/VCS.md when present; after a successful exact-identity provider read, record only the portable recipe with SHA-CAS in the canonical worktree.",
 	hintPriorityAction,
 )
@@ -221,9 +221,9 @@ if strings.EqualFold(repoProfile.VCS.Provider, "gitlab") {
 `compactHintLabel`은 VCS reason을 보존하는 두 label을 추가한다.
 
 ```go
-case "project_docs_read/project_docs_update":
+case "project_docs_read/project_docs_revise":
 	if strings.Contains(h.Reason, ".agent-harness/VCS.md") {
-		return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_update"
+		return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_revise"
 	}
 	return "refresh project docs only if evidence changed"
 case "glab_api":
@@ -647,7 +647,7 @@ for _, want := range []string{
 	"--issue-snapshot-file",
 	".agent-harness/VCS.md",
 	"project_docs_read",
-	"project_docs_update",
+	"project_docs_revise",
 	"glab api",
 } {
 	if !strings.Contains(content, want) {

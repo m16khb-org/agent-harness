@@ -66,7 +66,7 @@ The injected context should stay English and concise. It should include:
 - A title such as `agent_harness project-doc routing hint:`.
 - A mandatory routing sentence: decide whether `.agent-harness` docs are necessary before acting.
 - Zero or more document hints formatted as `- DOC: reason`.
-- Optional MCP tool hints only when useful, such as `project_docs_route`, `project_docs_read`, `project_docs_update`, or `project_docs_record`.
+- Optional MCP tool hints only when useful, such as `project_docs_route`, `project_docs_read`, `project_docs_revise`, or `project_docs_append`.
 - A safety footer: writable tools must preserve user consensus and current file evidence.
 
 The output should not paste entire documents, command output, or upstream tool results.

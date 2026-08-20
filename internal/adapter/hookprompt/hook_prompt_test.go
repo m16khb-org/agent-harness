@@ -108,8 +108,8 @@ func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 func TestRenderHookMCPHintContextNormalizesFallbackLabels(t *testing.T) {
 	got := hookprompt.RenderHookMCPHintContext([]hookprompt.HookUserPromptHint{
 		{Tool: "project_docs_route"},
-		{Tool: "project_docs_record", Reason: "kind=adr"},
-		{Tool: "project_docs_record", Reason: "kind=caution"},
+		{Tool: "project_docs_append", Reason: "kind=adr"},
+		{Tool: "project_docs_append", Reason: "kind=caution"},
 		{Tool: "api_doc_static_check"},
 		{Tool: "host-agent judgement"},
 		{Tool: "host-agent judgement"},
@@ -192,7 +192,7 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 		"glab_api",
 		"server namespace",
 		"glab api fallback",
-		"record a successful exact-identity recipe with project_docs_read/project_docs_update",
+		"record a successful exact-identity recipe with project_docs_read/project_docs_revise",
 	} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("GitLab repo profile hint missing %q:\n%s", want, got.AdditionalContext)

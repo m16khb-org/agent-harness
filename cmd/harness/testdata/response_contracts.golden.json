@@ -250,7 +250,7 @@
           "name": "version"
         }
       ],
-      "hash": "13be07692be8c3f12cac5ae4e8ac31a45d9260872030b2f4906876e97db2c366",
+      "hash": "b1406ff04dff224f46fc99843b0d792e01717e315cd51b3b82ff8acb34e457d1",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -271,11 +271,11 @@
         "loop_start",
         "loop_status",
         "loop_stop",
+        "project_docs_append",
         "project_docs_bootstrap_plan",
         "project_docs_read",
-        "project_docs_record",
+        "project_docs_revise",
         "project_docs_route",
-        "project_docs_update",
         "self_augment",
         "self_augment_lesson",
         "self_verify",
@@ -847,11 +847,18 @@
           "path": "$HARNESS_ROOT/skills/karpathy"
         },
         {
-          "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.",
+          "description": "Orchestrate first-time agent-harness project setup for a repository: AGENTS.md routing block, repo profile metadata, and the .agent-harness document family through the project-docs-bootstrap sub-skill, plus lifecycle routing to project-docs-update and project-docs-optimize. Use when asked to bootstrap a repo for agent-harness, set up project docs, or initialize agent guidance for a repository. Each sub-skill is also usable standalone.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "project-bootstrap",
           "path": "$HARNESS_ROOT/skills/project-bootstrap"
+        },
+        {
+          "description": "Initial creation or template refresh of repo-local .agent-harness operating documents and the AGENTS.md routing block from repository evidence, through the deterministic agent-harness project bootstrap pass followed by an agent enrichment pass. Use when asked to bootstrap, initialize, or regenerate project docs for a repository, or to set up AGENTS.md agent guidance. For incremental refresh during ongoing work use project-docs-update; for restructuring oversized docs use project-docs-optimize.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "project-docs-bootstrap",
+          "path": "$HARNESS_ROOT/skills/project-docs-bootstrap"
         },
         {
           "description": "Audit and modularize oversized agent-harness operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.agent-harness` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.",
@@ -859,6 +866,13 @@
           "has_skill_md": true,
           "name": "project-docs-optimize",
           "path": "$HARNESS_ROOT/skills/project-docs-optimize"
+        },
+        {
+          "description": "Evidence-bound incremental refresh of existing .agent-harness project documents during ongoing work through the project_docs MCP contract: route, read with SHA-256, then append cautions or ADRs via project_docs_append, or revise one document at a time via project_docs_revise. Use when a completed change, solved failure, new command, or durable decision should be reflected in project docs. For initial creation use project-docs-bootstrap; for structural modularization use project-docs-optimize.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "project-docs-update",
+          "path": "$HARNESS_ROOT/skills/project-docs-update"
         },
         {
           "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
@@ -5170,7 +5184,9 @@
           "issueops-cleanup",
           "karpathy",
           "project-bootstrap",
+          "project-docs-bootstrap",
           "project-docs-optimize",
+          "project-docs-update",
           "self-augment",
           "self-verify",
           "shannon",
@@ -6493,7 +6509,7 @@
                 "name": "version"
               }
             ],
-            "hash": "13be07692be8c3f12cac5ae4e8ac31a45d9260872030b2f4906876e97db2c366",
+            "hash": "b1406ff04dff224f46fc99843b0d792e01717e315cd51b3b82ff8acb34e457d1",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6514,11 +6530,11 @@
               "loop_start",
               "loop_status",
               "loop_stop",
+              "project_docs_append",
               "project_docs_bootstrap_plan",
               "project_docs_read",
-              "project_docs_record",
+              "project_docs_revise",
               "project_docs_route",
-              "project_docs_update",
               "self_augment",
               "self_augment_lesson",
               "self_verify",
@@ -7111,11 +7127,18 @@
                 "path": "$HARNESS_ROOT/skills/karpathy"
               },
               {
-                "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.",
+                "description": "Orchestrate first-time agent-harness project setup for a repository: AGENTS.md routing block, repo profile metadata, and the .agent-harness document family through the project-docs-bootstrap sub-skill, plus lifecycle routing to project-docs-update and project-docs-optimize. Use when asked to bootstrap a repo for agent-harness, set up project docs, or initialize agent guidance for a repository. Each sub-skill is also usable standalone.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "project-bootstrap",
                 "path": "$HARNESS_ROOT/skills/project-bootstrap"
+              },
+              {
+                "description": "Initial creation or template refresh of repo-local .agent-harness operating documents and the AGENTS.md routing block from repository evidence, through the deterministic agent-harness project bootstrap pass followed by an agent enrichment pass. Use when asked to bootstrap, initialize, or regenerate project docs for a repository, or to set up AGENTS.md agent guidance. For incremental refresh during ongoing work use project-docs-update; for restructuring oversized docs use project-docs-optimize.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "project-docs-bootstrap",
+                "path": "$HARNESS_ROOT/skills/project-docs-bootstrap"
               },
               {
                 "description": "Audit and modularize oversized agent-harness operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.agent-harness` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.",
@@ -7123,6 +7146,13 @@
                 "has_skill_md": true,
                 "name": "project-docs-optimize",
                 "path": "$HARNESS_ROOT/skills/project-docs-optimize"
+              },
+              {
+                "description": "Evidence-bound incremental refresh of existing .agent-harness project documents during ongoing work through the project_docs MCP contract: route, read with SHA-256, then append cautions or ADRs via project_docs_append, or revise one document at a time via project_docs_revise. Use when a completed change, solved failure, new command, or durable decision should be reflected in project docs. For initial creation use project-docs-bootstrap; for structural modularization use project-docs-optimize.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "project-docs-update",
+                "path": "$HARNESS_ROOT/skills/project-docs-update"
               },
               {
                 "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
@@ -8142,7 +8172,9 @@
                 "issueops-cleanup",
                 "karpathy",
                 "project-bootstrap",
+                "project-docs-bootstrap",
                 "project-docs-optimize",
+                "project-docs-update",
                 "self-augment",
                 "self-verify",
                 "shannon",

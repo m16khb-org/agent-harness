@@ -121,7 +121,7 @@ Rules:
 - Architecture/design prompts:
   - `ARCHITECTURE.md` as `required`
   - `ADR.md` as `consider`
-  - `project_docs_record` as `action`
+  - `project_docs_append` as `action`
 - Hook/install/daemon/MCP prompts:
   - `OPERATIONS.md` and `CONVENTIONS.md` as `required`
   - `TECH_STACK.md` as `consider`

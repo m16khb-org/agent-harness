@@ -25,12 +25,12 @@ func compactHintLabel(h hookpromptcontract.Hint) string {
 	switch h.Tool {
 	case "project_docs_route":
 		return "use project docs only when repo-specific context matters"
-	case "project_docs_read/project_docs_update":
+	case "project_docs_read/project_docs_revise":
 		if strings.Contains(h.Reason, ".agent-harness/VCS.md") {
-			return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_update"
+			return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_revise"
 		}
 		return "refresh project docs only if evidence changed"
-	case "project_docs_record":
+	case "project_docs_append":
 		if strings.Contains(h.Reason, "kind=caution") {
 			return "record reusable caution"
 		}

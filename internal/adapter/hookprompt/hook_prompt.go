@@ -92,13 +92,13 @@ func BuildUserPromptMCPHints(req hookpromptcontract.HookUserPromptRequest) hookp
 		}
 		if events, _, err := ReadPendingDocUpkeepEvents(req.Repo, 5); err == nil && len(events) > 0 {
 			pendingUpkeep = events
-			addPriority("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.", hintPriorityAction)
+			addPriority("project_docs_read/project_docs_revise", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.", hintPriorityAction)
 		}
 	}
 	if repoProfile != nil && strings.EqualFold(repoProfile.VCS.Provider, "gitlab") && promptLooksLikeVCSRemoteWork(prompt, lower) {
 		addPriority("gitlab-usecase", "Required for GitLab repo remote work; distinguish linked items from child items and verify body, labels, assignee, target branch, and review-thread state.", hintPriorityRequired)
 		addPriority(
-			"project_docs_read/project_docs_update",
+			"project_docs_read/project_docs_revise",
 			"Read .agent-harness/VCS.md when present; after a successful exact-identity provider read, record only the portable recipe with SHA-CAS in the canonical worktree.",
 			hintPriorityAction,
 		)

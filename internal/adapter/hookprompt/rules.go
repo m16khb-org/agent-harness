@@ -34,14 +34,14 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"깃랩", "머지리퀘스트", "링크드", "하위 Task", "하위 태스크", "자식", "상위", "부모", "Kody", "Kodus"},
 	},
 	{
-		Tool:           "project_docs_record",
+		Tool:           "project_docs_append",
 		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
 		Priority:       PriorityAction,
 		LowerKeywords:  []string{"architecture", "architect", "refactor", "design", "decision", "alternative"},
 		PromptKeywords: []string{"아키텍처", "리팩터", "결정", "대안", "설계"},
 	},
 	{
-		Tool:           "project_docs_record",
+		Tool:           "project_docs_append",
 		Reason:         "When a resolved false case or recurring failure is reusable, consider kind=caution for CAUTIONS.md.",
 		Priority:       PriorityAction,
 		LowerKeywords:  []string{"bug", "fix", "regression", "failure", "false case", "caution"},
@@ -62,14 +62,14 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"엔드포인트", "스웨거", "컨트롤러"},
 	},
 	{
-		Tool:           "project_docs_read/project_docs_update",
+		Tool:           "project_docs_read/project_docs_revise",
 		Reason:         "If .agent-harness/OPEN_API_SPEC.md or related docs diverge from code/user consensus, update one document at a time.",
 		Priority:       PriorityAction,
 		LowerKeywords:  []string{"endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler"},
 		PromptKeywords: []string{"엔드포인트", "스웨거", "컨트롤러"},
 	},
 	{
-		Tool:           "project_docs_read/project_docs_update",
+		Tool:           "project_docs_read/project_docs_revise",
 		Reason:         "If .agent-harness docs diverge from current code or user consensus, update one SHA-checked document at a time.",
 		Priority:       PriorityAction,
 		LowerKeywords:  []string{".agent-harness", "agents.md", "claude.md", "convention", "workflow", "docs", "project rules"},

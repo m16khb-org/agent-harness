@@ -508,7 +508,7 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runProjectBootstrap([]string{"--repo", root, "--dry-run", "--json"})
 	_ = runProjectDocs([]string{"--repo", root, "--json"})
 	_ = runProjectRouteDocs([]string{"--repo", root, "--task", "general", "--json"})
-	_ = runProjectRecord([]string{"--repo", root, "--kind", "note", "--title", "t", "--summary", "s", "--json"})
+	_ = runProjectAppend([]string{"--repo", root, "--kind", "note", "--title", "t", "--summary", "s", "--json"})
 	_ = runProjectCommitSuggest([]string{"--repo", root, "--json"})
 	_ = runProjectLintDiagnose([]string{"--repo", root, "--json"})
 

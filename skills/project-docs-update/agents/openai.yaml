@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Docs Update"
+  short_description: "Incrementally refresh .agent-harness docs via record and SHA-locked update"
+default_prompt: "Use $project-docs-update to reflect this completed work in the project docs: route to the owning documents, record new cautions or ADRs append-only, and SHA-lock any single-document update."

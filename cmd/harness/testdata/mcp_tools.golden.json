@@ -80,7 +80,7 @@
     "name": "project_docs_bootstrap_plan"
   },
   {
-    "description": "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_update so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+    "description": "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_revise so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
     "inputSchema": {
       "properties": {
         "rel_path": {
@@ -100,7 +100,7 @@
     "name": "project_docs_read"
   },
   {
-    "description": "Update one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_record there.",
+    "description": "Revise (fully replace) one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_append there.",
     "inputSchema": {
       "properties": {
         "confirm": {
@@ -142,7 +142,7 @@
       ],
       "type": "object"
     },
-    "name": "project_docs_update"
+    "name": "project_docs_revise"
   },
   {
     "description": "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
@@ -206,7 +206,7 @@
       ],
       "type": "object"
     },
-    "name": "project_docs_record"
+    "name": "project_docs_append"
   },
   {
     "description": "Render the API documentation host-agent review prompt/schema, or record a supplied JSON review result for staged or explicit controller/DTO/handler/OpenAPI files. By default it scopes to git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt.",

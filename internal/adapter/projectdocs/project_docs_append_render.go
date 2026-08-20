@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func renderProjectDocsRecordEntry(kind string, req projectdocscontract.ProjectDocsRecordRequest, now time.Time) string {
+func renderProjectDocsAppendEntry(kind string, req projectdocscontract.ProjectDocsAppendRequest, now time.Time) string {
 	var b strings.Builder
 	stamp := now.Format("2006-01-02")
 	fmt.Fprintf(&b, "\n## %s — %s\n\n", stamp, strings.TrimSpace(req.Title))

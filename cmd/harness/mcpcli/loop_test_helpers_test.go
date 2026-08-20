@@ -12,6 +12,6 @@ func init() {
 	LoopStatus = looprun.Status
 	RouteProjectDocs = projectdocs.RouteProjectDocs
 	ReadProjectDoc = projectdocs.ReadProjectDoc
-	UpdateProjectDoc = projectdocs.UpdateProjectDoc
-	AppendProjectDocsRecord = projectdocs.AppendProjectDocsRecord
+	ReviseProjectDoc = projectdocs.ReviseProjectDoc
+	AppendProjectDocsEntry = projectdocs.AppendProjectDocsEntry
 }

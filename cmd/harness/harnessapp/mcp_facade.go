@@ -23,8 +23,8 @@ func configureMCPCLI() {
 	mcpcli.ResolveTarget = resolveTarget
 	mcpcli.RouteProjectDocs = projectdocs.RouteProjectDocs
 	mcpcli.ReadProjectDoc = projectdocs.ReadProjectDoc
-	mcpcli.UpdateProjectDoc = projectdocs.UpdateProjectDoc
-	mcpcli.AppendProjectDocsRecord = projectdocs.AppendProjectDocsRecord
+	mcpcli.ReviseProjectDoc = projectdocs.ReviseProjectDoc
+	mcpcli.AppendProjectDocsEntry = projectdocs.AppendProjectDocsEntry
 	mcpcli.LoopStart = looprun.Start
 	mcpcli.LoopRecordAttempt = looprun.RecordAttempt
 	mcpcli.LoopStop = looprun.Stop

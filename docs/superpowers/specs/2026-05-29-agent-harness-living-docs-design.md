@@ -192,9 +192,9 @@ PostToolUse should not rewrite docs directly.
 
 At turn end, inspect pending upkeep. If pending items are important, inject a concise reminder to the agent. It may recommend:
 
-- `project_docs_record(kind=adr)` for decisions and rejected alternatives
-- `project_docs_record(kind=caution)` for resolved failures and repeated mistakes
-- `project_docs_read` then `project_docs_update` for full document edits
+- `project_docs_append(kind=adr)` for decisions and rejected alternatives
+- `project_docs_append(kind=caution)` for resolved failures and repeated mistakes
+- `project_docs_read` then `project_docs_revise` for full document edits
 
 Stop should not directly modify shared docs.
 
@@ -306,7 +306,7 @@ Default `doctor` is read-only. Any fixing behavior must be explicit, conservativ
 - If user-state is unwritable, hooks should still return useful routing context when possible.
 - If multiple repos map to the same id, include enough fingerprint evidence to detect and warn, and do not reuse the mismatched state for routing.
 - If repo identity changes because a directory was moved, doctor may propose a safe namespace migration only when the old and new fingerprints are explainably related.
-- Shared docs require evidence-preserving updates through `project_docs_read` plus `project_docs_update`, or append-only `project_docs_record` for ADR/caution entries.
+- Shared docs require evidence-preserving updates through `project_docs_read` plus `project_docs_revise`, or append-only `project_docs_append` for ADR/caution entries.
 
 ## Testing strategy
 

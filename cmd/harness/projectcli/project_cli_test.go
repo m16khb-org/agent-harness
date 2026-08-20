@@ -91,7 +91,7 @@ func TestRunProjectRecord_recordsADR_whenRequiredFieldsAreProvided(t *testing.T)
 	})
 
 	// Then
-	var result projectdocscontract.ProjectDocsRecordResult
+	var result projectdocscontract.ProjectDocsAppendResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode record json: %v\n%s", err, out)
 	}

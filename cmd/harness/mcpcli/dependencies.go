@@ -129,8 +129,8 @@ var (
 var (
 	RouteProjectDocs        func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
 	ReadProjectDoc          func(repoRoot, relPath string) (projectdocscontract.ProjectDocsReadResult, error)
-	UpdateProjectDoc        func(projectdocscontract.ProjectDocsUpdateRequest) (projectdocscontract.ProjectDocsUpdateResult, error)
-	AppendProjectDocsRecord func(projectdocscontract.ProjectDocsRecordRequest) (projectdocscontract.ProjectDocsRecordResult, error)
+	ReviseProjectDoc        func(projectdocscontract.ProjectDocsReviseRequest) (projectdocscontract.ProjectDocsReviseResult, error)
+	AppendProjectDocsEntry func(projectdocscontract.ProjectDocsAppendRequest) (projectdocscontract.ProjectDocsAppendResult, error)
 )
 
 // GitPreflight와 ListSkills는 composition root가 설치한다. MCP tool router는

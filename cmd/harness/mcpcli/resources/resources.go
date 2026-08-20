@@ -58,9 +58,9 @@ Use this flow:
 
 1. Call project_docs_route with the current task to choose only relevant docs.
 2. Read the selected docs. When a document needs updating, call project_docs_read first and keep the returned sha256.
-3. Update one document at a time with project_docs_update, passing expected_sha256, a consensus-preserving summary, concrete evidence, and confirm=true only when the full replacement content preserves stronger existing guidance.
-4. Use project_docs_record(kind=caution) for solved false cases, repeated failures, and risk notes.
-5. Use project_docs_record(kind=adr) for decisions, rationale, rejected alternatives, and consequences.
+3. Revise one document at a time with project_docs_revise, passing expected_sha256, a consensus-preserving summary, concrete evidence, and confirm=true only when the full replacement content preserves stronger existing guidance.
+4. Use project_docs_append(kind=caution) for solved false cases, repeated failures, and risk notes.
+5. Use project_docs_append(kind=adr) for decisions, rationale, rejected alternatives, and consequences.
 
 Do not invent repo facts. If evidence is missing, mark the section as "Unknown / not confirmed" and explain how to verify. Do not overwrite user decisions or stronger local docs with generated template language.
 `

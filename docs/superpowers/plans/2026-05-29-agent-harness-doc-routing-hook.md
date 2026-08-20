@@ -109,7 +109,7 @@ add("project_docs_route", "Before acting, decide which AGENTS.md/.agent-harness 
 if containsAny(lower, "architecture", "architect", "refactor", "design", "decision", "alternative", "structure") || containsAny(prompt, "아키텍처", "리팩터", "결정", "대안", "구조", "설계") {
 	add("ARCHITECTURE.md", "Read when architecture, boundaries, host-neutral design, or component responsibilities shape the work.")
 	add("ADR.md", "Read or update when a structural decision, trade-off, or rejected alternative matters long-term.")
-	add("project_docs_record", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
+	add("project_docs_append", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
 }
 
 if containsAny(lower, "hook", "install", "bootstrap", "update", "daemon", "mcp", "operation", "local", "run") || containsAny(prompt, "훅", "설치", "부트스트랩", "데몬", "운영", "로컬 실행") {

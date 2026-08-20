@@ -206,7 +206,7 @@ Add lifecycle read path that:
 - no-ops when `Repo` is empty
 - validates namespace
 - reads pending `doc-upkeep-queue.jsonl`
-- adds action hints for target docs and `project_docs_read/project_docs_update`
+- adds action hints for target docs and `project_docs_read/project_docs_revise`
 - never fails the hook because of lifecycle state errors
 
 - [x] **Step 3: Pass repo into hook request**

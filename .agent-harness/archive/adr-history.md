@@ -24,7 +24,7 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 
 ## ADR note: MCP-backed project memory records
 
-- Decision: CAUTIONS and ADR records should be appended through `project_docs_record` MCP when an agent solves a concrete problem or makes a decision with rationale.
+- Decision: CAUTIONS and ADR records should be appended through `project_docs_append` MCP when an agent solves a concrete problem or makes a decision with rationale.
 - Rationale: this keeps durable project knowledge in repo-local markdown while giving agents a precise tool-use situation.
 - Rejected: relying only on session memory or always-on context injection, because it is less durable and can overfill context.
 - Consequence: record writes must stay append-only, narrow, and test-covered.

@@ -146,15 +146,15 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "project_docs_read",
-			Description: "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_update so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+			Description: "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_revise so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"rel_path"}, "properties": map[string]any{
 				"repo":     map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
 				"rel_path": map[string]any{"type": "string", "description": "Allowed project doc path, for example .agent-harness/TESTING.md or TESTING.md."},
 			}},
 		},
 		{
-			Name:        "project_docs_update",
-			Description: "Update one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_record there.",
+			Name:        "project_docs_revise",
+			Description: "Revise (fully replace) one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_append there.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"rel_path", "content", "summary"}, "properties": map[string]any{
 				"repo":            map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
 				"rel_path":        map[string]any{"type": "string", "description": "Allowed project doc path under .agent-harness, for example .agent-harness/OPERATIONS.md."},
@@ -166,7 +166,7 @@ func coreProjectTools() []Tool {
 			}},
 		},
 		{
-			Name:        "project_docs_record",
+			Name:        "project_docs_append",
 			Description: "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"kind", "title", "summary"}, "properties": map[string]any{
 				"repo":         map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},

@@ -53,6 +53,6 @@ func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 		b.WriteString(event.Summary)
 		b.WriteString("\n")
 	}
-	b.WriteString("Use project_docs_record for ADR/caution entries or project_docs_read/project_docs_update for evidence-preserving doc refreshes.")
+	b.WriteString("Use project_docs_append for ADR/caution entries or project_docs_read/project_docs_revise for evidence-preserving doc refreshes.")
 	return LifecycleStopReminderResult{OK: true, ShouldInject: true, AdditionalContext: strings.TrimSpace(b.String()), PendingCount: len(events)}
 }

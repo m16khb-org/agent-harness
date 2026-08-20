@@ -87,7 +87,7 @@ provider adapter가 일반 `glab api` CLI로 같은 필드를 읽고 성공 결�
 
 성공한 provider read가 재사용 가능한 새 recipe라면 canonical worktree에서
 `project_docs_read`로 `.agent-harness/VCS.md`의 최신 SHA/content를 읽고,
-`project_docs_update` SHA-CAS로 tool leaf, 관찰한 schema, endpoint/필드, CLI
+`project_docs_revise` SHA-CAS로 tool leaf, 관찰한 schema, endpoint/필드, CLI
 fallback만 기록한다. secret, token, 개인 경로, server namespace는 기록하지
 않는다. 이 기록은 OpenWiki 자동 update를 실행하지 않는다.
 

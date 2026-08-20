@@ -1,71 +1,84 @@
 ---
 name: project-bootstrap
-description: Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.
+description: "Orchestrate first-time agent-harness project setup for a repository: AGENTS.md routing block, repo profile metadata, and the .agent-harness document family through the project-docs-bootstrap sub-skill, plus lifecycle routing to project-docs-update and project-docs-optimize. Use when asked to bootstrap a repo for agent-harness, set up project docs, or initialize agent guidance for a repository. Each sub-skill is also usable standalone."
 ---
 
-# Project Bootstrap
+# Project Bootstrap (Orchestration)
 
-## Goal
+Orchestrate first-time repo setup and own the project-docs lifecycle routing.
+This skill never replaces its sub-skills' own contracts; it sequences them and
+owns the pieces that are not docs-specific.
 
-Create evidence-backed project operating documents and repo profile metadata for agents. The output is a repo-local `AGENTS.md` routing block plus `.agent-harness/*.md` documents, with VCS/language/project-type metadata persisted in agent-harness user state for later hook context injection.
+## Sub-skill Contract
 
-## Generated documents
+Load the matching sub-skill, resolved relative to this skill's directory:
 
-- `AGENTS.md` behavioral top block + managed `AGENT_HARNESS` marker block: routes agents to project docs.
-- `.agent-harness/ARCHITECTURE.md`
-- `.agent-harness/CAUTIONS.md` — false cases, recurring failures, and risk notes.
-- `.agent-harness/COMMIT_POLICY.md`
-- `.agent-harness/CONSTITUTION.md` — SessionStart baseline and source-of-truth policy.
-- `.agent-harness/CONVENTIONS.md`
-- `.agent-harness/TECH_STACK.md`
-- `.agent-harness/TESTING.md` — good/bad test criteria and likely verification commands for test work.
-- `.agent-harness/OPEN_API_SPEC.md` — static plus agent documentation gate prompt for endpoint/DTO/OpenAPI changes.
-- `.agent-harness/ADR.md` — architecture decision rationale and rejected alternatives.
-- `.agent-harness/OPERATIONS.md`
-- `.agent-harness/AGENT_WORKFLOW.md`
+- `../project-docs-bootstrap/SKILL.md` — creation and template refresh of the
+  `.agent-harness` family and `AGENTS.md` routing block (static CLI pass +
+  evidence-bound enrichment pass via its `PROMPT.md`).
+- `../project-docs-update/SKILL.md` — incremental refresh during ongoing work
+  (`project_docs_append` for cautions/ADRs by default,
+  `project_docs_revise` for one-document replacement).
+- `../project-docs-optimize/SKILL.md` — structural modularization of oversized
+  docs under the manifest contract.
 
-## Safety rules
+Their safety rules, workflows, and verification steps apply in full. Where
+this skill adds obligations, the stricter rule wins.
 
-- Never overwrite an existing `AGENTS.md` wholesale. The harness may prepend the behavioral guideline block when missing and manages only the `AGENT_HARNESS` marker block after that.
-- Use `--dry-run` when the user only wants a plan.
-- Write when the user explicitly requested bootstrapping/updating project docs or when continuing an approved implementation task; use `--sync` before replacing existing generated docs from current templates/evidence.
-- Treat generated docs as evidence-backed drafts. If the project already has stronger local docs, preserve and reference them.
-- After first setup, keep `.agent-harness` documents fresh through MCP: route the task, read the current doc SHA, update one document at a time, or append CAUTIONS/ADR records for concrete false cases and decisions. The MCP catalog also exposes `project_docs_bootstrap_plan` for the dry-run plan shape.
+## What This Orchestrator Owns Directly
 
+- Repo profile metadata and lifecycle state initialization (the CLI writes
+  these alongside the docs pass).
+- Never overwrite an existing `AGENTS.md` wholesale. The harness may prepend
+  the behavioral top block when missing and manages only the `AGENT_HARNESS`
+  marker block after that.
+- Treat generated docs as evidence-backed drafts. If the project already has
+  stronger local docs, preserve and reference them.
+- Lifecycle routing decisions (below).
 
-## Static vs agent-filled output
+## Lifecycle
 
-`agent-harness project bootstrap` is deterministic and conservative. It creates a safe baseline from repository signals, but it does not deeply understand business logic, architecture, deployment, API style, or historical decisions.
+```
+create              refresh during work            restructure
+project-docs-bootstrap  ->  project-docs-update  ->  project-docs-optimize
+```
 
-- Static bootstrap fills: document skeletons, detected languages/package managers, candidate commands, routing, generic safety/testing/API guidance, `AGENTS.md` managed blocks, and repo profile metadata.
-- Agent enrichment fills: codebase-specific architecture, operations, conventions, testing examples, OpenAPI style, known risks, and decision rationale from direct evidence.
+| Signal | Route to |
+|---|---|
+| No `.agent-harness` docs, or explicit template refresh request | `project-docs-bootstrap` |
+| Completed work produced a caution, ADR, or stale section | `project-docs-update` |
+| Root docs over line budget, duplicated ownership, checker violations > 0, or explicit reorganization ask | `project-docs-optimize` |
 
-Use `PROMPT.md` for the enrichment pass. The prompt requires agents to read repo evidence, avoid invented facts, and maintain `.agent-harness` docs through MCP (`project_docs_route` → `project_docs_read` → `project_docs_update` or `project_docs_record`).
+`project-docs-update` and `project-docs-optimize` route back here (or to
+`project-docs-bootstrap`) when required docs are missing.
 
 ## Workflow
 
-1. Run a dry-run plan when you need to inspect before writing:
+1. Run the dry-run plan first:
 
    ```bash
    agent-harness project bootstrap --repo . --dry-run --json
    ```
 
-2. Inspect the JSON:
-   - `signals.files`
-   - `signals.languages`
-   - `signals.test_commands`
-   - `signals.profile`
-   - planned `files[].action`
+   MCP alternative: `project_docs_bootstrap_plan`.
 
-3. If the plan is acceptable, write files and user-state profile metadata:
+2. Inspect `signals.files`, `signals.languages`, `signals.test_commands`,
+   `signals.profile`, and each planned `files[].action`.
+
+3. Write files and repo profile metadata when the plan is acceptable:
 
    ```bash
    agent-harness project bootstrap --repo . --json
    ```
 
-4. Run the agent enrichment pass using `skills/project-bootstrap/PROMPT.md`. The enrichment pass should read repo evidence and update `.agent-harness` docs through MCP rather than blindly accepting static template text.
+   `--sync` refreshes existing generated docs — only on explicit request.
 
-5. Ask the MCP route when starting later work. Prefer this over injecting every project doc into context:
+4. Run the enrichment pass from `../project-docs-bootstrap/PROMPT.md`: repo
+   evidence in, no invented facts, updates through the MCP contract
+   (`project_docs_route` → `project_docs_read` → `project_docs_revise` /
+   `project_docs_append`).
+
+5. For later task routing, prefer the route over injecting every doc:
 
    ```bash
    agent-harness project route-docs --repo . --task "commit" --json
@@ -73,15 +86,29 @@ Use `PROMPT.md` for the enrichment pass. The prompt requires agents to read repo
    agent-harness project route-docs --repo . --task "architecture" --json
    ```
 
-6. When a solved problem or decision should become durable project knowledge, record it through the append-only MCP/CLI contract:
+6. When solved problems or decisions become durable knowledge, append them:
 
    ```bash
-   agent-harness project record --repo . --kind caution --title "<problem>" --summary "<what happened>" --resolution "<fix>" --json
-   agent-harness project record --repo . --kind adr --title "<decision>" --summary "<why>" --decision "<choice>" --json
+   agent-harness project append --repo . --kind caution --title "<problem>" --summary "<what happened>" --resolution "<fix>" --json
+   agent-harness project append --repo . --kind adr --title "<decision>" --summary "<why>" --decision "<choice>" --json
    ```
 
-7. Verify:
-   - Confirm `AGENTS.md` contains the behavioral top block and only the managed marker block addition/update.
-   - Confirm `.agent-harness/*.md` exists and contains evidence/confidence language where commands were inferred.
-   - Confirm future updates can be made through MCP: `project_docs_route`, `project_docs_read`, `project_docs_update`, and `project_docs_record`.
-   - Run the target repo's smallest relevant validation command when docs affect workflow claims.
+   For full-document revisions use the MCP contract through
+   `project-docs-update`, not the CLI.
+
+## Verify
+
+- `AGENTS.md` contains the behavioral top block and only the managed marker
+  block changed.
+- `.agent-harness/*.md` exist with evidence/confidence language where facts
+  were inferred.
+- MCP maintenance works: `project_docs_route`, `project_docs_read`,
+  `project_docs_revise`, `project_docs_append`.
+- The target repo's smallest relevant validation command passes when docs
+  make workflow claims.
+
+## Completion Evidence
+
+Report: plan summary, files created/preserved/synced, enrichment updates with
+evidence, lifecycle routing decisions made, verification results, and
+remaining unknowns.

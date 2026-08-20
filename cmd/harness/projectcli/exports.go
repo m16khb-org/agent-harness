@@ -17,7 +17,7 @@ func RunRouteDocs(args []string) error {
 }
 
 func RunRecord(args []string) error {
-	return runProjectRecord(args)
+	return runProjectAppend(args)
 }
 
 func RunCommitSuggest(args []string) error {

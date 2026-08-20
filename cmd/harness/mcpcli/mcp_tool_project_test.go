@@ -58,18 +58,18 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 	}{
 		{
 			name: "project update missing content",
-			call: MCPToolCall{Name: "project_docs_update", Arguments: map[string]any{
+			call: MCPToolCall{Name: "project_docs_revise", Arguments: map[string]any{
 				"repo": repo, "rel_path": ".agent-harness/ARCHITECTURE.md", "summary": "update",
 			}},
-			wantMessage: "Project docs update failed",
+			wantMessage: "Project docs revise failed",
 			wantData:    "content is required",
 		},
 		{
-			name: "project record unsupported kind",
-			call: MCPToolCall{Name: "project_docs_record", Arguments: map[string]any{
+			name: "project append unsupported kind",
+			call: MCPToolCall{Name: "project_docs_append", Arguments: map[string]any{
 				"repo": repo, "kind": "note", "title": "Title", "summary": "Summary",
 			}},
-			wantMessage: "Project docs record failed",
+			wantMessage: "Project docs append failed",
 			wantData:    "unsupported record kind",
 		},
 	}

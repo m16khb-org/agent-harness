@@ -52,8 +52,8 @@ func renderOperations(signals projectdoc.ProjectSignals) string {
 	b.WriteString("- Do not infer deploy procedures automatically. Verify them from CI/CD workflows and operations docs.\n")
 	b.WriteString("\n## Project docs bootstrap and upkeep\n\n")
 	b.WriteString("- `agent-harness project bootstrap --repo . --json` creates docs and user-state repo metadata; `--sync` refreshes them from current evidence.\n")
-	b.WriteString("- After initial setup, agents should read repo evidence and keep `.agent-harness` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_update`.\n")
-	b.WriteString("- Append resolved false cases and decisions to CAUTIONS/ADR with `project_docs_record` instead of rewriting full documents.\n")
+	b.WriteString("- After initial setup, agents should read repo evidence and keep `.agent-harness` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_revise`.\n")
+	b.WriteString("- Append resolved false cases and decisions to CAUTIONS/ADR with `project_docs_append` instead of rewriting full documents.\n")
 	b.WriteString("\n## UserPromptSubmit hook\n\n")
 	b.WriteString("- When the host supports it, connect `agent-harness hook user-prompt` to UserPromptSubmit to inject short agent_harness MCP candidates for each user prompt.\n")
 	b.WriteString("- The hook does not execute work; it only performs static keyword routing. It does not use the network or read large files.\n")
@@ -75,18 +75,18 @@ func renderAgentWorkflow() string {
 - When the host supports it, agent-harness hook user-prompt injects MCP candidate hints for each user instruction. The hint is a reminder for judgment, not an auto-execution command.
 - Use MCP when the task needs current state, repo-specific doc routing, policy decisions, state checkpoints, or durable records that the model should not rely on from memory.
 - Do not use MCP for simple reasoning or summarizing already opened files.
-- Avoid exposing many tools at once; narrowly use route/read/update/record/check tools that match the task.
+- Avoid exposing many tools at once; narrowly use route/read/revise/append/check tools that match the task.
 - Do not trust tool output blindly; check paths, exists flags, warnings, and verification evidence.
 
 ## Work
 
-Use the Simplicity First and Surgical Changes principles from AGENTS.md, plus these project record/safety rules.
+Use the Simplicity First and Surgical Changes principles from AGENTS.md, plus these project append/safety rules.
 
 - Do not overwrite existing user changes.
 - Add dependencies, deploy, or perform destructive actions only with explicit instruction or strong evidence.
-- If docs diverge from current code or user consensus, use project_docs_read to verify the current SHA and project_docs_update to change one document at a time.
-- When a problem occurred and was resolved, record it with MCP project_docs_record(kind=caution) in .agent-harness/CAUTIONS.md.
-- When a structural decision or rejected alternative matters, record it with MCP project_docs_record(kind=adr) in .agent-harness/ADR.md.
+- If docs diverge from current code or user consensus, use project_docs_read to verify the current SHA and project_docs_revise to change one document at a time.
+- When a problem occurred and was resolved, record it with MCP project_docs_append(kind=caution) in .agent-harness/CAUTIONS.md.
+- When a structural decision or rejected alternative matters, record it with MCP project_docs_append(kind=adr) in .agent-harness/ADR.md.
 
 ## Verify
 
@@ -99,7 +99,7 @@ Use the Goal-Driven Execution principle from AGENTS.md, plus these verification 
 ## Finish
 
 - If a commit is needed, follow .agent-harness/COMMIT_POLICY.md.
-- Record resolved false cases or structural decisions with MCP project_docs_record when useful.
+- Record resolved false cases or structural decisions with MCP project_docs_append when useful.
 `
 }
 

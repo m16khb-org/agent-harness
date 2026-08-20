@@ -117,7 +117,7 @@ zombie/legacy/temp 0, regression ok. holdout v2 채점 분산: 전 스킬 ±0 �
   게이트 + `--allow-failed-source` 명시 override(CLI/MCP), dry-run은 진단 보고. SA-P 선정 → 구현 완료. (SV-B 발견)
 - `project bootstrap` 비-`--sync` dry-run 플랜이 기존 수기 문서를 `update`로 표시 — 비sync 실행이 기존 문서를
   실제로 덮는지 동작 확인 필요. (PB-B 발견)
-- `project commit-suggest`가 top-level `--help`에 누락. `project record`의 상세 플래그도 usage 과소 표기. (ACP-O/PB-O 발견)
+- `project commit-suggest`가 top-level `--help`에 누락. `project append`의 상세 플래그도 usage 과소 표기. (ACP-O/PB-O 발견)
 - ~~[높음] self-verify `docs index smoke` truncate-parse~~ — **해소(PR #9, 2026-06-12)**: 4MB 예산 +
   StdoutTruncated 가드. 같은 PR에서 redaction `\bsk-` 오탐도 수정, main 게이트 ok=true 복구 확인. (SV-P 발견)
 - `project bootstrap`의 `signals.files`가 manifest/config만 스캔해 소스 파일(main.go)이 ARCHITECTURE 감지에

@@ -20,6 +20,23 @@ and every required project-doc entrypoint.
 
 Resolve script paths relative to this skill directory.
 
+## Lifecycle Position
+
+```
+create              refresh during work            restructure
+project-docs-bootstrap  ->  project-docs-update  ->  project-docs-optimize
+```
+
+This skill owns the restructure stage only. It reorganizes layout; it does
+not refresh content. Route content changes (new cautions, ADRs, stale
+sections) to `project-docs-update`, and missing-document setup to
+`project-docs-bootstrap`. Deterministic triggers for this stage:
+
+- `--mode report` shows one or more violations (line budget, single-owner,
+  link integrity, required entrypoint);
+- a root document exceeds its manifest budget;
+- the user explicitly asks to reorganize, split, or restructure.
+
 ## Hard rules
 
 1. Required root filenames remain canonical entrypoints. Do not replace them

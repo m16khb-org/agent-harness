@@ -41,8 +41,8 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs read failed", err.Error()))
 		}
 		return mcpToolPayload(result)
-	case "project_docs_update":
-		result, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	case "project_docs_revise":
+		result, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 			RepoRoot:       ResolveTarget(argmap.String(call.Arguments, "repo")),
 			RelPath:        argmap.String(call.Arguments, "rel_path"),
 			Content:        argmap.String(call.Arguments, "content"),
@@ -52,11 +52,11 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			Confirm:        argmap.Bool(call.Arguments, "confirm"),
 		})
 		if err != nil {
-			return mcpToolFailure(newProtocolError(-32602, "Project docs update failed", err.Error()))
+			return mcpToolFailure(newProtocolError(-32602, "Project docs revise failed", err.Error()))
 		}
 		return mcpToolPayload(result)
-	case "project_docs_record":
-		result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
+	case "project_docs_append":
+		result, err := AppendProjectDocsEntry(projectdocscontract.ProjectDocsAppendRequest{
 			RepoRoot:     ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Kind:         argmap.String(call.Arguments, "kind"),
 			Title:        argmap.String(call.Arguments, "title"),
@@ -70,7 +70,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			Source:       argmap.StringDefault(call.Arguments, "source", "mcp"),
 		})
 		if err != nil {
-			return mcpToolFailure(newProtocolError(-32602, "Project docs record failed", err.Error()))
+			return mcpToolFailure(newProtocolError(-32602, "Project docs append failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "api_doc_review":

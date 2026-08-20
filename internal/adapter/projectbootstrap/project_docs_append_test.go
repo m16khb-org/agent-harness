@@ -10,9 +10,9 @@ import (
 	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
-func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
+func TestAppendProjectDocsEntryWritesCautionsAndADR(t *testing.T) {
 	root := t.TempDir()
-	caution, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
+	caution, err := projectdocs.AppendProjectDocsEntry(projectdocscontract.ProjectDocsAppendRequest{
 		RepoRoot:   root,
 		Kind:       "caution",
 		Title:      "MCP route over-read fixed",
@@ -35,12 +35,12 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 		}
 	}
 
-	adr, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
+	adr, err := projectdocs.AppendProjectDocsEntry(projectdocscontract.ProjectDocsAppendRequest{
 		RepoRoot:     root,
 		Kind:         "adr",
 		Title:        "Use task-routed project docs",
 		Summary:      "Agents should retrieve only the documents relevant to the current task.",
-		Decision:     "Expose project_docs_route and project_docs_record through MCP.",
+		Decision:     "Expose project_docs_route and project_docs_append through MCP.",
 		Alternatives: []string{"Always inject every document at SessionStart"},
 		Consequences: "Tool descriptions and routing rules must stay precise.",
 		Evidence:     []string{"MCP client best-practices recommend dynamic server/tool loading"},
@@ -60,7 +60,7 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 	}
 }
 
-func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
+func TestReadAndReviseProjectDocRequireSHAConsensus(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
@@ -73,8 +73,8 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if !read.OK || !read.Exists || read.SHA256 == "" || !strings.Contains(read.Content, "# Testing") {
 		t.Fatalf("unexpected read result: %+v", read)
 	}
-	content := read.Content + "\n## Repo-specific evidence\n\n- Evidence: test updated through project_docs_update.\n"
-	if _, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	content := read.Content + "\n## Repo-specific evidence\n\n- Evidence: test updated through project_docs_revise.\n"
+	if _, err := projectdocs.ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot: root,
 		RelPath:  "TESTING.md",
 		Content:  content,
@@ -83,7 +83,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	}); err == nil || !strings.Contains(err.Error(), "expected_sha256 is required") {
 		t.Fatalf("expected missing sha error, got %v", err)
 	}
-	dry, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	dry, err := projectdocs.ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot:       root,
 		RelPath:        "TESTING.md",
 		Content:        content,
@@ -100,7 +100,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if strings.Contains(mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
 		t.Fatalf("dry-run wrote the document")
 	}
-	written, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	written, err := projectdocs.ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot:       root,
 		RelPath:        ".agent-harness/TESTING.md",
 		Content:        content,

@@ -45,8 +45,8 @@ Tools/resources:
 - `project_docs_bootstrap_plan`: write-free bootstrap plan.
 - `project_docs_route`: recommend `AGENTS.md`/`.agent-harness` docs for a task.
 - `project_docs_read`: read a document and return its hash.
-- `project_docs_update`: full-document replacement; requires `expected_sha256` and `confirm=true`.
-- `project_docs_record`: append-only ADR/caution record.
+- `project_docs_revise`: full-document replacement; requires `expected_sha256` and `confirm=true`.
+- `project_docs_append`: append-only ADR/caution record.
 - `harness://project-docs`: current workspace project-doc routing.
 - `harness://project-doc-upkeep`: pending lifecycle doc-upkeep state.
 
@@ -54,16 +54,16 @@ Effective MCP sequence:
 
 1. Use `project_docs_route` to choose relevant docs.
 2. If a doc needs an update, call `project_docs_read` first and keep `expected_sha256`.
-3. Use `project_docs_update` for intentional full-document replacements.
-4. Use `project_docs_record(kind=caution)` for solved recurring mistakes.
-5. Use `project_docs_record(kind=adr)` for decisions with rationale and rejected alternatives.
+3. Use `project_docs_revise` for intentional full-document replacements.
+4. Use `project_docs_append(kind=caution)` for solved recurring mistakes.
+5. Use `project_docs_append(kind=adr)` for decisions with rationale and rejected alternatives.
 6. Use `command_policy_check` before commands whose cwd/workspace/write/network boundaries matter.
 
 Dry-run/default-write rules:
 
 - `project_docs_bootstrap_plan` is dry-run only.
-- `project_docs_update` is dry-run without `confirm=true`.
-- `project_docs_record` is append-only and narrow.
+- `project_docs_revise` is dry-run without `confirm=true`.
+- `project_docs_append` is append-only and narrow.
 - `state_prune`, `state_migrate`, and `self_verify_promote` are dry-run unless confirmed.
 
 ## Standalone Docs Policy

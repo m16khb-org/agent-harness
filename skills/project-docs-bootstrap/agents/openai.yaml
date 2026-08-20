@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Docs Bootstrap"
+  short_description: "Create .agent-harness docs and AGENTS.md routing from repo evidence"
+default_prompt: "Use $project-docs-bootstrap to plan and create this repository's .agent-harness operating documents and AGENTS.md routing block: run the static bootstrap pass, then the evidence-bound agent enrichment pass."

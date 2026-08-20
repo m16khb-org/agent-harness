@@ -95,22 +95,22 @@ func runProjectRouteDocs(args []string) error {
 	return nil
 }
 
-func runProjectRecord(args []string) error {
-	fs := flag.NewFlagSet("project record", flag.ContinueOnError)
+func runProjectAppend(args []string) error {
+	fs := flag.NewFlagSet("project append", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	kind := fs.String("kind", "", "record kind: caution or adr")
-	title := fs.String("title", "", "record title")
+	kind := fs.String("kind", "", "append kind: caution or adr")
+	title := fs.String("title", "", "append entry title")
 	summary := fs.String("summary", "", "brief summary")
 	context := fs.String("context", "", "problem or decision context")
 	resolution := fs.String("resolution", "", "resolution for caution/problem records")
 	decision := fs.String("decision", "", "decision for ADR records")
 	consequences := fs.String("consequences", "", "consequences for ADR records")
-	source := fs.String("source", "cli", "record source")
+	source := fs.String("source", "cli", "append source")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
+	result, err := AppendProjectDocsEntry(projectdocscontract.ProjectDocsAppendRequest{
 		RepoRoot:     *repo,
 		Kind:         *kind,
 		Title:        *title,
@@ -127,6 +127,6 @@ func runProjectRecord(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	fmt.Printf("recorded %s in %s (%d bytes)\n", result.RecordKind, result.RelPath, result.BytesAppended)
+	fmt.Printf("appended %s in %s (%d bytes)\n", result.RecordKind, result.RelPath, result.BytesAppended)
 	return nil
 }

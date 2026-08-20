@@ -179,7 +179,7 @@ func runProjectRouteDocs(args []string) error {
 	return projectcli.RunRouteDocs(args)
 }
 
-func runProjectRecord(args []string) error {
+func runProjectAppend(args []string) error {
 	return projectcli.RunRecord(args)
 }
 

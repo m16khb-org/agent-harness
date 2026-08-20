@@ -47,7 +47,7 @@ IssueOps execution이 GitLab issue 본문을 봉인해야 할 때는 다음 순�
    사용하고 결과에 `glab_cli`를 기록한다.
    이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다.
 7. 실제로 성공한 provider recipe는 canonical worktree에서 `project_docs_read`로
-   최신 content/SHA를 다시 읽고 `project_docs_update`의 SHA-CAS로
+   최신 content/SHA를 다시 읽고 `project_docs_revise`의 SHA-CAS로
    `.agent-harness/VCS.md`에 기록한다. tool leaf, 관찰한 schema, endpoint/필드,
    CLI fallback만 남기고 secret과 개인 server namespace는 남기지 않는다.
    canonical worktree가 아직 없으면 생성 뒤로 기록을 미룬다. OpenWiki 자동 update를

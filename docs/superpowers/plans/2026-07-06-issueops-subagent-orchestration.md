@@ -194,7 +194,7 @@
 **Files:**
 - Modify: `.agent-harness/ARCHITECTURE.md` (state model + actor model), `.agent-harness/AGENT_WORKFLOW.md` (resume/heartbeat child-cycle contract), `.agent-harness/SUB_AGENT_PATTERNS.md` (D1→#2/#7 application notes), `.agent-harness/ADR.md` (decision + rejected alternatives per spec), `.agent-harness/CAUTIONS.md` (single-entity lock invariant INCLUDING same-entity `with*Lock` re-entry self-deadlock and mixed-binary additive-field caution)
 
-- [ ] **Step 1:** Update each doc per the spec's D5 list (use MCP `project_docs_read`/`project_docs_update`/`project_docs_record` flow per AGENT_WORKFLOW).
+- [ ] **Step 1:** Update each doc per the spec's D5 list (use MCP `project_docs_read`/`project_docs_revise`/`project_docs_append` flow per AGENT_WORKFLOW).
 - [ ] **Step 2:** Run `go test ./internal/core/issueops -run TestIssueOpsSkill -count=1` and `./bin/agent-harness docs --json` sanity — PASS/exit 0.
 - [ ] **Step 3:** Commit `docs(agent-harness): orchestration architecture, workflow, ADR, cautions`.
 

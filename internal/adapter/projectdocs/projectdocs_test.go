@@ -62,7 +62,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	if missing.Exists || len(missing.Warnings) == 0 {
 		t.Fatalf("expected missing warning, got %#v", missing)
 	}
-	create, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	create, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot: root,
 		RelPath:  filepath.ToSlash(filepath.Join(ProjectDocsDir, "TESTING.md")),
 		Content:  "# Testing\n",
@@ -71,7 +71,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 		Confirm:  true,
 	})
 	if err != nil {
-		t.Fatalf("UpdateProjectDoc create returned error: %v", err)
+		t.Fatalf("ReviseProjectDoc create returned error: %v", err)
 	}
 	if create.Action != "create" || create.DryRun || !create.Confirmed || len(create.Evidence) != 1 {
 		t.Fatalf("unexpected create result: %#v", create)
@@ -80,29 +80,29 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	if err != nil || !read.Exists || read.SHA256 == "" || !strings.Contains(read.Content, "# Testing") {
 		t.Fatalf("unexpected read result: %#v err=%v", read, err)
 	}
-	if _, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change"}); err == nil {
+	if _, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change"}); err == nil {
 		t.Fatal("expected existing update without SHA to fail")
 	}
-	dry, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change", ExpectedSHA256: read.SHA256})
+	dry, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change", ExpectedSHA256: read.SHA256})
 	if err != nil {
 		t.Fatalf("dry update returned error: %v", err)
 	}
 	if !dry.DryRun || dry.Action != "update" || len(dry.Warnings) == 0 {
 		t.Fatalf("unexpected dry update: %#v", dry)
 	}
-	for _, req := range []projectdocscontract.ProjectDocsRecordRequest{
+	for _, req := range []projectdocscontract.ProjectDocsAppendRequest{
 		{RepoRoot: root, Kind: "failure", Title: "Caution", Summary: "Summary", Context: "ctx", Resolution: "fixed", Evidence: []string{"go test"}, Source: "test"},
 		{RepoRoot: root, Kind: "decision", Title: "ADR", Summary: "Summary", Decision: "do it", Alternatives: []string{"skip"}, Consequences: "tradeoff"},
 	} {
-		result, err := AppendProjectDocsRecord(req)
+		result, err := AppendProjectDocsEntry(req)
 		if err != nil {
-			t.Fatalf("AppendProjectDocsRecord returned error: %v", err)
+			t.Fatalf("AppendProjectDocsEntry returned error: %v", err)
 		}
 		if !result.OK || result.BytesAppended == 0 || result.SHA256 == "" {
 			t.Fatalf("unexpected record result: %#v", result)
 		}
 	}
-	if _, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{RepoRoot: root, Kind: "unknown", Title: "x", Summary: "y"}); err == nil {
+	if _, err := AppendProjectDocsEntry(projectdocscontract.ProjectDocsAppendRequest{RepoRoot: root, Kind: "unknown", Title: "x", Summary: "y"}); err == nil {
 		t.Fatal("expected unsupported record kind")
 	}
 	rendered := RenderAgentsWithBlock(root, "")
@@ -124,7 +124,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 
 func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
 	root := t.TempDir()
-	created, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
+	created, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot: root,
 		RelPath:  ".agent-harness/VCS.md",
 		Content:  "# VCS\n\n## GitHub\n",

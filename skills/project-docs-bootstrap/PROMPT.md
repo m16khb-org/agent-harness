@@ -16,8 +16,8 @@ Turn the static bootstrap drafts into evidence-backed, repo-specific operating d
 2. Run or inspect `project_docs_route` for the task type when MCP is available.
 3. Identify which `.agent-harness` documents need enrichment from current repo evidence.
 4. For each document you plan to update, call `project_docs_read` first and keep its `sha256`.
-5. Edit one `.agent-harness` document at a time through `project_docs_update` with `expected_sha256`, `summary`, `evidence`, and `confirm=true` only after preserving stronger existing guidance.
-6. Use `project_docs_record` instead of full-document updates when recording solved false cases, recurring risks, decisions, rationale, or rejected alternatives.
+5. Edit one `.agent-harness` document at a time through `project_docs_revise` with `expected_sha256`, `summary`, `evidence`, and `confirm=true` only after preserving stronger existing guidance.
+6. Use `project_docs_append` instead of full-document updates when recording solved false cases, recurring risks, decisions, rationale, or rejected alternatives.
 7. Verify the changed docs by rerunning the smallest relevant checks and reading tool output.
 
 ## Inputs
@@ -26,7 +26,7 @@ Turn the static bootstrap drafts into evidence-backed, repo-specific operating d
 - Existing `AGENTS.md` and `.agent-harness/*.md` files.
 - README, package/build config, CI files, and minimal relevant source files.
 - Static bootstrap drafts and detected signals.
-- MCP results from `project_docs_route`, `project_docs_read`, `project_docs_update`, and `project_docs_record` when available.
+- MCP results from `project_docs_route`, `project_docs_read`, `project_docs_revise`, and `project_docs_append` when available.
 - Verification command output.
 
 ## Rules
@@ -50,12 +50,12 @@ The agent enrichment pass must fill from codebase evidence:
 
 ### MCP update rules
 
-- `project_docs_update` must include `expected_sha256` from `project_docs_read`.
-- `project_docs_update` summary must explain the consensus-preserving change.
-- `project_docs_update` evidence must list user instruction, files, or commands that justify the update.
-- `project_docs_update` may use `confirm=true` only after the replacement content preserves stronger existing guidance.
-- `project_docs_record(kind=caution)` is for a solved problem, false case, or recurring risk.
-- `project_docs_record(kind=adr)` is for an architecture/process/API decision with rationale or rejected alternatives.
+- `project_docs_revise` must include `expected_sha256` from `project_docs_read`.
+- `project_docs_revise` summary must explain the consensus-preserving change.
+- `project_docs_revise` evidence must list user instruction, files, or commands that justify the update.
+- `project_docs_revise` may use `confirm=true` only after the replacement content preserves stronger existing guidance.
+- `project_docs_append(kind=caution)` is for a solved problem, false case, or recurring risk.
+- `project_docs_append(kind=adr)` is for an architecture/process/API decision with rationale or rejected alternatives.
 
 ### Do not invent
 

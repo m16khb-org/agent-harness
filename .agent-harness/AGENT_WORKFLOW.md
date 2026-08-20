@@ -18,10 +18,10 @@ description: Agent start, execution, verification, and completion flow.
 
 - 기존 사용자 변경을 덮어쓰지 않는다.
 - 새 dependency, 배포, destructive action은 명시 지시나 강한 근거가 있을 때만 진행한다.
-- 문서가 현재 코드/사용자 컨센서스와 어긋나면 MCP `project_docs_read`로 현재 SHA를 확인하고 `project_docs_update`로 한 문서씩 갱신한다.
-- remote VCS 작업은 canonical worktree의 선택 문서 `.agent-harness/VCS.md`를 먼저 읽는다. 문서에 없는 provider recipe를 실제로 성공시켰다면 같은 worktree에서 `project_docs_read` 후 `project_docs_update` SHA-CAS로 갱신한다. GitLab/GitHub 모두 기록할 수 있지만 secret, 개인 tool 경로, server namespace, 추측한 MCP 이름은 남기지 않으며 OpenWiki 자동 update를 실행하지 않는다.
-- 구조 선택이나 대안 기각 사유가 생기면 MCP `project_docs_record(kind=adr)`로 `.agent-harness/ADR.md`에 남긴다.
-- 반복 실패, false case, 위험한 운영 주의는 MCP `project_docs_record(kind=caution)`으로 `.agent-harness/CAUTIONS.md`에 남긴다.
+- 문서가 현재 코드/사용자 컨센서스와 어긋나면 MCP `project_docs_read`로 현재 SHA를 확인하고 `project_docs_revise`로 한 문서씩 갱신한다.
+- remote VCS 작업은 canonical worktree의 선택 문서 `.agent-harness/VCS.md`를 먼저 읽는다. 문서에 없는 provider recipe를 실제로 성공시켰다면 같은 worktree에서 `project_docs_read` 후 `project_docs_revise` SHA-CAS로 갱신한다. GitLab/GitHub 모두 기록할 수 있지만 secret, 개인 tool 경로, server namespace, 추측한 MCP 이름은 남기지 않으며 OpenWiki 자동 update를 실행하지 않는다.
+- 구조 선택이나 대안 기각 사유가 생기면 MCP `project_docs_append(kind=adr)`로 `.agent-harness/ADR.md`에 남긴다.
+- 반복 실패, false case, 위험한 운영 주의는 MCP `project_docs_append(kind=caution)`으로 `.agent-harness/CAUTIONS.md`에 남긴다.
 
 ## Verify
 
@@ -35,7 +35,7 @@ description: Agent start, execution, verification, and completion flow.
 ## Finish
 
 - 커밋이 필요하면 `.agent-harness/COMMIT_POLICY.md`를 따른다.
-- 해결한 false case나 구조 결정은 필요한 경우 MCP `project_docs_record`로 기록한다.
+- 해결한 false case나 구조 결정은 필요한 경우 MCP `project_docs_append`로 기록한다.
 
 ## Hook context injection and lifecycle observation
 
@@ -65,8 +65,8 @@ phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contrac
 - MCP는 모델 기억 대신 현재 repo 상태, 문서 라우팅, 정책 판정, state checkpoint, durable record가 필요할 때 사용한다.
 - 단순 추론이나 이미 열린 파일의 요약에는 MCP를 쓰지 않는다.
 - 작업 시작 시 가능한 경우 `project_docs_route`에 현재 task를 넣어 필요한 문서만 고른다.
-- 문제가 발생했고 해결했다면 `project_docs_record(kind=caution)`으로 `.agent-harness/CAUTIONS.md`에 기록한다.
-- 구조 결정이나 대안 기각 사유가 생겼다면 `project_docs_record(kind=adr)`로 `.agent-harness/ADR.md`에 기록한다.
+- 문제가 발생했고 해결했다면 `project_docs_append(kind=caution)`으로 `.agent-harness/CAUTIONS.md`에 기록한다.
+- 구조 결정이나 대안 기각 사유가 생겼다면 `project_docs_append(kind=adr)`로 `.agent-harness/ADR.md`에 기록한다.
 - 많은 도구를 한 번에 쓰기보다 route/read/update/check/record처럼 의도가 분명한 도구를 좁게 사용한다.
 - tool 결과는 경로, `exists`, warning, 검증 증거를 확인한 뒤 작업에 반영한다.
 
@@ -75,9 +75,9 @@ phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contrac
 최초 bootstrap 이후 `.agent-harness` 문서는 고정 산출물이 아니라 에이전트가 작업 증거와 사용자 컨센서스를 반영해 최신화하는 운영 문서다.
 
 - 작업 시작: `project_docs_route`로 필요한 문서만 고른다.
-- 문서 갱신: `project_docs_read`로 현재 content/SHA를 읽고, 보존할 내용과 새 근거를 합쳐 `project_docs_update(confirm=true)`로 한 문서씩 갱신한다.
-- false case/반복 문제: `project_docs_record(kind=caution)`으로 append한다.
-- 결정/대안 기각: `project_docs_record(kind=adr)`로 append한다.
+- 문서 갱신: `project_docs_read`로 현재 content/SHA를 읽고, 보존할 내용과 새 근거를 합쳐 `project_docs_revise(confirm=true)`로 한 문서씩 갱신한다.
+- false case/반복 문제: `project_docs_append(kind=caution)`으로 append한다.
+- 결정/대안 기각: `project_docs_append(kind=adr)`로 append한다.
 - 불확실한 사실은 단정하지 말고 `Unknown / not confirmed`와 검증 방법을 남긴다.
 
 ## Evidence-backed MCP Heuristics

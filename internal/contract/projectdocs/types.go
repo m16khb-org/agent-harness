@@ -4,7 +4,7 @@
 // 알 필요가 없다.
 package projectdocs
 
-type ProjectDocsUpdateRequest struct {
+type ProjectDocsReviseRequest struct {
 	RepoRoot       string   `json:"repo_root"`
 	RelPath        string   `json:"rel_path"`
 	Content        string   `json:"content"`
@@ -14,7 +14,7 @@ type ProjectDocsUpdateRequest struct {
 	Confirm        bool     `json:"confirm"`
 }
 
-type ProjectDocsUpdateResult struct {
+type ProjectDocsReviseResult struct {
 	OK            bool     `json:"ok"`
 	Kind          string   `json:"kind"`
 	RepoRoot      string   `json:"repo_root"`
@@ -32,7 +32,7 @@ type ProjectDocsUpdateResult struct {
 	Warnings      []string `json:"warnings,omitempty"`
 }
 
-type ProjectDocsRecordRequest struct {
+type ProjectDocsAppendRequest struct {
 	RepoRoot     string   `json:"repo_root"`
 	Kind         string   `json:"kind"`
 	Title        string   `json:"title"`
@@ -46,7 +46,7 @@ type ProjectDocsRecordRequest struct {
 	Source       string   `json:"source,omitempty"`
 }
 
-type ProjectDocsRecordResult struct {
+type ProjectDocsAppendResult struct {
 	OK            bool     `json:"ok"`
 	Kind          string   `json:"kind"`
 	RecordKind    string   `json:"record_kind"`

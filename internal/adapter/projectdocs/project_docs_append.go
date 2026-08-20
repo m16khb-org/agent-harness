@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-func AppendProjectDocsRecord(req projectdocscontract.ProjectDocsRecordRequest) (projectdocscontract.ProjectDocsRecordResult, error) {
+func AppendProjectDocsEntry(req projectdocscontract.ProjectDocsAppendRequest) (projectdocscontract.ProjectDocsAppendResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
 	recordKind := strings.ToLower(strings.TrimSpace(req.Kind))
 	recordKind = strings.ReplaceAll(recordKind, "_", "-")
@@ -26,45 +26,45 @@ func AppendProjectDocsRecord(req projectdocscontract.ProjectDocsRecordRequest) (
 		recordKind = "adr"
 		rel = filepath.ToSlash(filepath.Join(ProjectDocsDir, "ADR.md"))
 	default:
-		return projectdocscontract.ProjectDocsRecordResult{}, fmt.Errorf("unsupported record kind %q: use caution or adr", req.Kind)
+		return projectdocscontract.ProjectDocsAppendResult{}, fmt.Errorf("unsupported record kind %q: use caution or adr", req.Kind)
 	}
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
-		return projectdocscontract.ProjectDocsRecordResult{}, fmt.Errorf("title is required")
+		return projectdocscontract.ProjectDocsAppendResult{}, fmt.Errorf("title is required")
 	}
 	summary := strings.TrimSpace(req.Summary)
 	if summary == "" {
-		return projectdocscontract.ProjectDocsRecordResult{}, fmt.Errorf("summary is required")
+		return projectdocscontract.ProjectDocsAppendResult{}, fmt.Errorf("summary is required")
 	}
 	path := filepath.Join(root, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		seed := "# " + map[string]string{"caution": "Cautions", "adr": "Architecture Decision Records"}[recordKind] + "\n\n"
 		if err := os.WriteFile(path, []byte(seed), 0o644); err != nil {
-			return projectdocscontract.ProjectDocsRecordResult{}, err
+			return projectdocscontract.ProjectDocsAppendResult{}, err
 		}
 	}
-	entry := renderProjectDocsRecordEntry(recordKind, req, time.Now())
+	entry := renderProjectDocsAppendEntry(recordKind, req, time.Now())
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
 	if _, err := f.WriteString(entry); err != nil {
 		_ = f.Close()
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
 	if err := f.Close(); err != nil {
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return projectdocscontract.ProjectDocsRecordResult{}, err
+		return projectdocscontract.ProjectDocsAppendResult{}, err
 	}
-	return projectdocscontract.ProjectDocsRecordResult{
+	return projectdocscontract.ProjectDocsAppendResult{
 		OK:            true,
-		Kind:          "project_docs_record",
+		Kind:          "project_docs_append",
 		RecordKind:    recordKind,
 		RepoRoot:      root,
 		RelPath:       rel,

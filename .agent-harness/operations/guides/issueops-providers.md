@@ -137,7 +137,7 @@ GitLab issue snapshot은 다음 순서로 준비한다.
    CLI fallback하지 않고 fail-closed한다.
 
 성공한 portable recipe는 canonical worktree에서 `project_docs_read` 후
-`project_docs_update` SHA-CAS로 `.agent-harness/VCS.md`에 기록한다. GitLab과
+`project_docs_revise` SHA-CAS로 `.agent-harness/VCS.md`에 기록한다. GitLab과
 GitHub가 함께 들어갈 수 있는 provider-neutral 문서이며, GitHub CLI recipe는
 검증된 `gh issue view <url> --json url,body,state`를 사용한다. 실제로 관찰하지
 않은 MCP 이름, 개인 wrapper 경로, token/profile/server namespace는 기록하지

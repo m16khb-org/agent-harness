@@ -72,6 +72,6 @@ func configureAdapterTail() {
 	projectbootstrapt4deps.AnalyzeProjectSignals = projectdocsadapter.AnalyzeProjectSignals
 	projectbootstrapt4deps.RenderAgentsWithBlock = projectdocsadapter.RenderAgentsWithBlock
 	projectbootstrapt4deps.RenderProjectDocs = projectdocsadapter.RenderProjectDocs
-	projectclit4deps.AppendProjectDocsRecord = projectdocsadapter.AppendProjectDocsRecord
+	projectclit4deps.AppendProjectDocsEntry = projectdocsadapter.AppendProjectDocsEntry
 	projectclit4deps.RouteProjectDocs = projectdocsadapter.RouteProjectDocs
 }
