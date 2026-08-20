@@ -16,7 +16,9 @@ Use for browser-visible capabilities, acceptance criteria, user journeys,
 validation, navigation, persistence, roles, and recovery. Skip pure API,
 backend, CLI, or library behavior that cannot be observed through the browser.
 Use `aside-visual-qa` when the primary concern is design intent, accessibility,
-visual coherence, responsiveness, or awkward UX.
+visual coherence, responsiveness, or awkward UX. For one combined engagement
+covering both behavior and UI/UX, use `aside-web-qa`, which orchestrates this
+skill with `aside-visual-qa`.
 
 Read these before execution:
 

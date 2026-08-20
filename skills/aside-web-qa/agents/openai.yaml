@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aside Web QA"
+  short_description: "Orchestrate combined functional and visual web QA"
+default_prompt: "Use $aside-web-qa to orchestrate aside-functional-qa and aside-visual-qa as one engagement: shared preflight, functional pass, visual pass, cross-phase defect deduplication, and a single merged client report."

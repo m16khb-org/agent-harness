@@ -15,7 +15,9 @@ Use for rendered web pages and browser-based product flows. Skip pure backend,
 API, CLI, or library work with no browser surface. Use
 `aside-functional-qa` when the primary question is whether requirements and
 business state transitions work; cross-link shared symptoms instead of
-duplicating them.
+duplicating them. For one combined engagement covering both UI/UX and
+behavior, use `aside-web-qa`, which orchestrates this skill with
+`aside-functional-qa`.
 
 Read these before execution:
 

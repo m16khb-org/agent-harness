@@ -749,6 +749,13 @@
           "path": "$HARNESS_ROOT/skills/aside-visual-qa"
         },
         {
+          "description": "Client-facing web QA orchestration through the installed Aside CLI. Runs aside-functional-qa and aside-visual-qa as one combined engagement with a shared preflight, one browser session plan, cross-phase defect routing and deduplication, and a single merged client report. Use when asked for combined or end-to-end web QA, a full client QA report, both behavior verification and UI/UX review, 통합 QA, 종합 QA, 웹 QA 오케스트레이션, or 클라이언트 QA 총점검. Use aside-functional-qa alone for behavior-only asks and aside-visual-qa alone for design- or UX-only asks.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "aside-web-qa",
+          "path": "$HARNESS_ROOT/skills/aside-web-qa"
+        },
+        {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5148,6 +5155,7 @@
         "skills": [
           "aside-functional-qa",
           "aside-visual-qa",
+          "aside-web-qa",
           "atomic-commit-push",
           "berners-lee",
           "boehm",
@@ -7005,6 +7013,13 @@
                 "path": "$HARNESS_ROOT/skills/aside-visual-qa"
               },
               {
+                "description": "Client-facing web QA orchestration through the installed Aside CLI. Runs aside-functional-qa and aside-visual-qa as one combined engagement with a shared preflight, one browser session plan, cross-phase defect routing and deduplication, and a single merged client report. Use when asked for combined or end-to-end web QA, a full client QA report, both behavior verification and UI/UX review, 통합 QA, 종합 QA, 웹 QA 오케스트레이션, or 클라이언트 QA 총점검. Use aside-functional-qa alone for behavior-only asks and aside-visual-qa alone for design- or UX-only asks.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "aside-web-qa",
+                "path": "$HARNESS_ROOT/skills/aside-web-qa"
+              },
+              {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8112,6 +8127,7 @@
               "skills": [
                 "aside-functional-qa",
                 "aside-visual-qa",
+                "aside-web-qa",
                 "atomic-commit-push",
                 "berners-lee",
                 "boehm",
