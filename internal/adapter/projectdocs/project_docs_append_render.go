@@ -7,10 +7,19 @@ import (
 	"time"
 )
 
-func renderProjectDocsAppendEntry(kind string, req projectdocscontract.ProjectDocsAppendRequest, now time.Time) string {
+// renderProjectDocsAppendRecordFile renders a standalone modular record file
+// with canonical frontmatter (folder-first layout, one file per record).
+func renderProjectDocsAppendRecordFile(kind, name, description string, req projectdocscontract.ProjectDocsAppendRequest, now time.Time) string {
 	var b strings.Builder
-	stamp := now.Format("2006-01-02")
-	fmt.Fprintf(&b, "\n## %s — %s\n\n", stamp, strings.TrimSpace(req.Title))
+	fmt.Fprintf(&b, "---\nname: %s\ndescription: %s\n---\n\n", name, description)
+	fmt.Fprintf(&b, "# %s\n\n", strings.TrimSpace(req.Title))
+	fmt.Fprintf(&b, "- Date: %s\n", now.Format("2006-01-02"))
+	b.WriteString(renderProjectDocsAppendFields(kind, req))
+	return b.String()
+}
+
+func renderProjectDocsAppendFields(kind string, req projectdocscontract.ProjectDocsAppendRequest) string {
+	var b strings.Builder
 	fmt.Fprintf(&b, "- Kind: `%s`\n", kind)
 	if source := strings.TrimSpace(req.Source); source != "" {
 		fmt.Fprintf(&b, "- Source: %s\n", source)

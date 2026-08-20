@@ -29,7 +29,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ProjectDocsDir)); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created docs dir or unexpected stat error: %v", err)
 	}
-	wantBootstrapFiles := 1 + len(projectdocdomain.ProjectDocNames())
+	wantBootstrapFiles := 1 + len(projectdocdomain.ProjectDocNames()) + len(projectdocdomain.DocFamilies()) + 1 // AGENTS + roots + module starters + manifest
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
@@ -82,8 +82,38 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
 	}
 	testingDoc := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"))
-	if !strings.Contains(testingDoc, "go test ./...") || !strings.Contains(testingDoc, "Confidence: high") {
-		t.Fatalf("TESTING.md lacks inferred command evidence:\n%s", testingDoc)
+	if !strings.Contains(testingDoc, "testing/overview.md") {
+		t.Fatalf("TESTING.md root is not a family index linking its module:\n%s", testingDoc)
+	}
+	testingOverview := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "testing", "overview.md"))
+	if !strings.Contains(testingOverview, "go test ./...") || !strings.Contains(testingOverview, "Confidence: high") {
+		t.Fatalf("testing/overview.md lacks inferred command evidence:\n%s", testingOverview)
+	}
+	manifestBytes := mustRead(t, filepath.Join(root, filepath.FromSlash(projectdocdomain.ManifestRelPath())))
+	var manifest struct {
+		SchemaVersion  int `json:"schema_version"`
+		MaxRootLines   int `json:"max_root_lines"`
+		MaxModuleLines int `json:"max_module_lines"`
+		Families       []struct {
+			Root      string `json:"root"`
+			ModuleDir string `json:"module_dir"`
+		} `json:"families"`
+	}
+	if err := json.Unmarshal([]byte(manifestBytes), &manifest); err != nil {
+		t.Fatalf("seeded manifest is not valid JSON: %v\n%s", err, manifestBytes)
+	}
+	if manifest.SchemaVersion != 1 || len(manifest.Families) != len(projectdocdomain.DocFamilies()) {
+		t.Fatalf("unexpected seeded manifest:\n%s", manifestBytes)
+	}
+	for _, f := range projectdocdomain.DocFamilies() {
+		overview := filepath.Join(root, projectdocdomain.ProjectDocsDir, filepath.FromSlash(f.OverviewRel()))
+		if _, err := os.Stat(overview); err != nil {
+			t.Fatalf("expected family module starter %s: %v", f.OverviewRel(), err)
+		}
+		rootDoc := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, f.Root))
+		if !strings.Contains(rootDoc, f.OverviewRel()) {
+			t.Fatalf("family root %s does not link its module dir:\n%s", f.Root, rootDoc)
+		}
 	}
 }
 
@@ -121,6 +151,7 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
+	mustWrite(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "COMMIT_POLICY.md"), "# Custom Commit Policy\n\nKeep local policy detail.\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -134,8 +165,22 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	if !synced.Sync {
 		t.Fatalf("sync flag not reflected in result: %+v", synced)
 	}
-	if got := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
-		t.Fatalf("bootstrap --sync did not refresh existing doc:\n%s", got)
+	// Family roots are modular-managed: --sync must never clobber them.
+	if got := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
+		t.Fatalf("bootstrap --sync clobbered family root index:\n%s", got)
+	}
+	warned := false
+	for _, w := range synced.Warnings {
+		if strings.Contains(w, "family_docs_preserved") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Fatalf("sync preserving family docs must warn: %#v", synced.Warnings)
+	}
+	// Non-family roots keep the explicit template-refresh contract.
+	if got := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "COMMIT_POLICY.md")); strings.Contains(got, "Keep local policy detail.") {
+		t.Fatalf("bootstrap --sync did not refresh non-family doc:\n%s", got)
 	}
 }
 

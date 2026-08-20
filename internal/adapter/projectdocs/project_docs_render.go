@@ -8,21 +8,24 @@ import (
 
 func RenderProjectDocs(root string, signals projectdoc.ProjectSignals) map[string]string {
 	out := map[string]string{}
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "ARCHITECTURE.md"))] = renderArchitecture(signals)
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "CAUTIONS.md"))] = renderCautions(signals)
+	// Family roots become short indexes; their previous detail bodies move
+	// into module starter documents created alongside them (folder-first).
+	for _, f := range projectdoc.DocFamilies() {
+		out[filepath.ToSlash(filepath.Join(ProjectDocsDir, f.Root))] = renderFamilyIndex(f)
+	}
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "COMMIT_POLICY.md"))] = renderCommitPolicy()
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "CONSTITUTION.md"))] = renderConstitution()
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "CONVENTIONS.md"))] = renderConventions(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "TECH_STACK.md"))] = renderTechStack(signals)
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "TESTING.md"))] = renderTesting(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPEN_API_SPEC.md"))] = renderOpenAPISpec()
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "ADR.md"))] = renderADR()
-	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPERATIONS.md"))] = renderOperations(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "AGENT_WORKFLOW.md"))] = renderAgentWorkflow()
 	// Prepend canonical meta frontmatter so created/synced docs declare what
 	// category of information they hold. Same doc name => same metadata.
 	for rel, content := range out {
 		out[rel] = ensureDocMetaFrontmatter(filepath.Base(rel), content)
+	}
+	// Module starters carry their own explicit frontmatter and back-links.
+	for rel, content := range renderFamilyModuleDocs(signals) {
+		out[rel] = content
 	}
 	return out
 }

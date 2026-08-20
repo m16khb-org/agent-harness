@@ -34,6 +34,14 @@ agent-harness project route-docs --repo . --task "<task kind>" --json
 | Changed command, convention, architecture fact, or stale doc section | `project_docs_revise` on that one document |
 | Only needs doc context for the task | route/read only; no write |
 
+In a modular repository (`documentation/manifest.json` present),
+`project_docs_append` writes one dated record file under the family module
+directory (`adr/2026-08-20-slug.md`, `cautions/...`) and never touches the
+root index — read/revise on record files is allowed. There is no flat-layout
+fallback: every repository gets the same record-file routing, and a repo
+whose family roots do not exist yet is flagged by the checker and repaired
+by `project-docs-bootstrap`.
+
 Trigger this skill when a completed unit of work produced one of the left-side
 outcomes. Do not batch updates speculatively for hypothetical future work.
 

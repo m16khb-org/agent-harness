@@ -95,12 +95,12 @@ func TestRunProjectRecord_recordsADR_whenRequiredFieldsAreProvided(t *testing.T)
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode record json: %v\n%s", err, out)
 	}
-	if result.RecordKind != "adr" || result.RelPath != ".agent-harness/ADR.md" {
+	if result.RecordKind != "adr" || !strings.HasPrefix(result.RelPath, ".agent-harness/adr/") || !strings.HasSuffix(result.RelPath, "-keep-project-cli-thin.md") {
 		t.Fatalf("unexpected record result: %+v", result)
 	}
-	adr, err := os.ReadFile(filepath.Join(repo, ".agent-harness", "ADR.md"))
+	adr, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(result.RelPath)))
 	if err != nil {
-		t.Fatalf("read ADR: %v", err)
+		t.Fatalf("read ADR record: %v", err)
 	}
 	if !strings.Contains(string(adr), "Keep project CLI thin") {
 		t.Fatalf("expected ADR entry to be appended, got:\n%s", string(adr))

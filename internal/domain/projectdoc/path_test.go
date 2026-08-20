@@ -22,3 +22,20 @@ func containsProjectDocName(names []string, want string) bool {
 	}
 	return false
 }
+
+func TestNormalizeRelPathAllowsFamilyModuleDocs(t *testing.T) {
+	for _, rel := range []string{"adr/overview.md", "adr/2026-08-20-some-decision.md", "testing/overview.md", "operations/guides/overview.md", "cautions/2026-08-20-risk.md"} {
+		got, err := NormalizeRelPath(rel)
+		if err != nil {
+			t.Fatalf("family module path %q rejected: %v", rel, err)
+		}
+		if want := ".agent-harness/" + rel; got != want {
+			t.Fatalf("NormalizeRelPath(%q) = %q, want %q", rel, got, want)
+		}
+	}
+	for _, rel := range []string{"adr/../ADR.md", "adr//x.md", "adr/record.txt", "adr/", "unknown/x.md", "VCS/../ADR.md"} {
+		if _, err := NormalizeRelPath(rel); err == nil {
+			t.Fatalf("invalid module path %q must be rejected", rel)
+		}
+	}
+}

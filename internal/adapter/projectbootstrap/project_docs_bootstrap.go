@@ -3,6 +3,7 @@ package projectbootstrap
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	projectdoc "agent-harness/internal/domain/projectdoc"
@@ -23,7 +24,13 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 	warnings := append([]string{}, lifecycleState.Warnings...)
 	contents := RenderProjectDocs(root, signals)
 	contents["AGENTS.md"] = RenderAgentsWithBlock(root, contents["AGENTS.md"])
-
+	// Folder-first rule: family roots and module starters are only ever
+	// created, never updated — not even with --sync. Curated content in a
+	// modular repository must flow through project_docs_revise or
+	// project-docs-optimize, never a template refresh.
+	manifestPath := filepath.Join(root, filepath.FromSlash(projectdocdomain.ManifestRelPath()))
+	manifestExisted := fileExists(manifestPath)
+	familyPreserved := false
 	for _, rel := range append([]string{"AGENTS.md"}, projectdocdomain.PrefixedProjectDocNames()...) {
 		content := contents[rel]
 		if content == "" {
@@ -31,7 +38,14 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		}
 		path := filepath.Join(root, filepath.FromSlash(rel))
 		action := PlannedFileAction(path, content)
-		shouldWrite := req.Write && action != "unchanged" && (req.Sync || action == "create" || rel == "AGENTS.md")
+		familyDoc := isFamilyDocRel(rel)
+		shouldWrite := req.Write && action != "unchanged" && !familyDoc && (req.Sync || action == "create" || rel == "AGENTS.md")
+		if familyDoc && action == "create" {
+			shouldWrite = req.Write
+		}
+		if familyDoc && req.Write && action == "update" {
+			familyPreserved = true
+		}
 		if shouldWrite {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return ProjectDocsBootstrapResult{}, err
@@ -39,7 +53,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
-		} else if req.Write && action == "update" && !req.Sync {
+		} else if req.Write && action == "update" && !req.Sync && !familyDoc {
 			warnings = projectdocdomain.AppendUnique(warnings, "sync_available: existing project docs were preserved; pass --sync to refresh them from current templates and repo evidence")
 		}
 		files = append(files, projectdoc.ProjectDocsPlannedFile{
@@ -50,6 +64,60 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			SHA256:  projectdoc.SHA256Hex(content),
 			Reason:  projectDocReason(rel),
 		})
+	}
+	// Module starter documents for every family (folder-first layout).
+	for _, f := range projectdocdomain.DocFamilies() {
+		rel := filepath.ToSlash(filepath.Join(projectdocdomain.ProjectDocsDir, f.OverviewRel()))
+		content := contents[rel]
+		if content == "" {
+			continue
+		}
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		action := PlannedFileAction(path, content)
+		if req.Write && action == "create" {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				return ProjectDocsBootstrapResult{}, err
+			}
+			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+				return ProjectDocsBootstrapResult{}, err
+			}
+		} else if req.Write && action == "update" {
+			familyPreserved = true
+		}
+		files = append(files, projectdoc.ProjectDocsPlannedFile{
+			RelPath: rel,
+			Path:    path,
+			Action:  action,
+			Bytes:   len([]byte(content)),
+			SHA256:  projectdoc.SHA256Hex(content),
+			Reason:  projectDocReason(rel),
+		})
+	}
+	// Modular documentation contract: seeded once, then owned by the repo
+	// (budgets may be tuned by hand or by project-docs-optimize; never reset).
+	manifestContent := projectdocdomain.ManifestJSON()
+	manifestAction := PlannedFileAction(manifestPath, manifestContent)
+	if req.Write && manifestAction == "create" {
+		if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
+			return ProjectDocsBootstrapResult{}, err
+		}
+		if err := os.WriteFile(manifestPath, []byte(manifestContent), 0o644); err != nil {
+			return ProjectDocsBootstrapResult{}, err
+		}
+	}
+	files = append(files, projectdoc.ProjectDocsPlannedFile{
+		RelPath: projectdocdomain.ManifestRelPath(),
+		Path:    manifestPath,
+		Action:  manifestAction,
+		Bytes:   len([]byte(manifestContent)),
+		SHA256:  projectdoc.SHA256Hex(manifestContent),
+		Reason:  "modular documentation contract manifest",
+	})
+	if familyPreserved && req.Write {
+		warnings = projectdocdomain.AppendUnique(warnings, "family_docs_preserved: modular family roots and module starters are never overwritten; revise them with project_docs_revise or reorganize with project-docs-optimize")
+	}
+	if manifestExisted && req.Write && req.Sync {
+		warnings = projectdocdomain.AppendUnique(warnings, "manifest_preserved: documentation/manifest.json budgets are repo-owned; --sync does not reset them")
 	}
 	// Ensure every standard project doc carries its canonical meta frontmatter,
 	// preserving body content. This runs on bootstrap and --sync alike so even
@@ -92,5 +160,33 @@ func projectDocReason(rel string) string {
 	if rel == "AGENTS.md" {
 		return "agent entrypoint and routing block"
 	}
+	if rel == projectdocdomain.ManifestRelPath() {
+		return "modular documentation contract manifest"
+	}
+	stripped := strings.TrimPrefix(rel, projectdocdomain.ProjectDocsDir+"/")
+	if _, ok := projectdocdomain.FamilyByRoot(stripped); ok {
+		return "family root index linking its module directory"
+	}
+	if strings.HasPrefix(stripped, "adr/") || strings.HasPrefix(stripped, "architecture/") || strings.HasPrefix(stripped, "cautions/") || strings.HasPrefix(stripped, "conventions/") || strings.HasPrefix(stripped, "operations/") || strings.HasPrefix(stripped, "testing/") {
+		return "family module starter document"
+	}
 	return "project-specific agent operating document"
+}
+
+func isFamilyDocRel(rel string) bool {
+	stripped := strings.TrimPrefix(rel, projectdocdomain.ProjectDocsDir+"/")
+	if _, ok := projectdocdomain.FamilyByRoot(stripped); ok {
+		return true
+	}
+	for _, f := range projectdocdomain.DocFamilies() {
+		if strings.HasPrefix(stripped, f.ModuleDir+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }

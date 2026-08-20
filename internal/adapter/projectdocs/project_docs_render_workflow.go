@@ -85,8 +85,8 @@ Use the Simplicity First and Surgical Changes principles from AGENTS.md, plus th
 - Do not overwrite existing user changes.
 - Add dependencies, deploy, or perform destructive actions only with explicit instruction or strong evidence.
 - If docs diverge from current code or user consensus, use project_docs_read to verify the current SHA and project_docs_revise to change one document at a time.
-- When a problem occurred and was resolved, record it with MCP project_docs_append(kind=caution) in .agent-harness/CAUTIONS.md.
-- When a structural decision or rejected alternative matters, record it with MCP project_docs_append(kind=adr) in .agent-harness/ADR.md.
+- When a problem occurred and was resolved, record it with MCP project_docs_append(kind=caution) as a dated file under .agent-harness/cautions/.
+- When a structural decision or rejected alternative matters, record it with MCP project_docs_append(kind=adr) as a dated file under .agent-harness/adr/.
 
 ## Verify
 

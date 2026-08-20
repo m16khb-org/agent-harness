@@ -30,6 +30,11 @@ func NormalizeRelPath(relPath string) (string, error) {
 		allowed[name] = true
 	}
 	if !allowed[rel] {
+		// Family module documents (adr/<record>.md, testing/overview.md, ...)
+		// are valid revision targets in folder-first repositories.
+		if _, ok := familyModulePath(rel); ok {
+			return filepath.ToSlash(filepath.Join(ProjectDocsDir, rel)), nil
+		}
 		return "", fmt.Errorf("unsupported project doc %q: use one of %s", relPath, strings.Join(names, ", "))
 	}
 	return filepath.ToSlash(filepath.Join(ProjectDocsDir, rel)), nil

@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"os"
 	"path/filepath"
@@ -18,11 +19,26 @@ func RouteProjectDocs(repoRoot, task string) (projectdocscontract.ProjectDocsRou
 		normalizedTask = "general"
 	}
 	rels := routeDocsForTask(normalizedTask)
-	entries := make([]projectdocscontract.ProjectDocRouteEntry, 0, len(rels))
+	entries := make([]projectdocscontract.ProjectDocRouteEntry, 0, len(rels)*2)
 	for _, rd := range rels {
 		path := filepath.Join(root, filepath.FromSlash(rd.rel))
 		_, err := os.Stat(path)
 		entries = append(entries, projectdocscontract.ProjectDocRouteEntry{RelPath: rd.rel, Path: path, Reason: rd.reason, Exists: err == nil})
+		// Folder-first: when a routed doc is a family root and its overview
+		// module exists, attach the module so agents read the actual detail,
+		// not just the index.
+		if family, ok := projectdocdomain.FamilyByRoot(filepath.Base(rd.rel)); ok {
+			ovRel := filepath.ToSlash(filepath.Join(ProjectDocsDir, family.OverviewRel()))
+			ovPath := filepath.Join(root, filepath.FromSlash(ovRel))
+			if _, err := os.Stat(ovPath); err == nil {
+				entries = append(entries, projectdocscontract.ProjectDocRouteEntry{
+					RelPath: ovRel,
+					Path:    ovPath,
+					Reason:  "family module detail for " + family.Root,
+					Exists:  true,
+				})
+			}
+		}
 	}
 	warnings := []string{}
 	missingProjectDocs := true

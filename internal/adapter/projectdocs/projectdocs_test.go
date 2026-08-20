@@ -30,8 +30,9 @@ func TestAnalyzeRenderRouteAndProfile(t *testing.T) {
 		t.Fatal("unexpected remoteHost parsing")
 	}
 	docs := RenderProjectDocs(root, signals)
-	if len(docs) != 11 {
-		t.Fatalf("expected 11 rendered docs, got %d", len(docs))
+	// 11 root docs + 6 family module starters.
+	if len(docs) != 17 {
+		t.Fatalf("expected 17 rendered docs, got %d", len(docs))
 	}
 	for rel, content := range docs {
 		if !strings.Contains(content, "#") || !strings.Contains(content, "name:") || !strings.Contains(content, "description:") {

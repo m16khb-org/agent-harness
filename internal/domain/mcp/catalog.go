@@ -167,7 +167,7 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "project_docs_append",
-			Description: "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+			Description: "Append one dated record file under .agent-harness/cautions/ (kind=caution) or .agent-harness/adr/ (kind=adr) without modifying the family root index. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"kind", "title", "summary"}, "properties": map[string]any{
 				"repo":         map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
 				"kind":         map[string]any{"type": "string", "description": "caution for solved problems/false cases; adr for decisions."},

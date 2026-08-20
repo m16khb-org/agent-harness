@@ -91,10 +91,20 @@ targets per document.
 
    - `AGENTS.md` contains the behavioral top block and only the managed
      marker block was added or updated;
-   - every expected `.agent-harness/*.md` exists and carries
-     evidence/confidence language where facts were inferred;
+   - every expected root index, module starter, single-owner root, and
+     `documentation/manifest.json` exists;
+   - each family root links into its module directory and each module
+     starter back-links its root;
    - the MCP maintenance path works: `project_docs_route`,
      `project_docs_read`, `project_docs_revise`, `project_docs_append`;
+   - the project-docs-optimize checker reports zero violations on the fresh
+     layout when its script is available:
+
+     ```bash
+     uv run --directory <agent-harness>/skills/project-docs-optimize \
+       python -m scripts.check --root "$PWD" --mode check --json
+     ```
+
    - the smallest relevant repo validation command still passes when docs
      make claims about workflow or commands.
 

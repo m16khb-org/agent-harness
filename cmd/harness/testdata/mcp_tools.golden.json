@@ -145,7 +145,7 @@
     "name": "project_docs_revise"
   },
   {
-    "description": "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+    "description": "Append one dated record file under .agent-harness/cautions/ (kind=caution) or .agent-harness/adr/ (kind=adr) without modifying the family root index. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
     "inputSchema": {
       "properties": {
         "alternatives": {
