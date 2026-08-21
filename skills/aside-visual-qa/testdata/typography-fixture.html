@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Typography QA Fixture</title>
+    <style>
+      body { margin: 24px; font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif; font-size: 16px; color: #222; }
+      .case { margin-bottom: 28px; padding: 12px; border: 1px solid #ccc; }
+      .case h2 { font-size: 14px; color: #666; margin: 0 0 8px; }
+
+      /* Control: healthy CJK paragraph — full last line, good leading. */
+      #control { width: 160px; line-height: 1.6; }
+
+      /* D1: orphaned single Hangul syllable on the last line. */
+      #orphan { width: 160px; line-height: 1.6; }
+
+      /* D2: horizontally clipped text, no ellipsis, information silently lost. */
+      #clipped { width: 120px; overflow: hidden; white-space: nowrap; }
+
+      /* D3: ellipsis truncation with no accessible full value. */
+      #ellipsis { width: 120px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+      /* D4: too-tight leading on multi-line CJK body text. */
+      #tight-leading { width: 240px; line-height: 1.1; }
+
+      /* D5: measure far too long (latin). */
+      #long-line { max-width: none; }
+
+      /* D6: mid-word breaks on latin text from break-all. */
+      #break-all { width: 100px; word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <div class="case">
+      <h2>control — healthy</h2>
+      <p id="control">가나다라마바사아자차카타파하가나다라마바사아자차카타</p>
+    </div>
+    <div class="case">
+      <h2>D1 — orphan</h2>
+      <p id="orphan">가나다라마바사아자차카타파하가나다라마바사아자차</p>
+    </div>
+    <div class="case">
+      <h2>D2 — clipped</h2>
+      <div id="clipped">This long single-line value is silently cut by overflow hidden</div>
+    </div>
+    <div class="case">
+      <h2>D3 — ellipsis</h2>
+      <div id="ellipsis">Recommendations implementation summary gets truncated</div>
+    </div>
+    <div class="case">
+      <h2>D4 — tight leading</h2>
+      <p id="tight-leading">줄 간격이 지나치게 좁은 한국어 문단입니다. 여러 줄로 감싸지며 글자가 위아래로 겹쳐 보입니다.</p>
+    </div>
+    <div class="case">
+      <h2>D5 — long measure</h2>
+      <p id="long-line">The release checklist should be reviewed by every stakeholder before the client demonstration, because the items on it were collected from several teams and the summary at the top no longer matches the current state of the project after last week's scope change.</p>
+    </div>
+    <div class="case">
+      <h2>D6 — break-all on latin</h2>
+      <div id="break-all">Recommendations implementation</div>
+    </div>
+  </body>
+</html>

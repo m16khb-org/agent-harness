@@ -110,6 +110,35 @@ const after = await p.getByText("EXPECTED_RESULT").innerText()
 This proves only browser-observable persistence. It does not identify whether
 the source is memory, storage, or server data unless separately inspected.
 
+## Double-submit and destructive-action probes (verified)
+
+Verified on 1.26.717.1619 against
+`../aside-visual-qa/testdata/ux-interactions-fixture.html`.
+
+Double-submit protection: trigger the submit, then read the trigger's
+`disabled` state inside the pending window (await the first observable
+pending signal — status text, network indicator — never a fixed sleep):
+
+```javascript
+await p.getByRole('button', {name: SUBMIT_LABEL}).click();
+const disabledDuringPending = await p.evaluate(() => document.querySelector(TRIGGER).disabled)
+// false while the action is still pending → duplicate-submission risk finding
+```
+
+Destructive-action confirmation: record whether any confirmation layer runs
+by instrumenting `window.confirm` before clicking (restore afterwards):
+
+```javascript
+await p.evaluate(() => { window.__confirmCalled = false; window.__confirm = window.confirm; window.confirm = () => { window.__confirmCalled = true; return true; }; })
+await p.getByRole('button', {name: DESTRUCTIVE_LABEL}).click()
+await p.evaluate(() => ({ confirmCalled: window.__confirmCalled }))  // false → check for a custom confirm dialog or undo affordance before flagging
+// restore: window.confirm = window.__confirm
+```
+
+`confirmCalled: false` alone is not the defect — a custom modal or undo
+toast also satisfies user control. Flag only when no confirmation and no
+undo exists. Non-native confirmation dialogs are observed directly.
+
 ## Unsupported or unverified channels
 
 On the verified version, do not claim these without a fresh successful probe:

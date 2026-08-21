@@ -171,6 +171,100 @@ report the delta; flag > 400ms without progress feedback (Doherty threshold,
 <https://lawsofux.com/doherty-threshold/>). Timing is one signal among
 several, not a pass/fail gate on its own.
 
+## Text wrapping and orphan probes (verified)
+
+Rubric `Typography` row made measurable. Verified on 1.26.717.1619 against
+`testdata/typography-fixture.html` (reproducible: `python3 -m http.server` in
+that directory). Measure per-line widths by grouping `Range.getClientRects()`
+rows — do not eyeball wrapping:
+
+```javascript
+await p.evaluate(() => {
+  const el = document.querySelector('SELECTOR');
+  const cs = getComputedStyle(el);
+  const range = document.createRange(); range.selectNodeContents(el);
+  const rects = Array.from(range.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+  const lines = [];
+  for (const r of rects) {
+    const line = lines.find(L => Math.abs(L.top - r.top) < Math.max(2, r.height * 0.6));
+    if (line) { line.right = Math.max(line.right, r.right); line.left = Math.min(line.left, r.left); }
+    else lines.push({ top: r.top, left: r.left, right: r.right });
+  }
+  const widths = lines.map(L => +(L.right - L.left).toFixed(1));
+  const fontSize = parseFloat(cs.fontSize);
+  return {
+    lines: lines.length,
+    lastRatio: widths[widths.length - 1] / Math.max(...widths),
+    estLastCJKChars: (widths[widths.length - 1] / fontSize).toFixed(1),   // CJK glyph ≈ fontSize wide
+    estMaxLatinChars: Math.round(Math.max(...widths) / (0.5 * fontSize)), // latin avg ≈ 0.5em
+    lineHeightRatio: cs.lineHeight === 'normal' ? 'normal' : parseFloat(cs.lineHeight) / fontSize,
+    wordBreak: cs.wordBreak,
+    textOverflow: cs.textOverflow,
+    clippedX: cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1
+  };
+})
+```
+
+Flags (verified live): last line ≤ ~2 CJK chars with ≥2 lines → orphaned
+fragment; `clippedX` with `textOverflow: 'clip'`-equivalent (no ellipsis) →
+silent content loss; ellipsis present → verify the full value is still
+exposed (`title`, `aria-label`, or an expandable control) — otherwise
+information loss; multi-line body `lineHeightRatio < 1.4` → cramped leading
+(CJK guidance ≈ 1.5, a convention not a WCAG criterion); latin measure far
+beyond ~85 chars → readability finding; `word-break: break-all` on latin
+text → mid-word breaks. All thresholds are heuristics to justify a finding,
+never verdicts without the observed context.
+
+## Interaction probes (verified)
+
+UX elements beyond visuals, verified on 1.26.717.1619 against
+`testdata/ux-interactions-fixture.html`. Batch per state in one invocation;
+if a probe errors, record `Not Run`.
+
+Dialog behavior (Escape / focus trap / focus return / semantics):
+
+```javascript
+await p.getByRole('button', {name: OPEN_LABEL}).click();
+await p.waitForSelector('.dialog-open-selector');
+await p.locator(CLOSE_SELECTOR).press('Escape');          // open state after → defect
+await p.locator(CLOSE_SELECTOR).press('Tab');             // activeElement outside dialog → no trap
+await p.locator(CLOSE_SELECTOR).click();                  // activeElement !== opener → no return
+await p.evaluate(() => ({ role: el.getAttribute('role'), ariaModal: el.getAttribute('aria-modal') }))
+```
+
+Tab order vs visual order (2.4.3): sort focusable elements by `getBoundingClientRect().x`
+and compare with DOM order; a CSS-reordered toolbar that tabs against the
+visual order is a finding.
+
+Sticky-header obscuring after anchor jump (2.4.11/2.4.7): await scroll
+**stabilization** (poll `getBoundingClientRect().top` until unchanged) —
+fixed sleeps are not readiness — then `document.elementFromPoint()` at the
+target's center; a hit inside the sticky layer means the focused/anchor
+target is obscured. Verified probe shape:
+
+```javascript
+await p.evaluate(() => new Promise((resolve) => {
+  let last = -1, ticks = 0;
+  const iv = setInterval(() => {
+    const top = document.querySelector('TARGET').getBoundingClientRect().top;
+    if (Math.abs(top - last) < 0.5 || ++ticks > 100) { clearInterval(iv); resolve(top); }
+    last = top;
+  }, 30);
+}))
+```
+
+Status announcements (4.1.3): after a dynamic status update, the status
+element must expose `aria-live` (or `role=status|alert`); absence is a
+finding when the update conveys workflow outcomes.
+
+Hover affordance: `hover()` then compare the computed state (background,
+`aria-expanded`, cursor); an interactive control with no state change on
+hover is a consistency observation, not automatically a defect.
+
+Reduced-motion preference is readable via `matchMedia('(prefers-reduced-motion: reduce)')`;
+behavior emulation is not a verified CLI capability — actual reduced-motion
+behavior stays `Not Run` per the viewport-limitation rule.
+
 ## Unsupported or unverified channels
 
 Do not claim these checks without a fresh successful probe:

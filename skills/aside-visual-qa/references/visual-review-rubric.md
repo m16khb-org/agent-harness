@@ -44,6 +44,8 @@ Primary references:
 | Forms | Labels, required state, format help, errors, suggestions, and preserved input are usable |
 | System states | Loading, empty, error, success, disabled, and retry states communicate status and next action; a failed action never leaves a prior success message on screen |
 | Feedback timing | Interaction-to-feedback stays within flow-preserving bounds (~400ms Doherty threshold); slower actions show progress or skeleton feedback |
+| Dialogs | Escape closes, focus is trapped while open and returns to the opener on close, `role=dialog`/`aria-modal` exposed |
+| Submit protection | Pending submissions disable their trigger; destructive actions confirm or offer undo |
 | User control | Cancel, undo, close, escape, and recovery exist where the task requires them |
 | Motion | Motion has purpose; reduced motion preserves meaning and task completion |
 | Copy | Labels and instructions are clear, concise, consistent, and not visually awkward |
