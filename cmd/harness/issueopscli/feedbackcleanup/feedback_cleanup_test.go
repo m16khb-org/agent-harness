@@ -686,3 +686,51 @@ func TestRunCleanupAbandonDispatchesToAdapter(t *testing.T) {
 		t.Fatalf("json output missing: %d", len(printed))
 	}
 }
+
+// cleanup remote-branch CLI의 모드 배타 규율과 어댑터 디스패치를 잠근다.
+func TestRunCleanupRemoteBranchDisciplineAndDispatch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := feedbackCleanupIssueOpsRecord(t)
+	deps := Deps{ParseFlags: parseFeedbackCleanupFlags}
+	if err := RunCleanup([]string{"remote-branch", "--id", record.ID, "--preview", "--apply", "--json"}, deps); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("preview+apply must be rejected: %v", err)
+	}
+	if err := RunCleanup([]string{"remote-branch", "--id", record.ID}, deps); err == nil || !strings.Contains(err.Error(), "exactly one mode") {
+		t.Fatalf("modeless remote-branch must be rejected: %v", err)
+	}
+
+	var requests []issueopscontract.CleanupRemoteBranchRequest
+	var printed []any
+	var printedErrors []error
+	previous := cleanupDeps
+	t.Cleanup(func() { cleanupDeps = previous })
+	wired := cleanupDeps
+	wired.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
+	wired.ReadIssueOps = func(string, string) (issueopscontract.IssueOpsRecord, error) {
+		return record, nil
+	}
+	wired.ResolveRecordProvider = func(issueopscontract.IssueOpsRecord) string { return "github" }
+	wired.CleanupRemoteBranch = func(_ context.Context, _ string, req issueopscontract.CleanupRemoteBranchRequest, _ Deps, _ port.IssueProvider) (issueopscontract.CleanupRemoteBranchResult, error) {
+		requests = append(requests, req)
+		return issueopscontract.CleanupRemoteBranchResult{OK: true, ID: req.ID, Fingerprint: "abc"}, nil
+	}
+	ConfigureCleanup(wired)
+	printDeps := Deps{
+		ParseFlags: parseFeedbackCleanupFlags,
+		PrintJSON:  func(value any) error { printed = append(printed, value); return nil },
+		PrintError: func(err error) error { printedErrors = append(printedErrors, err); return nil },
+		Provider:   func(string) (port.IssueProvider, error) { return nil, nil },
+		VerifyMergedHead: func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+			return issueopscontract.CleanupRemoteBranchArtifactHead{}, nil
+		},
+	}
+	if err := RunCleanup([]string{"remote-branch", "--id", record.ID, "--preview", "--json"}, printDeps); err != nil {
+		t.Fatalf("remote-branch preview: %v", err)
+	}
+	if len(requests) != 1 || requests[0].ID != record.ID || requests[0].Apply || requests[0].SupersededBy != "" {
+		t.Fatalf("remote-branch request wrong: %#v", requests[0])
+	}
+	if len(printed) != 1 {
+		t.Fatalf("json output missing: %d", len(printed))
+	}
+}
