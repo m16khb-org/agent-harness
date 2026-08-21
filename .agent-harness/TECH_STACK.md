@@ -148,8 +148,8 @@ harness state list --json
 harness state prune --max-age 720h --json
 harness state prune --max-age 720h --confirm --json
 harness state doctor --json
-harness state migrate --json
-harness state migrate --confirm --json
+harness state maintain --json
+harness state maintain --confirm --json
 agent-harness daemon start --json
 agent-harness daemon status --json
 agent-harness daemon stop --json

@@ -167,7 +167,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness docs --json
 ./bin/agent-harness daemon status --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json && rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json && rm -rf "$tmp_state"
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 codex mcp get agent_harness
