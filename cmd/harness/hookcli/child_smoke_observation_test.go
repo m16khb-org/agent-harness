@@ -51,6 +51,10 @@ func TestRecordChildSmokeHookEventRejectsNonPrivateParent(t *testing.T) {
 }
 
 func TestContextHookBypassesChildSmokeObservation(t *testing.T) {
+	// runHook의 실패 경로는 failures 로그를 남긴다. 사용자 state를 오염하지
+	// 않도록 반드시 격리한다(실측 2026-08-21: 이 테스트가 실사용 state에
+	// session-start 노이즈 59건을 쌓아놓았다).
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
