@@ -244,6 +244,13 @@ func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
 		status.Message = "agent-harness daemon already stopped"
 		return status, nil
 	}
+	// Stale artifacts: the pid file references a dead process and the socket
+	// is absent. Stopping is idempotent here — clean the stale files instead
+	// of refusing, so post-install refresh (stop → start) cannot wedge on a
+	// leftover pid file from a crashed or externally killed daemon.
+	if status.Code == daemonStatusStopped && !status.Running && !status.Reachable && status.PID > 0 && !deps.processAlive(status.PID) {
+		return daemonStoppedStatus(status, status.PID, deps.remove, "agent-harness daemon already stopped (cleaned stale pid file)"), nil
+	}
 	if !daemonStatusCanStop(status) {
 		status.OK = false
 		return status, fmt.Errorf("refusing to stop unverified daemon: %s", status.Code)

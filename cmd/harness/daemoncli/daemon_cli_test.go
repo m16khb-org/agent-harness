@@ -2,11 +2,13 @@ package daemoncli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunDaemonRejectsMissingAndUnknownSubcommands(t *testing.T) {
@@ -121,5 +123,40 @@ func TestDaemonStatusForMCPUsesCurrentStatus(t *testing.T) {
 
 	if !status.OK || status.Running || status.Paths.Dir != root || status.Message != "daemon is not running" {
 		t.Fatalf("unexpected daemon MCP status: %#v", status)
+	}
+}
+
+func TestDaemonStopCleansStalePIDFileIdempotently(t *testing.T) {
+	root := t.TempDir()
+	pidPath := filepath.Join(root, "agent-harness.pid")
+	// Stale state: pid file references a dead PID, socket absent.
+	if err := os.WriteFile(pidPath, []byte(`{"pid":99999,"process_start_time":"2026-08-20T13:27:20Z","executable":"/bin/agent-harness","instance_nonce":"n","build_sha":"s","protocol_version":"1","generation":"g"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removed := map[string]bool{}
+	status, err := stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: func() daemonStatus {
+			return daemonStatus{
+				OK:    true,
+				Code:  daemonStatusStopped,
+				PID:   99999,
+				Paths: daemonPaths{Dir: root, Socket: filepath.Join(root, "agent-harness.sock"), PID: pidPath},
+			}
+		},
+		findProcess: func(int) (daemonProcess, error) { return nil, fmt.Errorf("unused") },
+		inspectProcess: func(int) (daemonProcessIdentity, error) { return daemonProcessIdentity{}, fmt.Errorf("unused") },
+		processAlive: func(pid int) bool { return false },
+		remove:       func(path string) error { removed[path] = true; return nil },
+		now:          time.Now,
+		sleep:        func(time.Duration) {},
+	})
+	if err != nil {
+		t.Fatalf("stop with stale pid file must be idempotent: %v", err)
+	}
+	if !status.OK || status.Code != daemonStatusStopped || status.Running {
+		t.Fatalf("unexpected status: %#v", status)
+	}
+	if !removed[pidPath] {
+		t.Fatal("stale pid file must be removed")
 	}
 }
