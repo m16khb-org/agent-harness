@@ -17,6 +17,8 @@ This skill is a QA gate; it does not choose improvements by itself.
 ```bash
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+# Every gate runs even after a failure (concurrent regression diagnosis); each failure still fails the run:
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --collect-all-steps --progress=jsonl --json
 HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
