@@ -42,7 +42,9 @@ sections) to `project-docs-update`, and missing-document setup to
 1. Required root filenames remain canonical entrypoints. Do not replace them
    with compatibility copies or redirects.
 2. Move detail; do not summarize away commands, constraints, decisions,
-   failure modes, or evidence.
+   failure modes, or evidence. Preserve the repo's own conventions,
+   terminology, and document language while restructuring — this skill
+   reorganizes layout, it does not normalize a repo's authored style.
 3. Give every topic one normative owner. Other documents link to that owner.
    For standard engineering topics (architecture styles, DDD, SOLID, clean
    code, error handling, OpenAPI/Swagger, testing practice), the

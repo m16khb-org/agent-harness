@@ -81,6 +81,26 @@ Use it as a checklist, not as content to copy:
 - Unconfirmed topics are omitted or marked `Unknown / not confirmed`.
 - Do not paste generic catalog prose into project docs; write the
   repo-specific rule with the repo's own example.
+- Repo conventions outrank catalog ideals: when the repo already does
+  something differently, document the repo's way and stop. Divergence is
+  raised to the user as a question or ADR candidate, never silently
+  "corrected" during enrichment.
+
+### Respect existing conventions and language
+
+agent-harness is an open-source library applied to many in-progress
+repositories, and the target repo's own conventions are authoritative:
+
+- Read the repo's existing AGENTS.md, README, lint/format configs, and doc
+  style before writing anything; the enrichment adapts to the repo, not the
+  reverse.
+- Write in the dominant language of the existing docs (e.g. Korean stays
+  Korean); do not switch languages mid-document.
+- Never replace repo-authored terminology, commit style, error contracts,
+  or test conventions with generic harness defaults; preserve and cite
+  them as the local rule.
+- A divergence between a repo convention and common practice is raised to
+  the user or recorded as an ADR candidate only on request.
 
 ### Do not invent
 

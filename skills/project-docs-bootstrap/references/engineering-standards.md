@@ -17,6 +17,11 @@ Usage contract:
    marked `Unknown / not confirmed` — never presented as adopted.
 5. Keep repo doc content within the manifest line budgets; link to this
    catalog's concepts by name instead of restating whole sections.
+6. Precedence: agent-harness is a library serving many repositories. When a
+   repo's established convention conflicts with a catalog ideal, the repo
+   convention wins — document what the repo does, not what the catalog
+   prefers. Flag a divergence as a candidate ADR only when the user asks for
+   a change; never "fix" a repo's conventions as part of doc enrichment.
 
 ---
 

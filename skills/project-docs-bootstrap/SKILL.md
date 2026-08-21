@@ -15,11 +15,18 @@ the deterministic static pass (CLI engine), then the agent enrichment pass
 
 ## Use and Boundaries
 
+agent-harness is an open-source library applied to many different projects.
+Defaults and templates are starting points, never mandates: a target repo's
+own conventions, doc language, and curated content are always authoritative.
+
 Use for first-time creation of `.agent-harness` docs, or an explicit template
 refresh of existing generated docs. Route instead:
 
 - incremental refresh while work is happening → `project-docs-update`;
-- oversized or badly structured docs → `project-docs-optimize`.
+- oversized or badly structured docs → `project-docs-optimize`;
+- a repo with legacy flat `.agent-harness` family roots and no modular
+  manifest → `project-docs-optimize` (bootstrap preserves the flat layout and
+  reports `legacy_flat_layout_preserved` instead of half-migrating it).
 
 If `.agent-harness` documents already exist and the user did not ask for a
 refresh, do not run the write pass; route to `project-docs-update`.
@@ -44,6 +51,11 @@ refresh, do not run the write pass; route to `project-docs-update`.
 5. The enrichment pass must not invent facts: anything not confirmed by
    source files, command output, or explicit user instruction is marked
    `Unknown / not confirmed` with a way to verify.
+6. Respect the repo's established conventions and language. Existing
+   `AGENTS.md` behavioral guidance, doc style, and terminology win over
+   harness defaults unless the user explicitly overrides them; enrich in the
+   dominant language of the existing docs. Never stack generic template text
+   over repo-authored rules.
 
 ## Static vs Agent-Filled Boundary
 
@@ -72,8 +84,12 @@ See `PROMPT.md` for the full fill targets per document.
    MCP alternative: `project_docs_bootstrap_plan`.
 
 2. Inspect the plan JSON: `signals.files`, `signals.languages`,
-   `signals.test_commands`, `signals.profile`, and each planned
-   `files[].action`.
+   `signals.test_commands`, `signals.profile`, each planned
+   `files[].action`, and `files[].preserved` (true means the existing file
+   will be kept as-is; only `AGENTS.md`'s managed marker block refreshes in
+   place). Heed `warnings` such as `legacy_flat_layout_preserved`,
+   `family_docs_preserved`, and `sync_available` — they reroute work to
+   `project-docs-optimize` or `--sync` instead of forcing writes.
 
 3. Write files and repo profile metadata when the plan is acceptable:
 
