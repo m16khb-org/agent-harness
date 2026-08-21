@@ -579,3 +579,66 @@ func parseFeedbackCleanupFlags(fs *flag.FlagSet, args []string) (bool, error) {
 	}
 	return false, nil
 }
+
+// RunCleanup의 close-children 디스패치 경로를 잠근다: merged 확인 플래그가
+// 어댑터 요청으로 전달되고, JSON/텍스트 출력과 에러 경로가 계약대로 나간다.
+func TestRunCleanupCloseChildrenDispatch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := feedbackCleanupIssueOpsRecord(t)
+	var printed []any
+	var printedErrors []error
+	var requests []issueopscontract.IssueOpsCloseChildrenRequest
+	previous := cleanupDeps
+	t.Cleanup(func() { cleanupDeps = previous })
+	wired := cleanupDeps
+	wired.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
+	wired.ReadIssueOps = issueopscore.ReadIssueOps
+	wired.CloseIssueOpsChildren = func(_ string, _ string, req issueopscontract.IssueOpsCloseChildrenRequest, _ func(string) (port.IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error) {
+		requests = append(requests, req)
+		return issueopscontract.IssueOpsCloseChildrenResult{ClosedCount: 1, Children: []issueopscontract.IssueOpsCloseChildResult{{URL: "https://example.com/i/1", Closed: true, State: "closed"}}}, nil
+	}
+	ConfigureCleanup(wired)
+	deps := Deps{
+		ParseFlags: parseFeedbackCleanupFlags,
+		PrintJSON:  func(value any) error { printed = append(printed, value); return nil },
+		PrintError: func(err error) error { printedErrors = append(printedErrors, err); return nil },
+		VerifyMerged: func(issueopscontract.IssueOpsRemoteArtifactVerification) error {
+			return nil
+		},
+	}
+	if err := RunCleanup([]string{"close-children", "--id", record.ID, "--merged", "--confirm", "--json"}, deps); err != nil {
+		t.Fatalf("close-children json: %v", err)
+	}
+	// fixture 레코드에는 RemoteArtifact가 없으므로 merged 검증은 false로
+	// 강등된다(fail-closed). 요청 플래그 전달과 confirm만 계약이다.
+	if len(requests) != 1 || requests[0].Merged || !requests[0].MergeEvidenceRequested || !requests[0].Confirm {
+		t.Fatalf("request contract wrong: %#v", requests[0])
+	}
+	if len(printed) != 1 {
+		t.Fatalf("json output missing: %d", len(printed))
+	}
+	// 에러 경로: 어댑터가 실패하면 JSON 에러 프린트 후 원본 에러 복귀.
+	failing := cleanupDeps
+	failing.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
+	failing.ReadIssueOps = issueopscore.ReadIssueOps
+	failing.CloseIssueOpsChildren = func(string, string, issueopscontract.IssueOpsCloseChildrenRequest, func(string) (port.IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error) {
+		return issueopscontract.IssueOpsCloseChildrenResult{}, errors.New("provider refused")
+	}
+	ConfigureCleanup(failing)
+	if err := RunCleanup([]string{"close-children", "--id", record.ID, "--merged", "--json"}, deps); err == nil || err.Error() != "provider refused" {
+		t.Fatalf("adapter error must propagate: %v", err)
+	}
+	if len(printedErrors) != 1 {
+		t.Fatalf("json error print missing: %d", len(printedErrors))
+	}
+}
+
+// 도움말 진입과 알 수 없는 하위명령 경로.
+func TestRunCleanupHelpAndUnknownSubcommand(t *testing.T) {
+	if err := RunCleanup([]string{"--help"}, Deps{ParseFlags: parseFeedbackCleanupFlags}); err != nil {
+		t.Fatalf("help must not error: %v", err)
+	}
+	if err := RunCleanup([]string{"nonexistent"}, Deps{ParseFlags: parseFeedbackCleanupFlags}); err == nil || !strings.Contains(err.Error(), "unknown issueops cleanup subcommand") {
+		t.Fatalf("unknown subcommand must fail closed: %v", err)
+	}
+}
