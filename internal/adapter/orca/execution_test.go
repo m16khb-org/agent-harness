@@ -1459,3 +1459,73 @@ func executionFakeRuntime(configured *string) string {
 	}
 	return "runtime-69"
 }
+
+// InspectIntent의 스테이지별 fail-closed 경계를 잠근다: 잘못된 stage,
+// 마커 불일치, runtime 불일치, 존재하지 않는 Run bind는 각각 정확한 에러나
+// authoritative zero로 내야 한다.
+func TestExecutionInspectIntentFailsClosedOnBoundaries(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	if err := os.MkdirAll(workspace.Root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
+		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
+	launch := executionLaunchFixture(t, workspace.Root)
+
+	t.Run("unknown stage is rejected", func(t *testing.T) {
+		request := port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentStage("nonexistent"), Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		}
+		if _, err := NewExecutionClient(&executionFake{}).InspectIntent(context.Background(), request); err == nil {
+			t.Fatal("unknown intent stage must fail closed")
+		}
+	})
+	t.Run("marker mismatch is rejected", func(t *testing.T) {
+		request := port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentWorktree, Marker: "different marker", Workspace: workspace, Probe: probe,
+		}
+		if _, err := NewExecutionClient(&executionFake{}).InspectIntent(context.Background(), request); err == nil ||
+			!strings.Contains(err.Error(), "marker does not match") {
+			t.Fatalf("marker mismatch must fail closed: %v", err)
+		}
+	})
+	t.Run("worktree row validated against sealed workspace", func(t *testing.T) {
+		drifted := executionWorktree(workspace, probe)
+		drifted.Branch = "other-branch"
+		client := &executionFake{worktrees: []port.OrcaWorktree{drifted}}
+		request := port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentWorktree, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		}
+		if _, err := NewExecutionClient(client).InspectIntent(context.Background(), request); err == nil {
+			t.Fatal("marker-matching worktree with drifted branch must fail closed")
+		}
+	})
+	t.Run("terminal inventory runtime mismatch is rejected", func(t *testing.T) {
+		wrongRuntime := "runtime-other"
+		client := &executionFake{terminals: []port.OrcaTerminal{{
+			RuntimeID: wrongRuntime, Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69",
+			Title: probe.Marker, Connected: true, Writable: true,
+		}}, terminalInventoryRuntime: &wrongRuntime}
+		request := port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentTerminal, Marker: probe.Marker, Workspace: workspace,
+			Probe: probe, Prepared: &prepared, Launch: &launch,
+		}
+		if _, err := NewExecutionClient(client).InspectIntent(context.Background(), request); err == nil ||
+			!strings.Contains(err.Error(), "runtime") {
+			t.Fatalf("terminal runtime mismatch must fail closed: %v", err)
+		}
+	})
+	t.Run("run bind of a different run is authoritative zero", func(t *testing.T) {
+		current := port.OrcaRun{RuntimeID: "runtime-69", ID: "run-other", Objective: probe.Marker}
+		client := &executionFake{currentRun: &current}
+		request := port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentRunBind, Marker: probe.Marker, Workspace: workspace,
+			Probe: probe, Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", RunID: "run-69",
+		}
+		inventory, err := NewExecutionClient(client).InspectIntent(context.Background(), request)
+		if err != nil || len(inventory.Candidates) != 0 {
+			t.Fatalf("foreign current run must be authoritative zero: inventory=%#v err=%v", inventory, err)
+		}
+	})
+}
