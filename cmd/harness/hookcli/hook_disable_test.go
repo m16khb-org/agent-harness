@@ -1,6 +1,7 @@
 package hookcli
 
 import (
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"io"
 	"os"
 	"strings"
@@ -80,5 +81,37 @@ func TestDisableHooksKeepsOperatorQuerySubcommandsAvailable(t *testing.T) {
 				t.Fatalf("%s 조회는 훅 비활성화와 무관하게 응답해야 한다", sub)
 			}
 		})
+	}
+}
+
+// 도움말 요청은 hook 이벤트가 아니다: metric에 "--help" 같은 플래그가
+// hook 이름으로 집계되는 실측 노이즈(2026-08-21 dogfood)를 막는다.
+// failures의 Record가 이미 ErrHelp를 스킵하는 것과 같은 기준이다.
+func TestHelpRequestsAreNotHookMetrics(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	var recorded []hookmetricscontract.HookMetricEvent
+	oldRecord := RecordHookMetricEvent
+	RecordHookMetricEvent = func(event hookmetricscontract.HookMetricEvent) (hookmetricscontract.HookMetricRecordResult, error) {
+		recorded = append(recorded, event)
+		return hookmetricscontract.HookMetricRecordResult{OK: true}, nil
+	}
+	t.Cleanup(func() { RecordHookMetricEvent = oldRecord })
+
+	runHookRawCapture(t, `{}`, func() error {
+		_ = runHook([]string{"user-prompt", "--help"})
+		return nil
+	})
+	for _, event := range recorded {
+		if strings.HasPrefix(event.Hook, "-") {
+			t.Fatalf("help request must not be recorded as a hook metric: %+v", event)
+		}
+	}
+	// 정상 이벤트는 여전히 기록된다.
+	runHookRawCapture(t, `{"prompt":"hi"}`, func() error {
+		return runHook([]string{"user-prompt", "--host", "codex"})
+	})
+	if len(recorded) == 0 {
+		t.Fatal("real hook events must still be recorded")
 	}
 }

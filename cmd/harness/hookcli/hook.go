@@ -1,6 +1,8 @@
 package hookcli
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -59,7 +61,11 @@ func runHook(args []string) error {
 	}
 	// Best-effort latency telemetry for real hook events (quality program
 	// Q2 phase 2); meta subcommands (failures/metrics) are not hook events.
-	if len(args) > 0 && args[0] != "failures" && args[0] != "metrics" {
+	// 도움말 요청(ErrHelp)도 hook 이벤트가 아니다 — failures의 Record가
+	// 이미 스킵하는 것과 같은 기준으로 metric 노이즈("--help"가 hook 이름으로
+	// 집계되는 실측 회귀)를 막는다.
+	isHelpRequest := err != nil && errors.Is(err, flag.ErrHelp)
+	if len(args) > 0 && args[0] != "failures" && args[0] != "metrics" && !isHelpRequest {
 		_, _ = RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{
 			Hook:       args[0],
 			Host:       hookfailure.ArgValue(args, "--host"),
