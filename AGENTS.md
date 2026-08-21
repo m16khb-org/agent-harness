@@ -158,7 +158,7 @@ find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 python3 scripts/validate-skill.py skills/atomic-commit-push
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
-./bin/agent-harness install-native --dry-run --json
+./scripts/install-native.sh --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness/contractgolden -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
