@@ -323,3 +323,115 @@ func withEmptyIssueOps(t *testing.T) {
 		ListLeaseHolderIndexes = previousIndexes
 	})
 }
+
+// collectOrca의 자원 identity 필터와 resolve 경계를 잠근다. 자원 rows는
+// runtime/repo/worktree id가 관측된 snapshot과 일치할 때만 유입되어야 한다.
+type inventoryOrca struct {
+	runInventoryOrca
+	repo         port.OrcaRepo
+	repoErr      error
+	worktrees    []port.OrcaWorktree
+	worktreesErr error
+	terminals    []port.OrcaTerminal
+	terminalsErr error
+	dispatch     port.OrcaDispatch
+	dispatchErr  error
+	inbox        port.OrcaInboxPresence
+	inboxErr     error
+}
+
+func (orca *inventoryOrca) ResolveRepo(context.Context, string) (port.OrcaRepo, error) {
+	return orca.repo, orca.repoErr
+}
+func (orca *inventoryOrca) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
+	return orca.worktrees, orca.worktreesErr
+}
+func (orca *inventoryOrca) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
+	return orca.terminals, orca.terminalsErr
+}
+func (orca *inventoryOrca) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
+	return orca.dispatch, orca.dispatchErr
+}
+func (orca *inventoryOrca) InboxPresence(context.Context) (port.OrcaInboxPresence, error) {
+	return orca.inbox, orca.inboxErr
+}
+
+func TestCollectOrcaFiltersResourceIdentityAndReportsResolveProblems(t *testing.T) {
+	base := func() *inventoryOrca {
+		return &inventoryOrca{
+			repo: port.OrcaRepo{RuntimeID: "runtime", ID: "repo", Path: "/repo"},
+			runInventoryOrca: runInventoryOrca{
+				inventory: port.OrcaRunInventory{
+					RuntimeID: "runtime",
+					Runs:      []port.OrcaRun{{RuntimeID: "runtime", ID: "run-1"}},
+				},
+			},
+		}
+	}
+	t.Run("repo resolution failure is reported", func(t *testing.T) {
+		orca := base()
+		orca.repoErr = errors.New("resolve failed")
+		snapshot := corehealth.Snapshot{RepoRoot: "/repo", Messages: corehealth.MessagePresence{Empty: true}}
+		Collector{Orca: orca}.collectOrca(context.Background(), &snapshot, false)
+		if !hasProblemCode(snapshot.InventoryProblems, "orca_repo_failed") {
+			t.Fatalf("resolve failure problem missing: %#v", snapshot.InventoryProblems)
+		}
+	})
+	t.Run("repo identity mismatch is reported", func(t *testing.T) {
+		orca := base()
+		orca.repo = port.OrcaRepo{RuntimeID: "other", ID: "repo", Path: "/repo"}
+		snapshot := corehealth.Snapshot{RepoRoot: "/repo", Messages: corehealth.MessagePresence{Empty: true}}
+		Collector{Orca: orca}.collectOrca(context.Background(), &snapshot, false)
+		if !hasProblemCode(snapshot.InventoryProblems, "orca_repo_identity_mismatch") {
+			t.Fatalf("identity mismatch problem missing: %#v", snapshot.InventoryProblems)
+		}
+	})
+	t.Run("invalid worktree and terminal identities are reported, rows still flow", func(t *testing.T) {
+		orca := base()
+		orca.worktrees = []port.OrcaWorktree{
+			{RuntimeID: "runtime", ID: "wt-ok", InstanceID: "inst", Path: "/repo.worktrees/69-v1", RepoID: "repo"},
+			{RuntimeID: "other", ID: "wt-foreign", InstanceID: "inst", Path: "/elsewhere", RepoID: "repo"},
+		}
+		orca.terminals = []port.OrcaTerminal{
+			{RuntimeID: "runtime", Handle: "term-ok", PTYID: "pty-ok", WorktreeID: "wt", TabID: "tab", LeafID: "leaf"},
+			{RuntimeID: "runtime", Handle: "term-incomplete", PTYID: ""},
+		}
+		snapshot := corehealth.Snapshot{RepoRoot: "/repo", Messages: corehealth.MessagePresence{Empty: true}}
+		Collector{Orca: orca}.collectOrca(context.Background(), &snapshot, false)
+		if len(snapshot.OrcaWorktrees) != 2 {
+			t.Fatalf("worktree rows must all flow into the snapshot: %#v", snapshot.OrcaWorktrees)
+		}
+		if !hasProblemCode(snapshot.InventoryProblems, "orca_worktree_identity_invalid") {
+			t.Fatalf("foreign-runtime worktree must be reported: %#v", snapshot.InventoryProblems)
+		}
+		if len(snapshot.Terminals) != 2 || snapshot.Terminals[0].Handle != "term-ok" {
+			t.Fatalf("terminal rows must all flow into the snapshot: %#v", snapshot.Terminals)
+		}
+		if !hasProblemCode(snapshot.InventoryProblems, "orca_terminal_identity_invalid") {
+			t.Fatalf("incomplete terminal identity must be reported: %#v", snapshot.InventoryProblems)
+		}
+		if snapshot.OrcaRepoID != "repo" {
+			t.Fatalf("repo id projection wrong: %q", snapshot.OrcaRepoID)
+		}
+	})
+	t.Run("worktree and terminal reader failures are reported", func(t *testing.T) {
+		orca := base()
+		orca.worktreesErr = errors.New("wt failed")
+		orca.terminalsErr = errors.New("term failed")
+		snapshot := corehealth.Snapshot{RepoRoot: "/repo", Messages: corehealth.MessagePresence{Empty: true}}
+		Collector{Orca: orca}.collectOrca(context.Background(), &snapshot, false)
+		if !hasProblemCode(snapshot.InventoryProblems, "orca_worktrees_failed") ||
+			!hasProblemCode(snapshot.InventoryProblems, "orca_terminals_failed") {
+			t.Fatalf("reader failure problems missing: %#v", snapshot.InventoryProblems)
+		}
+	})
+	t.Run("inbox and dispatch surfaces flow through", func(t *testing.T) {
+		orca := base()
+		orca.inbox = port.OrcaInboxPresence{RuntimeID: "runtime", Count: 2}
+		snapshot := corehealth.Snapshot{RepoRoot: "/repo", Messages: corehealth.MessagePresence{Empty: true}}
+		Collector{Orca: orca}.collectOrca(context.Background(), &snapshot, false)
+		if snapshot.Messages.RuntimeID != "runtime" || snapshot.Messages.Count != 2 {
+			t.Fatalf("inbox presence projection wrong: %#v", snapshot.Messages)
+		}
+	})
+}
