@@ -65,6 +65,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-08 | [Command-only payload exempts cwd fence only for self-describing commands](cautions/lessons/2026-08-08-command-only-payload-cwd-fence-exemption.md) |
 | 2026-08-11 | [self-verify `--full`/`--iterations` modes removed](cautions/lessons/2026-08-11-self-verify-iterations-full-modes-removed.md) |
 | 2026-08-21 | [api-doc dogfood: multiline-decorator routes bypassed static checks; review input lacked error evidence](cautions/lessons/2026-08-21-api-doc-route-block-assembly-and-evidence-bundling.md) |
+| 2026-08-21 | [issueops lifecycle dogfood: whoami was claim-flags-only; branch errors cited foreign issues](cautions/lessons/2026-08-21-issueops-whoami-record-flags-and-branch-examples.md) |
 
 ## Removed CLI modes (historical only)
 
