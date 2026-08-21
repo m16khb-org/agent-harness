@@ -250,3 +250,32 @@ func routeContains(entries []projectdocscontract.ProjectDocRouteEntry, rel strin
 	}
 	return false
 }
+
+func TestRenderAgentsWithBlockRespectsCuratedHeader(t *testing.T) {
+	root := t.TempDir()
+	curated := "# nextcandle-api\n\n## Core behavior\n\n- 프로젝트 자체 규칙이 우선한다.\n\n" + agentsStartMarker + "\nold\n" + agentsEndMarker + "\n"
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(curated), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := RenderAgentsWithBlock(root, "")
+	if !strings.HasPrefix(got, "# nextcandle-api\n") {
+		t.Fatalf("curated AGENTS.md header must stay authoritative:\n%s", firstLinesGot(got))
+	}
+	if strings.Contains(got, "Behavioral guidelines to reduce common LLM coding mistakes") {
+		t.Fatalf("generic template must not be stacked over repo-authored rules:\n%s", firstLinesGot(got))
+	}
+	if !strings.Contains(got, "프로젝트 자체 규칙이 우선한다.") {
+		t.Fatalf("repo-authored rules must survive marker refresh:\n%s", firstLinesGot(got))
+	}
+	if !strings.Contains(got, agentsStartMarker) || strings.Contains(got, "\nold\n") {
+		t.Fatalf("marker block must be refreshed in place:\n%s", firstLinesGot(got))
+	}
+}
+
+func firstLinesGot(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > 8 {
+		lines = lines[:8]
+	}
+	return strings.Join(lines, "\n")
+}

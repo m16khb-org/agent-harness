@@ -264,3 +264,94 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 		}
 	}
 }
+
+func TestBootstrapKeepsLegacyFlatLayoutUnmigrated(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Legacy in-progress repo: curated flat family root, no modular manifest.
+	if err := os.WriteFile(filepath.Join(dir, "ARCHITECTURE.md"), []byte("# Architecture\n\nCurated flat detail.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	warned := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w, "legacy_flat_layout_preserved") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Fatalf("legacy flat repo must warn: %#v", result.Warnings)
+	}
+	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ManifestRelPath())); !os.IsNotExist(err) {
+		t.Fatal("bootstrap must not seed a modular manifest around legacy flat roots")
+	}
+	for _, f := range projectdocdomain.DocFamilies() {
+		module := filepath.Join(dir, filepath.FromSlash(f.ModuleDir))
+		if _, err := os.Stat(module); err == nil {
+			t.Fatalf("bootstrap must not half-migrate legacy flat repo with %s", module)
+		}
+	}
+	if got := mustRead(t, filepath.Join(dir, "ARCHITECTURE.md")); !strings.Contains(got, "Curated flat detail.") {
+		t.Fatalf("legacy flat root content must be preserved:\n%s", got)
+	}
+	// Dry-run must expose the same preservation signals so agents can plan.
+	dry, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dryWarned := false
+	for _, w := range dry.Warnings {
+		if strings.Contains(w, "legacy_flat_layout_preserved") {
+			dryWarned = true
+		}
+	}
+	if !dryWarned {
+		t.Fatalf("dry-run must surface legacy flat preservation: %#v", dry.Warnings)
+	}
+	for _, f := range dry.Files {
+		if f.Preserved && f.Action != "update" {
+			t.Fatalf("preserved flag requires update action: %#v", f)
+		}
+	}
+}
+
+func TestBootstrapPlanMarksPreservedFilesOnDryRun(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "COMMIT_POLICY.md"), []byte("# Custom Policy\n\nLocal rule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dry, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preservedSeen := false
+	for _, f := range dry.Files {
+		if filepath.Base(f.RelPath) == "COMMIT_POLICY.md" && f.Action == "update" && f.Preserved {
+			preservedSeen = true
+		}
+	}
+	if !preservedSeen {
+		t.Fatalf("dry-run plan must mark preserved docs: %#v", dry.Files)
+	}
+	syncWarned := false
+	for _, w := range dry.Warnings {
+		if strings.Contains(w, "sync_available") {
+			syncWarned = true
+		}
+	}
+	if !syncWarned {
+		t.Fatalf("dry-run must surface sync_available warning: %#v", dry.Warnings)
+	}
+}

@@ -45,5 +45,12 @@ func ensureBehavioralGuidelinesAtTop(text string) string {
 	if strings.HasPrefix(trimmed, "# AGENTS.md\n\nBehavioral guidelines to reduce common LLM coding mistakes.") {
 		return text
 	}
+	// agent-harness is a library applied to many repositories: when the
+	// existing AGENTS.md already opens with its own heading and guidance,
+	// that curated content stays authoritative. Do not stack the generic
+	// behavioral template on top of repo-authored rules.
+	if strings.HasPrefix(trimmed, "# ") {
+		return text
+	}
 	return strings.TrimRight(behavioralGuidelines, "\n") + "\n\n---\n\n" + strings.TrimLeft(text, "\n")
 }

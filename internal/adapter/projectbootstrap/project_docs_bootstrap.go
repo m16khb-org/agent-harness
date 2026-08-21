@@ -30,6 +30,24 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 	// project-docs-optimize, never a template refresh.
 	manifestPath := filepath.Join(root, filepath.FromSlash(projectdocdomain.ManifestRelPath()))
 	manifestExisted := fileExists(manifestPath)
+	// Legacy flat layout: family root documents exist without the modular
+	// contract. agent-harness is a library applied to many repositories, so
+	// an in-progress repo's established flat docs stay untouched: creating
+	// module starters and a manifest around curated flat roots would produce
+	// a half-migrated layout that violates the optimize checker contract.
+	// Restructuring belongs to project-docs-optimize, not bootstrap.
+	legacyFlat := false
+	if !manifestExisted {
+		for _, f := range projectdocdomain.DocFamilies() {
+			if fileExists(filepath.Join(root, filepath.ToSlash(filepath.Join(projectdocdomain.ProjectDocsDir, f.Root)))) {
+				legacyFlat = true
+				break
+			}
+		}
+	}
+	if legacyFlat {
+		warnings = projectdocdomain.AppendUnique(warnings, "legacy_flat_layout_preserved: existing flat family roots were kept without partial modular scaffolding; restructure with project-docs-optimize instead of bootstrap")
+	}
 	familyPreserved := false
 	for _, rel := range append([]string{"AGENTS.md"}, projectdocdomain.PrefixedProjectDocNames()...) {
 		content := contents[rel]
@@ -40,12 +58,13 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		action := PlannedFileAction(path, content)
 		familyDoc := isFamilyDocRel(rel)
 		shouldWrite := req.Write && action != "unchanged" && !familyDoc && (req.Sync || action == "create" || rel == "AGENTS.md")
-		if familyDoc && action == "create" {
+		if familyDoc && action == "create" && !legacyFlat {
 			shouldWrite = req.Write
 		}
-		if familyDoc && req.Write && action == "update" {
+		if familyDoc && action == "update" {
 			familyPreserved = true
 		}
+		preserved := action == "update" && (familyDoc || (rel != "AGENTS.md" && !req.Sync))
 		if shouldWrite {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return ProjectDocsBootstrapResult{}, err
@@ -53,16 +72,17 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
-		} else if req.Write && action == "update" && !req.Sync && !familyDoc {
+		} else if action == "update" && !req.Sync && !familyDoc {
 			warnings = projectdocdomain.AppendUnique(warnings, "sync_available: existing project docs were preserved; pass --sync to refresh them from current templates and repo evidence")
 		}
 		files = append(files, projectdoc.ProjectDocsPlannedFile{
-			RelPath: filepath.ToSlash(rel),
-			Path:    path,
-			Action:  action,
-			Bytes:   len([]byte(content)),
-			SHA256:  projectdoc.SHA256Hex(content),
-			Reason:  projectDocReason(rel),
+			RelPath:   filepath.ToSlash(rel),
+			Path:      path,
+			Action:    action,
+			Bytes:     len([]byte(content)),
+			SHA256:    projectdoc.SHA256Hex(content),
+			Reason:    projectDocReason(rel),
+			Preserved: preserved,
 		})
 	}
 	// Module starter documents for every family (folder-first layout).
@@ -74,30 +94,33 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		}
 		path := filepath.Join(root, filepath.FromSlash(rel))
 		action := PlannedFileAction(path, content)
-		if req.Write && action == "create" {
+		if req.Write && action == "create" && !legacyFlat {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
-		} else if req.Write && action == "update" {
+		} else if action == "update" {
 			familyPreserved = true
 		}
-		files = append(files, projectdoc.ProjectDocsPlannedFile{
-			RelPath: rel,
-			Path:    path,
-			Action:  action,
-			Bytes:   len([]byte(content)),
-			SHA256:  projectdoc.SHA256Hex(content),
-			Reason:  projectDocReason(rel),
-		})
+		if !legacyFlat {
+			files = append(files, projectdoc.ProjectDocsPlannedFile{
+				RelPath:   rel,
+				Path:      path,
+				Action:    action,
+				Bytes:     len([]byte(content)),
+				SHA256:    projectdoc.SHA256Hex(content),
+				Reason:    projectDocReason(rel),
+				Preserved: action == "update",
+			})
+		}
 	}
 	// Modular documentation contract: seeded once, then owned by the repo
 	// (budgets may be tuned by hand or by project-docs-optimize; never reset).
 	manifestContent := projectdocdomain.ManifestJSON()
 	manifestAction := PlannedFileAction(manifestPath, manifestContent)
-	if req.Write && manifestAction == "create" {
+	if req.Write && manifestAction == "create" && !legacyFlat {
 		if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
 			return ProjectDocsBootstrapResult{}, err
 		}
@@ -105,15 +128,17 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			return ProjectDocsBootstrapResult{}, err
 		}
 	}
-	files = append(files, projectdoc.ProjectDocsPlannedFile{
-		RelPath: projectdocdomain.ManifestRelPath(),
-		Path:    manifestPath,
-		Action:  manifestAction,
-		Bytes:   len([]byte(manifestContent)),
-		SHA256:  projectdoc.SHA256Hex(manifestContent),
-		Reason:  "modular documentation contract manifest",
-	})
-	if familyPreserved && req.Write {
+	if !legacyFlat {
+		files = append(files, projectdoc.ProjectDocsPlannedFile{
+			RelPath: projectdocdomain.ManifestRelPath(),
+			Path:    manifestPath,
+			Action:  manifestAction,
+			Bytes:   len([]byte(manifestContent)),
+			SHA256:  projectdoc.SHA256Hex(manifestContent),
+			Reason:  "modular documentation contract manifest",
+		})
+	}
+	if familyPreserved {
 		warnings = projectdocdomain.AppendUnique(warnings, "family_docs_preserved: modular family roots and module starters are never overwritten; revise them with project_docs_revise or reorganize with project-docs-optimize")
 	}
 	if manifestExisted && req.Write && req.Sync {

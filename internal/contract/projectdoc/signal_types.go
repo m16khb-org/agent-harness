@@ -20,10 +20,11 @@ type EvidenceCommand struct {
 }
 
 type ProjectDocsPlannedFile struct {
-	RelPath string `json:"rel_path"`
-	Path    string `json:"path"`
-	Action  string `json:"action"`
-	Bytes   int    `json:"bytes"`
-	SHA256  string `json:"sha256"`
-	Reason  string `json:"reason"`
+	RelPath   string `json:"rel_path"`
+	Path      string `json:"path"`
+	Action    string `json:"action"`
+	Bytes     int    `json:"bytes"`
+	SHA256    string `json:"sha256"`
+	Reason    string `json:"reason"`
+	Preserved bool   `json:"preserved"`
 }
