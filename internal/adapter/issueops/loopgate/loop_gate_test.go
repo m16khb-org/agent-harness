@@ -209,3 +209,63 @@ func containsLoopGateString(values []string, target string) bool {
 	}
 	return false
 }
+
+// AdvancePhase는 pr 진입 시 strict readiness를 강제하고, pr 재진입(이미 pr)과
+// pr 외 전환은 통과시킨다. dogfooding에서 확인한 그 gate를 잠근다.
+func TestAdvancePhaseGuardsPRTransition(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyIssueOpsRecordForLoopGateTest(t)
+	stateRoot := issueops.IssueOpsStateRoot()
+	written, err := issueops.WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written.Phase = issueopscontract.IssueOpsPhaseFeedback
+	written, err = issueops.WriteIssueOps(stateRoot, written)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// pr이 아닌 전환은 loop gate 없이 core 위임이다(feedback -> pr는 아래
+	// gate 케이스가 담당하므로 여기선 하위 위상으로 되돌리지 않는다).
+	// active loop이 있으면 pr 진입이 loop_incomplete로 거부된다.
+	loop := startCoreLoopGateLoop(t, record.Repo, "advance-loop", 3)
+	_, err = AdvancePhase(stateRoot, written.ID, "pr")
+	if err == nil || !strings.Contains(err.Error(), "loop_incomplete:"+loop.ID) {
+		t.Fatalf("pr entry must be gated by the active loop: %v", err)
+	}
+
+	// loop를 성공으로 끝내면 pr 재진입이 통과한다(복구 경로 보존).
+	if _, err := looprun.RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass", Evidence: []string{"gate cleared"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := looprun.Stop(loop.ID, true, "goal met"); err != nil {
+		t.Fatal(err)
+	}
+	inPR, err := AdvancePhase(stateRoot, written.ID, "pr")
+	if err != nil || inPR.Phase != issueopscontract.IssueOpsPhasePR {
+		t.Fatalf("pr entry after successful loop = %#v err=%v", inPR, err)
+	}
+	// 이미 pr인 레코드의 pr 재진입도 통과한다.
+	again, err := AdvancePhase(stateRoot, written.ID, "pr")
+	if err != nil || again.Phase != issueopscontract.IssueOpsPhasePR {
+		t.Fatalf("pr re-entry must pass for recovery: %#v err=%v", again, err)
+	}
+}
+
+func TestAdvancePhaseRejectsUnknownRecord(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	if _, err := AdvancePhase(issueops.IssueOpsStateRoot(), "io-missing", "pr"); err == nil {
+		t.Fatal("unknown record must fail before any transition")
+	}
+}
+
+func TestStrictPRReadinessWithStateAppliesLoopGate(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyIssueOpsRecordForLoopGateTest(t)
+	startCoreLoopGateLoop(t, record.Repo, "state-loop", 3)
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if ready.Ready {
+		t.Fatalf("with-state readiness must honor the loop gate: %+v", ready)
+	}
+}
