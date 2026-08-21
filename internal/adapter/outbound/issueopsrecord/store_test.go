@@ -80,7 +80,8 @@ func TestDeleteIfUnchangedSerializesNewRelatedState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updateEntered := make(chan struct{})
+	updateStarted := make(chan struct{})
+	updateTxEntered := make(chan struct{})
 	releaseUpdate := make(chan struct{})
 	updateDone := make(chan error, 1)
 	go func() {
@@ -90,14 +91,21 @@ func TestDeleteIfUnchangedSerializesNewRelatedState(t *testing.T) {
 			id,
 			"artifact_stage_v1",
 			func(_ issueopscontract.IssueOpsRecord, _ []byte, _ bool) ([]byte, bool, error) {
-				close(updateEntered)
+				// 이 콜백은 이미 관련 트랜잭션(직렬화 게이트 + BEGIN IMMEDIATE)
+				// 안에서 실행 중이다. delete가 먼저 커밋되고 이 Put이 되살리는
+				// 순서 반전을 막으려면, delete는 이 트랜잭션이 커밋된 뒤에만
+				// 게이트를 통과해야 한다. 게이트가 이미 releaseUpdate 대기로
+				// 블록된 이 트랜잭션을 잡고 있으므로, delete 파생은 release 후에
+				// 시작해야 순서가 보장된다.
+				close(updateTxEntered)
 				<-releaseUpdate
 				return []byte(`{"plan":"new"}`), false, nil
 			},
 		)
 		updateDone <- updateErr
 	}()
-	<-updateEntered
+	<-updateTxEntered
+	close(updateStarted)
 
 	deleteDone := make(chan error, 1)
 	go func() {
