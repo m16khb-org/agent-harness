@@ -926,3 +926,80 @@ exit 2
 		t.Fatal(err)
 	}
 }
+
+// resolveRemoteCompletionInputs는 completion 계열 명령의 fail-closed 전제를
+// 검사한다(설계 v5 WS3). 각 거부 사유가 정확한 에러로 나오는지 잠근다.
+func TestResolveRemoteCompletionInputsFailsClosed(t *testing.T) {
+	t.Run("missing remote artifact", func(t *testing.T) {
+		t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+		record := remoteIssueOpsRecord(t)
+		_, _, err := resolveRemoteCompletionInputs(Deps{}, record.ID, "")
+		if err == nil || !strings.Contains(err.Error(), "before a verified remote artifact") {
+			t.Fatalf("expected missing-artifact rejection, got %v", err)
+		}
+	})
+	t.Run("merge verification not configured", func(t *testing.T) {
+		t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+		record := remoteIssueOpsRecord(t)
+		record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
+			Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
+		}
+		var err error
+		record, err = issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record)
+		if err != nil {
+			t.Fatalf("WriteIssueOps: %v", err)
+		}
+		_, _, err = resolveRemoteCompletionInputs(Deps{}, record.ID, "")
+		if err == nil || !strings.Contains(err.Error(), "merge verification is not configured") {
+			t.Fatalf("expected unconfigured-verification rejection, got %v", err)
+		}
+	})
+	t.Run("merge readback failure refuses to continue", func(t *testing.T) {
+		t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+		record := remoteIssueOpsRecord(t)
+		record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
+			Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
+		}
+		var err error
+		record, err = issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record)
+		if err != nil {
+			t.Fatalf("WriteIssueOps: %v", err)
+		}
+		deps := Deps{VerifyMerged: func(issueopscontract.IssueOpsRemoteArtifactVerification) error {
+			return errors.New("connection reset")
+		}}
+		_, _, err = resolveRemoteCompletionInputs(deps, record.ID, "")
+		if err == nil || !strings.Contains(err.Error(), "merge evidence readback failed (refusing to continue)") {
+			t.Fatalf("expected readback refusal, got %v", err)
+		}
+	})
+	t.Run("verified record resolves provider", func(t *testing.T) {
+		t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+		record := remoteIssueOpsRecord(t)
+		record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
+			Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
+		}
+		var err error
+		record, err = issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record)
+		if err != nil {
+			t.Fatalf("WriteIssueOps: %v", err)
+		}
+		deps := Deps{VerifyMerged: func(issueopscontract.IssueOpsRemoteArtifactVerification) error {
+			return nil
+		}}
+		got, prov, err := resolveRemoteCompletionInputs(deps, record.ID, "")
+		if err != nil {
+			t.Fatalf("expected resolution, got %v", err)
+		}
+		if got.ID != record.ID || prov == nil {
+			t.Fatalf("unexpected resolution: record=%+v provider=%v", got, prov)
+		}
+	})
+	t.Run("unknown record id fails closed", func(t *testing.T) {
+		t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+		_, _, err := resolveRemoteCompletionInputs(Deps{}, "io-nonexistent", "")
+		if err == nil {
+			t.Fatal("expected read error for unknown id")
+		}
+	})
+}
