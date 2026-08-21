@@ -64,6 +64,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-04 | [Released sync-base conflict needs scoped resolution writer](cautions/lessons/2026-08-04-released-sync-base-conflict-write-lease.md) |
 | 2026-08-08 | [Command-only payload exempts cwd fence only for self-describing commands](cautions/lessons/2026-08-08-command-only-payload-cwd-fence-exemption.md) |
 | 2026-08-11 | [self-verify `--full`/`--iterations` modes removed](cautions/lessons/2026-08-11-self-verify-iterations-full-modes-removed.md) |
+| 2026-08-21 | [api-doc dogfood: multiline-decorator routes bypassed static checks; review input lacked error evidence](cautions/lessons/2026-08-21-api-doc-route-block-assembly-and-evidence-bundling.md) |
 
 ## Removed CLI modes (historical only)
 

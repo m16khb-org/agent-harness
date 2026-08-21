@@ -31,10 +31,23 @@ harness api-doc check --result FILE --json
 - validation surface가 있는데 400 response 누락
 - private/auth endpoint인데 401 response 누락
 - DTO required/optional field의 OpenAPI decorator 및 optional validation mismatch
+- DTO required/optional drift: TypeScript/검증 상태와 Swagger 문서가 반대로 기술된 경우(`required: false` 객체형 포함) `required_optional_mismatch`
+
+정적 게이트의 route 블록 조립은 괄호/중괄호 밸런스로 decorator 객체 내부(`summary:`/`description:` 줄)까지 포함한다. 다중 줄 `@ApiOperation`을 쓰는 문서화 잘 된 컨트롤러가 오히려 검사를 우회하지 않는지는 `cmd/harness/apidoc/dogfood` 픽스처가 회귀 테스트로 고정한다.
+
+`@ApiResponse({ status: 404 })`, `@ApiResponse({ status: HttpStatus.NOT_FOUND })`, `@ApiResponses([{ status: 400 }, ...])` 객체/enum/배열 형태를 모두 상태 문서로 인식한다.
 
 ## Agent review prompt
 
 정적 검사는 decorator/comment 수준 누락을 잡고, 에이전트 리뷰는 직접 관련된 business logic을 읽어 public API contract drift를 확인한다.
+
+`api-doc review`가 프롬프트를 렌더할 때 Business Logic Error Contract Evidence 섹션이 함께 번들된다. 하네스가 변경된 controller/handler 파일에서 정적으로 추출한:
+
+- 호출한 service method와 그 `throw new <Exception>` 지점(파일:라인, 동일 클래스 1단계 전이 호출 포함)
+- `ClientProxy.send/emit` 패턴 → 원격 `@MessagePattern`/`@EventPattern` 핸들러 → 해당 service의 throw 지점(마이크로서비스 hop)
+- `@Catch` exception filter의 HTTP status 매핑
+
+호스트 에이전트는 이 증거를 문서화된 response 목록과 대조해야 한다. 증거에 도달 가능한 public error(404/403/409/400/401, RPC 매핑 status)가 문서에 없으면 blocking이다. 증거는 입력일 뿐 판정이 아니며, 증거가 잘못 추출되었을 리뷰에서 확인해야 한다.
 
 에이전트는 변경된 endpoint가 호출하는 service/usecase/domain/error-mapping 코드를 확인해야 한다. 다음 오류가 실제로 발생할 수 있으면 OpenAPI responses에 반영되어야 한다.
 
