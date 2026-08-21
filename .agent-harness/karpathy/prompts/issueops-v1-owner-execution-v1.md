@@ -122,9 +122,10 @@ Required skills:
 5. expected claimable 상태에서 아래 command가 `none`이 아니면 실행 가능한 명령이 아니라 sealed claim template이다.
    status가 coordinator 전용 recovery `execution resume`을 next_command로 반환해도 dispatched owner는
    실행하지 않는다. 먼저 `agent-harness issueops execution whoami --json`을 정확히 한 번 실행해 출력의
-   host/session_id와 ancestry에서 native session 프로세스(owner host 실행 파일)의
-   pid/started_at/executable receipt를 읽고, 아래
-   placeholder를 리터럴 receipt로 모두 채운 뒤 정확히 한 번 실행한다. `$$`, `$(...)`, `$VAR` 같은 shell
+   host/session_id와 `claim_actor_flags`를 읽는다. `claim_actor_flags` 각 항목은 ACTOR_FLAGS
+   전체 집합(--host/--session-id/--session-pid/--session-started-at/--session-executable/--cwd)을
+   이미 담고 있으므로, 아래 placeholder를 그 벡터의 리터럴 값으로 모두 채운 뒤 정확히 한 번 실행한다.
+   `$$`, `$(...)`, `$VAR` 같은 shell
    확장이 섞인 명령은 hook이 fail-closed로 거부하며, 빈 값 placeholder는 넣지 않는다. --agent-id는
    native agent id가 실제로 있을 때만 붙인다. token 원문은 출력하지 않는다. 아래 command가 `none`이면
    whoami나 claim을 실행하지 말고 durable holder가 현재 native session/generation/worktree와 같은지
