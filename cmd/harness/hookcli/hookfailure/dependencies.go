@@ -15,5 +15,6 @@ var (
 	PruneHookFailureLog     func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
 	SummarizeHookFailureLog func() (hookfailurecontract.HookFailureStats, error)
 	SummarizeHookMetricsLog func() (hookmetricscontract.HookMetricsStats, error)
+	PruneHookMetricsLog     func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
 	MetricsRate             func(num, denom int) float64
 )

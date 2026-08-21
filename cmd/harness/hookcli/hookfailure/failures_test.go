@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"agent-harness/internal/testsupport"
 )
 
@@ -146,5 +148,28 @@ func TestRecordFailureAndArgValue(t *testing.T) {
 	events, _ := obj["events"].([]any)
 	if len(events) != 1 {
 		t.Fatalf("expected recorded event, got %+v", obj)
+	}
+}
+
+func TestRunMetricsPruneRemovesOldEvents(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	PruneHookMetricsLog = func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error) {
+		if maxAge != time.Hour {
+			t.Fatalf("max-age = %v want 1h", maxAge)
+		}
+		return hookmetricscontract.HookMetricsPruneResult{OK: true, Pruned: 3, Kept: 2}, nil
+	}
+	out := captureStdout(t, func() {
+		if err := RunMetricsPrune([]string{"--max-age", "1h"}); err != nil {
+			t.Fatalf("run hook metrics prune: %v", err)
+		}
+	})
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(out), &obj); err != nil {
+		t.Fatalf("output is not JSON: %q: %v", out, err)
+	}
+	if obj["ok"] != true || obj["pruned"] != float64(3) || obj["kept"] != float64(2) {
+		t.Fatalf("unexpected metrics prune output: %+v", obj)
 	}
 }

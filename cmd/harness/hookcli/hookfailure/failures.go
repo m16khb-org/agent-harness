@@ -139,3 +139,22 @@ func printJSON(v any) error {
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(v)
 }
+
+// RunMetricsPrune prunes hook metric events older than max-age. The metrics
+// log grows on every hook invocation with no caller-side bound; this is the
+// operator surface for the existing PruneHookMetricsLog adapter (symmetric
+// with `hook failures prune`).
+func RunMetricsPrune(args []string) error {
+	fs := flag.NewFlagSet("hook metrics prune", flag.ContinueOnError)
+	maxAge := fs.Duration("max-age", 720*time.Hour, "maximum age of metric events to keep (e.g. 720h)")
+	jsonOut := fs.Bool("json", false, "print result as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	_ = jsonOut
+	result, err := PruneHookMetricsLog(*maxAge)
+	if err != nil {
+		return err
+	}
+	return printJSON(result)
+}

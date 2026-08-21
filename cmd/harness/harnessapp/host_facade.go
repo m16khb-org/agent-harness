@@ -36,6 +36,7 @@ func configureHookCLI() {
 	hookfailurecli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
 	hookfailurecli.SummarizeHookFailureLog = hookfailureadapter.SummarizeHookFailureLog
 	hookfailurecli.SummarizeHookMetricsLog = hookmetrics.SummarizeHookMetricsLog
+	hookfailurecli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
 	hookfailurecli.MetricsRate = hookmetrics.Rate
 }
 

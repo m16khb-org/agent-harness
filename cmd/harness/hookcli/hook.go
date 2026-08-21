@@ -135,6 +135,9 @@ func runHookDispatch(args []string) error {
 	case "failures":
 		return hookfailure.Run(args[1:])
 	case "metrics":
+		if len(args) > 1 && args[1] == "prune" {
+			return hookfailure.RunMetricsPrune(args[2:])
+		}
 		return hookfailure.RunMetrics(args[1:])
 	default:
 		hookUsage()
@@ -168,5 +171,6 @@ func hookUsage() {
   agent-harness hook failures prune --max-age DURATION [--json]
   agent-harness hook failures stats [--json]
   agent-harness hook metrics [--json]
+  agent-harness hook metrics prune --max-age DURATION [--json]
 `)
 }
