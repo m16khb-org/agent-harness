@@ -457,3 +457,24 @@ type fakeResolver struct {
 func (f fakeResolver) LookupIPAddr(context.Context, string) ([]string, error) {
 	return f.ips, f.err
 }
+
+// live 전용 fixture(StatusCode 0)를 오프라인 재생할 때 로컬 서버가
+// WriteHeader(0)으로 패닉하지 않는지 잠근다(2026-08-22 실측 회귀).
+func TestRunBenchmarkOfflineReplayToleratesUnspecifiedStatus(t *testing.T) {
+	liveOnly := []webfetchcontract.BenchmarkFixture{
+		{ID: "live-homepage", URL: "https://example.com/", MinBodyChars: 1},
+	}
+	result, err := RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
+		Fixtures: liveOnly, Timeout: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("offline replay must not error on live-only fixtures: %v", err)
+	}
+	if len(result.FixtureResults) != 1 {
+		t.Fatalf("expected one result: %+v", result)
+	}
+	// 오프라인 재생은 빈 본문으로 실패한다 - 패닉이 아니라 예측된 실패.
+	if result.FixtureResults[0].OK {
+		t.Fatalf("empty replay should fail min_body_chars, not pass: %+v", result.FixtureResults[0])
+	}
+}

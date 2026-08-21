@@ -289,7 +289,15 @@ func runFixture(ctx context.Context, fixture webfetchcontract.BenchmarkFixture, 
 		for k, v := range fixture.Headers {
 			w.Header().Set(k, v)
 		}
-		w.WriteHeader(fixture.StatusCode)
+		// live 전용 fixture(URL만 있고 StatusCode 미지정 = 0)를 오프라인
+		// 서버로 재생할 때 0은 http 허용 코드가 아니어서 panic한다. 실측
+		// 2026-08-22: public-fixtures.json을 오프라인으로 돌리면 즉시
+		// 패닉했다. 미지정 상태는 200으로 재생한다.
+		status := fixture.StatusCode
+		if status < 100 || status > 599 {
+			status = http.StatusOK
+		}
+		w.WriteHeader(status)
 		_, _ = w.Write([]byte(fixture.Body))
 	}))
 	defer server.Close()
