@@ -1,6 +1,9 @@
 package staticcheck
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCheckNestControllerReportsMissingDocumentation(t *testing.T) {
 	text := `
@@ -91,6 +94,87 @@ export abstract class CreateUserDto {
 	}
 	if braceDepthDelta("{a:{}}") != 0 || braceDepthDelta("{") != 1 || braceDepthDelta("}") != -1 {
 		t.Fatal("unexpected brace depth deltas")
+	}
+}
+
+func TestHasNestResponseStatusCoversEnumArrayAndNamedForms(t *testing.T) {
+	cases := []struct {
+		block  string
+		status int
+		want   bool
+	}{
+		{"@ApiResponse({ status: 404 })", 404, true},
+		{"@ApiResponse({ status: HttpStatus.NOT_FOUND })", 404, true},
+		{"@ApiResponse({ status: HttpStatus.BAD_REQUEST })", 400, true},
+		{"@ApiResponses([\n  { status: 400, description: 'bad' },\n  { status: HttpStatus.CONFLICT },\n])", 400, true},
+		{"@ApiResponses([\n  { status: 400, description: 'bad' },\n  { status: HttpStatus.CONFLICT },\n])", 409, true},
+		{"@ApiResponses([\n  { status: 400 },\n])", 404, false},
+		{"@ApiQuery({ name: 'status' })", 400, false},
+	}
+	for _, tc := range cases {
+		if got := hasNestResponseStatus(tc.block, tc.status); got != tc.want {
+			t.Fatalf("hasNestResponseStatus(%q, %d) = %v, want %v", tc.block, tc.status, got, tc.want)
+		}
+	}
+}
+
+func TestCheckNestControllerCoversAllAndHeadRoutes(t *testing.T) {
+	text := `
+export class UsersController {
+  @All(':id')
+  findOne(@Param('id') id: string) {
+    return {};
+  }
+}
+`
+	if !hasViolation(CheckNestController("users.controller.ts", text), "missing_api_operation") {
+		t.Fatal("expected @All route to be checked")
+	}
+}
+
+func TestCheckNestControllerRequires401ForClassLevelGuards(t *testing.T) {
+	text := `@UseGuards(JwtAuthGuard)
+@Controller('users')
+export class UsersController {
+  @Get(':id')
+  @ApiOperation({ summary: 'x', description: '### 목적\n- x' })
+  @ApiParam({ name: 'id' })
+  findOne(@Param('id') id: string) { return {}; }
+}
+`
+	if !hasViolation(CheckNestController("users.controller.ts", text), "missing_401_response") {
+		t.Fatal("expected class-level guard route to require a 401 response")
+	}
+	public := strings.Replace(text, "  @Get(':id')", "  @Get(':id')\n  @Public()", 1)
+	if hasViolation(CheckNestController("users.controller.ts", public), "missing_401_response") {
+		t.Fatal("@Public route must not require a 401 response")
+	}
+}
+
+func TestCheckNestDTOAcceptsCommonObjectForms(t *testing.T) {
+	text := `
+export class FilterDto {
+  @ApiPropertyOptional({ example: 'a', description: 'x' })
+  @IsOptional()
+  keyword?: string;
+
+  @ApiProperty({ enum: ['a', 'b'], description: '정렬' })
+  sort: string;
+
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  memo?: string;
+
+  @ApiProperty({ type: String, example: 'u1' })
+  userId: string;
+
+  @ApiPropertyOptional({ type: Number, minimum: 0 })
+  @IsOptional()
+  page?: number;
+}
+`
+	if violations := CheckNestDTO("filter.dto.ts", text); len(violations) != 0 {
+		t.Fatalf("expected no violations, got %#v", violations)
 	}
 }
 

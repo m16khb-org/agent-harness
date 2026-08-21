@@ -55,9 +55,16 @@ func CheckNestDTO(file, text string) []Violation {
 			continue
 		}
 		deco := strings.Join(decorators, "\n")
-		optional := strings.Contains(line, "?:") || strings.Contains(deco, "@IsOptional")
-		if optional {
-			if !strings.Contains(deco, "@ApiPropertyOptional") {
+		tsOptional := strings.Contains(line, "?:") || strings.Contains(deco, "@IsOptional")
+		swaggerOptional := strings.Contains(deco, "@ApiPropertyOptional") || apiPropertyObjectFlag(deco, "required", "false")
+		swaggerRequiredExplicit := strings.Contains(deco, "@ApiProperty") && !strings.Contains(deco, "@ApiPropertyOptional") && (apiPropertyObjectFlag(deco, "required", "true") || !apiPropertyHasRequiredKey(deco))
+		if tsOptional && swaggerRequiredExplicit {
+			violations = append(violations, Violation{File: file, Line: i + 1, Code: "required_optional_mismatch", Message: "optional DTO property " + m[1] + " is documented as required (@ApiProperty required: true/default) but is optional in TypeScript/validation"})
+		} else if !tsOptional && swaggerOptional {
+			violations = append(violations, Violation{File: file, Line: i + 1, Code: "required_optional_mismatch", Message: "required DTO property " + m[1] + " is documented as optional in Swagger but is required in TypeScript/validation"})
+		}
+		if tsOptional {
+			if !swaggerOptional && !swaggerRequiredExplicit {
 				violations = append(violations, Violation{File: file, Line: i + 1, Code: "missing_api_property_optional", Message: "optional DTO property " + m[1] + " is missing @ApiPropertyOptional"})
 			}
 			if !strings.Contains(deco, "@IsOptional") {
@@ -87,4 +94,29 @@ func braceDepthDelta(line string) int {
 		}
 	}
 	return delta
+}
+
+var apiPropertyObjectValueRe = regexp.MustCompile(`required\s*:\s*(true|false)`)
+
+// apiPropertyObjectFlag reports whether a @ApiProperty(...) decorator object
+// sets the required key to the given boolean. Plain string search stays
+// decorator-safe because other decorators on the same property do not carry a
+// required key.
+func apiPropertyObjectFlag(deco, key, want string) bool {
+	if !strings.Contains(deco, "@ApiProperty") || strings.Contains(deco, "@ApiPropertyOptional") {
+		return false
+	}
+	for _, m := range apiPropertyObjectValueRe.FindAllStringSubmatch(deco, -1) {
+		if m[1] == want {
+			return true
+		}
+	}
+	return false
+}
+
+func apiPropertyHasRequiredKey(deco string) bool {
+	if !strings.Contains(deco, "@ApiProperty") || strings.Contains(deco, "@ApiPropertyOptional") {
+		return false
+	}
+	return apiPropertyObjectValueRe.MatchString(deco)
 }
