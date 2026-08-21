@@ -734,3 +734,44 @@ func TestRunCleanupRemoteBranchDisciplineAndDispatch(t *testing.T) {
 		t.Fatalf("json output missing: %d", len(printed))
 	}
 }
+
+// cleanup linked-branch CLI의 모드 배타와 어댑터 디스패치를 잠근다.
+func TestRunCleanupLinkedBranchDisciplineAndDispatch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := feedbackCleanupIssueOpsRecord(t)
+	deps := Deps{ParseFlags: parseFeedbackCleanupFlags}
+	if err := RunCleanup([]string{"linked-branch", "--id", record.ID, "--preview", "--apply", "--json"}, deps); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("preview+apply must be rejected: %v", err)
+	}
+	if err := RunCleanup([]string{"linked-branch", "--id", record.ID}, deps); err == nil || !strings.Contains(err.Error(), "exactly one mode") {
+		t.Fatalf("modeless linked-branch must be rejected: %v", err)
+	}
+
+	var requests []issueopscontract.CleanupLinkedBranchRequest
+	var printed []any
+	previous := cleanupDeps
+	t.Cleanup(func() { cleanupDeps = previous })
+	wired := cleanupDeps
+	wired.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
+	wired.ReadIssueOps = func(string, string) (issueopscontract.IssueOpsRecord, error) {
+		return record, nil
+	}
+	wired.CleanupLinkedBranch = func(_ context.Context, _ string, req issueopscontract.CleanupLinkedBranchRequest) (issueopscontract.CleanupLinkedBranchResult, error) {
+		requests = append(requests, req)
+		return issueopscontract.CleanupLinkedBranchResult{OK: true, ID: req.ID, State: "absent"}, nil
+	}
+	ConfigureCleanup(wired)
+	printDeps := Deps{
+		ParseFlags: parseFeedbackCleanupFlags,
+		PrintJSON:  func(value any) error { printed = append(printed, value); return nil },
+	}
+	if err := RunCleanup([]string{"linked-branch", "--id", record.ID, "--preview", "--json"}, printDeps); err != nil {
+		t.Fatalf("linked-branch preview: %v", err)
+	}
+	if len(requests) != 1 || requests[0].ID != record.ID || requests[0].Apply || requests[0].Confirm {
+		t.Fatalf("linked-branch request wrong: %#v", requests[0])
+	}
+	if len(printed) != 1 {
+		t.Fatalf("json output missing: %d", len(printed))
+	}
+}
