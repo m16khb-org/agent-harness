@@ -31,6 +31,10 @@ func runSDKSmoke(root, binary string, env []string, timeout time.Duration) StepR
 	if err != nil {
 		return sdkSmokeFailure(started, binary, stderr.String(), fmt.Errorf("connect SDK MCP session: %w", err))
 	}
+	// 세션 Close는 stderr 버퍼(cmd.Stderr)와의 경쟁을 없앤 뒤에만 읽는다:
+	// subprocess가 아직 살아있는 동안 stderr.String()을 평가하면 데이터
+	// 레이스다(-race 디텍터가 실제로 잡았다). 정상 경로는 명시적으로
+	// Close하고 결과를 조립한다.
 	defer session.Close()
 
 	results := make([]any, 0, 11)
@@ -78,10 +82,17 @@ func runSDKSmoke(root, binary string, env []string, timeout time.Duration) StepR
 		stdout.Write(body)
 		stdout.WriteByte('\n')
 	}
+	// 모든 상호작용이 끝났다: 세션을 닫아 subprocess를 종료한 뒤 stderr를
+	// 스냅샷한다(defer Close보다 먼저 String()을 평가하면 레이스).
+	closeErr := session.Close()
+	stderrSnapshot := stderr.String()
+	if closeErr != nil {
+		return sdkSmokeFailure(started, binary, stderrSnapshot, fmt.Errorf("close SDK MCP session: %w", closeErr))
+	}
 	return StepResult{
 		Label: "MCP smoke", Command: binary + " mcp", OK: true,
-		DurationMS: time.Since(started).Milliseconds(), Stdout: stdout.String(), Stderr: stderr.String(),
-		StdoutBytes: stdout.Len(), StderrBytes: stderr.Len(),
+		DurationMS: time.Since(started).Milliseconds(), Stdout: stdout.String(), Stderr: stderrSnapshot,
+		StdoutBytes: stdout.Len(), StderrBytes: len(stderrSnapshot),
 	}
 }
 
