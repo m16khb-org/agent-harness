@@ -16,7 +16,7 @@ func TestExecutionWhoamiResultAdvertisesTheReusableHostReceiptFirst(t *testing.T
 		{PID: 101, StartedAt: "2026-07-30T00:00:00Z", Executable: "agent-harness"},
 		{PID: 150, StartedAt: "2026-07-30T00:00:00Z", Executable: "/bin/zsh"},
 		{PID: 202, StartedAt: "2026-07-29T00:00:00Z", Executable: "/opt/codex"},
-	})
+	}, "/work/repo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,6 +28,15 @@ func TestExecutionWhoamiResultAdvertisesTheReusableHostReceiptFirst(t *testing.T
 		!strings.Contains(result.ClaimActorFlags[0], "--session-pid 202") ||
 		!strings.Contains(result.ClaimActorFlags[0], "--session-id '019fabc8-1c66-73c0-89f5-d9b80914beef'") {
 		t.Fatalf("whoami claim flags = %+v", result.ClaimActorFlags)
+	}
+	// record 계열 하위명령이 받는 플래그만 별도로 내놓아야 한다. claim용
+	// receipt 플래그(--session-pid 등)를 record 명령에 넘기면 정의되지 않은
+	// 플래그로 거부되므로, 두 벡터가 섞이면 안 된다.
+	if !strings.Contains(result.RecordActorFlags, "--host codex") ||
+		!strings.Contains(result.RecordActorFlags, "--session-id '019fabc8-1c66-73c0-89f5-d9b80914beef'") ||
+		!strings.Contains(result.RecordActorFlags, "--cwd '/work/repo'") ||
+		strings.Contains(result.RecordActorFlags, "--session-pid") {
+		t.Fatalf("whoami record flags = %q", result.RecordActorFlags)
 	}
 }
 

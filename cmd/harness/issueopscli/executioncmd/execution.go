@@ -241,12 +241,13 @@ func runStatus(args []string, deps Deps) error {
 // 확장이 섞인 claim은 exact 파싱이 fail-closed로 거부하므로, 관측 가능한 대체
 // 경로가 없으면 부트스트랩이 교착한다).
 type ExecutionWhoamiResult struct {
-	OK              bool                         `json:"ok"`
-	Host            string                       `json:"host"`
-	SessionID       string                       `json:"session_id"`
-	SessionIDSource string                       `json:"session_id_source"`
-	Ancestry        []model.NativeProcessReceipt `json:"ancestry"`
-	ClaimActorFlags []string                     `json:"claim_actor_flags"`
+	OK               bool                         `json:"ok"`
+	Host             string                       `json:"host"`
+	SessionID        string                       `json:"session_id"`
+	SessionIDSource  string                       `json:"session_id_source"`
+	Ancestry         []model.NativeProcessReceipt `json:"ancestry"`
+	ClaimActorFlags  []string                     `json:"claim_actor_flags"`
+	RecordActorFlags string                       `json:"record_actor_flags"`
 }
 
 type nativeSessionIdentity struct {
@@ -313,6 +314,7 @@ func executionWhoamiResult(
 	identity nativeSessionIdentity,
 	currentPID int,
 	ancestry []model.NativeProcessReceipt,
+	cwd string,
 ) (ExecutionWhoamiResult, error) {
 	ancestry, err := reusableNativeProcessAncestry(identity.Host, currentPID, ancestry)
 	if err != nil {
@@ -322,6 +324,13 @@ func executionWhoamiResult(
 		OK: true, Host: identity.Host, SessionID: identity.SessionID,
 		SessionIDSource: identity.Source, Ancestry: ancestry,
 	}
+	// record 계열 하위명령은 host/session-id/cwd만 받는다(RECORD_ACTOR_FLAGS).
+	// claim용 receipt 플래그를 record 명령에 넘기면 정의되지 않은 플래그로
+	// 거부되므로, whoami는 두 명령군의 플래그를 각각 내놓아 한 번의 복붙으로
+	// 라이프사이클 전체를 진행할 수 있게 한다.
+	result.RecordActorFlags = fmt.Sprintf(
+		"--host %s --session-id %s --cwd %s",
+		identity.Host, shellQuoteClaimValue(identity.SessionID), shellQuoteClaimValue(cwd))
 	for _, receipt := range ancestry {
 		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
 			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s",
@@ -345,7 +354,11 @@ func runWhoami(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result, err := executionWhoamiResult(identity, os.Getpid(), ancestry)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return output(nil, *jsonOut, fmt.Errorf("resolve record actor cwd: %w", err), deps)
+	}
+	result, err := executionWhoamiResult(identity, os.Getpid(), ancestry, cwd)
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
