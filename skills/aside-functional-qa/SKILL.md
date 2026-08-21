@@ -139,6 +139,11 @@ Use the same assertions as the happy path. Confirm that invalid actions do not
 produce unintended side effects. For retries and duplicate actions, compare
 before/after counts or stable identifiers rather than relying on toast text.
 
+After a failed action, assert that status regions reflect the failed outcome,
+not a success message from an earlier action in the same session — a stale
+success message after an invalid submit is a defect (misleading feedback), not
+a pass because nothing broke.
+
 For authorization, test both UI exposure and the protected action when safely
 possible. A hidden button alone cannot pass an authorization requirement.
 

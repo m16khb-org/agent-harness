@@ -50,6 +50,26 @@ Actions:
 Evidence:
 
 - `snapshot`, `screenshot`, `content`, and page/locator `evaluate`.
+  Verified on 1.26.717.1619: `snapshot()` resolves to `{ tree: string, refs:
+  object }`; slice `snapshot.tree`, never the object (`snapshot.slice(...)`
+  throws `TypeError`).
+
+## Invocation economics
+
+Each `aside repl` call pays ~0.5s of process overhead and a fresh JS context
+— tabs persist in the browser, variables do not. Batch one test's full
+lifecycle (preconditions → action → await → evidence → cleanup) into a single
+invocation and guard `p.close()` with `finally` so a failed assertion cannot
+leak a test-owned tab:
+
+```javascript
+const p = await openTab('TARGET_URL')
+try {
+  /* act and assert */
+} finally {
+  await p.close()
+}
+```
 
 ## Result sentinel
 
