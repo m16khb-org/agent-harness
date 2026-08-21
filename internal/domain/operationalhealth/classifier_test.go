@@ -295,3 +295,110 @@ func TestClassifySealedProfileStillFlagsUnownedTerminalsAndMessages(t *testing.T
 		}
 	}
 }
+
+// Classify의 inventory 방어 축들은 관측 불일치를 FindingInventoryUnknown로
+// 내야 한다. 실측 커버리지에서 Orca identity 누락/불일치와 inventory problem
+// 전파, zero-clock 방어가 직접 테스트 없었다(quality inspect branches 후보).
+func TestClassifyFlagsOrcaInventoryIdentityDefects(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name   string
+		mutate func(*Snapshot)
+		wantID string
+	}{
+		{
+			name:   "missing runtime identity",
+			mutate: func(s *Snapshot) { s.OrcaRuntimeID = "" },
+			wantID: "runtime",
+		},
+		{
+			name:   "missing repo identity",
+			mutate: func(s *Snapshot) { s.OrcaRepoID = "" },
+			wantID: "repo",
+		},
+		{
+			name: "worktree identity mismatch",
+			mutate: func(s *Snapshot) {
+				s.OrcaWorktrees = []OrcaWorktree{{RuntimeID: "other-runtime", RepoID: "repo", ID: "wt-1"}}
+			},
+			wantID: "wt-1",
+		},
+		{
+			name: "terminal runtime mismatch",
+			mutate: func(s *Snapshot) {
+				s.Terminals = []OrcaTerminal{{RuntimeID: "other-runtime", Handle: "term-1"}}
+			},
+			wantID: "term-1",
+		},
+		{
+			name: "task runtime mismatch",
+			mutate: func(s *Snapshot) {
+				s.Tasks = []OrcaTask{{RuntimeID: "other-runtime", ID: "task-1", Status: "running"}}
+			},
+			wantID: "task-1",
+		},
+		{
+			name: "dispatch runtime mismatch",
+			mutate: func(s *Snapshot) {
+				s.Dispatches = []OrcaDispatch{{RuntimeID: "other-runtime", ID: "disp-1"}}
+			},
+			wantID: "disp-1",
+		},
+		{
+			name: "gate runtime mismatch",
+			mutate: func(s *Snapshot) {
+				s.Gates = []OrcaGate{{RuntimeID: "other-runtime", ID: "gate-1"}}
+			},
+			wantID: "gate-1",
+		},
+		{
+			name: "message presence runtime mismatch",
+			mutate: func(s *Snapshot) {
+				s.Messages = MessagePresence{RuntimeID: "other-runtime", Count: 3}
+			},
+			wantID: "inbox",
+		},
+		{
+			name: "inventory problem propagates",
+			mutate: func(s *Snapshot) {
+				s.InventoryProblems = []InventoryProblem{{Source: "ps", Code: "EIO", Detail: "probe failed"}}
+			},
+			wantID: "EIO",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := Snapshot{
+				RepoRoot: "/repo", OrcaObserved: true,
+				OrcaRuntimeID: "runtime", OrcaRepoID: "repo",
+			}
+			test.mutate(&snapshot)
+			result := Classify(snapshot, Options{Now: now})
+			found := false
+			for _, finding := range result.Findings {
+				if finding.Code == FindingInventoryUnknown && finding.ResourceID == test.wantID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected inventory finding for %q in %+v", test.wantID, result.Findings)
+			}
+		})
+	}
+}
+
+// zero-clock 방어: Now를 비운 호출은 classification 신뢰 자체가 없다.
+func TestClassifyRequiresExplicitClock(t *testing.T) {
+	result := Classify(Snapshot{RepoRoot: "/repo"}, Options{})
+	found := false
+	for _, finding := range result.Findings {
+		if finding.Code == FindingInventoryUnknown && finding.ResourceID == "now" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("zero clock must produce the clock finding: %+v", result.Findings)
+	}
+}
