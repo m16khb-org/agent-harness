@@ -29,6 +29,11 @@ func TestExecutionWhoamiResultAdvertisesTheReusableHostReceiptFirst(t *testing.T
 		!strings.Contains(result.ClaimActorFlags[0], "--session-id '019fabc8-1c66-73c0-89f5-d9b80914beef'") {
 		t.Fatalf("whoami claim flags = %+v", result.ClaimActorFlags)
 	}
+	// claim 벡터는 ACTOR_FLAGS "all or none" 규칙을 통과하는 전체 집합이어야
+	// 한다 — --cwd가 빠지면 복붙한 claim이 바로 거부된다(2026-08-21 dogfood).
+	if !strings.Contains(result.ClaimActorFlags[0], "--cwd '/work/repo'") {
+		t.Fatalf("whoami claim flags must include --cwd: %+v", result.ClaimActorFlags)
+	}
 	// record 계열 하위명령이 받는 플래그만 별도로 내놓아야 한다. claim용
 	// receipt 플래그(--session-pid 등)를 record 명령에 넘기면 정의되지 않은
 	// 플래그로 거부되므로, 두 벡터가 섞이면 안 된다.
