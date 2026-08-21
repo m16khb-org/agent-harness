@@ -252,3 +252,56 @@ func stringSlicesEqual(a, b []string) bool {
 	}
 	return true
 }
+
+func TestShellCommandGuardPathsCoversMutatingCommandForms(t *testing.T) {
+	repo := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside")
+	t.Run("git -C= inline form", func(t *testing.T) {
+		got := ShellCommandGuardPaths(repo, "git -C="+outside+" status")
+		if !containsGuardPath(got, outside) {
+			t.Fatalf("inline -C= path missing: %v", got)
+		}
+	})
+	t.Run("gofmt -w operands", func(t *testing.T) {
+		target := filepath.Join(outside, "file.go")
+		got := ShellCommandGuardPaths(repo, "gofmt -w "+target)
+		if !containsGuardPath(got, target) {
+			t.Fatalf("gofmt write target missing: %v", got)
+		}
+		// 계약은 보수적이다: gofmt 호출의 operand는 플래그와 무관하게
+		// 항상 가드에 추가된다(-l도 포함). 과보호는 안전 방향이므로
+		// 이를 명시적으로 고정한다.
+		readOnly := ShellCommandGuardPaths(repo, "gofmt -l "+target)
+		if !containsGuardPath(readOnly, target) {
+			t.Fatalf("gofmt operands must always be guarded (conservative contract): %v", readOnly)
+		}
+	})
+	t.Run("dd of= output", func(t *testing.T) {
+		out := filepath.Join(outside, "img.bin")
+		got := ShellCommandGuardPaths(repo, "dd if=/dev/zero of="+out+" bs=1 count=1")
+		if !containsGuardPath(got, out) {
+			t.Fatalf("dd of= target missing: %v", got)
+		}
+	})
+	t.Run("shell eval nested command", func(t *testing.T) {
+		target := filepath.Join(outside, "nested.txt")
+		got := ShellCommandGuardPaths(repo, "bash -c 'echo hi > "+target+"'")
+		if !containsGuardPath(got, target) {
+			t.Fatalf("nested eval redirect missing: %v", got)
+		}
+	})
+	t.Run("git worktree add targets", func(t *testing.T) {
+		target := filepath.Join(repo+".worktrees", "69-v1")
+		got := ShellCommandGuardPaths(repo, "git worktree add "+target+" 69-v1")
+		if !containsGuardPath(got, target) {
+			t.Fatalf("worktree add target missing: %v", got)
+		}
+	})
+	t.Run("operands after -- separator", func(t *testing.T) {
+		target := filepath.Join(outside, "weird-name")
+		got := ShellCommandGuardPaths(repo, "cp -- "+target+" /tmp/dst")
+		if !containsGuardPath(got, target) {
+			t.Fatalf("-- separated operand missing: %v", got)
+		}
+	})
+}
