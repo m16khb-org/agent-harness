@@ -642,3 +642,47 @@ func TestRunCleanupHelpAndUnknownSubcommand(t *testing.T) {
 		t.Fatalf("unknown subcommand must fail closed: %v", err)
 	}
 }
+
+// cleanup abandon CLI의 모드 배타/조합 검증 경로를 잠근다.
+func TestRunCleanupAbandonModeDiscipline(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	deps := Deps{ParseFlags: parseFeedbackCleanupFlags}
+	if err := RunCleanup([]string{"abandon", "--id", "io-x", "--reason", "stale cycle", "--preview", "--apply", "--json"}, deps); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("preview+apply must be rejected: %v", err)
+	}
+	if err := RunCleanup([]string{"abandon", "--id", "io-x", "--reason", "stale cycle"}, deps); err == nil || !strings.Contains(err.Error(), "exactly one mode") {
+		t.Fatalf("modeless abandon must be rejected: %v", err)
+	}
+}
+
+// abandon 요청이 어댑터로 정확히 전달되는지 잠근다(성공 프린트 경로 포함).
+func TestRunCleanupAbandonDispatchesToAdapter(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := feedbackCleanupIssueOpsRecord(t)
+	var printed []any
+	var requests []issueopscontract.CleanupAbandonRequest
+	previous := cleanupDeps
+	t.Cleanup(func() { cleanupDeps = previous })
+	wired := cleanupDeps
+	wired.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
+	wired.ReadIssueOps = issueopscore.ReadIssueOps
+	wired.CleanupAbandon = func(_ context.Context, _ string, req issueopscontract.CleanupAbandonRequest, _ Deps) (issueopscontract.CleanupAbandonResult, error) {
+		requests = append(requests, req)
+		return issueopscontract.CleanupAbandonResult{OK: true, ID: req.ID}, nil
+	}
+	ConfigureCleanup(wired)
+	deps := Deps{
+		ParseFlags: parseFeedbackCleanupFlags,
+		PrintJSON:  func(value any) error { printed = append(printed, value); return nil },
+		PrintError: func(err error) error { return nil },
+	}
+	if err := RunCleanup([]string{"abandon", "--id", record.ID, "--reason", "dogfood verification", "--preview", "--json"}, deps); err != nil {
+		t.Fatalf("abandon preview: %v", err)
+	}
+	if len(requests) != 1 || requests[0].ID != record.ID || requests[0].Reason != "dogfood verification" || requests[0].Apply {
+		t.Fatalf("abandon request wrong: %#v", requests[0])
+	}
+	if len(printed) != 1 {
+		t.Fatalf("json output missing: %d", len(printed))
+	}
+}
