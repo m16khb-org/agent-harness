@@ -100,3 +100,31 @@ func TestStateKeySlugNormalizesUnsafeText(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveSelfAugmentLessonAcceptsFreeSlugWhenCurriculumIsExhausted(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	deps := Deps{SelectCandidate: func() *model.SelfAugmentCandidate { return nil }}
+	result, err := SaveSelfAugmentLesson(model.SelfAugmentLessonRequest{
+		CandidateID: "issueops-whoami-record-flags",
+		Lesson:      "whoami must advertise both actor flag vectors",
+		NextAction:  "rerun lifecycle dogfood",
+	}, deps)
+	if err != nil || !result.OK {
+		t.Fatalf("free-slug lesson must be accepted when no open candidate exists: result=%#v err=%v", result, err)
+	}
+	if result.CandidateID != "issueops-whoami-record-flags" {
+		t.Fatalf("candidate id = %q", result.CandidateID)
+	}
+}
+
+func TestSaveSelfAugmentLessonRejectsInvalidFreeSlug(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	deps := Deps{SelectCandidate: func() *model.SelfAugmentCandidate { return nil }}
+	for _, candidateID := range []string{"IssueOps Whoami", "issueops/whoami", "whoami:record"} {
+		if result, err := SaveSelfAugmentLesson(model.SelfAugmentLessonRequest{
+			CandidateID: candidateID, Lesson: "l", NextAction: "n",
+		}, deps); err == nil || result.OK {
+			t.Fatalf("candidate id %q must be rejected, result=%#v err=%v", candidateID, result, err)
+		}
+	}
+}

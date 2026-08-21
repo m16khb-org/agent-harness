@@ -21,6 +21,28 @@ const (
 	selfAugmentLessonStateMaxRecords = 10000
 )
 
+const selfAugmentLessonCandidateIDMaxLen = 96
+
+// validateLessonCandidateID는 자유 dogfood 후보 슬러그를 포함한 lesson 후보
+// 아이디를 검증한다. 커리큘럼 후보 아이디(kebab-case)와 같은 문자 규칙만
+// 요구해 스키마 없는 state를 오염시키는 값을 막는다.
+func validateLessonCandidateID(candidateID string) error {
+	if len(candidateID) > selfAugmentLessonCandidateIDMaxLen {
+		return fmt.Errorf("lesson candidate id must be at most %d characters", selfAugmentLessonCandidateIDMaxLen)
+	}
+	if strings.ContainsFunc(candidateID, func(r rune) bool {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+			return false
+		default:
+			return true
+		}
+	}) {
+		return fmt.Errorf("lesson candidate id must be kebab-case (letters, digits, hyphen): %q", candidateID)
+	}
+	return nil
+}
+
 func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model.SelfAugmentLessonResult, error) {
 	root := "."
 	if deps.HarnessRoot != nil {
@@ -33,7 +55,14 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 		}
 	}
 	if candidateID == "" {
-		return model.SelfAugmentLessonResult{OK: false, Kind: model.SelfAugmentationLessonKind, LoopKind: "self_augmentation", KoreanName: model.SelfAugmentationKoreanName, HarnessRoot: root}, fmt.Errorf("candidate is required when no selected candidate is available")
+		return model.SelfAugmentLessonResult{OK: false, Kind: model.SelfAugmentationLessonKind, LoopKind: "self_augmentation", KoreanName: model.SelfAugmentationKoreanName, HarnessRoot: root}, fmt.Errorf("candidate is required: pass --candidate ID (an existing curriculum candidate or a slug for dogfooding findings such as issueops-whoami-record-flags) because no selected open candidate is available")
+	}
+	// 후보 아이디는 커리큘럼 후보 또는 자유 dogfood 슬러그를 허용한다. 플래너가
+	// 모든 후보를 already_satisfied로 소진한 상태에서도 lesson 캡처 경로가
+	// 막히면 안 된다(SELF_AUGMENTATION.md 학습 캡처 계약). 슬러그 규칙은
+	// StateKeySlug와 같은 문자 규칙으로 검증한다.
+	if err := validateLessonCandidateID(candidateID); err != nil {
+		return model.SelfAugmentLessonResult{OK: false, Kind: model.SelfAugmentationLessonKind, LoopKind: "self_augmentation", KoreanName: model.SelfAugmentationKoreanName, CandidateID: candidateID, HarnessRoot: root}, err
 	}
 	lesson := strings.TrimSpace(req.Lesson)
 	if lesson == "" {
