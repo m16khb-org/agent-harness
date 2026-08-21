@@ -31,7 +31,7 @@ func RenderProjectDocs(root string, signals projectdoc.ProjectSignals) map[strin
 }
 
 func renderArchitecture(signals projectdoc.ProjectSignals) string {
-	return "# Architecture\n\n## Purpose\n\nThis is an architecture draft generated from project files by agent-harness. Mark weak inferences with Confidence; current code and command output are authoritative.\n\n## Detected structure\n\n" + bulletListWithFallback(signals.Files, "Not enough project signal files were detected.") + "\n## Guidance\n\n- Before large design changes, inspect current entrypoints, package/module boundaries, and data flow.\n- Add new abstractions only after existing patterns and test boundaries are confirmed.\n"
+	return "# Architecture\n\n## Purpose\n\nThis is an architecture draft generated from project files by agent-harness. Mark weak inferences with Confidence; current code and command output are authoritative.\n\n## Detected structure\n\n" + bulletListWithFallback(signals.Files, "Not enough project signal files were detected.") + "\n## Guidance\n\n- Before large design changes, inspect current entrypoints, package/module boundaries, and data flow.\n- Add new abstractions only after existing patterns and test boundaries are confirmed.\n- Name the architecture style actually observed (layered, hexagonal/ports-and-adapters, onion, clean architecture, modular monolith, microservices) and back it with the owning files.\n"
 }
 
 func renderCautions(signals projectdoc.ProjectSignals) string {
@@ -86,6 +86,7 @@ func renderConventions(signals projectdoc.ProjectSignals) string {
 	}
 	lines = append(lines, "\n## Editing rules\n\n- Follow existing style first.\n- Do not run repo-wide formatting unless explicitly requested.\n- Add new dependencies only after documenting the need and alternatives.\n")
 	lines = append(lines, "\n", solidDesignPatternGuidance)
+	lines = append(lines, "\n", engineeringStandardsChecklist)
 	return strings.Join(lines, "")
 }
 

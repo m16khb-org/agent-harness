@@ -8,6 +8,7 @@ const agentsStartMarker = projectdocdomain.AgentsStartMarker
 const agentsEndMarker = projectdocdomain.AgentsEndMarker
 const behavioralGuidelines = projectdocdomain.BehavioralGuidelines
 const solidDesignPatternGuidance = projectdocdomain.SolidDesignPatternGuidance
+const engineeringStandardsChecklist = projectdocdomain.EngineeringStandardsChecklist
 
 func normalizeProjectDocRelPath(relPath string) (string, error) {
 	return projectdocdomain.NormalizeRelPath(relPath)

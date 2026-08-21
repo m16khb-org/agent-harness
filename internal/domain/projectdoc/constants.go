@@ -114,6 +114,27 @@ Apply SOLID, YAGNI, and KISS together. SOLID does not mean adding interfaces and
 - If a pattern turns a 50-line solution into a 200-line structure, revert and simplify.
 `
 
+const EngineeringStandardsChecklist = `## Engineering standards checklist
+
+Standard topics the enrichment pass must evaluate against repository
+evidence before writing them into docs (catalog:
+project-docs-bootstrap/references/engineering-standards.md):
+
+- Architecture style actually used: layered, hexagonal (ports and adapters), onion, clean architecture, modular monolith, microservices.
+- DDD: bounded contexts, ubiquitous language, entities/value objects/aggregates/repositories.
+- SOLID, OOP, composition over inheritance, clean-code conventions (naming, function size, error handling).
+- Error/exception handling style: errors as values vs exceptions, wrapping, fail-fast boundaries, HTTP error contract.
+- API documentation: OpenAPI/Swagger coverage of parameters and client-handled error statuses.
+- Testing best practices: test pyramid/sizes, test doubles, determinism, behavior-focused assertions.
+
+Rules:
+
+- Confirm each topic from source files, config, commands, or explicit user instruction before documenting it.
+- Write confirmed topics to the single owning document listed in the catalog's topic-to-doc map.
+- Record adoption or rejection of a style or major practice in ADR.md with rationale.
+- Omit or mark unconfirmed topics as "Unknown / not confirmed"; do not paste generic advice.
+`
+
 func ProjectDocNames() []string {
 	return append([]string(nil), requiredProjectDocNames...)
 }

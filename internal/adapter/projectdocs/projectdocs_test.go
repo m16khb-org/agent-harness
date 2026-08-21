@@ -39,6 +39,14 @@ func TestAnalyzeRenderRouteAndProfile(t *testing.T) {
 			t.Fatalf("rendered doc %s missing expected content/frontmatter:\n%s", rel, content)
 		}
 	}
+	conventionsOverview := docs[filepath.ToSlash(filepath.Join(ProjectDocsDir, "conventions", "overview.md"))]
+	if !strings.Contains(conventionsOverview, "Engineering standards checklist") || !strings.Contains(conventionsOverview, "DDD") || !strings.Contains(conventionsOverview, "engineering-standards.md") {
+		t.Fatalf("conventions overview missing engineering standards checklist:\n%s", conventionsOverview)
+	}
+	architectureOverview := docs[filepath.ToSlash(filepath.Join(ProjectDocsDir, "architecture", "overview.md"))]
+	if !strings.Contains(architectureOverview, "hexagonal/ports-and-adapters") {
+		t.Fatalf("architecture overview missing style naming guidance:\n%s", architectureOverview)
+	}
 	route, err := RouteProjectDocs(root, "OpenAPI controller DTO test")
 	if err != nil {
 		t.Fatalf("RouteProjectDocs returned error: %v", err)
