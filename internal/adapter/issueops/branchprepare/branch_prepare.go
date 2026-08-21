@@ -153,7 +153,7 @@ func ValidateBranch(branch string) error {
 	}
 	issueNumber, slug, ok := strings.Cut(branch, "-")
 	if !ok || strings.TrimSpace(slug) == "" || !isDecimalString(issueNumber) {
-		return fmt.Errorf("issueops branch must start with the issue number followed by a hyphen; use names like 2387-fix-grpc-ai-dmm-tag-replication-lag or 2388-fanza-delete-404-stale-registered")
+		return fmt.Errorf("issueops branch must start with the issue number followed by a hyphen; use names like 123-fix-login-timeout or 456-refactor-issueops-gates")
 	}
 	return nil
 }
