@@ -319,6 +319,8 @@ func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
 }
 
 func TestChildHostSmokeRejectsSymlinkedHookMarker(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	root := t.TempDir()
 	observationPath := filepath.Join(root, "observation.json")
 	target := filepath.Join(root, "target")
@@ -399,6 +401,8 @@ func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path
 }
 
 func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{confirm: true})
 	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.Receipt.ValidationLane != "native_host" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("result=%+v output=%s", result, result.Output)
@@ -421,6 +425,8 @@ func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 }
 
 func TestChildHostSmokeRegularCommandRoundTripUsesCanonicalIdentity(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{confirm: true, regularCommand: true})
 	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {
 		t.Fatalf("regular command round trip failed: result=%+v output=%s", result, result.Output)
@@ -428,6 +434,8 @@ func TestChildHostSmokeRegularCommandRoundTripUsesCanonicalIdentity(t *testing.T
 }
 
 func TestChildHostSmokeRestoresWithChildInstallerWhenSourceInstallerUsesRetiredCLI(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "source-installer-retired-cli", confirm: true})
 	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("cross-version restore failed: result=%+v output=%s", result, result.Output)
@@ -435,6 +443,8 @@ func TestChildHostSmokeRestoresWithChildInstallerWhenSourceInstallerUsesRetiredC
 }
 
 func TestChildHostSmokeAlwaysRestoresBeforeReturningFailure(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "claude-session-failure", confirm: true})
 	if result.ExitCode == 0 || result.Receipt.Verdict != "fail" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("unsafe failure receipt: %+v output=%s", result, result.Output)
@@ -442,6 +452,8 @@ func TestChildHostSmokeAlwaysRestoresBeforeReturningFailure(t *testing.T) {
 }
 
 func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-failure", confirm: true})
 	want := "restore stages failed: install=19 snapshot=0 identity=0 mcp=0 digest=1 contract=1 exact=2"
 	if !strings.Contains(result.Output, want) {
@@ -471,6 +483,11 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 		"signal-during-restore",
 	} {
 		t.Run(scenario, func(t *testing.T) {
+			// 각 시나리오는 자기 TempDir 안에서 완전히 격리된 프로세스 트리를
+			// 띄운다(FAKE_SCENARIO 환경도 서브프로세스 env로 주입). 상태 공유가
+			// 없으므로 병렬 실행이 안전하고, 이 테스트 하나가 패키지 race
+			// 시간의 대부분(18 시나리오 × ~2초)을 차지했다.
+			t.Parallel()
 			result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: scenario, confirm: true})
 			if result.ExitCode == 0 || result.Receipt.Verdict != "fail" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 				t.Fatalf("scenario=%s result=%+v output=%s", scenario, result, result.Output)
@@ -480,6 +497,8 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 }
 
 func TestChildHostSmokeRepairsInstallerRawDigestDrift(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-raw-digest-drift", confirm: true})
 	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("raw restore repair failed: result=%+v output=%s", result, result.Output)
@@ -490,6 +509,8 @@ func TestChildHostSmokeRepairsInstallerRawDigestDrift(t *testing.T) {
 }
 
 func TestChildHostSmokeRecreatesMissingConfigAfterRestoreFailure(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-missing-file", confirm: true})
 	if result.ExitCode == 0 || result.Receipt.Verdict != "fail" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("missing-file recovery did not fail closed: result=%+v output=%s", result, result.Output)
@@ -500,6 +521,8 @@ func TestChildHostSmokeRecreatesMissingConfigAfterRestoreFailure(t *testing.T) {
 }
 
 func TestChildHostSmokeRejectsAuthorityAndConfirmationBeforeMutation(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	head := strings.Repeat("1", 40)
 	for _, fixture := range []childSmokeFixture{{confirm: false}, {confirm: true, localHead: strings.Repeat("2", 40)}, {confirm: true, remoteHead: strings.Repeat("2", 40)}, {scenario: "source-activation-mismatch", confirm: true}} {
 		result := runChildHostSmokeFixture(t, fixture)
@@ -513,6 +536,8 @@ func TestChildHostSmokeRejectsAuthorityAndConfirmationBeforeMutation(t *testing.
 }
 
 func TestChildHostSmokeForwardsManagedCommandAdoptionOnlyAfterConfirmation(t *testing.T) {
+	// 독립 TempDir 프로세스 트리: 병렬 실행 안전(race 스위트 병목 해소).
+	t.Parallel()
 	script, err := os.ReadFile(filepath.Join("..", "..", "..", "scripts", "verify-child-host-smoke.sh"))
 	if err != nil {
 		t.Fatal(err)
