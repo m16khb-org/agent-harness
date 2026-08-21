@@ -211,3 +211,36 @@ func validStateRoundtripPayload(t *testing.T, label string, seed int64) any {
 		return nil
 	}
 }
+
+// prune 계약의 나머지 실패 분기를 잠근다: confirm 응답이 삭제 대상을
+// 누락하는 경우와 list-after-prune에서 삭제된 키가 살아남는 경우.
+func TestValidateStateRoundtripPruneConfirmAndResidueFailures(t *testing.T) {
+	root := t.TempDir()
+	deps := stateRoundtripTestDeps(t, 789)
+	deps.run = func(_ string, label string, _ time.Duration, _ string, _ []string, command ...string) StepResult {
+		payload := validStateRoundtripPayload(t, label, 789)
+		if label == "state prune confirm" {
+			// DryRun이 그대로 true로 오면 confirm 계약 위반이다.
+			payload = statecontract.StatePruneResult{OK: true, Confirm: true, DeletedKeys: []string{}}
+		}
+		return stateRoundtripStep(t, label, command, payload)
+	}
+	confirmFailure := validateStateRoundtripWithDeps("bin", root, 789, deps)
+	if confirmFailure.OK || !strings.Contains(confirmFailure.Error, "state prune confirm did not delete old key") {
+		t.Fatalf("expected confirm contract failure, got %#v", confirmFailure)
+	}
+
+	deps = stateRoundtripTestDeps(t, 789)
+	deps.run = func(_ string, label string, _ time.Duration, _ string, _ []string, command ...string) StepResult {
+		payload := validStateRoundtripPayload(t, label, 789)
+		if label == "state list after prune" {
+			// 삭제된 키가 여전히 목록에 남는다.
+			payload = statecontract.StateListResult{OK: true, Keys: []string{"self-verify-789", "self-verify-789-old"}}
+		}
+		return stateRoundtripStep(t, label, command, payload)
+	}
+	residue := validateStateRoundtripWithDeps("bin", root, 789, deps)
+	if residue.OK || !strings.Contains(residue.Error, "state prune did not preserve fresh key and remove old key") {
+		t.Fatalf("expected prune residue failure, got %#v", residue)
+	}
+}
