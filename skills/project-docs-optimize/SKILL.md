@@ -44,6 +44,12 @@ sections) to `project-docs-update`, and missing-document setup to
 2. Move detail; do not summarize away commands, constraints, decisions,
    failure modes, or evidence.
 3. Give every topic one normative owner. Other documents link to that owner.
+   For standard engineering topics (architecture styles, DDD, SOLID, clean
+   code, error handling, OpenAPI/Swagger, testing practice), the
+   project-docs-bootstrap skill's `references/engineering-standards.md`
+   topic-to-doc map is the canonical ownership reference: preserve those
+   topics in their owning family modules and their cross-links instead of
+   dropping or genericizing them.
 4. Keep root indexes and detailed modules within the manifest line budgets.
 5. Preserve relative-link integrity in both directions.
 6. Do not edit generated OpenWiki pages.

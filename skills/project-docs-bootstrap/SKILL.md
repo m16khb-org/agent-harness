@@ -55,8 +55,11 @@ profile metadata.
 The agent enrichment pass fills from codebase evidence: actual architecture
 (entrypoints, boundaries, data flow, auth/error surfaces), actual operations
 (setup, env, build/test/lint/deploy, CI), actual conventions and testing
-guidance, and concrete cautions/ADRs. See `PROMPT.md` for the full fill
-targets per document.
+guidance, and concrete cautions/ADRs. Standard engineering topics (DDD, clean
+code, layered/hexagonal architecture, SOLID, OOP, testing, Swagger, exception
+handling, ...) are evaluated against that evidence using
+`references/engineering-standards.md`; only confirmed topics reach the docs.
+See `PROMPT.md` for the full fill targets per document.
 
 ## Workflow
 
@@ -85,7 +88,12 @@ targets per document.
    It reads repository evidence and updates `.agent-harness` docs through the
    MCP contract (`project_docs_route` → `project_docs_read` →
    `project_docs_revise` / `project_docs_append`) rather than blindly
-   accepting static template text.
+   accepting static template text. It also evaluates the engineering
+   standards catalog at `references/engineering-standards.md` in this skill
+   directory (layered/hexagonal/onion/clean architecture, DDD, SOLID, OOP,
+   clean code, error/exception handling, OpenAPI/Swagger, testing best
+   practices, and adjacent topics) and maps every evidence-confirmed topic
+   to its single owning document per the catalog's topic-to-doc map.
 
 5. Verify:
 

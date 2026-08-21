@@ -26,6 +26,9 @@ Turn the static bootstrap drafts into evidence-backed, repo-specific operating d
 - Existing `AGENTS.md` and `.agent-harness/*.md` files.
 - README, package/build config, CI files, and minimal relevant source files.
 - Static bootstrap drafts and detected signals.
+- The engineering standards catalog at `references/engineering-standards.md`
+  in the project-docs-bootstrap skill directory (resolve relative to that
+  skill directory, not the target repo).
 - MCP results from `project_docs_route`, `project_docs_read`, `project_docs_revise`, and `project_docs_append` when available.
 - Verification command output.
 
@@ -57,10 +60,32 @@ The agent enrichment pass must fill from codebase evidence:
 - `project_docs_append(kind=caution)` is for a solved problem, false case, or recurring risk.
 - `project_docs_append(kind=adr)` is for an architecture/process/API decision with rationale or rejected alternatives.
 
+### Engineering standards catalog
+
+Before enrichment, read `references/engineering-standards.md` in this
+skill directory. It catalogs standard development topics — layered /
+hexagonal / onion / clean architecture, DDD (strategic and tactical),
+SOLID, OOP and composition over inheritance, clean code, error and
+exception handling (including RFC 9457 problem details), OpenAPI/Swagger
+documentation, testing best practices (pyramid, test sizes, doubles,
+F.I.R.S.T., determinism), and adjacent topics (KISS/YAGNI/DRY, CQRS,
+12-factor, versioning, security, observability).
+
+Use it as a checklist, not as content to copy:
+
+- Evaluate every catalog topic against repository evidence.
+- Write only evidence-confirmed topics into docs, into the single owner
+  listed in the catalog's topic-to-doc map.
+- Adoption or deliberate rejection of an architectural style or major
+  practice is an `adr/` record (with rationale and alternatives).
+- Unconfirmed topics are omitted or marked `Unknown / not confirmed`.
+- Do not paste generic catalog prose into project docs; write the
+  repo-specific rule with the repo's own example.
+
 ### Do not invent
 
 - If a fact is not confirmed by source files, commands, or explicit user instruction, mark it as `Unknown / not confirmed` and add how to verify.
-- Do not copy generic framework advice into project docs unless this repo actually uses it.
+- Do not copy generic framework advice or catalog text into project docs unless this repo actually uses it.
 - Do not overwrite stronger local project docs with template text.
 - Do not update CAUTIONS or ADR for hypothetical issues; use them only for concrete false cases or decisions.
 - Do not edit `AGENTS.md` outside the behavioral top block and managed marker block unless explicitly requested.
@@ -68,8 +93,8 @@ The agent enrichment pass must fill from codebase evidence:
 ### Document-specific fill targets
 
 - `CONSTITUTION.md`: project-specific priority, safety, source-of-truth, session-start baseline.
-- `ARCHITECTURE.md`: current structure, boundaries, adopted architectural decisions, diagrams only if helpful.
-- `CONVENTIONS.md`: concrete coding conventions, SOLID/YAGNI/KISS/design-pattern good/bad cases observed in this repo.
+- `ARCHITECTURE.md`: current structure, boundaries, adopted architectural decisions, diagrams only if helpful. Name the architecture style actually observed (layered, hexagonal/ports-and-adapters, onion, clean architecture, modular monolith, microservices) and the DDD bounded contexts if they exist; cite the owning files.
+- `CONVENTIONS.md`: concrete coding conventions, SOLID/YAGNI/KISS/design-pattern good/bad cases observed in this repo, plus repo-confirmed clean-code, OOP/composition, and error-handling style rules from the standards catalog.
 - `TESTING.md`: commands and examples of well-structured vs poorly-structured tests for this repo.
 - `OPEN_API_SPEC.md`: only if API surfaces exist; otherwise keep framework-agnostic gate and mark API style as not confirmed.
 - `OPERATIONS.md`: install/run/build/deploy/env/local-dev details and smoke checks.
