@@ -5,13 +5,22 @@ import (
 	"strings"
 )
 
-func Build(files []string, diff, extraPrompt string) string {
+func Build(files []string, diff, extraPrompt, evidence string) string {
+	data := []prompt.PromptDataSection{
+		{Title: "Additional Project-Specific Instructions", Content: strings.TrimSpace(extraPrompt)},
+		{Title: "Files Under Review", Content: bulletLines(files)},
+		{Title: "Diff Content Under Review", Content: diff},
+	}
+	if strings.TrimSpace(evidence) != "" {
+		data = append(data, prompt.PromptDataSection{Title: "Business Logic Error Contract Evidence", Content: strings.TrimSpace(evidence)})
+	}
 	return prompt.BuildStructuredPrompt(prompt.StructuredPromptSpec{
 		Identity:  "You are a strict, framework-agnostic pre-commit reviewer for API documentation contract drift.",
 		Objective: "Review the provided diff/content for the listed files, then inspect the directly related endpoint/controller/handler, DTO/schema, service/usecase, and error-mapping code needed to understand the public API contract. Do not fail unrelated legacy debt outside the changed endpoint/DTO/API surface.",
 		Phases: []string{
 			"Scan the changed API surface and directly related public contract code.",
 			"Compare the documentation against the target project's existing framework and style.",
+			"Cross-check the Business Logic Error Contract Evidence against the documented responses.",
 			"Classify only introduced or exposed documentation omissions as blocking.",
 			"Return the final verdict using the required JSON schema.",
 		},
@@ -19,11 +28,13 @@ func Build(files []string, diff, extraPrompt string) string {
 			"Additional project-specific instructions, if any.",
 			"Files under review.",
 			"Diff/content under review.",
+			"Business logic error contract evidence, when extracted.",
 		},
 		Rules: []string{
 			"New or changed API endpoints, request/response schemas, DTOs, handlers, route methods, or OpenAPI specs must keep machine-readable API documentation complete enough for clients.",
 			"Apply the documentation style used by the target project and framework. Do not force NestJS decorators onto Go, Python, Java, OpenAPI YAML, or other stacks.",
 			"business logic errors that are part of the changed endpoint contract must appear in the OpenAPI/Swagger docs, including NotFound/404, Conflict/409, Forbidden/403, validation/400, auth/401, or equivalent domain errors when directly visible from the changed contract.",
+			"The Business Logic Error Contract Evidence section lists statically extracted throw sites, microservice hops, and exception-filter status mappings for the changed endpoints. Cross-check every documented response list against it: a reachable public error that the endpoint response documentation omits is a blocking finding, and a documented response that contradicts the evidence is also blocking.",
 			"Prefer clean Swagger output: concise operation summary, sectioned/consistent description, complete params, explicit request/response examples or schemas where the project convention supports them, and no misleading success-only documentation.",
 			"Framework evidence includes NestJS @ApiOperation/@ApiParam/@ApiHeader/@ApiProperty/@ApiPropertyOptional/@IsOptional, Go swaggo @Summary/@Description/@Param/@Success/@Failure/@Security, OpenAPI/Swagger specs with paths/parameters/requestBody/responses/schemas, and Spring/FastAPI equivalents.",
 			"Blocking omissions include missing operation docs, undocumented params, undocumented request/response shapes, required/optional drift, missing validation/auth/domain error responses, missing auth docs, or vague client-facing descriptions introduced by the change.",
@@ -39,13 +50,10 @@ func Build(files []string, diff, extraPrompt string) string {
 			"Every blocking finding cites a file and line when available.",
 			"The verdict ignores unrelated legacy documentation debt.",
 			"Business-logic public error contracts visible from the change were considered.",
+			"Every error type in the evidence section was cross-checked against the documented responses for the endpoint that reaches it.",
 			"The output is strict JSON with no prose or Markdown wrapper.",
 		},
-		Data: []prompt.PromptDataSection{
-			{Title: "Additional Project-Specific Instructions", Content: strings.TrimSpace(extraPrompt)},
-			{Title: "Files Under Review", Content: bulletLines(files)},
-			{Title: "Diff Content Under Review", Content: diff},
-		},
+		Data: data,
 	})
 }
 

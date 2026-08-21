@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 )
 
-func runHostAgentAPIDocReview(options apiDocReviewOptions, files []string, diff, extraPrompt string) (apiDocReviewResult, error) {
-	prompt := buildAPIDocReviewPrompt(files, diff, extraPrompt)
+func runHostAgentAPIDocReview(options apiDocReviewOptions, files []string, diff, extraPrompt, evidence string) (apiDocReviewResult, error) {
+	prompt := buildAPIDocReviewPrompt(files, diff, extraPrompt, evidence)
 	schema := apiDocReviewSchema()
 	if options.ResultFile == "" {
 		return apiDocReviewResult{

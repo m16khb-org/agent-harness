@@ -117,7 +117,11 @@ func runAPIDocReviewWithOptions(options apiDocReviewOptions) (apiDocReviewResult
 	if err != nil {
 		return apiDocReviewResult{OK: false, Verdict: "fail", Summary: err.Error(), Files: files}, err
 	}
-	review, err := runHostAgentAPIDocReview(options, files, diff, extraPrompt)
+	evidence := ""
+	if options.ResultFile == "" {
+		evidence = apiDocReviewEvidence(options.Repo, files)
+	}
+	review, err := runHostAgentAPIDocReview(options, files, diff, extraPrompt, evidence)
 	if err != nil {
 		return review, err
 	}

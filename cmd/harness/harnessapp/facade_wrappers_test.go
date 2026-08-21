@@ -279,7 +279,8 @@ func TestUpdateAndAPIDocFacadeWrappers(t *testing.T) {
 	}
 	_ = checkNestControllerStatic("user.controller.ts", "@Controller('users')\nexport class UserController {}")
 	_ = checkNestDTOStatic("dto.ts", "export class UserDto {}")
-	_ = buildAPIDocReviewPrompt([]string{"a.ts"}, "diff", "extra")
+	_ = buildAPIDocReviewPrompt([]string{"a.ts"}, "diff", "extra", "")
+	_ = apiDocReviewEvidence("/tmp", []string{"a.ts"})
 }
 
 func TestSelfWorkflowAndLLMFacadeWrappers(t *testing.T) {

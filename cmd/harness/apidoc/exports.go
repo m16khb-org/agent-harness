@@ -1,6 +1,10 @@
 package apidoc
 
-import "errors"
+import (
+	"errors"
+
+	"agent-harness/cmd/harness/apidoc/reviewfiles"
+)
 
 type (
 	CheckResult   = apiDocCheckResult
@@ -37,6 +41,10 @@ func RunStaticCheck(args []string) error {
 
 func RunStaticCheckWithOptions(options StaticOptions) (StaticResult, error) {
 	return runAPIDocStaticCheckWithOptions(options)
+}
+
+func Evidence(repo string, files []string) string {
+	return reviewfiles.Evidence(repo, files)
 }
 
 func PrintReview(result ReviewResult) {

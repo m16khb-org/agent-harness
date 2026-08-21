@@ -10,8 +10,12 @@ func checkNestDTOStatic(file, text string) []apiDocStaticViolation {
 	return CheckNestDTOStatic(file, text)
 }
 
-func buildAPIDocReviewPrompt(files []string, diff, extraPrompt string) string {
-	return BuildReviewPrompt(files, diff, extraPrompt)
+func apiDocReviewEvidence(repo string, files []string) string {
+	return Evidence(repo, files)
+}
+
+func buildAPIDocReviewPrompt(files []string, diff, extraPrompt, evidence string) string {
+	return BuildReviewPrompt(files, diff, extraPrompt, evidence)
 }
 
 func apiDocReviewSchema() map[string]any {
