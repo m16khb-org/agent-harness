@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/daemoncli/daemonpaths"
+	"agent-harness/internal/domain/daemonlog"
 )
 
 const (
@@ -207,7 +208,7 @@ func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, dep
 			if deps.wrapConn != nil {
 				conn = deps.wrapConn(conn)
 			}
-			if err := deps.serveConnection(conn, logFile); err != nil {
+			if err := deps.serveConnection(conn, logFile); err != nil && !daemonlog.IsRoutineShutdownError(err) {
 				fmt.Fprintf(logFile, "%s connection error: %v\n", deps.now().Format(time.RFC3339), err)
 			}
 		}(conn)

@@ -31,14 +31,33 @@ func initSDKServerWithDiagnostics(deps MCPDependencies, diagnostics io.Writer) *
 	return server
 }
 
+// initSDKServerWithLogger는 진단 writer 대신 로거를 직접 받는 변형이다.
+// 데몬 경로가 세션 루틴 이벤트를 DEBUG로 강등하는 필터 로거를 넘긴다.
+func initSDKServerWithLogger(deps MCPDependencies, logger *slog.Logger) *mcp.Server {
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	server := mcp.NewServer(
+		&mcp.Implementation{Name: "agent_harness", Version: Version},
+		sdkServerOptionsWithLogger(logger),
+	)
+	registerAllTools(server, deps)
+	registerAllResources(server)
+	return server
+}
+
 func sdkServerOptions() *mcp.ServerOptions {
 	return sdkServerOptionsWithDiagnostics(io.Discard)
 }
 
 func sdkServerOptionsWithDiagnostics(diagnostics io.Writer) *mcp.ServerOptions {
+	return sdkServerOptionsWithLogger(slog.New(slog.NewTextHandler(diagnostics, nil)))
+}
+
+func sdkServerOptionsWithLogger(logger *slog.Logger) *mcp.ServerOptions {
 	return &mcp.ServerOptions{
 		Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. External wiki or knowledge-base workflows belong to their own separately installed servers, not agent-harness.",
-		Logger:       slog.New(slog.NewTextHandler(diagnostics, nil)),
+		Logger:       logger,
 		Capabilities: &mcp.ServerCapabilities{},
 	}
 }
