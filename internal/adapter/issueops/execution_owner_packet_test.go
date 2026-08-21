@@ -168,7 +168,7 @@ func TestExecutionOwnerPromptSeparatesSealedClaimFromRecoveryResume(t *testing.T
 	prompt := executionOwnerPromptFixture(t, record, req)
 	for _, required := range []string{
 		"아래 command가 `none`이 아니면 실행 가능한 명령이 아니라 sealed claim template이다",
-		"placeholder를 리터럴 receipt로 모두 채운 뒤 정확히 한 번 실행한다",
+		"placeholder를 그 벡터의 리터럴 값으로 모두 채운 뒤 정확히 한 번 실행한다",
 		"JSON envelope나 tool display를 hash하지 않는다",
 		"`execution resume`은 coordinator 전용 recovery",
 		"dispatched owner는 실행하지 않는다",
