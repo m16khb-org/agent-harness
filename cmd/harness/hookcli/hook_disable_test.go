@@ -2,9 +2,12 @@ package hookcli
 
 import (
 	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
+	"errors"
+	"flag"
 	"io"
 	"os"
 	"strings"
+
 	"testing"
 )
 
@@ -113,5 +116,17 @@ func TestHelpRequestsAreNotHookMetrics(t *testing.T) {
 	})
 	if len(recorded) == 0 {
 		t.Fatal("real hook events must still be recorded")
+	}
+}
+
+// 최상위 도움말 진입(hook --help/-h/help)은 실패가 아니다: ErrHelp를 반환해
+// failures의 기존 ErrHelp 스킵과 metric 스킵이 그대로 적용된다(2026-08-21
+// dogfood에서 "--help"가 hook 이름으로 기록되던 노이즈 수정).
+func TestTopLevelHelpReturnsErrHelp(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	for _, entry := range []string{"--help", "-h", "help"} {
+		if err := runHook([]string{entry}); !errors.Is(err, flag.ErrHelp) {
+			t.Fatalf("%s must return ErrHelp, got %v", entry, err)
+		}
 	}
 }

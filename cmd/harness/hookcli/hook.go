@@ -123,6 +123,12 @@ func runHookDispatch(args []string) error {
 		hookUsage()
 		return fmt.Errorf("missing hook subcommand")
 	}
+	// 최상위 도움말 진입은 실패가 아니다 — usage를 인쇄하고 ErrHelp를
+	// 반환해 failures/metric의 ErrHelp 스킵과 같은 기준으로 처리한다.
+	if args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		hookUsage()
+		return flag.ErrHelp
+	}
 	switch args[0] {
 	case "user-prompt":
 		return runHookUserPrompt(args[1:])
