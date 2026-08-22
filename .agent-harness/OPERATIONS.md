@@ -56,6 +56,11 @@ instead of duplicating their content here or in a guide.
    evidence is recorded from the deciding output tail, and unmet gates in a
    cycle worktree block strict PR readiness with `gates_incomplete:<file>`.
    See [operations/cli-and-mcp.md](operations/cli-and-mcp.md).
+6. Cross-session channels: `agent-harness channel send/recv` gives Codex,
+   Claude Code, and Omo sessions a durable shared mailbox over harness state —
+   the transport for front/server-style multi-session coordination.
+   `recv --wait --since <id>` is the blocking consumer; MCP exposes
+   `channel_send`/`channel_recv` with the same contract.
 
 ## Invariants
 

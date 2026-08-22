@@ -32,6 +32,7 @@ and supersession rules live in [adr/README.md](adr/README.md).
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-08-22 | Cross-session channel capability | [record](adr/decisions/2026-08-22-cross-session-channel.md) |
 | 2026-08-22 | Task gate ledger (unlazy-compatible gates capability) | [record](adr/decisions/2026-08-22-task-gate-ledger.md) |
 | 2026-08-10 | Default hooks are thin static context only | [record](adr/decisions/2026-08-10-default-hooks-thin-static-context.md) |
 | 2026-08-08 | Dependency ratchet counts capability boundaries only | [record](adr/decisions/2026-08-08-dependency-ratchet-capability-boundary.md) |

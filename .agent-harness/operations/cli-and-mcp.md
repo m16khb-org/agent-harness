@@ -93,6 +93,23 @@ all met or abandoned, `1` unmet remain, `2` usage error.
 MCP exposes the same operations as `gates_init`, `gates_check`, `gates_status`,
 `gates_report`, and `gates_abandon` sharing one contract DTO (schema version 1).
 
+## Cross-Session Channels
+
+```bash
+agent-harness channel send --channel NAME --from SESSION --message TEXT [--json]
+agent-harness channel recv --channel NAME [--since MSG_ID] [--wait] [--timeout-seconds N] [--limit N] [--json]
+```
+
+`channel` is a durable shared mailbox over harness state: Codex, Claude Code,
+and Omo sessions sharing the same state exchange messages through it. The
+front/server coordination pattern works as: the server session `send`s the API
+contract, the front session `recv --wait` blocks for it, and both sides keep a
+`--since <msg-id>` cursor from the last seen message to continue the dialog.
+Messages are append-only with nanosecond-ordered IDs, so key order is arrival
+order. `recv --wait` returns exit 0 with messages or exit 1 on timeout
+(`timed_out: true` in JSON). Channels are a trust boundary only between
+sessions sharing the same harness state — no cross-machine semantics.
+
 IssueOps integration is opt-in through file presence: when a cycle's worktree
 contains `GATES.md` or `gates/*.md`, unmet gates add `gates_incomplete:<file>`
 to strict PR readiness and block entering the `pr` phase until the ledger is

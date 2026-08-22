@@ -130,7 +130,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `gates`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `gates`, `channel`, `self-verify`, `self-augment`, `mcp` 제공 |
 | `internal/contract/` | CLI, MCP, state가 공유하는 versioned DTO와 response contract |
 | `internal/domain/` | filesystem, process, DB를 모르는 순수 규칙, reducer, classifier |
 | `internal/application/` | domain과 좁은 port를 조합하는 capability use case |
