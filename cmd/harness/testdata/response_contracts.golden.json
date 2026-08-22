@@ -820,6 +820,13 @@
           "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
+          "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "fluent-korean",
+          "path": "$HARNESS_ROOT/skills/fluent-korean"
+        },
+        {
           "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5192,6 +5199,7 @@
           "codd",
           "dijkstra",
           "engelbart",
+          "fluent-korean",
           "gitlab-usecase",
           "hopper",
           "issue-branch-worktree",
@@ -7115,6 +7123,13 @@
                 "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
+                "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "fluent-korean",
+                "path": "$HARNESS_ROOT/skills/fluent-korean"
+              },
+              {
                 "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8195,6 +8210,7 @@
                 "codd",
                 "dijkstra",
                 "engelbart",
+                "fluent-korean",
                 "gitlab-usecase",
                 "hopper",
                 "issue-branch-worktree",

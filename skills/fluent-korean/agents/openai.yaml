@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fluent Korean"
+  short_description: "Write clear and natural Korean"
+  default_prompt: "Use $fluent-korean to write, revise, or review Korean text with clear sentence structure and natural phrasing."
