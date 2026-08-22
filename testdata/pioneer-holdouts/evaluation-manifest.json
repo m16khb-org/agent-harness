@@ -7,7 +7,7 @@
   "evaluation_method": "isolated fresh-context child; case fixture only; no answer content committed",
   "provenance": {
     "host": "omo",
-    "execution_count": 24,
+    "execution_count": 25,
     "case_count": 36,
     "receipt_algorithm": "sha256",
     "receipt_source": "task_output status text",
@@ -32,21 +32,6 @@
       "artifact_kind": "bounded_final_response_receipt",
       "evidence_path": "evidence-records/berners-lee.json",
       "evidence_sha256": "772c00d3a15e758b0a00d0b490aadc2863e8176e3536796980ab664a46a5c2f0"
-    },
-    {
-      "task_id": "st_01a0027b",
-      "axes": [
-        "primary"
-      ],
-      "status": "completed",
-      "host": "omo",
-      "model": "GLM-5.2 (reasoning xhigh, variant max)",
-      "receipt_sha256": "5f71d7b7bb1550e3827875700ed3f05e3a34367d543a608064aaa1ad380b7546",
-      "receipt_bytes": 2886,
-      "execution_method": "fresh_context_child_task",
-      "artifact_kind": "bounded_final_response_receipt",
-      "evidence_path": "evidence-records/boehm.json",
-      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04"
     },
     {
       "task_id": "st_01a0027c",
@@ -217,8 +202,7 @@
     {
       "task_id": "st_01a002c7",
       "axes": [
-        "boundary",
-        "operational"
+        "boundary"
       ],
       "status": "completed",
       "host": "omo",
@@ -228,7 +212,7 @@
       "execution_method": "fresh_context_child_task",
       "artifact_kind": "bounded_final_response_receipt",
       "evidence_path": "evidence-records/boehm.json",
-      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04"
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22"
     },
     {
       "task_id": "st_01a002c8",
@@ -389,6 +373,36 @@
       "artifact_kind": "bounded_final_response_receipt",
       "evidence_path": "evidence-records/von-neumann.json",
       "evidence_sha256": "2dcd2f1c22a9c59ae37f818e7fb4f8829e56e3bf65d0e56e0460cac70d343fc0"
+    },
+    {
+      "task_id": "st_01a02794",
+      "axes": [
+        "primary"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.3",
+      "receipt_sha256": "5ea5c94db4d401fcad8ecbdb79e259aabfb88afa3973a83682ef9975b80b9269",
+      "receipt_bytes": 4271,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22"
+    },
+    {
+      "task_id": "st_01a02795",
+      "axes": [
+        "operational"
+      ],
+      "status": "completed",
+      "host": "omo",
+      "model": "GLM-5.3",
+      "receipt_sha256": "bfd1b1e7ec03fa2578e70b6567018b16d64786479cc91d19a14ec8fbaa59d4dc",
+      "receipt_bytes": 4273,
+      "execution_method": "fresh_context_child_task",
+      "artifact_kind": "bounded_final_response_receipt",
+      "evidence_path": "evidence-records/boehm.json",
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22"
     }
   ],
   "cases": [
@@ -414,12 +428,12 @@
       "axis": "primary",
       "case_path": "boehm/TASK.md",
       "case_sha256": "356b2f65c428e04f35f11c292cf974ed25eed2290b6f34f67b5721a413f0f90a",
-      "task_id": "st_01a0027b",
-      "verdict": "blocked",
-      "blocked_reason": "Kordoc MCP and source screenshot were unavailable",
+      "task_id": "st_01a02794",
+      "verdict": "pass",
+      "blocked_reason": null,
       "hidden_holdout": false,
       "evidence_path": "evidence-records/boehm.json",
-      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22",
       "deterministic_assertions": [
         "capability_probe",
         "blocked_evidence_inventory"
@@ -623,7 +637,7 @@
       "verdict": "pass",
       "hidden_holdout": false,
       "evidence_path": "evidence-records/boehm.json",
-      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22",
       "deterministic_assertions": [
         "correct_refusal",
         "not_visible_claim"
@@ -823,12 +837,12 @@
       "axis": "operational",
       "case_path": "boehm/OPERATIONAL.md",
       "case_sha256": "f4c1bba6c1b42e410d55d4a2d5fb4a1b5aa584e0f9aecba9b131e15c4a43a3db",
-      "task_id": "st_01a002c7",
-      "verdict": "blocked",
-      "blocked_reason": "Kordoc document surface and source document were unavailable",
+      "task_id": "st_01a02795",
+      "verdict": "pass",
+      "blocked_reason": null,
       "hidden_holdout": false,
       "evidence_path": "evidence-records/boehm.json",
-      "evidence_sha256": "ac58296967065124dfd00515bf4ee843feb7f7cee14e7cb2210afba97bfa8b04",
+      "evidence_sha256": "637091f99bda5e06203a192cfb01c6e78aa79cbe2c9bd12a17450ecd634e4c22",
       "deterministic_assertions": [
         "conflict_matrix",
         "blocked_source_surface"
