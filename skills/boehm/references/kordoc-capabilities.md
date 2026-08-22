@@ -1,8 +1,33 @@
 # Kordoc Capability Contract
 
-Re-probe the current host before every analysis. This file records the verified
-2026-07-23 local snapshot and the decision rules; it is not permission to assume
+Re-probe the current host before every analysis. This file records dated verified
+local snapshots and the decision rules; it is not permission to assume
 future versions behave the same way.
+
+## 2026-08-22 — kordoc@4.9.0 (host: omo, macOS arm64, node 24.18)
+
+- Registered as a user-scope MCP server on all three hosts (omo ~/.omo/mcp.json,
+  claude `claude mcp add`, codex `codex mcp add`) via `/opt/homebrew/bin/kordoc mcp`.
+- stdio MCP handshake verified: initialize returns
+  `serverInfo {"name":"kordoc","version":"4.9.0"}`; `tools/list` exposes 14
+  tools including `parse_document`.
+- **Direct image OCR input WORKS**: `kordoc file.png` returns Korean text — the
+  2026-07-23 4.2.7 ".png rejected by detect_format" row no longer applies.
+- OCR models verified offline via `kordoc check-ocr-models --status-only`:
+  PP-OCRv5 mobile det / korean rec / korean dict all `exists+verified`. First OCR
+  call pre-warms models (~40s); subsequent calls are fast and byte-stable
+  (repeatable on identical input).
+- Native PDF text-layer parse (`kordoc --no-header-footer file.pdf`) preserves
+  Korean headings, body text, and release tables; line-wrap artifacts such as
+  "지원한/다." are extraction artifacts, not content.
+- Fresh-context child tasks do NOT inherit host MCP servers: probe via the CLI
+  (`kordoc --version`) plus a direct stdio handshake (the initialize probe
+  above) to verify the backend identity, and keep OCR functionality separate
+  from backend identity in capability reports.
+
+## 2026-07-23 — kordoc@4.2.7 (host: claude)
+
+Historical snapshot; superseded for image input by 4.9.0 above.
 
 ## Expected Tool Surface
 
