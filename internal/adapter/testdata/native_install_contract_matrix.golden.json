@@ -168,14 +168,14 @@
               "kind": "omo_project_mcp_config",
               "path": "$ROOT/.omo/mcp.json",
               "written": true,
-              "content_sha256": "f55bf91a41e01b18cdc3e366a30942be4009a4b66754648c525a3ec8ab39a3d7",
+              "content_sha256": "ca7adf07496adc866e5fcd1457b450d32ad1a1b0a44aa1e2b1c535a988b5cee0",
               "content": ""
             },
             {
               "kind": "omo_project_mcp_template",
               "path": "$ROOT/configs/omo/mcp.json",
               "written": true,
-              "content_sha256": "f55bf91a41e01b18cdc3e366a30942be4009a4b66754648c525a3ec8ab39a3d7",
+              "content_sha256": "ca7adf07496adc866e5fcd1457b450d32ad1a1b0a44aa1e2b1c535a988b5cee0",
               "content": ""
             },
             {
@@ -189,7 +189,7 @@
               "kind": "omo_user_mcp_config",
               "path": "$HOME/.omo/mcp.json",
               "written": true,
-              "content_sha256": "e7cb010eab9a17a7d62368ed90a0876cd04fd004c68ef9b7406295f29240e635",
+              "content_sha256": "7bbd6ffbd276d80a1ade1c722208a4a3f3c9c27537e5ee330fa8c17a1aecb9b7",
               "content": ""
             }
           ],
@@ -388,7 +388,7 @@
               "kind": "omo_project_mcp_template",
               "path": "$ROOT/configs/omo/mcp.json",
               "written": true,
-              "content_sha256": "f55bf91a41e01b18cdc3e366a30942be4009a4b66754648c525a3ec8ab39a3d7",
+              "content_sha256": "ca7adf07496adc866e5fcd1457b450d32ad1a1b0a44aa1e2b1c535a988b5cee0",
               "content": ""
             },
             {
@@ -402,7 +402,7 @@
               "kind": "omo_user_mcp_config",
               "path": "$HOME/.omo/mcp.json",
               "written": true,
-              "content_sha256": "e7cb010eab9a17a7d62368ed90a0876cd04fd004c68ef9b7406295f29240e635",
+              "content_sha256": "7bbd6ffbd276d80a1ade1c722208a4a3f3c9c27537e5ee330fa8c17a1aecb9b7",
               "content": ""
             }
           ],

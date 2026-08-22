@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
+	"agent-harness/cmd/harness/gatescli"
 	"agent-harness/cmd/harness/installcli"
 	"agent-harness/cmd/harness/loopcli"
 	"agent-harness/cmd/harness/projectcli"
@@ -48,6 +49,7 @@ func wireBasicCLIDeps() {
 	configureInstallReaders()
 	configureProjectDocReaders()
 	configurePolicyAndGitObservers()
+	configureGatesGate()
 	configureAdapterStateAccess()
 	configureWorkerJobs()
 	configureRepoPathResolvers()
@@ -237,6 +239,10 @@ func runWorker(args []string) error {
 
 func runLoop(args []string) error {
 	return loopcli.Run(loopDependencies(), args)
+}
+
+func runGates(args []string) error {
+	return gatescli.Run(gatesDependencies(), args)
 }
 
 func runWebFetch(args []string) error {

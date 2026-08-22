@@ -38,6 +38,22 @@ func RunReadOnlyCommand(req policycontract.CommandPolicyRequest) policycontract.
 	req.WriteAllowed = false
 	req.NetworkAllowed = false
 	req.ShellAllowed = false
+	return runCommand(req, "read_only")
+}
+
+// RunCommand는 policy 평가를 통과한 argv 명령을 요청 권한(read/write, network)
+// 그대로 실행한다. shell interpreter는 절대 허용하지 않는다 — 호출자가 이미
+// argv로 토큰화했으므로 shell 해석이 불필요하고, 허용하면 문자열 삽입 경로가
+// 생긴다. gates CHECK 실행이 이 경로를 쓴다.
+func RunCommand(req policycontract.CommandPolicyRequest) policycontract.CommandRunResult {
+	req.ShellAllowed = false
+	if req.WriteAllowed || req.NetworkAllowed {
+		return runCommand(req, "privileged")
+	}
+	return runCommand(req, "read_only")
+}
+
+func runCommand(req policycontract.CommandPolicyRequest, tier string) policycontract.CommandRunResult {
 	started := time.Now()
 	policy := EvaluateCommandPolicy(req)
 	result := policycontract.CommandRunResult{
@@ -45,7 +61,7 @@ func RunReadOnlyCommand(req policycontract.CommandPolicyRequest) policycontract.
 		Executed:  false,
 		ExitCode:  0,
 		StartedAt: started.UTC().Format(time.RFC3339Nano),
-		ReadOnly:  true,
+		ReadOnly:  tier == "read_only",
 		Policy:    policy,
 	}
 	if !policy.Allowed {

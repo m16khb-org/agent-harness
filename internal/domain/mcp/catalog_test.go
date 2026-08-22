@@ -70,6 +70,7 @@ func TestDispatchMapCoversAllCatalogTools(t *testing.T) {
 		DispatchPolicyState:     true,
 		DispatchIssueOps:        true,
 		DispatchLoop:            true,
+		DispatchGates:           true,
 		DispatchAssistantWorker: true,
 		DispatchSelfLoop:        true,
 	}
@@ -89,7 +90,7 @@ func TestDispatchMapHasNoUnknownGroup(t *testing.T) {
 	dm := DispatchMap()
 	valid := map[DispatchGroup]bool{
 		DispatchProject: true, DispatchPolicyState: true, DispatchIssueOps: true, DispatchLoop: true,
-		DispatchAssistantWorker: true, DispatchSelfLoop: true,
+		DispatchGates: true, DispatchAssistantWorker: true, DispatchSelfLoop: true,
 	}
 	for name, group := range dm {
 		if !valid[group] {

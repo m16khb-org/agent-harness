@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	gatesadapter "agent-harness/internal/adapter/gates"
 	"agent-harness/internal/adapter/inspect"
 	"agent-harness/internal/adapter/looprun"
 	"agent-harness/internal/adapter/preflight"
@@ -29,6 +30,9 @@ func configureMCPCLI() {
 	mcpcli.LoopRecordAttempt = looprun.RecordAttempt
 	mcpcli.LoopStop = looprun.Stop
 	mcpcli.LoopStatus = looprun.Status
+	mcpcli.GatesCheck = gatesadapter.Check
+	mcpcli.GatesInit = gatesadapter.Init
+	mcpcli.GatesAbandon = gatesadapter.Abandon
 	mcpcli.GitPreflight = preflight.GitPreflight
 	mcpcli.ListSkills = inspect.ListSkills
 	mcpcli.ReadHarnessFile = readHarnessFile

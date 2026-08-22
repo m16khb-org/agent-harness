@@ -8,6 +8,7 @@ import (
 	statusclideps "agent-harness/cmd/harness/statuscli"
 	preflightfuzzdeps "agent-harness/cmd/harness/validationcli/preflightfuzz"
 	auditdeps "agent-harness/internal/adapter/audit"
+	gatesdeps "agent-harness/internal/adapter/gates"
 	gitworktreedeps "agent-harness/internal/adapter/gitworktree"
 	issueopsdeps "agent-harness/internal/adapter/issueops"
 	cleanupstatusdeps "agent-harness/internal/adapter/issueops/cleanupstatus"
@@ -26,6 +27,8 @@ func configurePolicyAndGitObservers() {
 	auditdeps.EvaluateCommandPolicy = policyadapter.EvaluateCommandPolicy
 	cleanupstatusdeps.GitCmd = preflightadapter.GitCmd
 	cleanupstatusdeps.GitOut = preflightadapter.GitOut
+	gatesdeps.EvaluateCommandPolicy = policyadapter.EvaluateCommandPolicy
+	gatesdeps.RunCommand = policyadapter.RunCommand
 	gitworktreedeps.GitCmd = preflightadapter.GitCmd
 	gitworktreedeps.GitOut = preflightadapter.GitOut
 	implementationdeps.GitCmd = preflightadapter.GitCmd

@@ -765,6 +765,149 @@
     "name": "loop_stop"
   },
   {
+    "description": "Evaluate unlazy-compatible task gate ledgers (GATES.md, gates/*.md). Runs CHECK commands for unmet gates through the command policy engine (workspace boundary, env allowlist, timeout, audit), matches EXPECT, flips checkboxes, and records evidence. Complete means zero unmet gates; ABANDON gates count as resolved.",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding GATES.md/gates/*.md and the CHECK working directory. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Environment variable allowlist for CHECK commands. Defaults to HOME,PATH.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Allow network access for CHECK execution. Default false.",
+          "type": "boolean"
+        },
+        "timeout_seconds": {
+          "description": "Per-CHECK timeout in seconds. Defaults to 120.",
+          "type": "integer"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary for CHECK execution. Defaults to cwd.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Allow workspace-write commands for CHECK execution. Default true.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_check"
+  },
+  {
+    "description": "Report gate ledger state without executing anything or modifying files. Flags unchecked gates and checked-but-EVIDENCE-pending gates (a checkbox is a claim; evidence is the proof).",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding GATES.md/gates/*.md. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace_root": {
+          "description": "Workspace root. Defaults to cwd.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_status"
+  },
+  {
+    "description": "Render the final-report ledger paste: per-file N-of-N gate counts, per-gate state, evidence, and abandon reasons. Re-measures counts at report time instead of trusting memory.",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding GATES.md/gates/*.md. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace_root": {
+          "description": "Workspace root. Defaults to cwd.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_report"
+  },
+  {
+    "description": "Record an honest ABANDON line for one gate in a ledger file. Abandoned gates count as resolved but stay visible in reports; use instead of silently dropping a gate.",
+    "inputSchema": {
+      "properties": {
+        "file": {
+          "description": "Gate ledger file. Defaults to GATES.md.",
+          "type": "string"
+        },
+        "gate_id": {
+          "description": "Gate id to abandon, for example G2.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Honest reason the gate cannot be met.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "gates_abandon"
+  },
+  {
+    "description": "Scaffold a new gate ledger file. Refuses to overwrite an existing file. Each gate spec looks like \"G1: outcome | CHECK: command | EXPECT: expectation\".",
+    "inputSchema": {
+      "properties": {
+        "file": {
+          "description": "Gate ledger file to create. Defaults to GATES.md.",
+          "type": "string"
+        },
+        "gates": {
+          "description": "Gate specs: \"ID: outcome | CHECK: command | EXPECT: expectation\".",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "description": "Gate scope name for the heading.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gates"
+      ],
+      "type": "object"
+    },
+    "name": "gates_init"
+  },
+  {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
     "inputSchema": {
       "properties": {},

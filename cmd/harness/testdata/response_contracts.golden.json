@@ -230,6 +230,10 @@
           "name": "loop"
         },
         {
+          "description": "evaluate unlazy-compatible task gate ledgers with policy-gated checks",
+          "name": "gates"
+        },
+        {
           "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
           "name": "web-fetch"
         },
@@ -250,7 +254,7 @@
           "name": "version"
         }
       ],
-      "hash": "b1406ff04dff224f46fc99843b0d792e01717e315cd51b3b82ff8acb34e457d1",
+      "hash": "77ec8ca3eb715735d5065368337aa1caa38ea1032083c10dcbec2247ab53608c",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -264,6 +268,11 @@
         "contract_schema",
         "daemon_status",
         "docs_index",
+        "gates_abandon",
+        "gates_check",
+        "gates_init",
+        "gates_report",
+        "gates_status",
         "harness_inspect",
         "issueops_execution",
         "lint_diagnose",
@@ -6489,6 +6498,10 @@
                 "name": "loop"
               },
               {
+                "description": "evaluate unlazy-compatible task gate ledgers with policy-gated checks",
+                "name": "gates"
+              },
+              {
                 "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
                 "name": "web-fetch"
               },
@@ -6509,7 +6522,7 @@
                 "name": "version"
               }
             ],
-            "hash": "b1406ff04dff224f46fc99843b0d792e01717e315cd51b3b82ff8acb34e457d1",
+            "hash": "77ec8ca3eb715735d5065368337aa1caa38ea1032083c10dcbec2247ab53608c",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6523,6 +6536,11 @@
               "contract_schema",
               "daemon_status",
               "docs_index",
+              "gates_abandon",
+              "gates_check",
+              "gates_init",
+              "gates_report",
+              "gates_status",
               "harness_inspect",
               "issueops_execution",
               "lint_diagnose",

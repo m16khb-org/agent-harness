@@ -1,6 +1,7 @@
 package mcpcli
 
 import (
+	gatescontract "agent-harness/internal/contract/gates"
 	inspectcontract "agent-harness/internal/contract/inspect"
 	loopruncontract "agent-harness/internal/contract/looprun"
 	preflightcontract "agent-harness/internal/contract/preflight"
@@ -125,11 +126,19 @@ var (
 	LoopStatus        func(loopID string) (loopruncontract.StatusResult, error)
 )
 
+// gates ledger 연산도 composition root가 설치한다. policy 게이트 실행
+// (gates_check)은 주입된 adapter 함수를 통해서만 일어난다.
+var (
+	GatesCheck   func(gatescontract.CheckRequest) (gatescontract.CheckResult, error)
+	GatesInit    func(gatescontract.InitRequest) (gatescontract.InitResult, error)
+	GatesAbandon func(gatescontract.AbandonRequest) (gatescontract.AbandonResult, error)
+)
+
 // project docs 연산은 composition root가 설치한다.
 var (
-	RouteProjectDocs        func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
-	ReadProjectDoc          func(repoRoot, relPath string) (projectdocscontract.ProjectDocsReadResult, error)
-	ReviseProjectDoc        func(projectdocscontract.ProjectDocsReviseRequest) (projectdocscontract.ProjectDocsReviseResult, error)
+	RouteProjectDocs       func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
+	ReadProjectDoc         func(repoRoot, relPath string) (projectdocscontract.ProjectDocsReadResult, error)
+	ReviseProjectDoc       func(projectdocscontract.ProjectDocsReviseRequest) (projectdocscontract.ProjectDocsReviseResult, error)
 	AppendProjectDocsEntry func(projectdocscontract.ProjectDocsAppendRequest) (projectdocscontract.ProjectDocsAppendResult, error)
 )
 

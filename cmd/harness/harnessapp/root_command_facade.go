@@ -2,9 +2,11 @@ package harnessapp
 
 import (
 	policycontract "agent-harness/internal/contract/policy"
+	"errors"
 	"os"
 	"sync"
 
+	"agent-harness/cmd/harness/gatescli"
 	"agent-harness/cmd/harness/rootcmd"
 	guard "agent-harness/internal/adapter/guard"
 )
@@ -59,6 +61,7 @@ func rootCommand() rootcmd.Command {
 			"bootstrap":    runBootstrap,
 			"worker":       runWorker,
 			"loop":         runLoop,
+			"gates":        runGates,
 			"web-fetch":    runWebFetch,
 			"daemon":       runDaemon,
 			"mcp":          runMCPCommand,
@@ -76,6 +79,10 @@ func rootSubcommandErrorExitCode(name string, err error) int {
 	case "guard":
 		if guard.IsGuardBlocked(err) {
 			return 3
+		}
+	case "gates":
+		if _, ok := errors.AsType[gatescli.UsageError](err); ok {
+			return 2
 		}
 	}
 	return 1

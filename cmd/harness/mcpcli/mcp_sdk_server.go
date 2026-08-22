@@ -153,6 +153,7 @@ var handlerGroupLookup = map[mcpadapter.DispatchGroup]func(MCPToolCall) MCPToolO
 	mcpadapter.DispatchPolicyState:     handlePolicyStateMCPToolCall,
 	mcpadapter.DispatchIssueOps:        handleIssueOpsMCPToolCall,
 	mcpadapter.DispatchLoop:            handleLoopMCPToolCall,
+	mcpadapter.DispatchGates:           handleGatesMCPToolCall,
 	mcpadapter.DispatchAssistantWorker: handleAssistantWorkerMCPToolCall,
 	mcpadapter.DispatchSelfLoop:        handleSelfLoopMCPToolCall,
 }

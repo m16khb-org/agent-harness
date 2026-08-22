@@ -35,6 +35,7 @@ func Commands() []Command {
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
 		{Name: "loop", Description: "track durable verify-until-done loop contracts"},
+		{Name: "gates", Description: "evaluate unlazy-compatible task gate ledgers with policy-gated checks"},
 		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
@@ -90,6 +91,11 @@ Usage:
   agent-harness loop record-attempt --id ID --verdict pass|fail --evidence TEXT [--evidence TEXT...] [--json]
   agent-harness loop status (--id ID | --repo PATH --name NAME) [--json]
   agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
+  agent-harness gates init [--file PATH] --scope TEXT --gate "ID: outcome | CHECK: cmd | EXPECT: expect" [--gate SPEC...] [--json]
+  agent-harness gates check [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--timeout-seconds N] [--env NAME,NAME] [--write] [--network] [--json]
+  agent-harness gates status [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
+  agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
+  agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
