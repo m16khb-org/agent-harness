@@ -2,7 +2,7 @@ package harnessapp
 
 import (
 	"agent-harness/cmd/harness/issueopscli"
-	"agent-harness/internal/adapter/issueops/loopgate"
+	"agent-harness/internal/adapter/issueops/gatesgate"
 	"agent-harness/internal/adapter/issueops/orphancleanup"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	orphancontract "agent-harness/internal/contract/issueopsorphancleanup"
@@ -22,8 +22,8 @@ func configureIssueOpsOrphanAndLoopGate() {
 	})
 	issueopscli.ConfigureLoopGate(issueopscli.LoopGateDeps{
 		AdvancePhaseWithActor: func(stateRoot, id, to string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
-			return loopgate.AdvancePhaseWithActor(stateRoot, id, to, actor)
+			return gatesgate.AdvancePhaseWithActor(stateRoot, id, to, actor)
 		},
-		StrictPRReadinessWithState: loopgate.StrictPRReadinessWithState,
+		StrictPRReadinessWithState: gatesgate.StrictPRReadinessWithState,
 	})
 }
