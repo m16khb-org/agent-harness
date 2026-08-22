@@ -67,6 +67,39 @@ agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
 
 `loop` records a durable verify-until-done contract. `start` stores `verify_argv` but never executes it; `record-attempt` requires evidence; `stop --success` requires the latest attempt to be `pass`. Same-repo active or exhausted loops block strict PR readiness with `loop_incomplete:<loop-id>`.
 
+## Task Gate Ledgers
+
+```bash
+agent-harness gates init [--file PATH] --scope TEXT --gate "G1: outcome | CHECK: cmd | EXPECT: expect" [--gate SPEC...] [--json]
+agent-harness gates check [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--timeout-seconds N] [--env NAME,NAME] [--write] [--network] [--json]
+agent-harness gates status [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
+agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
+agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
+```
+
+`gates` evaluates unlazy-compatible task gate ledgers (`GATES.md` plus
+`gates/*.md`). The format is the unlazy v2 contract: one checkbox per outcome,
+`CHECK:` command plus `EXPECT:` substring-or-`/regex/` match, and `EVIDENCE:`
+recorded from the deciding output tail. A checkbox is a claim; evidence is the
+proof — a checked gate whose evidence still reads `pending` counts as unmet
+(`evidence_pending`, worse than `unchecked`). `ABANDON: <id> <reason>` is the
+honest exit and resolves the gate for readiness while keeping it visible in
+reports. Unlike upstream unlazy, CHECK commands never run through a raw shell:
+they are tokenized to argv and executed through the command policy engine
+(workspace boundary, env allowlist — default `HOME,PATH`, secret redaction,
+timeout, audit log, shell interpreters denied). Exit codes follow unlazy: `0`
+all met or abandoned, `1` unmet remain, `2` usage error.
+
+MCP exposes the same operations as `gates_init`, `gates_check`, `gates_status`,
+`gates_report`, and `gates_abandon` sharing one contract DTO (schema version 1).
+
+IssueOps integration is opt-in through file presence: when a cycle's worktree
+contains `GATES.md` or `gates/*.md`, unmet gates add `gates_incomplete:<file>`
+to strict PR readiness and block entering the `pr` phase until the ledger is
+complete (all gates met with evidence, or honestly abandoned). Repos without
+ledger files are unaffected. Because the ledger lives in the worktree, real
+cycles must commit it before PR readiness checks `worktree_clean`.
+
 ## Daemon And MCP
 
 ```bash

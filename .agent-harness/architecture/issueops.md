@@ -13,6 +13,14 @@
 
 ## Capability verticals
 
+- 태스크 게이트 ledger는 PR readiness에 파일 존재 기반 opt-in으로 합성된다.
+  worktree에 unlazy 호환 `GATES.md`/`gates/*.md`가 있으면 미충족 게이트(unchecked,
+  또는 checked-but-EVIDENCE-pending)가 `gates_incomplete:<file>` missing으로 pr
+  단계 진입을 막는다. ledger가 없으면 아무 요구도 추가하지 않는다. 게이트
+  조회·평가 연산은 함수 변수로 주입되고 composition root만 배선한다(`loopgate`
+  합성과 같은 구조). 상세 계약은
+  [ADR 2026-08-22](../adr/decisions/2026-08-22-task-gate-ledger.md)를 참조.
+
 - `execution release`는 첫 production vertical이다. CLI/MCP transport facade는 injected release handler만 호출하고, `internal/contract/issueopslease`의 stable v1 canonicalization → pure `internal/domain/issueopslease` → capability-local `internal/application/issueopslease` → inbound/outbound adapter 순서로 흐른다. `cmd/harness/harnessapp`만 SQLite store, process observation, clock, filesystem path matcher를 조립하며, 기존 two-argument `ReleaseExecution`은 외부 Go surface와 differential oracle을 위한 compatibility facade로만 남는다.
 - `execution reconcile`의 Orca `worktree_create`·`owner_launch`·`dispatch` confirm도 같은 vertical 경계를 사용한다. kind-local router가 injected handler로 보내고, application은 호출당 현재 durable stage 하나만 inventory/adopt 또는 bounded retry/CAS한다. preview와 no-pending은 side effect가 없는 compatibility router에 남는다.
 - 원격 PR/MR 생성과 `remote_pr_create` 복구는 `issueopspublication` capability vertical이다. `internal/contract/issueopspublication`의 stable mapping → pure domain decision → shared `CreateService`/`ReconcileService` → inbound/outbound adapter 순서로 흐르며, `cmd/harness/harnessapp`만 provider, raw schema v1 CAS bridge, live verifier를 조립한다. CLI create와 CLI/MCP reconcile은 같은 request-scoped handler pair를 사용하고, handler가 없으면 legacy full-flow로 우회하지 않고 fail closed한다.

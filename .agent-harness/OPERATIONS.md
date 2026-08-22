@@ -46,10 +46,16 @@ instead of duplicating their content here or in a guide.
    specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared
    user-level `agent-harness daemon`.
-3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/loop/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
+3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/loop/gates/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
 4. Loop contracts: `agent-harness loop start/record-attempt/status/stop` records
    verify-until-done state and strict readiness gates without executing
    verification commands.
+5. Task gate ledgers: `agent-harness gates init/check/status/report/abandon`
+   evaluates unlazy-compatible `GATES.md`/`gates/*.md` acceptance ledgers.
+   CHECK commands run through the command policy engine (never a raw shell),
+   evidence is recorded from the deciding output tail, and unmet gates in a
+   cycle worktree block strict PR readiness with `gates_incomplete:<file>`.
+   See [operations/cli-and-mcp.md](operations/cli-and-mcp.md).
 
 ## Invariants
 

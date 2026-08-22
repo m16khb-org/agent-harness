@@ -130,7 +130,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `gates`, `self-verify`, `self-augment`, `mcp` 제공 |
 | `internal/contract/` | CLI, MCP, state가 공유하는 versioned DTO와 response contract |
 | `internal/domain/` | filesystem, process, DB를 모르는 순수 규칙, reducer, classifier |
 | `internal/application/` | domain과 좁은 port를 조합하는 capability use case |
@@ -169,6 +169,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json && rm -rf "$tmp_state"
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
+gates_demo="$(mktemp -d)" && ./bin/agent-harness gates init --file "$gates_demo/GATES.md" --scope smoke --gate "G1: smoke | CHECK: printf %s ok | EXPECT: ok" --json && ./bin/agent-harness gates check --cwd "$gates_demo" --workspace-root "$gates_demo" --json && ./bin/agent-harness gates report --cwd "$gates_demo" --workspace-root "$gates_demo" && rm -rf "$gates_demo"
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 codex mcp get agent_harness
 claude mcp list
