@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"agent-harness/cmd/harness/channelcli"
 	"agent-harness/cmd/harness/gatescli"
 	"agent-harness/cmd/harness/rootcmd"
 	guard "agent-harness/internal/adapter/guard"
@@ -62,6 +63,7 @@ func rootCommand() rootcmd.Command {
 			"worker":       runWorker,
 			"loop":         runLoop,
 			"gates":        runGates,
+			"channel":      runChannel,
 			"web-fetch":    runWebFetch,
 			"daemon":       runDaemon,
 			"mcp":          runMCPCommand,
@@ -83,6 +85,10 @@ func rootSubcommandErrorExitCode(name string, err error) int {
 	case "gates":
 		if _, ok := errors.AsType[gatescli.UsageError](err); ok {
 			return 2
+		}
+	case "channel":
+		if _, ok := errors.AsType[channelcli.TimedOutError](err); ok {
+			return 1
 		}
 	}
 	return 1

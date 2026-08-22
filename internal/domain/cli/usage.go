@@ -36,6 +36,7 @@ func Commands() []Command {
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
 		{Name: "loop", Description: "track durable verify-until-done loop contracts"},
 		{Name: "gates", Description: "evaluate unlazy-compatible task gate ledgers with policy-gated checks"},
+		{Name: "channel", Description: "exchange durable cross-session messages through shared harness state"},
 		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
@@ -96,6 +97,8 @@ Usage:
   agent-harness gates status [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
   agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
   agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
+  agent-harness channel send --channel NAME --from SESSION --message TEXT [--json]
+  agent-harness channel recv --channel NAME [--since MSG_ID] [--wait] [--timeout-seconds N] [--limit N] [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]

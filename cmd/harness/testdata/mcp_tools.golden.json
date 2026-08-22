@@ -908,6 +908,64 @@
     "name": "gates_init"
   },
   {
+    "description": "Append a durable message to a named session-to-session channel backed by the shared harness state. Codex, Claude Code, and Omo sessions sharing the state see it. Use for cross-session coordination such as front/server contract negotiation.",
+    "inputSchema": {
+      "properties": {
+        "body": {
+          "description": "Message body.",
+          "type": "string"
+        },
+        "channel": {
+          "description": "Channel name (shared mailbox key), for example contract or front-server.",
+          "type": "string"
+        },
+        "from": {
+          "description": "Sending session identity, for example server, front, or codex:abc.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "from",
+        "body"
+      ],
+      "type": "object"
+    },
+    "name": "channel_send"
+  },
+  {
+    "description": "Read messages from a named channel after a given message id (exclusive). With wait=true, blocks until a new message arrives or the timeout (default 300s) — the receiving side of a front/server session coordination flow.",
+    "inputSchema": {
+      "properties": {
+        "channel": {
+          "description": "Channel name.",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum messages to return. 0 returns all.",
+          "type": "integer"
+        },
+        "since_id": {
+          "description": "Return messages after this message id (exclusive). Omit to read from the beginning.",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "description": "Wait timeout in seconds when wait=true. Default 300.",
+          "type": "integer"
+        },
+        "wait": {
+          "description": "Block until a new message arrives or timeout. Default false.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "type": "object"
+    },
+    "name": "channel_recv"
+  },
+  {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
     "inputSchema": {
       "properties": {},

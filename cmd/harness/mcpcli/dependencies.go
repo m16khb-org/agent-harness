@@ -1,6 +1,7 @@
 package mcpcli
 
 import (
+	channelcontract "agent-harness/internal/contract/channel"
 	gatescontract "agent-harness/internal/contract/gates"
 	inspectcontract "agent-harness/internal/contract/inspect"
 	loopruncontract "agent-harness/internal/contract/looprun"
@@ -132,6 +133,12 @@ var (
 	GatesCheck   func(gatescontract.CheckRequest) (gatescontract.CheckResult, error)
 	GatesInit    func(gatescontract.InitRequest) (gatescontract.InitResult, error)
 	GatesAbandon func(gatescontract.AbandonRequest) (gatescontract.AbandonResult, error)
+)
+
+// channel 연산도 composition root가 설치한다.
+var (
+	ChannelSend func(channelcontract.SendRequest) (channelcontract.SendResult, error)
+	ChannelRecv func(channelcontract.RecvRequest) (channelcontract.RecvResult, error)
 )
 
 // project docs 연산은 composition root가 설치한다.

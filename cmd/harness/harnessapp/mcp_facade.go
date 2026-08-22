@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	channeladapter "agent-harness/internal/adapter/channel"
 	gatesadapter "agent-harness/internal/adapter/gates"
 	"agent-harness/internal/adapter/inspect"
 	"agent-harness/internal/adapter/looprun"
@@ -33,6 +34,8 @@ func configureMCPCLI() {
 	mcpcli.GatesCheck = gatesadapter.Check
 	mcpcli.GatesInit = gatesadapter.Init
 	mcpcli.GatesAbandon = gatesadapter.Abandon
+	mcpcli.ChannelSend = channeladapter.Send
+	mcpcli.ChannelRecv = channeladapter.Recv
 	mcpcli.GitPreflight = preflight.GitPreflight
 	mcpcli.ListSkills = inspect.ListSkills
 	mcpcli.ReadHarnessFile = readHarnessFile

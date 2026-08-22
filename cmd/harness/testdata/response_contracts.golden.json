@@ -234,6 +234,10 @@
           "name": "gates"
         },
         {
+          "description": "exchange durable cross-session messages through shared harness state",
+          "name": "channel"
+        },
+        {
           "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
           "name": "web-fetch"
         },
@@ -254,11 +258,13 @@
           "name": "version"
         }
       ],
-      "hash": "77ec8ca3eb715735d5065368337aa1caa38ea1032083c10dcbec2247ab53608c",
+      "hash": "6b0f1397ba1a609419d79a4fcf5643cc67c6b995ae0ad7d4f0cca70f6f1e6c71",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
         "atomic_commit_preflight",
+        "channel_recv",
+        "channel_send",
         "command_fake_run",
         "command_policy_audit",
         "command_policy_check",
@@ -6502,6 +6508,10 @@
                 "name": "gates"
               },
               {
+                "description": "exchange durable cross-session messages through shared harness state",
+                "name": "channel"
+              },
+              {
                 "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
                 "name": "web-fetch"
               },
@@ -6522,11 +6532,13 @@
                 "name": "version"
               }
             ],
-            "hash": "77ec8ca3eb715735d5065368337aa1caa38ea1032083c10dcbec2247ab53608c",
+            "hash": "6b0f1397ba1a609419d79a4fcf5643cc67c6b995ae0ad7d4f0cca70f6f1e6c71",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
               "atomic_commit_preflight",
+              "channel_recv",
+              "channel_send",
               "command_fake_run",
               "command_policy_audit",
               "command_policy_check",

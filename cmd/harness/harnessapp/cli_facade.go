@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
+	"agent-harness/cmd/harness/channelcli"
 	"agent-harness/cmd/harness/gatescli"
 	"agent-harness/cmd/harness/installcli"
 	"agent-harness/cmd/harness/loopcli"
@@ -243,6 +244,10 @@ func runLoop(args []string) error {
 
 func runGates(args []string) error {
 	return gatescli.Run(gatesDependencies(), args)
+}
+
+func runChannel(args []string) error {
+	return channelcli.Run(channelDependencies(), args)
 }
 
 func runWebFetch(args []string) error {

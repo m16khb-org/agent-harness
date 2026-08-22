@@ -91,6 +91,8 @@ Usage:
   agent-harness gates status [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
   agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH] [--json]
   agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
+  agent-harness channel send --channel NAME --from SESSION --message TEXT [--json]
+  agent-harness channel recv --channel NAME [--since MSG_ID] [--wait] [--timeout-seconds N] [--limit N] [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]

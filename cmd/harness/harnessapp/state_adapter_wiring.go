@@ -2,6 +2,7 @@ package harnessapp
 
 import (
 	audit "agent-harness/internal/adapter/audit"
+	channel "agent-harness/internal/adapter/channel"
 	doctor "agent-harness/internal/adapter/doctor"
 	hookfailure "agent-harness/internal/adapter/hookfailure"
 	hookmetrics "agent-harness/internal/adapter/hookmetrics"
@@ -33,5 +34,6 @@ func configureAdapterStateAccess() {
 	lifecyclecompact.WithKeyLock = statestore.WithKeyLock
 	lifecycledocupkeep.WithKeyLock = statestore.WithKeyLock
 	looprun.StateDir = statestore.StateDir
+	channel.StateDir = statestore.StateDir
 	trace.StateRead = statestore.StateRead
 }

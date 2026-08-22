@@ -102,6 +102,7 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 		},
 		handleLoopMCPToolCall,
 		handleGatesMCPToolCall,
+		handleChannelMCPToolCall,
 		handleAssistantWorkerMCPToolCall,
 		handleSelfLoopMCPToolCall,
 	} {
