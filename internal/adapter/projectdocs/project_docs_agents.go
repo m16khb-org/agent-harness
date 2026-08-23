@@ -8,23 +8,29 @@ import (
 )
 
 func RenderAgentsWithBlock(root, existing string) string {
+	bullets := []string{
+		"- Architecture or large design changes: " + ProjectDocsDir + "/ARCHITECTURE.md, " + ProjectDocsDir + "/CONSTITUTION.md",
+		"- Testing or verification changes: " + ProjectDocsDir + "/TESTING.md",
+		"- Endpoint/DTO/OpenAPI changes: " + ProjectDocsDir + "/OPEN_API_SPEC.md",
+		"- Commit or PR work: " + ProjectDocsDir + "/COMMIT_POLICY.md",
+		"- Code style or structure changes: " + ProjectDocsDir + "/CONVENTIONS.md",
+		"- Dependency or tech-stack changes: " + ProjectDocsDir + "/TECH_STACK.md",
+		"- Run, deploy, environment, or local development: " + ProjectDocsDir + "/OPERATIONS.md",
+		"- Agent start, verification, and completion workflow: " + ProjectDocsDir + "/AGENT_WORKFLOW.md",
+		"- Risky or recurring-failure work: " + ProjectDocsDir + "/CAUTIONS.md",
+		"- Structural rationale, alternatives, and decisions: " + ProjectDocsDir + "/ADR.md",
+		"- Session start, instruction conflicts, and principle decisions: " + ProjectDocsDir + "/CONSTITUTION.md",
+	}
+	if designDocExists(root) {
+		bullets = append(bullets, "- UI, styling, or design-system changes: "+ProjectDocsDir+"/DESIGN.md (client repositories only)")
+	}
 	block := strings.TrimSpace(fmt.Sprintf(`%s
 ## agent-harness project docs
 
 This repository uses agent-harness project docs. Read existing AGENTS.md rules first, then read only the additional documents relevant to the task.
 
-- Architecture or large design changes: %[2]s/ARCHITECTURE.md, %[2]s/CONSTITUTION.md
-- Testing or verification changes: %[2]s/TESTING.md
-- Endpoint/DTO/OpenAPI changes: %[2]s/OPEN_API_SPEC.md
-- Commit or PR work: %[2]s/COMMIT_POLICY.md
-- Code style or structure changes: %[2]s/CONVENTIONS.md
-- Dependency or tech-stack changes: %[2]s/TECH_STACK.md
-- Run, deploy, environment, or local development: %[2]s/OPERATIONS.md
-- Agent start, verification, and completion workflow: %[2]s/AGENT_WORKFLOW.md
-- Risky or recurring-failure work: %[2]s/CAUTIONS.md
-- Structural rationale, alternatives, and decisions: %[2]s/ADR.md
-- Session start, instruction conflicts, and principle decisions: %[2]s/CONSTITUTION.md
-%s`, agentsStartMarker, ProjectDocsDir, agentsEndMarker)) + "\n"
+%s
+%s`, agentsStartMarker, strings.Join(bullets, "\n"), agentsEndMarker)) + "\n"
 	path := filepath.Join(root, "AGENTS.md")
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -38,6 +44,21 @@ This repository uses agent-harness project docs. Read existing AGENTS.md rules f
 		return strings.TrimRight(text[:start], "\n") + "\n\n" + block + strings.TrimLeft(text[end:], "\n")
 	}
 	return strings.TrimRight(text, "\n") + "\n\n" + block
+}
+
+// designDocExists reports whether this repo carries a design-system doc:
+// either the agent-facing .agent-harness/DESIGN.md or a curated root
+// DESIGN.md that stays authoritative for the design system.
+func designDocExists(root string) bool {
+	for _, rel := range []string{
+		filepath.Join(ProjectDocsDir, "DESIGN.md"),
+		"DESIGN.md",
+	} {
+		if info, err := os.Stat(filepath.Join(root, rel)); err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 func ensureBehavioralGuidelinesAtTop(text string) string {

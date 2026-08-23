@@ -97,8 +97,11 @@ func routeDocsForTask(task string) []routeDoc {
 	if strings.Contains(task, "test") || strings.Contains(task, "testing") || strings.Contains(task, "spec") || strings.Contains(task, "verify") || strings.Contains(task, "ci") {
 		return add(p("TESTING.md", "well/poorly structured test guidance plus test/build/lint command candidates"), p("TECH_STACK.md", "toolchain evidence"), p("AGENT_WORKFLOW.md", "verification workflow"), p("CAUTIONS.md", "known verification risks"))
 	}
+	if strings.Contains(task, "ux") || strings.Contains(task, "style") || strings.Contains(task, "styling") || strings.Contains(task, "css") || strings.Contains(task, "typography") || strings.Contains(task, "palette") || strings.Contains(task, "theme") || strings.Contains(task, "color") || strings.Contains(task, "accessibility") || strings.Contains(task, "a11y") || strings.Contains(task, "animation") || strings.Contains(task, "motion") || strings.Contains(task, "redesign") {
+		return add(p("DESIGN.md", "client design system: palette, typography, spacing, motion, accessibility, component states"), p("CONVENTIONS.md", "styling and component conventions"))
+	}
 	if strings.Contains(task, "architecture") || strings.Contains(task, "design") || strings.Contains(task, "refactor") {
-		return add(p("ARCHITECTURE.md", "system structure and boundaries"), p("ADR.md", "past structure decisions and rejected alternatives"), p("CONSTITUTION.md", "decision priority and invariants"), p("CONVENTIONS.md", "editing and structure conventions"))
+		return add(p("ARCHITECTURE.md", "system structure and boundaries"), p("DESIGN.md", "client design system contract when present"), p("ADR.md", "past structure decisions and rejected alternatives"), p("CONSTITUTION.md", "decision priority and invariants"), p("CONVENTIONS.md", "editing and structure conventions"))
 	}
 	if strings.Contains(task, "dependency") || strings.Contains(task, "package") || strings.Contains(task, "upgrade") || strings.Contains(task, "stack") {
 		return add(p("TECH_STACK.md", "detected stack and package manager evidence"), p("CONVENTIONS.md", "dependency addition rules"), p("TESTING.md", "test design rules and checks after dependency changes"))

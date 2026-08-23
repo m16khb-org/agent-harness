@@ -283,3 +283,45 @@ func containsString(slice []string, s string) bool {
 	}
 	return false
 }
+
+func TestProjectTypes_ClientSurfaces(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		name       string
+		frameworks []string
+		wantTypes  []string
+		notWant    string
+	}{
+		{"tauri desktop client", []string{"Tauri"}, []string{"desktop-client"}, "frontend"},
+		{"electron desktop client", []string{"Electron"}, []string{"desktop-client"}, "frontend"},
+		{"web frontend only", []string{"React", "Vite"}, []string{"frontend"}, "desktop-client"},
+		{"tauri with web frontend", []string{"Tauri", "React"}, []string{"frontend", "desktop-client"}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			types := ProjectTypes(dir, []string{"Rust", "JavaScript/TypeScript"}, tc.frameworks, false, func(string) {})
+			for _, want := range tc.wantTypes {
+				if !containsAnyString(types, want) {
+					t.Fatalf("expected type %q in %v", want, types)
+				}
+			}
+			if tc.notWant != "" && containsAnyString(types, tc.notWant) {
+				t.Fatalf("type %q must not be inferred for %v", tc.notWant, tc.frameworks)
+			}
+		})
+	}
+}
+
+func TestFrameworks_DetectsTauriAndElectron(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "src-tauri"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(dir, "package.json"), `{"devDependencies":{"electron":"^33.0.0"}}`)
+	writeFile(t, filepath.Join(dir, "src-tauri", "tauri.conf.json"), `{"productName":"x"}`)
+	files := []string{"package.json", "src-tauri/tauri.conf.json"}
+	frameworks := Frameworks(dir, files, func(string) {})
+	if !containsAnyString(frameworks, "Electron") || !containsAnyString(frameworks, "Tauri") {
+		t.Fatalf("expected Electron and Tauri frameworks, got %v", frameworks)
+	}
+}

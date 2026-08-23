@@ -46,7 +46,7 @@ func listInterestingFiles(root string) []string {
 
 func isProjectSignalFile(base string) bool {
 	switch base {
-	case "AGENTS.md", "CLAUDE.md", "README.md", "go.mod", "go.sum", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock", "package-lock.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "Cargo.lock", "Makefile", "Taskfile.yml", "Taskfile.yaml", "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "next.config.js", "next.config.mjs", "next.config.ts", "vite.config.js", "vite.config.mjs", "vite.config.ts", "nuxt.config.js", "nuxt.config.ts", "astro.config.js", "astro.config.mjs", "astro.config.ts", "tailwind.config.js", "tailwind.config.ts", "tsconfig.json", "turbo.json", "nx.json", "lerna.json", "nest-cli.json":
+	case "AGENTS.md", "CLAUDE.md", "README.md", "DESIGN.md", "go.mod", "go.sum", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock", "package-lock.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "Cargo.lock", "Makefile", "Taskfile.yml", "Taskfile.yaml", "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "next.config.js", "next.config.mjs", "next.config.ts", "vite.config.js", "vite.config.mjs", "vite.config.ts", "nuxt.config.js", "nuxt.config.ts", "astro.config.js", "astro.config.mjs", "astro.config.ts", "tailwind.config.js", "tailwind.config.ts", "tauri.conf.json", "tauri.conf.json5", "electron-builder.yml", "electron-builder.yaml", "tsconfig.json", "turbo.json", "nx.json", "lerna.json", "nest-cli.json":
 		return true
 	default:
 		return false

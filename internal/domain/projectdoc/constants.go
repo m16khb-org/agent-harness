@@ -16,7 +16,7 @@ var requiredProjectDocNames = []string{
 	"AGENT_WORKFLOW.md",
 }
 
-var optionalProjectDocNames = []string{"VCS.md"}
+var optionalProjectDocNames = []string{"VCS.md", "DESIGN.md"}
 
 const AgentsStartMarker = "<!-- AGENT_HARNESS:START -->"
 

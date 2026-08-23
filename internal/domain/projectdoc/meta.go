@@ -21,6 +21,7 @@ var docMetaDescriptions = map[string]string{
 	"OPEN_API_SPEC.md":  "Endpoint, DTO, and OpenAPI documentation gate rules.",
 	"AGENT_WORKFLOW.md": "Agent start, execution, verification, and completion flow.",
 	"VCS.md":            "Verified VCS provider capabilities, request recipes, identity checks, and CLI fallbacks.",
+	"DESIGN.md":         "Client design system: palette, typography, spacing, motion, accessibility, and component states.",
 }
 
 // DocMetaDescription returns the canonical metadata description for a standard

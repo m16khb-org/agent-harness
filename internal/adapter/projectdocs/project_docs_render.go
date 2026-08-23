@@ -2,6 +2,7 @@ package projectdocs
 
 import (
 	projectdoc "agent-harness/internal/domain/projectdoc"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -18,6 +19,12 @@ func RenderProjectDocs(root string, signals projectdoc.ProjectSignals) map[strin
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "TECH_STACK.md"))] = renderTechStack(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPEN_API_SPEC.md"))] = renderOpenAPISpec()
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "AGENT_WORKFLOW.md"))] = renderAgentWorkflow()
+	// DESIGN.md exists only in repositories with a client surface (web
+	// frontend or desktop client): a design system contract is meaningless
+	// for backend/CLI-only projects.
+	if hasClientSurface(signals) {
+		out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "DESIGN.md"))] = renderDesignDoc(root, signals)
+	}
 	// Prepend canonical meta frontmatter so created/synced docs declare what
 	// category of information they hold. Same doc name => same metadata.
 	for rel, content := range out {
@@ -99,6 +106,62 @@ func renderTechStack(signals projectdoc.ProjectSignals) string {
 	b.WriteString("\n## Evidence files\n\n")
 	b.WriteString(bulletListWithFallback(signals.Files, "No evidence files."))
 	return b.String()
+}
+
+// hasClientSurface reports whether the repository exposes a client: a web
+// frontend framework or a desktop client shell (Tauri, Electron).
+func hasClientSurface(signals projectdoc.ProjectSignals) bool {
+	for _, t := range signals.Profile.ProjectTypes {
+		if t == "frontend" || t == "desktop-client" {
+			return true
+		}
+	}
+	return false
+}
+
+// renderDesignDoc renders the client design-system document. When the repo
+// already maintains an authoritative design document (commonly a curated
+// root DESIGN.md), this doc stays a pointer to it instead of duplicating it.
+func renderDesignDoc(root string, signals projectdoc.ProjectSignals) string {
+	var b strings.Builder
+	b.WriteString("# Design System\n\n")
+	b.WriteString("## Purpose\n\n")
+	b.WriteString("Client design contract for this repository: palette, typography, spacing, motion, accessibility, and component states. Read it before UI, styling, component, or interaction work, and update it when a design decision changes.\n\n")
+	b.WriteString("## Detected client surface\n\n")
+	if len(signals.Profile.Frameworks) > 0 {
+		b.WriteString(bulletListWithFallback(signals.Profile.Frameworks, "No client frameworks confirmed."))
+	} else {
+		b.WriteString("- Client surface inferred from project types: " + strings.Join(signals.Profile.ProjectTypes, ", ") + "\n")
+	}
+	existing := existingDesignDocRel(root)
+	b.WriteString("\n## Authoritative design document\n\n")
+	if existing != "" {
+		b.WriteString("This repository already maintains `" + existing + "`; that document is authoritative for the design system. Keep this file as the agent-facing routing record: do not duplicate tokens or tables here, point to `" + existing + "` and record only agent workflow notes (when to read it, how changes are verified).\n")
+	} else {
+		b.WriteString("No standalone design document was detected at the repository root. Record confirmed design decisions here with evidence (source stylesheets, component files); mark anything unconfirmed as `Unknown / not confirmed`.\n")
+	}
+	b.WriteString("\n## Required sections once enriched\n\n")
+	b.WriteString("- Identity and atmosphere: what the product must feel like, signature elements.\n")
+	b.WriteString("- Palette: role-based tokens, not raw hex values scattered in code.\n")
+	b.WriteString("- Typography: scale, weights, font stacks, line-height and tracking rules.\n")
+	b.WriteString("- Spacing and layout: base unit, grid, container rules.\n")
+	b.WriteString("- Motion: durations, easing, reduced-motion behavior.\n")
+	b.WriteString("- Accessibility: focus, contrast, touch targets, screen-reader semantics.\n")
+	b.WriteString("- Component states: idle/loading/success/error per interactive component.\n\n")
+	b.WriteString("## Rule\n\n")
+	b.WriteString("Stylesheets and component code are the implementation; this document is the contract. When code and this document disagree, fix one of them in the same change set and say which was wrong.\n")
+	return b.String()
+}
+
+// existingDesignDocRel returns the repo-relative path of an authoritative
+// design document when one exists at a conventional location.
+func existingDesignDocRel(root string) string {
+	for _, rel := range []string{"DESIGN.md", "docs/DESIGN.md"} {
+		if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err == nil && !info.IsDir() {
+			return rel
+		}
+	}
+	return ""
 }
 
 func renderTesting(signals projectdoc.ProjectSignals) string {

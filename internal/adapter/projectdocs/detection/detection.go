@@ -26,6 +26,10 @@ func Frameworks(root string, files []string, addEvidence func(string)) []string 
 			addFramework("Astro", rel)
 		case "nest-cli.json":
 			addFramework("NestJS", rel)
+		case "tauri.conf.json", "tauri.conf.json5":
+			addFramework("Tauri", rel)
+		case "electron-builder.yml", "electron-builder.yaml", "electron.vite.config.ts":
+			addFramework("Electron", rel)
 		}
 		if rel == "go.mod" {
 			for _, mod := range readGoModules(root) {
@@ -64,6 +68,10 @@ func Frameworks(root string, files []string, addEvidence func(string)) []string 
 					addFramework("Fastify", "package.json:fastify")
 				case "prisma", "@prisma/client":
 					addFramework("Prisma", "package.json:"+dep)
+				case "electron":
+					addFramework("Electron", "package.json:electron")
+				case "@tauri-apps/api", "@tauri-apps/cli":
+					addFramework("Tauri", "package.json:"+dep)
 				}
 			}
 		}
@@ -102,10 +110,14 @@ func ProjectTypes(root string, languages, frameworks []string, monorepo bool, ad
 		addType("monorepo", "")
 	}
 	frontend := containsAnyString(frameworks, "React", "Next.js", "Vite", "Vue", "Svelte", "Angular", "Nuxt", "Astro")
+	desktopClient := containsAnyString(frameworks, "Tauri", "Electron")
 	backend := containsAnyString(frameworks, "Express", "NestJS", "Fastify", "Gin", "chi", "Echo") || containsAnyString(languages, "Go")
 	cli := containsAnyString(frameworks, "Cobra")
 	if frontend {
 		addType("frontend", "")
+	}
+	if desktopClient {
+		addType("desktop-client", "")
 	}
 	if backend {
 		addType("backend", "")

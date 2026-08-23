@@ -279,3 +279,83 @@ func firstLinesGot(s string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+func TestRenderDesignDocOnlyForClientRepositories(t *testing.T) {
+	// Client repo: package.json with react dependency.
+	clientRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(clientRoot, "package.json"), []byte(`{"dependencies":{"react":"^18.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clientSignals := AnalyzeProjectSignals(clientRoot)
+	clientDocs := RenderProjectDocs(clientRoot, clientSignals)
+	designRel := filepath.ToSlash(filepath.Join(ProjectDocsDir, "DESIGN.md"))
+	content, ok := clientDocs[designRel]
+	if !ok {
+		t.Fatalf("client repo must render DESIGN.md, got keys: %v", docMapKeys(clientDocs))
+	}
+	if !strings.Contains(content, "No standalone design document was detected") {
+		t.Fatalf("starter design doc should note the missing root doc:\n%s", content)
+	}
+	if !strings.Contains(content, "description: Client design system") {
+		t.Fatalf("DESIGN.md must carry canonical frontmatter:\n%s", content)
+	}
+
+	// Client repo with an authoritative root DESIGN.md: the generated doc
+	// must point at it, not duplicate it.
+	curatedRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(curatedRoot, "package.json"), []byte(`{"dependencies":{"react":"^18.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(curatedRoot, "DESIGN.md"), []byte("# Curated Design\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	curatedDocs := RenderProjectDocs(curatedRoot, AnalyzeProjectSignals(curatedRoot))
+	if curated := curatedDocs[designRel]; !strings.Contains(curated, "`DESIGN.md`") || !strings.Contains(curated, "authoritative") {
+		t.Fatalf("curated root DESIGN.md must be referenced as authoritative:\n%s", curated)
+	}
+
+	// Non-client repo: Go module only. DESIGN.md must not be rendered.
+	backendRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(backendRoot, "go.mod"), []byte("module example.com/app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	backendDocs := RenderProjectDocs(backendRoot, AnalyzeProjectSignals(backendRoot))
+	if _, ok := backendDocs[designRel]; ok {
+		t.Fatal("non-client repo must not render DESIGN.md")
+	}
+}
+
+func TestRouteProjectDocsIncludesDesignForStylingWork(t *testing.T) {
+	root := t.TempDir()
+	for _, task := range []string{"restyle the settings dialog", "fix typography contrast", "add reduced-motion animation"} {
+		route, err := RouteProjectDocs(root, task)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !routeContains(route.Docs, ".agent-harness/DESIGN.md") {
+			t.Fatalf("styling task %q missing DESIGN.md route: %+v", task, route.Docs)
+		}
+	}
+}
+
+func TestRenderAgentsWithBlockAddsDesignLineOnlyWhenDesignDocExists(t *testing.T) {
+	plain := t.TempDir()
+	if block := RenderAgentsWithBlock(plain, ""); strings.Contains(block, "DESIGN.md") {
+		t.Fatalf("repo without DESIGN.md must not advertise it:\n%s", block)
+	}
+	withCurated := t.TempDir()
+	if err := os.WriteFile(filepath.Join(withCurated, "DESIGN.md"), []byte("# Design\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if block := RenderAgentsWithBlock(withCurated, ""); !strings.Contains(block, ProjectDocsDir+"/DESIGN.md") {
+		t.Fatalf("repo with root DESIGN.md should advertise the design doc route:\n%s", block)
+	}
+}
+
+func docMapKeys(docs map[string]string) []string {
+	keys := make([]string, 0, len(docs))
+	for k := range docs {
+		keys = append(keys, k)
+	}
+	return keys
+}

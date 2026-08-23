@@ -15,6 +15,19 @@ func PrefixedProjectDocNames() []string {
 	return out
 }
 
+// PrefixedKnownProjectDocNames returns every required and optional project doc
+// path. Optional docs render only when their condition holds (for example
+// DESIGN.md only for repositories with a client surface), so iteration over
+// this list must skip empty render results.
+func PrefixedKnownProjectDocNames() []string {
+	names := append(ProjectDocNames(), optionalProjectDocNames...)
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		out = append(out, filepath.ToSlash(filepath.Join(ProjectDocsDir, name)))
+	}
+	return out
+}
+
 func NormalizeRelPath(relPath string) (string, error) {
 	rel := filepath.ToSlash(strings.TrimSpace(relPath))
 	rel = strings.TrimPrefix(rel, "./")

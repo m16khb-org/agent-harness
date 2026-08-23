@@ -355,3 +355,46 @@ func TestBootstrapPlanMarksPreservedFilesOnDryRun(t *testing.T) {
 		t.Fatalf("dry-run must surface sync_available warning: %#v", dry.Warnings)
 	}
 }
+
+func TestBootstrapCreatesDesignDocOnlyForClientRepositories(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	clientRoot := t.TempDir()
+	mustWrite(t, filepath.Join(clientRoot, "package.json"), `{"dependencies":{"react":"^18.0.0"},"devDependencies":{"vite":"^5.0.0"}}`)
+	mustWrite(t, filepath.Join(clientRoot, "DESIGN.md"), "# Curated Design\n")
+
+	result, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: clientRoot, Write: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	designRel := filepath.ToSlash(filepath.Join(projectdocdomain.ProjectDocsDir, "DESIGN.md"))
+	if !projectPlanContainsRel(result.Files, designRel) {
+		t.Fatalf("client repo bootstrap must plan DESIGN.md: %+v", result.Files)
+	}
+	designBytes, err := os.ReadFile(filepath.Join(clientRoot, filepath.FromSlash(designRel)))
+	if err != nil {
+		t.Fatalf("client repo bootstrap must write DESIGN.md: %v", err)
+	}
+	if !strings.Contains(string(designBytes), "authoritative") {
+		t.Fatalf("DESIGN.md must point at the curated root document:\n%s", designBytes)
+	}
+	agentsBytes, err := os.ReadFile(filepath.Join(clientRoot, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(agentsBytes), designRel) {
+		t.Fatalf("AGENTS.md managed block should route DESIGN.md when present:\n%s", agentsBytes)
+	}
+
+	backendRoot := t.TempDir()
+	mustWrite(t, filepath.Join(backendRoot, "go.mod"), "module example.com/app\n")
+	backendResult, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: backendRoot, Write: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projectPlanContainsRel(backendResult.Files, designRel) {
+		t.Fatal("non-client repo must not plan DESIGN.md")
+	}
+	if _, err := os.Stat(filepath.Join(backendRoot, filepath.FromSlash(designRel))); !os.IsNotExist(err) {
+		t.Fatalf("non-client repo must not write DESIGN.md: %v", err)
+	}
+}

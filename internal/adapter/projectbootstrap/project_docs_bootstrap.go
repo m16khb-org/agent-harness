@@ -49,7 +49,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		warnings = projectdocdomain.AppendUnique(warnings, "legacy_flat_layout_preserved: existing flat family roots were kept without partial modular scaffolding; restructure with project-docs-optimize instead of bootstrap")
 	}
 	familyPreserved := false
-	for _, rel := range append([]string{"AGENTS.md"}, projectdocdomain.PrefixedProjectDocNames()...) {
+	for _, rel := range append([]string{"AGENTS.md"}, projectdocdomain.PrefixedKnownProjectDocNames()...) {
 		content := contents[rel]
 		if content == "" {
 			continue
@@ -148,7 +148,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 	// preserving body content. This runs on bootstrap and --sync alike so even
 	// preserved (non-synced) docs declare their category, fixed by doc name.
 	if req.Write {
-		for _, rel := range projectdocdomain.PrefixedProjectDocNames() {
+		for _, rel := range projectdocdomain.PrefixedKnownProjectDocNames() {
 			path := filepath.Join(root, filepath.FromSlash(rel))
 			existing, err := os.ReadFile(path)
 			if err != nil {
@@ -184,6 +184,9 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 func projectDocReason(rel string) string {
 	if rel == "AGENTS.md" {
 		return "agent entrypoint and routing block"
+	}
+	if rel == filepath.ToSlash(filepath.Join(projectdocdomain.ProjectDocsDir, "DESIGN.md")) {
+		return "client design system contract (client repositories only)"
 	}
 	if rel == projectdocdomain.ManifestRelPath() {
 		return "modular documentation contract manifest"
