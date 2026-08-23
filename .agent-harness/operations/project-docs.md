@@ -37,6 +37,7 @@ Generated project-doc set:
 - `.agent-harness/ADR.md`
 - `.agent-harness/OPERATIONS.md`
 - `.agent-harness/AGENT_WORKFLOW.md`
+- `.agent-harness/DESIGN.md` (client repositories only: `frontend` or `desktop-client` project type detected; points at a curated root `DESIGN.md` when one exists)
 
 ## MCP Project Docs
 

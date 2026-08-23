@@ -123,6 +123,7 @@ repositories, and the target repo's own conventions are authoritative:
 - `ADR.md`: durable decisions after consensus or implementation makes the decision real.
 - `COMMIT_POLICY.md`: commit style and verification evidence requirements.
 - `TECH_STACK.md`: confirmed language/runtime/package manager/toolchain versions and confidence.
+- `DESIGN.md` (client repositories only, created by bootstrap when the repo has a frontend or desktop client): the design-system contract — palette, typography, spacing, motion, accessibility, component states. When the repo maintains a curated design document (for example a root `DESIGN.md`), that document stays authoritative and this doc records the pointer plus agent workflow notes; never duplicate its tokens or tables.
 
 ## Output Contract
 

@@ -137,7 +137,10 @@ See `PROMPT.md` for the full fill targets per document.
 `AGENTS.md` (behavioral block + managed marker block) and the
 `.agent-harness` family: ARCHITECTURE, CAUTIONS, COMMIT_POLICY,
 CONSTITUTION, CONVENTIONS, TECH_STACK, TESTING, OPEN_API_SPEC, ADR,
-OPERATIONS, AGENT_WORKFLOW.
+OPERATIONS, AGENT_WORKFLOW. In client repositories (detected `frontend`
+or `desktop-client` project type) bootstrap also creates
+`.agent-harness/DESIGN.md`, a design-system contract that points at a
+curated root `DESIGN.md` when the repo already maintains one.
 
 ## Completion Evidence
 
