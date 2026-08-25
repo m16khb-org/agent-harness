@@ -20,7 +20,7 @@ func RecordLifecycleToolUse(req lifecyclecontract.HookToolUseLifecycleRequest) (
 	if source == "" {
 		source = "post-tool-use"
 	}
-	summary := "Relevant harness files changed; shared project docs may need review."
+	summary := "Relevant harness files changed; shared project docs may need review (run agent-harness project route-docs --task <change> --json to pick targets)."
 	if req.Tool != "" {
 		summary = fmt.Sprintf("%s touched harness lifecycle-relevant files; shared project docs may need review.", req.Tool)
 	}
@@ -53,6 +53,6 @@ func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 		b.WriteString(event.Summary)
 		b.WriteString("\n")
 	}
-	b.WriteString("Use project_docs_append for ADR/caution entries or project_docs_read/project_docs_revise for evidence-preserving doc refreshes.")
+	b.WriteString("To refresh well: run `agent-harness project route-docs --task \"<what changed>\" --json` to pick targets, then project_docs_read for the current SHA-256 before each project_docs_revise; use project_docs_append only for new ADR/caution entries.")
 	return LifecycleStopReminderResult{OK: true, ShouldInject: true, AdditionalContext: strings.TrimSpace(b.String()), PendingCount: len(events)}
 }

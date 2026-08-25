@@ -190,10 +190,22 @@ func docTargetsForLifecyclePath(path string) []string {
 	if strings.Contains(p, "_test.go") || strings.Contains(p, "testdata/") || strings.Contains(p, "golden") {
 		out = append(out, "TESTING.md")
 	}
+	if pathMatchesAnyToken(p, "issueops", "/gates/", "gates.go", "gatescli", "/channel/", "channel.go", "channelcli") {
+		out = append(out, "OPERATIONS.md", "ARCHITECTURE.md")
+	}
 	if strings.Contains(p, "api_doc") || strings.Contains(p, "openapi") || strings.Contains(p, "swagger") {
 		out = append(out, "OPEN_API_SPEC.md")
 	}
 	return out
+}
+
+func pathMatchesAnyToken(path string, tokens ...string) bool {
+	for _, token := range tokens {
+		if strings.Contains(path, token) {
+			return true
+		}
+	}
+	return false
 }
 
 func UniqueEvents(events []lifecyclecontract.DocUpkeepEvent) []lifecyclecontract.DocUpkeepEvent {

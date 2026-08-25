@@ -34,6 +34,13 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"깃랩", "머지리퀘스트", "링크드", "하위 Task", "하위 태스크", "자식", "상위", "부모", "Kody", "Kodus"},
 	},
 	{
+		Tool:           "aside-cli",
+		Reason:         "When the task needs a real browser (page inspection, screenshots, web UI QA, E2E flows), prefer the installed Aside CLI: check availability with `aside --version` and drive pages through aside before reaching for other browser automation; fall back only when Aside cannot handle the surface.",
+		Priority:       PriorityAction,
+		LowerKeywords:  []string{"browser", "playwright", "puppeteer", "screenshot", "web page", "webpage", "headless chrome", "ui test", "e2e test"},
+		PromptKeywords: []string{"브라우저", "스크린샷", "웹페이지", "웹 페이지", "화면 확인", "UI 확인", "E2E"},
+	},
+	{
 		Tool:           "project_docs_append",
 		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
 		Priority:       PriorityAction,

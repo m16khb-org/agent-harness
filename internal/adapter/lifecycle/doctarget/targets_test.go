@@ -138,6 +138,27 @@ func TestFilesystemMCPMutationClassificationFailsClosedOutsideExplicitReaders(t 
 	}
 }
 
+func TestDocTargetsForLifecyclePathRoutesIssueOpsSurfaces(t *testing.T) {
+	targets := docTargetsForLifecyclePath("internal/application/issueopslease/service.go")
+	hasTarget := func(want string) bool {
+		for _, target := range targets {
+			if target == want {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasTarget("OPERATIONS.md") || !hasTarget("ARCHITECTURE.md") {
+		t.Fatalf("issueops path must route to OPERATIONS.md and ARCHITECTURE.md, got %v", targets)
+	}
+
+	for _, path := range []string{"internal/domain/searchrouting/investigate.go", "docs/channel-guide.md.bak"} {
+		if targets := docTargetsForLifecyclePath(path); len(targets) > 0 && containsString(targets, "ARCHITECTURE.md") && path == "internal/domain/searchrouting/investigate.go" {
+			t.Fatalf("%q must not match gates token, got %v", path, targets)
+		}
+	}
+}
+
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
