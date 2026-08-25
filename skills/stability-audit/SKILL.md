@@ -97,3 +97,7 @@ Report:
 - RSS/leak conclusion and sampling caveats
 - tests run and pass/fail status
 - remaining risks or host approvals needed
+
+Every claim above must carry the command you ran and the observed output that
+proves it. A conclusion you did not directly observe is reported as an open
+question, never as verified.

@@ -159,6 +159,12 @@ base the recommendation on the executed phase alone and state the coverage gap
 explicitly. Never convert a non-Pass status or an unreviewed state into
 readiness.
 
+Before merging, verify sub-reports directly instead of trusting their summary:
+at minimum re-run or re-observe every `Fail`, `Inconclusive`, and borderline
+item yourself, and confirm each `Pass` item cites a captured artifact. A
+sub-verdict whose items lack evidence links merges as `Not Run` for that scope,
+never as ready.
+
 ## Completion and Stop Conditions
 
 Complete only when both phases completed under their own contracts (or were

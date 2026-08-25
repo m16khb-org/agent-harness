@@ -173,6 +173,11 @@ and server persistence are not interchangeable.
 
 Never convert `Blocked`, `Not Run`, or `Inconclusive` to `Pass`.
 
+A `Pass` requires one captured observation per criterion: command output, a
+DOM/text assertion, or a screenshot you actually took. A criterion you did not
+directly observe is `Inconclusive`, not `Pass`; assumed or self-reported
+completion ("it should work now") is not evidence.
+
 For defects, separate severity from priority:
 
 - `Critical`: security, data loss, payment, release outage, or unusable core
