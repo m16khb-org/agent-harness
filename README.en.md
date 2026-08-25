@@ -168,16 +168,17 @@ The following boundaries are deliberate:
 
 | Area | Representative commands | Purpose |
 | --- | --- | --- |
-| Install and refresh | `install`, `update`, `bootstrap` | Refresh the binary, skills, hooks, and MCP wiring |
+| Install and refresh | `install`, `update`, `bootstrap`, `version` | Refresh the binary, skills, hooks, and MCP wiring; report version |
 | Health and docs | `inspect`, `status`, `doctor`, `docs` | Inspect installation, daemon, state, and project docs |
-| Safety and quality | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc` | Check execution policy, change quality, evidence, and public contracts |
-| Workflows | `issueops`, `loop` | Manage durable workflows and verify-until-done contracts |
+| Safety and quality | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc`, `preflight` | Check execution policy, change quality, evidence, public contracts, and pre-commit repository state |
+| Workflows | `issueops`, `loop`, `gates`, `channel` | Manage durable workflows, task gate ledgers, and cross-session message channels |
+| Docs and hooks | `project`, `hook` | Create, route, and maintain project docs; host lifecycle hook entry points |
 | State and runtime | `state`, `daemon`, `mcp`, `worker` | Manage user state, the MCP backend, and constrained local jobs |
 | Improvement and research | `self-verify`, `self-augment`, `web-fetch` | Verify the harness, record improvements, and fetch public web content resiliently |
 
 Read the complete CLI and MCP contracts from the running binary:
 
-The current checkout's response-contract schema pins 27 top-level CLI commands and 44 MCP tools.
+The current checkout's response-contract schema pins 29 top-level CLI commands and 51 MCP tools.
 
 ```bash
 agent-harness --help
@@ -192,7 +193,7 @@ They are not a separately maintained README score.
 
 | Verification axis | Current state |
 | --- | --- |
-| Public contract | 27 CLI commands, 44 MCP tools |
+| Public contract | 29 CLI commands, 51 MCP tools |
 | Quality collection | `ok` |
 | Quality health | `needs_attention` |
 | Quality gate | `report_only` |
@@ -200,7 +201,7 @@ They are not a separately maintained README score.
 | Tracked quality candidates | 6 |
 | Active audit P1/P2 findings | 0 |
 
-The current `needs_attention` status reports 31 low-coverage packages and
+The current `needs_attention` status reports 12 low-coverage packages and
 branch-complexity debt without blocking the gate. A collection failure becomes
 `collection_status=error`, `health_status=unknown`, and `gate_status=block`.
 
@@ -243,15 +244,16 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 
 ## Skills
 
-[`skills/`](skills/) is the single source of truth for shared skills. The installer links that directory into each host's user-level skill path.
+[`skills/`](skills/) is the single source of truth for 29 shared skills. The installer links that directory into each host's user-level skill path.
 
 - Planning and critique: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - Execution and verification: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
-- Research and team memory: `berners-lee`, `engelbart`
-- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`
+- Research and collaboration: `berners-lee`, `engelbart`, `slack-delegate`
+- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`, `issue-branch-worktree`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`
 - Operational improvement: `self-verify`, `self-augment`, `stability-audit`
+- Korean writing: `fluent-korean`
 
 Each skill's `SKILL.md` is its authoritative usage contract.
 
@@ -284,6 +286,7 @@ skills/               Skill source shared by every host
 .agent-harness/       Architecture, operations, testing, and ADR project docs
 scripts/              Install, release, smoke, and validation scripts
 docs/                 Supporting documents and assets
+openwiki/             Code documentation wiki (OpenWiki) quickstart and pages
 ```
 
 ## Release and rollback
@@ -350,6 +353,7 @@ See [`.agent-harness/TESTING.md`](.agent-harness/TESTING.md) for change-specific
 | [`.agent-harness/TESTING.md`](.agent-harness/TESTING.md) | Test and verification gates |
 | [`.agent-harness/operations/quality-dashboard.md`](.agent-harness/operations/quality-dashboard.md) | Quality projections and pioneer evidence interpretation |
 | [`.agent-harness/ADR.md`](.agent-harness/ADR.md) | Structural decisions, rationale, and rejected alternatives |
+| [`openwiki/quickstart.md`](openwiki/quickstart.md) | OpenWiki entry point for code structure and workflows |
 
 Installation and operational procedures are split into [install](.agent-harness/operations/install.md), [hosts](.agent-harness/operations/hosts.md), [CLI/MCP](.agent-harness/operations/cli-and-mcp.md), and [verification](.agent-harness/operations/verification.md) guides.
 

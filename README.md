@@ -166,17 +166,18 @@ flowchart LR
 
 | 영역 | 대표 명령 | 역할 |
 | --- | --- | --- |
-| 설치와 갱신 | `install`, `update`, `bootstrap` | binary, skills, hooks, MCP wiring 갱신 |
+| 설치와 갱신 | `install`, `update`, `bootstrap`, `version` | binary, skills, hooks, MCP wiring 갱신과 버전 확인 |
 | 상태 진단 | `inspect`, `status`, `doctor`, `docs` | 설치, daemon, state, project docs 상태 확인 |
-| 안전과 품질 | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc` | 실행 정책, 변경 품질, evidence와 public contract 검사 |
-| 작업 흐름 | `issueops`, `loop` | durable workflow와 verify-until-done 계약 관리 |
+| 안전과 품질 | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc`, `preflight` | 실행 정책, 변경 품질, evidence와 public contract, 커밋 전 저장소 상태 검사 |
+| 작업 흐름 | `issueops`, `loop`, `gates`, `channel` | durable workflow, 완료 게이트 원장, 세션 간 메시지 채널 관리 |
+| 문서와 hook | `project`, `hook` | project docs 생성·라우팅·갱신과 host lifecycle hook 진입점 |
 | 상태와 실행 | `state`, `daemon`, `mcp`, `worker` | user state, MCP backend, 제한된 local job 관리 |
 | 개선과 조사 | `self-verify`, `self-augment`, `web-fetch` | 하네스 검증, 개선 후보 탐색, 실패에 대응하는 공개 웹 조회 |
 
 전체 명령과 MCP 도구 계약은 빌드된 바이너리에서 확인할 수 있습니다.
 
-현재 체크아웃의 response contract 스키마에는 최상위 CLI 명령 27개와 MCP 도구
-44개가 정의되어 있습니다.
+현재 체크아웃의 response contract 스키마에는 최상위 CLI 명령 29개와 MCP 도구
+51개가 정의되어 있습니다.
 
 ```bash
 agent-harness --help
@@ -191,7 +192,7 @@ quality projection입니다.
 
 | 검증 축 | 현재 상태 |
 | --- | --- |
-| public contract | CLI command 27개, MCP tool 44개 |
+| public contract | CLI command 29개, MCP tool 51개 |
 | quality collection | `ok` |
 | quality health | `needs_attention` |
 | quality gate | `report_only` |
@@ -199,7 +200,7 @@ quality projection입니다.
 | tracked quality candidates | 6 |
 | active audit P1/P2 | 0 |
 
-현재 `needs_attention`은 31개 low-coverage package와 branch complexity 부채를
+현재 `needs_attention`은 12개 low-coverage package와 branch complexity 부채를
 보고하지만 gate를 차단하지 않습니다. 수집 자체가 실패하면
 `collection_status=error`, `health_status=unknown`, `gate_status=block`으로
 fail-closed 처리합니다.
@@ -242,15 +243,16 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 
 ## 스킬
 
-공용 스킬의 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
+공용 스킬 29개의 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
 
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
-- 조사와 팀 기억: `berners-lee`, `engelbart`
-- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`
+- 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`
+- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`, `issue-branch-worktree`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`
 - 운영 개선: `self-verify`, `self-augment`, `stability-audit`
+- 한국어 작성: `fluent-korean`
 
 각 스킬의 사용 계약은 해당 `SKILL.md`에 정의되어 있습니다.
 
@@ -283,6 +285,7 @@ skills/               모든 host가 공유하는 skill 원본
 .agent-harness/       architecture, operations, testing, ADR 등 project docs
 scripts/              install, release, smoke, validation script
 docs/                 보조 문서와 asset
+openwiki/             코드 문서 wiki(OpenWiki)의 quickstart와 문서 페이지
 ```
 
 ## 릴리스와 롤백
@@ -348,6 +351,7 @@ go build -o bin/agent-harness ./cmd/harness
 | [`.agent-harness/TESTING.md`](.agent-harness/TESTING.md) | 테스트와 verification gate |
 | [`.agent-harness/operations/quality-dashboard.md`](.agent-harness/operations/quality-dashboard.md) | quality projection과 pioneer evidence 해석 |
 | [`.agent-harness/ADR.md`](.agent-harness/ADR.md) | 구조적 결정, 근거, 기각한 대안 |
+| [`openwiki/quickstart.md`](openwiki/quickstart.md) | 코드 구조와 워크플로를 안내하는 OpenWiki 입구 |
 
 설치와 운영 절차는 [install](.agent-harness/operations/install.md), [hosts](.agent-harness/operations/hosts.md), [CLI/MCP](.agent-harness/operations/cli-and-mcp.md), [verification](.agent-harness/operations/verification.md) 문서로 나뉘어 있습니다.
 
