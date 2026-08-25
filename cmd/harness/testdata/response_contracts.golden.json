@@ -4019,110 +4019,7 @@
       ]
     },
     "quality_inspect": {
-      "candidates": [
-        {
-          "category": "quality",
-          "evidence": [
-            "quality inspect CLI",
-            "coverage/complexity/audit signal output"
-          ],
-          "feasibility": 92,
-          "id": "quality-signal-harvester",
-          "impact": 94,
-          "risk": 14,
-          "score": 89.24,
-          "status": "open",
-          "title": "Add quality inspect signal harvesting CLI",
-          "verify_with": [
-            "go test ./cmd/harness/qualitycli -count=1",
-            "agent-harness quality inspect --json"
-          ]
-        },
-        {
-          "category": "refactor",
-          "evidence": [
-            "CollectSelfAugmentRepoSignals table-driven refactor"
-          ],
-          "feasibility": 90,
-          "id": "self-augment-signal-table",
-          "impact": 88,
-          "risk": 12,
-          "score": 83.8,
-          "status": "open",
-          "title": "Table-drive self-augment repository signal collection",
-          "verify_with": [
-            "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
-          ]
-        },
-        {
-          "category": "coverage",
-          "evidence": [
-            "go test -cover low package signal"
-          ],
-          "feasibility": 84,
-          "id": "coverage-commandguard",
-          "impact": 82,
-          "risk": 14,
-          "score": 77.08,
-          "status": "open",
-          "title": "Raise commandguard coverage for boundary and denial paths",
-          "verify_with": [
-            "go test ./internal/core/commandguard -count=1",
-            "go test -cover ./internal/core/commandguard"
-          ]
-        },
-        {
-          "category": "coverage",
-          "evidence": [
-            "go test -cover low package signal"
-          ],
-          "feasibility": 84,
-          "id": "coverage-mcp-resources",
-          "impact": 80,
-          "risk": 12,
-          "score": 76.16,
-          "status": "open",
-          "title": "Cover MCP resource catalog edge cases",
-          "verify_with": [
-            "go test ./cmd/harness/mcpcli/resources -count=1",
-            "go test -cover ./cmd/harness/mcpcli/resources"
-          ]
-        },
-        {
-          "category": "coverage",
-          "evidence": [
-            "go test -cover low package signal"
-          ],
-          "feasibility": 78,
-          "id": "coverage-host-judgement",
-          "impact": 82,
-          "risk": 18,
-          "score": 75.6,
-          "status": "open",
-          "title": "Cover host-agent judgement malformed output paths",
-          "verify_with": [
-            "go test ./internal/core/judgement -count=1",
-            "go test -cover ./internal/core/judgement"
-          ]
-        },
-        {
-          "category": "coverage",
-          "evidence": [
-            "go test -cover low package signal"
-          ],
-          "feasibility": 82,
-          "id": "coverage-issueops-linking",
-          "impact": 84,
-          "risk": 16,
-          "score": 77.4,
-          "status": "open",
-          "title": "Cover IssueOps link issue and link plan boundaries",
-          "verify_with": [
-            "go test ./internal/core/issueops/linking -count=1",
-            "go test -cover ./internal/core/issueops/linking"
-          ]
-        }
-      ],
+      "candidates": [],
       "collection_status": "ok",
       "findings": [
         {
@@ -4255,7 +4152,7 @@
       "summary": {
         "audit_p1_p2_items": 0,
         "branch_candidate_functions": 0,
-        "candidate_count": 6,
+        "candidate_count": 0,
         "high_branch_functions": 0,
         "low_coverage_packages": 1,
         "self_augment_open_candidates": 10,
@@ -4410,8 +4307,8 @@
           "status": "already_satisfied",
           "title": "Raise commandguard coverage for boundary and denial paths",
           "verify_with": [
-            "go test ./internal/core/commandguard -count=1",
-            "go test -cover ./internal/core/commandguard"
+            "go test ./internal/domain/commandguard -count=1",
+            "go test -cover ./internal/domain/commandguard"
           ],
           "why_now": [
             "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
@@ -4435,11 +4332,37 @@
           "status": "already_satisfied",
           "title": "Cover host-agent judgement malformed output paths",
           "verify_with": [
-            "go test ./internal/core/judgement -count=1",
-            "go test -cover ./internal/core/judgement"
+            "go test ./internal/domain/judgement -count=1",
+            "go test -cover ./internal/domain/judgement"
           ],
           "why_now": [
             "IssueOps and quality gates depend on strict host-agent result file decoding",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "request-to-usecase delegation regressions surface in package tests"
+          ],
+          "feasibility": 88,
+          "id": "coverage-issueops-inbound-adapters",
+          "impact": 86,
+          "novelty": 48,
+          "risk": 14,
+          "satisfaction_evidence": [
+            "inbound decision/inventory/retention/routing/status handlers cover delegation, validation failure, and error propagation",
+            "inbound lease handlers cover nil-service fail-closed paths and public denial/failure error mapping"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Cover IssueOps inbound adapter request mapping",
+          "verify_with": [
+            "go test ./internal/adapter/inbound/issueopsdecision ./internal/adapter/inbound/issueopsinventory ./internal/adapter/inbound/issueopsretention ./internal/adapter/inbound/issueopsrouting ./internal/adapter/inbound/issueopsstatus -count=1",
+            "go test -cover ./internal/adapter/inbound/..."
+          ],
+          "why_now": [
+            "issueopsdecision, issueopsinventory, issueopsretention, issueopsrouting, issueopsstatus inbound adapters measure 0% coverage while CLI responses depend on their mapping",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -4460,11 +4383,37 @@
           "status": "already_satisfied",
           "title": "Cover IssueOps link issue and link plan boundaries",
           "verify_with": [
-            "go test ./internal/core/issueops/linking -count=1",
-            "go test -cover ./internal/core/issueops/linking"
+            "go test ./internal/application/issueopslease ./internal/application/issueopspreparation -count=1",
+            "go test -cover ./internal/adapter/issueops/linking"
           ],
           "why_now": [
             "IssueOps durable state gates are easy to regress with boundary paths",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "response field drift fails at contract tests before golden updates"
+          ],
+          "feasibility": 86,
+          "id": "coverage-issueops-transport-boundaries",
+          "impact": 82,
+          "novelty": 46,
+          "risk": 12,
+          "satisfaction_evidence": [
+            "tool conformance enums round-trip through typed JSON unmarshalling",
+            "issueops execution write-lease status matrix and sync-base resolution/event validation are pinned"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Cover tool conformance and IssueOps transport contracts",
+          "verify_with": [
+            "go test ./internal/contract/toolconformance ./internal/contract/issueops -count=1",
+            "go test -cover ./internal/contract/toolconformance ./internal/contract/issueops"
+          ],
+          "why_now": [
+            "contract/toolconformance measures 0% and contract/issueops sits near the threshold while both pin response fields shared by CLI and MCP",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -5112,21 +5061,18 @@
         {
           "description": "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
           "evidence": [
-            "git diff",
-            "targeted implementation"
+            "git status --porcelain non-empty: uncommitted implementation diff observed"
           ],
           "korean_name": "개선 구현",
           "name": "implementation_delta",
-          "passed": false,
-          "score": 0,
+          "passed": true,
+          "score": 100,
           "target_score": 95
         },
         {
           "description": "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
           "evidence": [
-            "go test",
-            "QA gate",
-            "harness self-verify"
+            "self-verify-latest state absent or failing; run agent-harness self-verify --save-state after verification"
           ],
           "korean_name": "검증·QA",
           "name": "verification_qa",
@@ -5137,8 +5083,7 @@
         {
           "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
           "evidence": [
-            "harness state",
-            ".agent-harness"
+            "no augmentation lessons captured yet; record outcomes via the lesson capture flow"
           ],
           "korean_name": "학습 기록",
           "name": "learning_capture",
@@ -5167,6 +5112,7 @@
         "has_goal_score_summary": true,
         "has_host_judgement_coverage": true,
         "has_install_dry_run_mode": true,
+        "has_issue_ops_inbound_adapter_coverage": true,
         "has_issueops_linking_boundary_coverage": true,
         "has_mcp_adapter_catalog": true,
         "has_mcp_resource_coverage": true,
@@ -5186,6 +5132,7 @@
         "has_self_verification_docs": true,
         "has_self_verify_cli": true,
         "has_state_write_locking": true,
+        "has_tool_conformance_transport_coverage": true,
         "has_worker_mvp": true,
         "has_worker_stuck_running_detection": true,
         "skills": [
@@ -7421,8 +7368,8 @@
                 "status": "already_satisfied",
                 "title": "Raise commandguard coverage for boundary and denial paths",
                 "verify_with": [
-                  "go test ./internal/core/commandguard -count=1",
-                  "go test -cover ./internal/core/commandguard"
+                  "go test ./internal/domain/commandguard -count=1",
+                  "go test -cover ./internal/domain/commandguard"
                 ],
                 "why_now": [
                   "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
@@ -7446,11 +7393,37 @@
                 "status": "already_satisfied",
                 "title": "Cover host-agent judgement malformed output paths",
                 "verify_with": [
-                  "go test ./internal/core/judgement -count=1",
-                  "go test -cover ./internal/core/judgement"
+                  "go test ./internal/domain/judgement -count=1",
+                  "go test -cover ./internal/domain/judgement"
                 ],
                 "why_now": [
                   "IssueOps and quality gates depend on strict host-agent result file decoding",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "request-to-usecase delegation regressions surface in package tests"
+                ],
+                "feasibility": 88,
+                "id": "coverage-issueops-inbound-adapters",
+                "impact": 86,
+                "novelty": 48,
+                "risk": 14,
+                "satisfaction_evidence": [
+                  "inbound decision/inventory/retention/routing/status handlers cover delegation, validation failure, and error propagation",
+                  "inbound lease handlers cover nil-service fail-closed paths and public denial/failure error mapping"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Cover IssueOps inbound adapter request mapping",
+                "verify_with": [
+                  "go test ./internal/adapter/inbound/issueopsdecision ./internal/adapter/inbound/issueopsinventory ./internal/adapter/inbound/issueopsretention ./internal/adapter/inbound/issueopsrouting ./internal/adapter/inbound/issueopsstatus -count=1",
+                  "go test -cover ./internal/adapter/inbound/..."
+                ],
+                "why_now": [
+                  "issueopsdecision, issueopsinventory, issueopsretention, issueopsrouting, issueopsstatus inbound adapters measure 0% coverage while CLI responses depend on their mapping",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -7471,11 +7444,37 @@
                 "status": "already_satisfied",
                 "title": "Cover IssueOps link issue and link plan boundaries",
                 "verify_with": [
-                  "go test ./internal/core/issueops/linking -count=1",
-                  "go test -cover ./internal/core/issueops/linking"
+                  "go test ./internal/application/issueopslease ./internal/application/issueopspreparation -count=1",
+                  "go test -cover ./internal/adapter/issueops/linking"
                 ],
                 "why_now": [
                   "IssueOps durable state gates are easy to regress with boundary paths",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "response field drift fails at contract tests before golden updates"
+                ],
+                "feasibility": 86,
+                "id": "coverage-issueops-transport-boundaries",
+                "impact": 82,
+                "novelty": 46,
+                "risk": 12,
+                "satisfaction_evidence": [
+                  "tool conformance enums round-trip through typed JSON unmarshalling",
+                  "issueops execution write-lease status matrix and sync-base resolution/event validation are pinned"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Cover tool conformance and IssueOps transport contracts",
+                "verify_with": [
+                  "go test ./internal/contract/toolconformance ./internal/contract/issueops -count=1",
+                  "go test -cover ./internal/contract/toolconformance ./internal/contract/issueops"
+                ],
+                "why_now": [
+                  "contract/toolconformance measures 0% and contract/issueops sits near the threshold while both pin response fields shared by CLI and MCP",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -8123,21 +8122,18 @@
               {
                 "description": "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
                 "evidence": [
-                  "git diff",
-                  "targeted implementation"
+                  "git status --porcelain non-empty: uncommitted implementation diff observed"
                 ],
                 "korean_name": "개선 구현",
                 "name": "implementation_delta",
-                "passed": false,
-                "score": 0,
+                "passed": true,
+                "score": 100,
                 "target_score": 95
               },
               {
                 "description": "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
                 "evidence": [
-                  "go test",
-                  "QA gate",
-                  "harness self-verify"
+                  "self-verify-latest state absent or failing; run agent-harness self-verify --save-state after verification"
                 ],
                 "korean_name": "검증·QA",
                 "name": "verification_qa",
@@ -8148,13 +8144,12 @@
               {
                 "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
                 "evidence": [
-                  "harness state",
-                  ".agent-harness"
+                  "augmentation lessons present under self-augment-lesson-* state keys"
                 ],
                 "korean_name": "학습 기록",
                 "name": "learning_capture",
-                "passed": false,
-                "score": 0,
+                "passed": true,
+                "score": 100,
                 "target_score": 95
               }
             ],
@@ -8178,6 +8173,7 @@
               "has_goal_score_summary": true,
               "has_host_judgement_coverage": true,
               "has_install_dry_run_mode": true,
+              "has_issue_ops_inbound_adapter_coverage": true,
               "has_issueops_linking_boundary_coverage": true,
               "has_mcp_adapter_catalog": true,
               "has_mcp_resource_coverage": true,
@@ -8197,6 +8193,7 @@
               "has_self_verification_docs": true,
               "has_self_verify_cli": true,
               "has_state_write_locking": true,
+              "has_tool_conformance_transport_coverage": true,
               "has_worker_mvp": true,
               "has_worker_stuck_running_detection": true,
               "skills": [

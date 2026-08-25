@@ -101,11 +101,30 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "daemon-connection-limit").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("daemon connection limit should be satisfied after accept-loop max connection guard is implemented: %+v", result.Candidates)
 	}
-	if result.SelectedCandidate != nil {
-		t.Fatalf("expected no selected candidate after all catalog candidates are satisfied, got %+v", result.SelectedCandidate)
+	// Second-wave refill candidates flip to satisfied through evidence-backed
+	// signal rules once their coverage lands; nothing stays open for selection.
+	refill := candidateByID(result.Candidates, "coverage-issueops-inbound-adapters")
+	if refill.Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied || len(refill.SatisfactionEvidence) == 0 {
+		t.Fatalf("inbound adapter refill should be satisfied by its coverage tests: %+v", refill)
 	}
-	if result.TerminationEligible {
-		t.Fatalf("planner must not claim implementation termination before a diff is applied")
+	transport := candidateByID(result.Candidates, "coverage-issueops-transport-boundaries")
+	if transport.Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied || len(transport.SatisfactionEvidence) == 0 {
+		t.Fatalf("transport boundary refill should be satisfied by its contract tests: %+v", transport)
+	}
+	if result.SelectedCandidate != nil {
+		t.Fatalf("expected no selected candidate after every catalog entry is satisfied, got %+v", result.SelectedCandidate)
+	}
+	// Goals are scored from real observables (git diff presence, saved self-verify
+	// state, captured lessons), so termination eligibility must always equal the
+	// conjunction of the goal results rather than a hardcoded constant.
+	allPassed := true
+	for _, goal := range result.Goals {
+		if !goal.Passed {
+			allPassed = false
+		}
+	}
+	if result.TerminationEligible != allPassed {
+		t.Fatalf("termination eligibility %v must equal all-goals-passed %v", result.TerminationEligible, allPassed)
 	}
 }
 

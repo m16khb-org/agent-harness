@@ -66,6 +66,18 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"coverage-issueops-linking", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasIssueOpsLinkingBoundaryCoverage, "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations")
 		}},
+		{"coverage-issueops-inbound-adapters", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasIssueOpsInboundAdapterCoverage,
+				"inbound decision/inventory/retention/routing/status handlers cover delegation, validation failure, and error propagation",
+				"inbound lease handlers cover nil-service fail-closed paths and public denial/failure error mapping",
+			)
+		}},
+		{"coverage-issueops-transport-boundaries", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasToolConformanceTransportCoverage,
+				"tool conformance enums round-trip through typed JSON unmarshalling",
+				"issueops execution write-lease status matrix and sync-base resolution/event validation are pinned",
+			)
+		}},
 		{"state-write-locking", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage")
 		}},

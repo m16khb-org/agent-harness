@@ -37,21 +37,21 @@ func Plan(req Request, root, version string) Result {
 		},
 		{
 			Name: "implementation_delta", KoreanName: "개선 구현", TargetScore: req.TargetScore,
-			Score:       augmentcatalog.ScoreBool(false),
+			Score:       augmentcatalog.ScoreBool(hasImplementationDelta(root)),
 			Description: "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
-			Evidence:    []string{"git diff", "targeted implementation"},
+			Evidence:    implementationEvidence(root),
 		},
 		{
 			Name: "verification_qa", KoreanName: "검증·QA", TargetScore: req.TargetScore,
-			Score:       augmentcatalog.ScoreBool(false),
+			Score:       augmentcatalog.ScoreBool(selfVerificationPassed()),
 			Description: "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
-			Evidence:    []string{"go test", "QA gate", "harness self-verify"},
+			Evidence:    verificationEvidence(),
 		},
 		{
 			Name: "learning_capture", KoreanName: "학습 기록", TargetScore: req.TargetScore,
-			Score:       augmentcatalog.ScoreBool(false),
+			Score:       augmentcatalog.ScoreBool(lessonsCaptured()),
 			Description: "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
-			Evidence:    []string{"harness state", ".agent-harness"},
+			Evidence:    learningEvidence(),
 		},
 	}
 	for i := range goals {

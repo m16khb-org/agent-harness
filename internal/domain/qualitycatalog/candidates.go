@@ -11,6 +11,19 @@ var resolvedCandidateIDs = map[string]bool{
 	"daemon-connection-limit":        true,
 	"worker-stuck-running-detection": true,
 	"state-write-locking":            true,
+	// Resolved wave: signal rules in augmentcatalog confirm satisfaction and the
+	// measured coverage backs it (mcpcli/resources 91.7%, domain/judgement 90.6%,
+	// commandguard/linking suites exist under their current package paths).
+	"quality-signal-harvester":  true,
+	"self-augment-signal-table": true,
+	"coverage-commandguard":     true,
+	"coverage-mcp-resources":    true,
+	"coverage-host-judgement":   true,
+	"coverage-issueops-linking": true,
+	// Second-wave refill completed: inbound adapter and transport boundary
+	// coverage landed (augmentcatalog signal rules confirm with evidence).
+	"coverage-issueops-inbound-adapters":     true,
+	"coverage-issueops-transport-boundaries": true,
 }
 
 // VerificationKind classifies how a candidate's change is verified externally,
@@ -147,7 +160,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 82, Feasibility: 84, Novelty: 52, Risk: 14,
 			WhyNow:       []string{"command policy surfaces are safety-critical and low-coverage packages should be first candidates"},
 			ExpectedGain: []string{"workspace boundary regressions are caught earlier"},
-			VerifyWith:   []string{"go test ./internal/core/commandguard -count=1", "go test -cover ./internal/core/commandguard"},
+			VerifyWith:   []string{"go test ./internal/domain/commandguard -count=1", "go test -cover ./internal/domain/commandguard"},
 			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{
@@ -163,7 +176,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 82, Feasibility: 78, Novelty: 56, Risk: 18,
 			WhyNow:       []string{"IssueOps and quality gates depend on strict host-agent result file decoding"},
 			ExpectedGain: []string{"malformed JSON and bounded error output paths stay deterministic"},
-			VerifyWith:   []string{"go test ./internal/core/judgement -count=1", "go test -cover ./internal/core/judgement"},
+			VerifyWith:   []string{"go test ./internal/domain/judgement -count=1", "go test -cover ./internal/domain/judgement"},
 			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{
@@ -171,8 +184,24 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 84, Feasibility: 82, Novelty: 54, Risk: 16,
 			WhyNow:       []string{"IssueOps durable state gates are easy to regress with boundary paths"},
 			ExpectedGain: []string{"invalid URLs, missing files, and path boundaries are pinned"},
-			VerifyWith:   []string{"go test ./internal/core/issueops/linking -count=1", "go test -cover ./internal/core/issueops/linking"},
+			VerifyWith:   []string{"go test ./internal/application/issueopslease ./internal/application/issueopspreparation -count=1", "go test -cover ./internal/adapter/issueops/linking"},
 			Evidence:     []string{"go test -cover low package signal"},
+		},
+		{
+			ID: "coverage-issueops-inbound-adapters", Title: "Cover IssueOps inbound adapter request mapping", Category: "coverage",
+			Impact: 86, Feasibility: 88, Novelty: 48, Risk: 14,
+			WhyNow:       []string{"issueopsdecision, issueopsinventory, issueopsretention, issueopsrouting, issueopsstatus inbound adapters measure 0% coverage while CLI responses depend on their mapping"},
+			ExpectedGain: []string{"request-to-usecase delegation regressions surface in package tests"},
+			VerifyWith:   []string{"go test ./internal/adapter/inbound/issueopsdecision ./internal/adapter/inbound/issueopsinventory ./internal/adapter/inbound/issueopsretention ./internal/adapter/inbound/issueopsrouting ./internal/adapter/inbound/issueopsstatus -count=1", "go test -cover ./internal/adapter/inbound/..."},
+			Evidence:     []string{"quality inspect low-coverage evidence"},
+		},
+		{
+			ID: "coverage-issueops-transport-boundaries", Title: "Cover tool conformance and IssueOps transport contracts", Category: "coverage",
+			Impact: 82, Feasibility: 86, Novelty: 46, Risk: 12,
+			WhyNow:       []string{"contract/toolconformance measures 0% and contract/issueops sits near the threshold while both pin response fields shared by CLI and MCP"},
+			ExpectedGain: []string{"response field drift fails at contract tests before golden updates"},
+			VerifyWith:   []string{"go test ./internal/contract/toolconformance ./internal/contract/issueops -count=1", "go test -cover ./internal/contract/toolconformance ./internal/contract/issueops"},
+			Evidence:     []string{"quality inspect low-coverage evidence"},
 		},
 		{
 			ID: "daemon-connection-limit", Title: "Add daemon connection limit protection", Category: "audit-risk",

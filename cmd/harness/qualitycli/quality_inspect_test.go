@@ -622,6 +622,11 @@ func branchy(v int) int {
 		},
 		SelfAugmentOpenCount: func(string) (int, error) { return 10, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
+		Candidates: func(string) []QualityCandidate {
+			return []QualityCandidate{
+				{ID: "next-improvement-candidate", Status: "open", Score: 80.5, VerifyWith: []string{"go test ./... -count=1"}, Evidence: []string{"quality inspect signal"}},
+			}
+		},
 	})
 
 	if !result.OK {

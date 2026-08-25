@@ -134,6 +134,20 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasIssueOpsInboundAdapterCoverage = fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopsdecision", "decision_test.go"), "TestHandlersAddDelegatesToServiceAndAppliesDecision") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopsinventory", "list_test.go"), "TestListHandlerDelegatesScanAndProjectsResult") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopsretention", "prune_test.go"), "TestPruneHandlerReportsDryRunByDefault") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopsrouting", "routing_test.go"), "TestRoutingHandlersDelegateRecordAndScore") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopsstatus", "status_test.go"), "TestStatusHandlerProjectsStoredRecord") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "inbound", "issueopslease", "handlers_test.go"), "TestPublicClaimErrorMapsDenialsToStableMessages")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasToolConformanceTransportCoverage = fileContainsTerm(root, filepath.Join("internal", "contract", "toolconformance", "types_test.go"), "TestClassificationsCoverAllContractCases") &&
+				fileContainsTerm(root, filepath.Join("internal", "contract", "toolconformance", "types_test.go"), "TestBenchmarkReportJSONRoundTripPreservesTypedEnums") &&
+				fileContainsTerm(root, filepath.Join("internal", "contract", "issueops", "execution_sync_base_test.go"), "TestValidateWriteLeaseStatusMatrix") &&
+				fileContainsTerm(root, filepath.Join("internal", "contract", "issueops", "execution_sync_base_test.go"), "TestBaseSyncRequiredErrorCarriesReseedFreeNextCommand")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasGeniusMermaidLint = dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "lintMermaidBlocks") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "validationcli", "validation_mcp_mermaid_native_wrappers_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") &&
 				!fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`)
