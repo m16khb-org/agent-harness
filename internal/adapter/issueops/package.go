@@ -3,7 +3,6 @@ package issueops
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"agent-harness/internal/adapter/issueops/active"
@@ -17,6 +16,7 @@ import (
 	"agent-harness/internal/adapter/issueops/linking"
 	"agent-harness/internal/adapter/issueops/start"
 	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/repoidentity"
 	"agent-harness/internal/domain/stringlist"
 	"agent-harness/internal/port"
 )
@@ -210,15 +210,24 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 // mirror start.Start's record-id derivation exactly: trim repo+branch and
 // abs-normalize the repo (filepath.Abs) before hashing, so that a relative and
 // the equivalent absolute repo path take the SAME lock and serialize on the
-// SAME record. newIssueOpsID does no abs-normalization, so hashing the raw repo
-// here would let concurrent relative/absolute starts hold different locks while
-// read-modify-writing one record (lost-update TOCTOU).
+// SAME record. newIssueOpsID does no repository normalization, so hashing the
+// raw repo here would let source-checkout and linked-worktree starts hold
+// different locks while read-modify-writing one record (lost-update TOCTOU).
 func issueOpsStartLockID(repo, branch string) string {
-	repo = strings.TrimSpace(repo)
-	if abs, err := filepath.Abs(repo); err == nil {
-		repo = abs
-	}
+	repo = normalizeIssueOpsRepo(repo)
 	return newIssueOpsID(repo, strings.TrimSpace(branch))
+}
+
+func normalizeIssueOpsRepo(repo string) string {
+	clean := repoidentity.SourceRoot(repo, "")
+	if GitCmd == nil {
+		return clean
+	}
+	code, commonDir, _ := GitCmd(clean, "rev-parse", "--path-format=relative", "--git-common-dir")
+	if code != 0 {
+		commonDir = ""
+	}
+	return repoidentity.SourceRoot(clean, commonDir)
 }
 
 func StartIssueOps(stateRoot string, req issueops.IssueOpsStartRequest) (issueops.IssueOpsRecord, error) {
@@ -238,6 +247,7 @@ func issueOpsStartStore() start.Store {
 		Write:          writeIssueOps,
 		NewID:          newIssueOpsID,
 		ValidateBranch: validateIssueOpsIssueBranch,
+		NormalizeRepo:  normalizeIssueOpsRepo,
 	}
 }
 

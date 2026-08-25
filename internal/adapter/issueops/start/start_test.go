@@ -50,3 +50,39 @@ func TestStartReturnsExistingRecordWithoutRewrite(t *testing.T) {
 		t.Fatalf("existing record changed: %+v", got)
 	}
 }
+
+func TestStartCanonicalizesLinkedWorktreeRepoBeforeIDAndWrite(t *testing.T) {
+	const (
+		worktree = "/repo.worktrees/69-v1"
+		source   = "/repo"
+	)
+	var idRepo string
+	var written model.IssueOpsRecord
+	store := Store{
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			return model.IssueOpsRecord{}, errors.New("not found")
+		},
+		Write: func(_ string, record model.IssueOpsRecord) (model.IssueOpsRecord, error) {
+			written = record
+			return record, nil
+		},
+		NewID: func(repo, _ string) string {
+			idRepo = repo
+			return "io-v1"
+		},
+		ValidateBranch: func(string) error { return nil },
+		NormalizeRepo: func(repo string) string {
+			if repo != worktree {
+				t.Fatalf("NormalizeRepo input=%q, want %q", repo, worktree)
+			}
+			return source
+		},
+	}
+
+	if _, err := Start(store, t.TempDir(), model.IssueOpsStartRequest{Repo: worktree, Branch: "69-v1"}); err != nil {
+		t.Fatal(err)
+	}
+	if idRepo != source || written.Repo != source {
+		t.Fatalf("canonical repo mismatch: id repo=%q record repo=%q want=%q", idRepo, written.Repo, source)
+	}
+}

@@ -1,9 +1,10 @@
 package issueopsinventory
 
 import (
-	"path/filepath"
-	"strings"
+	"os/exec"
 	"time"
+
+	"agent-harness/internal/domain/repoidentity"
 )
 
 type SystemClock struct{}
@@ -13,14 +14,15 @@ func (SystemClock) Now() time.Time { return time.Now() }
 type CleanPath struct{}
 
 func (CleanPath) Normalize(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
+	clean := repoidentity.SourceRoot(path, "")
+	if clean == "" {
 		return ""
 	}
-	if !filepath.IsAbs(path) {
-		if absolute, err := filepath.Abs(path); err == nil {
-			path = absolute
-		}
+	command := exec.Command("git", "rev-parse", "--path-format=relative", "--git-common-dir")
+	command.Dir = clean
+	commonDir, err := command.Output()
+	if err != nil {
+		return clean
 	}
-	return filepath.Clean(path)
+	return repoidentity.SourceRoot(clean, string(commonDir))
 }

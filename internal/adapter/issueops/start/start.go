@@ -14,6 +14,7 @@ type Store struct {
 	Write          func(stateRoot string, record model.IssueOpsRecord) (model.IssueOpsRecord, error)
 	NewID          func(repo, branch string) string
 	ValidateBranch func(branch string) error
+	NormalizeRepo  func(repo string) string
 }
 
 func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model.IssueOpsRecord, error) {
@@ -21,8 +22,13 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 	if repo == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
-	if absRepo, err := filepath.Abs(repo); err == nil {
+	if store.NormalizeRepo != nil {
+		repo = store.NormalizeRepo(repo)
+	} else if absRepo, err := filepath.Abs(repo); err == nil {
 		repo = absRepo
+	}
+	if repo == "" {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
 	branch := strings.TrimSpace(req.Branch)
 	if err := store.ValidateBranch(branch); err != nil {
