@@ -74,6 +74,10 @@ func validateRedactionAudit(root string) StepResult {
 	return validationcli.ValidateRedactionAudit(root)
 }
 
+func validateGoFormat(root string) StepResult {
+	return validationcli.ValidateGoFormat(root)
+}
+
 func validateQAGate(root string) StepResult {
 	return validationcli.ValidateQAGate(root)
 }

@@ -1,6 +1,7 @@
 package validationcli
 
 import (
+	"agent-harness/cmd/harness/validationcli/goformat"
 	"agent-harness/cmd/harness/validationcli/nativeintegration"
 	webfetchvalidation "agent-harness/cmd/harness/validationcli/webfetch"
 )
@@ -55,6 +56,10 @@ func ValidateDocsIndex(binary, root string) StepResult {
 
 func ValidateRedactionAudit(root string) StepResult {
 	return validateRedactionAudit(root)
+}
+
+func ValidateGoFormat(root string) StepResult {
+	return goformat.Validate(root)
 }
 
 func ValidateQAGate(root string) StepResult {

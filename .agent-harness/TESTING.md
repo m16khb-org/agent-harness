@@ -37,7 +37,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 ```
 
-Go 코드 변경의 기본 검증(`go test -race ./...`, `go vet ./...`, architecture
+Go 코드 변경의 기본 검증(`gofmt -l`, `go test -race ./...`, `go vet ./...`, architecture
 ratchet, operational-health 위임, golden 갱신 조건)은
 [unit-and-contract.md](testing/unit-and-contract.md)가 소유하고, IssueOps
 execution vertical 변경의 focused package set은

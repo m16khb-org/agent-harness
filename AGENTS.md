@@ -159,6 +159,8 @@ python3 scripts/validate-skill.py skills/atomic-commit-push
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
 ./scripts/install-native.sh --dry-run --json
+gofmt -l $(git ls-files '*.go')
+go vet ./...
 go test ./... -count=1
 go test ./cmd/harness/contractgolden -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
@@ -181,6 +183,8 @@ Go 코드가 추가된 뒤 표준 검증:
 
 ```bash
 go mod tidy
+gofmt -l $(git ls-files '*.go')
+go vet ./...
 go test ./... -count=1
 go test -race ./... -count=1
 go build -o bin/agent-harness ./cmd/harness

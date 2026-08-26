@@ -24,6 +24,10 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
   fresh session에서 재조회되게 한다
   ([install.md](operations/install.md)).
 - `.agent-harness/*.md` 편집은 response-contract golden을 드리프트시킨다.
+- 로컬 검증 배터리의 게이트 집합은 CI와 같아야 한다. CI가 첫 게이트(gofmt)에서 끊기면 뒤의
+  test/golden 실패는 관측되지 않고, 환경 관측값(working tree, 로컬 심링크)을 그대로 박은
+  golden/검증기는 clean checkout에서 깨진다
+  ([2026-08-26 lesson](cautions/lessons/2026-08-26-ci-gofmt-gate-local-battery-drift.md)).
 - Dated 기록의 IssueOps 명령·필드·상태는 사고 당시 증거일 뿐 실행 지시가 아니다.
   현재 실행 계약은 `skills/issueops/references/execution.md`와
   `.agent-harness/OPERATIONS.md`를 따른다.
@@ -68,6 +72,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-21 | [issueops lifecycle dogfood: whoami was claim-flags-only; branch errors cited foreign issues](cautions/lessons/2026-08-21-issueops-whoami-record-flags-and-branch-examples.md) |
 | 2026-08-22 | [underused-surface dogfood: shipped benchmark panic, mcpsmoke data race, hook help noise](cautions/lessons/2026-08-22-underused-surface-dogfood-defects.md) |
 | 2026-08-22 | [Kordoc install unblocks boehm pioneer; child tasks need CLI+handshake probe](cautions/lessons/2026-08-22-kordoc-install-unblocks-boehm-pioneer.md) |
+| 2026-08-26 | [CI gofmt gate drifted from the local battery; golden captured a dirty working tree](cautions/lessons/2026-08-26-ci-gofmt-gate-local-battery-drift.md) |
 
 ## Removed CLI modes (historical only)
 

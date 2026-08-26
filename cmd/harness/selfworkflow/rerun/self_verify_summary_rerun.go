@@ -24,6 +24,8 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 		return "go vet ./... && go test -race ./... -count=1", true
 	case "go build":
 		return "go build -o bin/agent-harness ./cmd/harness", true
+	case "gofmt":
+		return "gofmt -l $(git ls-files '*.go')", true
 	case "inspect smoke":
 		return "./bin/agent-harness inspect --json", true
 	case "docs index smoke":

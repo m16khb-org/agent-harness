@@ -24,6 +24,7 @@ type SelfVerifyStepDeps struct {
 	HarnessRoot                     func() string
 	RunCommandStep                  func(string, string, time.Duration, string, string, ...string) StepResult
 	ValidateHarnessInvariants       func(string) StepResult
+	ValidateGoFormat                func(string) StepResult
 	ValidateRiskQATier              func(string) RiskQAEvidence
 	ValidateInspect                 func(string, string) StepResult
 	ValidateDocsIndex               func(string, string) StepResult
@@ -50,6 +51,9 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 	var riskQAEvidence RiskQAEvidence
 	return []SelfVerifyPlannedStep{
 		{Label: "harness invariants", Run: func() StepResult { return deps.ValidateHarnessInvariants(root) }},
+		// CI의 Format check와 같은 게이트를 로컬에서도 무조건 실행한다. gofmt는
+		// 값싸고 결정적이므로 긴 go test보다 앞에 두어 fail-fast 모드에서 먼저 드러낸다.
+		{Label: "gofmt", Run: func() StepResult { return deps.ValidateGoFormat(root) }},
 		{Label: "risk QA tier", Run: func() StepResult {
 			riskQAEvidence = deps.ValidateRiskQATier(root)
 			return riskQAEvidence.Step

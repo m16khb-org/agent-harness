@@ -17,6 +17,7 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 	}
 	want := []string{
 		"harness invariants",
+		"gofmt",
 		"risk QA tier",
 		"go test",
 		"contract golden tests",
@@ -56,7 +57,7 @@ func TestPlannedSelfVerifyStepsUsesCachedContractGoldenAfterGoTest(t *testing.T)
 	goTestStep := StepResult{Label: "go test", OK: true}
 
 	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, fakeSelfVerifyStepDeps(t))
-	got := steps[3].Run()
+	got := steps[4].Run()
 
 	if !got.OK || got.Label != "contract golden tests" || got.Command != "covered by go test ./... -count=1" {
 		t.Fatalf("expected cached contract golden result, got %#v", got)
@@ -85,8 +86,8 @@ func TestPlannedSelfVerifyStepsUsesSuccessfulRaceAsFullTestEvidence(t *testing.T
 	}
 
 	planned := PlannedSelfVerifySteps("/repo", "/tmp/harness", 100, &goTestStep, deps)
-	riskStep := planned[1].Run()
-	testStep := planned[2].Run()
+	riskStep := planned[2].Run()
+	testStep := planned[3].Run()
 
 	if !riskStep.OK || !testStep.OK {
 		t.Fatalf("risk/test steps failed: risk=%+v test=%+v", riskStep, testStep)
@@ -127,8 +128,8 @@ func TestPlannedSelfVerifyStepsGivesGoTestFullGateTimeout(t *testing.T) {
 	}
 
 	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, deps)
-	_ = steps[1].Run()
-	got := steps[2].Run()
+	_ = steps[2].Run()
+	got := steps[3].Run()
 
 	if !got.OK || got.Label != "go test" {
 		t.Fatalf("go test step returned unexpected result: %#v", got)
@@ -154,7 +155,7 @@ func TestPlannedSelfVerifyStepsUsesStaticDoctorForBinaryDrift(t *testing.T) {
 	}
 
 	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, deps)
-	got := steps[5].Run()
+	got := steps[6].Run()
 	if !got.OK || got.Label != "binary drift" {
 		t.Fatalf("binary drift step returned unexpected result: %#v", got)
 	}
@@ -204,6 +205,9 @@ func fakeSelfVerifyStepDeps(t *testing.T) SelfVerifyStepDeps {
 		},
 		ValidateHarnessInvariants: func(string) StepResult {
 			return ok("harness invariants")
+		},
+		ValidateGoFormat: func(string) StepResult {
+			return ok("gofmt")
 		},
 		ValidateRiskQATier: func(string) RiskQAEvidence {
 			return RiskQAEvidence{Step: ok("risk QA tier")}

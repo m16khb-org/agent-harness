@@ -13,11 +13,18 @@ IssueOps execution vertical contract lives in
 Go 코드가 추가되면 기본 검증은 다음이다. `self-verify`는 working tree risk를 보고 `risk QA tier`에서 `go vet ./...` 또는 `go test -race ./... -count=1`를 조건부 실행한다.
 
 ```bash
+gofmt -l $(git ls-files '*.go')
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
 go build -o bin/agent-harness ./cmd/harness
 ```
+
+`gofmt -l`은 CI의 Format check와 같은 파일 집합(`git ls-files '*.go'`)을 검사하며 출력이
+비어 있어야 통과다. `self-verify`의 `gofmt` 단계는 같은 조건을 working tree 변경 여부와
+무관하게 무조건 실행한다(`risk QA tier`는 변경분에만 반응한다). CI는 gofmt에서 끊기면 그
+뒤의 test/race/self-verify 결과를 보여주지 않으므로, 로컬 배터리의 게이트 집합은 CI와
+같아야 한다(2026-08-26 lesson).
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 

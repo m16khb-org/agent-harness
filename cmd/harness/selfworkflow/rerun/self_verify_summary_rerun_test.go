@@ -13,6 +13,7 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 		"contract golden tests":  "contractgolden",
 		"risk QA tier":           "go vet ./...",
 		"go build":               "go build -o bin/agent-harness ./cmd/harness",
+		"gofmt":                  "gofmt -l $(git ls-files '*.go')",
 		"inspect smoke":          "inspect --json",
 		"docs index smoke":       "docs --json",
 		"candidate export":       "self-verify candidates",
