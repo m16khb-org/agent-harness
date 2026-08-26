@@ -235,6 +235,8 @@ ALL YES → Announce: "All requirements clear. Proceeding to plan generation." T
 ANY NO → Ask the specific unclear question.
 ```
 
+Item-by-item pass criteria and the re-check loop live in [references/clearance-checklist.md](references/clearance-checklist.md).
+
 ---
 
 ### Phase 3: Plan Generation

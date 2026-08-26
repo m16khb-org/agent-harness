@@ -87,6 +87,8 @@ A single failing commit in the series means that commit must be fixed (or squash
 Trigger: "rebase", "squash commits", "rewrite history", "clean up branch"
 ```
 
+Detailed protocol: [references/rebase-protocol.md](references/rebase-protocol.md)
+
 **Pre-flight:**
 - `git status --short` — clean working tree required
 - `git branch --show-current` — confirm branch
@@ -122,6 +124,8 @@ Trigger: "rebase", "squash commits", "rewrite history", "clean up branch"
 ```
 Trigger: "bisect", "find which commit broke X", "regression search"
 ```
+
+Detailed protocol: [references/bisect-protocol.md](references/bisect-protocol.md)
 
 **Pre-flight:**
 - Identify a known-good commit (SHA or tag) and a known-bad commit (usually HEAD)

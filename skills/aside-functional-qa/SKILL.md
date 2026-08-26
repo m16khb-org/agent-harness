@@ -25,6 +25,7 @@ Read these before execution:
 - [Aside browser contract](references/aside-browser-contract.md)
 - [Functional test rubric](references/functional-test-rubric.md)
 - [Report template](references/report-template.md)
+- [Sample report](examples/sample-report.md)
 
 ## Inputs
 

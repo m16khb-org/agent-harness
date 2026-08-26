@@ -90,6 +90,12 @@ The rationale must cite the driving phase's evidence, not the issue count. A
 phase that is entirely `Blocked` or `Not Run` cannot produce a merged
 "Ready" statement.
 
+Severity rank across phases: functional `Critical` and visual `Blocker` are
+the same top rank, followed by `High`, `Medium`, `Low`. Merge by that rank, so
+a `Critical` functional defect and a `Blocker` visual defect drive the same
+merged verdict; the label difference between the two templates never changes
+the order.
+
 ## Merged report skeleton
 
 Follow `examples/sample-report.md`. Shape:

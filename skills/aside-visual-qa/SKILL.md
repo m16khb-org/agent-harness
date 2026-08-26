@@ -24,6 +24,7 @@ Read these before execution:
 - [Aside browser contract](references/aside-browser-contract.md)
 - [Visual review rubric](references/visual-review-rubric.md)
 - [Report template](references/report-template.md)
+- [Sample report](examples/sample-report.md)
 
 ## Inputs
 
@@ -152,6 +153,13 @@ Deduplicate symptoms sharing one cause. For every issue record:
 - user impact and practical recommendation;
 - confidence and retest status.
 
+A `Reviewed` screen/state and a `Confirmed` finding each require one captured
+observation you actually took in this session: a screenshot, a DOM/text
+snapshot, or a measured value at the stated viewport. A screen or state you did
+not directly observe is `Not Run`, not `Reviewed`; a finding without its own
+evidence reference is `Needs clarification`, not `Confirmed`. Assumed or
+self-reported behavior ("it should render correctly") is not evidence.
+
 Record good decisions separately under `Positive observations`. Do not inflate
 the defect count with praise or split one defect across viewports without a
 different cause.
@@ -174,7 +182,8 @@ recommendation on core-task and user impact, not raw issue count.
 Before completion, verify:
 
 - every enumerated screen/state is `Reviewed`, `Not Run`, or `Blocked`;
-- every finding has reproduction and evidence;
+- every `Reviewed` state and every `Confirmed` finding cites an artifact
+  captured in this session, and every finding has reproduction steps;
 - every standards claim maps to observed behavior;
 - every screenshot and snapshot belongs to the current build;
 - no private data or unrelated tab information appears;
