@@ -2,27 +2,9 @@ package daemonpaths
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 )
-
-func processFieldWithCLocale(pid int, field string) ([]byte, error) {
-	cmd := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", field)
-	env := make([]string, 0, len(os.Environ())+3)
-	for _, value := range os.Environ() {
-		if strings.HasPrefix(value, "LANG=") ||
-			strings.HasPrefix(value, "LC_ALL=") ||
-			strings.HasPrefix(value, "LC_TIME=") {
-			continue
-		}
-		env = append(env, value)
-	}
-	cmd.Env = append(env, "LANG=C", "LC_ALL=C", "LC_TIME=C")
-	return cmd.Output()
-}
 
 func canonicalProcessStartTime(value string) (string, error) {
 	value = strings.TrimSpace(value)
