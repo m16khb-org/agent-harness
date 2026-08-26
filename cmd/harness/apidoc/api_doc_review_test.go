@@ -179,6 +179,48 @@ export class UsersController {
 	}
 }
 
+func TestAPIDocStaticCheckSkipsSwaggerDecoratorsInContractTestsMode(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "src", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := `---
+api_doc_mode: contract-tests
+---
+`
+	if err := os.WriteFile(filepath.Join(root, ".agent-harness", "OPEN_API_SPEC.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	controller := `import { Controller, Get, Query } from '@nestjs/common'
+
+@Controller('users')
+export class UsersController {
+  @Get()
+  find(@Query('name') name?: string) {
+    return { name }
+  }
+}
+`
+	path := filepath.Join(root, "src", "users", "users.controller.ts")
+	if err := os.WriteFile(path, []byte(controller), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := runAPIDocStaticCheckWithOptions(apiDocStaticOptions{
+		Repo:  root,
+		Files: []string{"src/users/users.controller.ts"},
+	})
+	if err != nil {
+		t.Fatalf("contract-tests mode should skip Swagger decorator checks: %v", err)
+	}
+	if !result.OK || !result.Skipped || result.Reason != "contract_tests_mode" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
 func TestAPIDocReviewSchemaRequiresNullableLine(t *testing.T) {
 	schema := apiDocReviewSchema()
 	properties := schema["properties"].(map[string]any)

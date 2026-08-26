@@ -53,6 +53,16 @@ func runAPIDocStaticCheckWithOptions(options apiDocStaticOptions) (apiDocStaticR
 	if len(files) == 0 {
 		return apiDocStaticResult{OK: true, Summary: "No API documentation candidate files.", Files: []string{}, Violations: []apiDocStaticViolation{}, Skipped: true, Reason: "no_api_doc_candidate_files"}, nil
 	}
+	if apiDocMode(options.Repo) == "contract-tests" {
+		return apiDocStaticResult{
+			OK:         true,
+			Summary:    "Swagger decorator checks skipped; repository uses contract-tests API documentation.",
+			Files:      files,
+			Violations: []apiDocStaticViolation{},
+			Skipped:    true,
+			Reason:     "contract_tests_mode",
+		}, nil
+	}
 	var violations []apiDocStaticViolation
 	for _, file := range files {
 		if !strings.HasSuffix(file, ".ts") {
@@ -90,4 +100,26 @@ func runAPIDocStaticCheckWithOptions(options apiDocStaticOptions) (apiDocStaticR
 	}
 	result.Summary = fmt.Sprintf("API documentation static check found %d violation(s).", len(violations))
 	return result, ErrStaticGateFailed
+}
+
+func apiDocMode(repo string) string {
+	content, err := os.ReadFile(filepath.Join(repo, ".agent-harness", "OPEN_API_SPEC.md"))
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(string(content), "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return ""
+	}
+	for _, line := range lines[1:] {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" {
+			break
+		}
+		key, value, found := strings.Cut(trimmed, ":")
+		if found && strings.TrimSpace(key) == "api_doc_mode" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }

@@ -21,6 +21,18 @@ harness api-doc check --result FILE --json
 
 기본 범위는 staged API candidate files다. 기존 레거시 전체 부채는 `--all`을 명시한 경우에만 본다.
 
+## Repository mode
+
+`OPEN_API_SPEC.md` frontmatter의 `api_doc_mode`가 정적 게이트 동작을 고정한다.
+
+- 미설정 또는 `swagger`: 기존 Swagger/OpenAPI decorator 정적 검사를 수행한다.
+- `contract-tests`: Swagger decorator 정적 검사를 건너뛰되, staged API candidate에
+  대한 host-agent contract review는 계속 수행한다.
+
+`contract-tests`는 OpenAPI 미채택을 명시적으로 결정하고 route/contract test가
+API 계약을 소유하는 저장소에서만 사용한다. 문서 본문 prose를 추론해 자동으로
+선택하지 않는다.
+
 ## Static omissions to block
 
 정적 게이트가 확정적으로 잡아야 하는 누락:
