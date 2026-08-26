@@ -70,7 +70,7 @@ func TestServeMCPStreamAdvertisesAndRunsGatesTools(t *testing.T) {
 	}
 
 	abandonResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "gates_abandon",
+		Name:      "gates_abandon",
 		Arguments: map[string]any{"file": ledger, "gate_id": "G2", "reason": "verified in SDK smoke"},
 	})
 	if err != nil || abandonResult.IsError {
@@ -78,7 +78,7 @@ func TestServeMCPStreamAdvertisesAndRunsGatesTools(t *testing.T) {
 	}
 
 	finalResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "gates_status",
+		Name:      "gates_status",
 		Arguments: map[string]any{"workspace_root": dir, "cwd": dir, "files": []any{ledger}},
 	})
 	if err != nil || finalResult.IsError {

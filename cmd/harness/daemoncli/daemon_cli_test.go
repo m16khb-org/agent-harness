@@ -143,12 +143,12 @@ func TestDaemonStopCleansStalePIDFileIdempotently(t *testing.T) {
 				Paths: daemonPaths{Dir: root, Socket: filepath.Join(root, "agent-harness.sock"), PID: pidPath},
 			}
 		},
-		findProcess: func(int) (daemonProcess, error) { return nil, fmt.Errorf("unused") },
+		findProcess:    func(int) (daemonProcess, error) { return nil, fmt.Errorf("unused") },
 		inspectProcess: func(int) (daemonProcessIdentity, error) { return daemonProcessIdentity{}, fmt.Errorf("unused") },
-		processAlive: func(pid int) bool { return false },
-		remove:       func(path string) error { removed[path] = true; return nil },
-		now:          time.Now,
-		sleep:        func(time.Duration) {},
+		processAlive:   func(pid int) bool { return false },
+		remove:         func(path string) error { removed[path] = true; return nil },
+		now:            time.Now,
+		sleep:          func(time.Duration) {},
 	})
 	if err != nil {
 		t.Fatalf("stop with stale pid file must be idempotent: %v", err)

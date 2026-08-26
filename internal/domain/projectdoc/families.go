@@ -86,12 +86,12 @@ func familyModulePath(rel string) (DocFamily, bool) {
 // familyRecordMetaDescriptions is the canonical frontmatter description for
 // append-created record files inside each family module directory.
 var familyRecordMetaDescriptions = map[string]string{
-	"adr":              "Accepted decision record with rationale, alternatives, and consequences.",
-	"architecture":     "Architecture module detail: structure, boundaries, and dependencies.",
-	"cautions":         "Caution record for a solved false case or recurring risk.",
-	"conventions":      "Conventions module detail: concrete implementation and interface rules.",
+	"adr":               "Accepted decision record with rationale, alternatives, and consequences.",
+	"architecture":      "Architecture module detail: structure, boundaries, and dependencies.",
+	"cautions":          "Caution record for a solved false case or recurring risk.",
+	"conventions":       "Conventions module detail: concrete implementation and interface rules.",
 	"operations/guides": "Operations guide module for one runtime or installation procedure.",
-	"testing":          "Testing module detail: strategy, fixtures, and verification gates.",
+	"testing":           "Testing module detail: strategy, fixtures, and verification gates.",
 }
 
 // RecordMetaDescription returns the canonical record-file description for a
@@ -130,11 +130,11 @@ func ManifestJSON() string {
 		MaxModuleLines: 250,
 		Families:       families,
 		SingleOwnerTopics: map[string]string{
-			"commit formatting":          filepath.ToSlash(filepath.Join(ProjectDocsDir, "COMMIT_POLICY.md")),
+			"commit formatting":                  filepath.ToSlash(filepath.Join(ProjectDocsDir, "COMMIT_POLICY.md")),
 			"constitutional priority and safety": filepath.ToSlash(filepath.Join(ProjectDocsDir, "CONSTITUTION.md")),
-			"OpenAPI requirements":       filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPEN_API_SPEC.md")),
-			"technology selection":       filepath.ToSlash(filepath.Join(ProjectDocsDir, "TECH_STACK.md")),
-			"agent execution sequence":   filepath.ToSlash(filepath.Join(ProjectDocsDir, "AGENT_WORKFLOW.md")),
+			"OpenAPI requirements":               filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPEN_API_SPEC.md")),
+			"technology selection":               filepath.ToSlash(filepath.Join(ProjectDocsDir, "TECH_STACK.md")),
+			"agent execution sequence":           filepath.ToSlash(filepath.Join(ProjectDocsDir, "AGENT_WORKFLOW.md")),
 		},
 	}
 	b, err := json.MarshalIndent(manifest, "", "  ")

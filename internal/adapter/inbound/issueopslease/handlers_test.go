@@ -94,9 +94,9 @@ func TestToCoreLeaseCopiesHolderAndProcessSafely(t *testing.T) {
 		Generation: 3,
 		Status:     "active",
 		Holder: &leasecontract.Actor{
-			Host:          "codex",
-			SessionID:     "s-1",
-			AgentID:       "a-1",
+			Host:           "codex",
+			SessionID:      "s-1",
+			AgentID:        "a-1",
 			SessionProcess: &leasecontract.ProcessReceipt{PID: 7, StartedAt: "t", Executable: "/bin/codex"},
 		},
 	}
@@ -117,8 +117,8 @@ func TestToCoreLeaseCopiesHolderAndProcessSafely(t *testing.T) {
 
 func TestResumeNextCommandReferencesCycleAndArtifacts(t *testing.T) {
 	command := resumeNextCommand("io-12", 4, leasecontract.ResumeArtifacts{
-		ClaimTokenPath:   "/state/io-12/token",
-		IssueBodySHA256:  "abc",
+		ClaimTokenPath:      "/state/io-12/token",
+		IssueBodySHA256:     "abc",
 		ContextPacketSHA256: "def",
 	})
 	if command == "" || !strings.Contains(command, "io-12") || !strings.Contains(command, "abc") {

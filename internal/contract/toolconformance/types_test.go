@@ -104,9 +104,9 @@ func TestBenchmarkReportJSONRoundTripPreservesTypedEnums(t *testing.T) {
 			AttemptCount:      1,
 			CompletedEpisodes: 1,
 			Cases: []EpisodeReport{{
-				Status:         EpisodeCompleted,
-				FixtureID:      "fixture-1",
-				Classification: ExactValid,
+				Status:          EpisodeCompleted,
+				FixtureID:       "fixture-1",
+				Classification:  ExactValid,
 				AdvertisedValid: true,
 				CanonicalValid:  true,
 			}},

@@ -8,5 +8,5 @@ import (
 // root가 설치한다.
 var (
 	AppendProjectDocsEntry func(req projectdocscontract.ProjectDocsAppendRequest) (projectdocscontract.ProjectDocsAppendResult, error)
-	RouteProjectDocs        func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
+	RouteProjectDocs       func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
 )

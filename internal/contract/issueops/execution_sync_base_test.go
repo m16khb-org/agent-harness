@@ -92,12 +92,12 @@ func TestValidateExecutionSyncBaseResolutionBindsReleasedCompletion(t *testing.T
 		Completion: &ExecutionCompletion{Generation: 3},
 	}
 	valid := ExecutionSyncBaseResolution{
-		Generation:          3,
+		Generation:           3,
 		CompletionGeneration: 3,
-		BaseOID:             fullOID(),
-		StartedAt:           "2026-08-25T00:00:00Z",
-		ConflictFiles:       []string{"internal/a.go", "internal/b.go"},
-		Actor:               validSyncBaseNativeActor(),
+		BaseOID:              fullOID(),
+		StartedAt:            "2026-08-25T00:00:00Z",
+		ConflictFiles:        []string{"internal/a.go", "internal/b.go"},
+		Actor:                validSyncBaseNativeActor(),
 	}
 	if err := validateExecutionSyncBaseResolution(execution, valid); err != nil {
 		t.Fatalf("valid resolution rejected: %v", err)
@@ -138,12 +138,12 @@ func TestValidateExecutionSyncBaseResolutionBindsReleasedCompletion(t *testing.T
 
 func TestValidateExecutionSyncBaseEventContract(t *testing.T) {
 	valid := ExecutionSyncBaseEvent{
-		Mode:         ExecutionSyncBaseEventApply,
-		BaseOID:      fullOID(),
-		MergeCommit:  strings.Repeat("b", 40),
-		BaseBranch:   "main",
-		Actor:        "codex",
-		At:           "2026-08-25T00:00:00Z",
+		Mode:          ExecutionSyncBaseEventApply,
+		BaseOID:       fullOID(),
+		MergeCommit:   strings.Repeat("b", 40),
+		BaseBranch:    "main",
+		Actor:         "codex",
+		At:            "2026-08-25T00:00:00Z",
 		ConflictFiles: 2,
 	}
 	if err := validateExecutionSyncBaseEvent(valid); err != nil {
