@@ -26,6 +26,12 @@ go build -o bin/agent-harness ./cmd/harness
 뒤의 test/race/self-verify 결과를 보여주지 않으므로, 로컬 배터리의 게이트 집합은 CI와
 같아야 한다(2026-08-26 lesson).
 
+정적 분석은 `go vet`이 harness 기본 게이트이고, CI는 그 위에 golangci-lint 기본 linter
+집합(errcheck, gosimple, govet, ineffassign, staticcheck, unused)을 `.golangci.yml`
+설정으로 추가 실행한다. 로컬에 golangci-lint가 설치돼 있으면 `golangci-lint run ./...`로
+같은 목록을 미리 확인한다. 이 도구는 install/update/self-verify readiness 경로의
+요구사항이 아니며 CI와 개발자 게이트로만 쓴다.
+
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 
 ### Architecture fitness ratchet
@@ -83,6 +89,12 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - **shape 불변식 테스트는 우연한 수치를 고정하지 않는다.** #176에서 `TestStepsKeepTheirExistingShape`가 "3단계"를 불변식으로 검사했지만, 실제 계약은 첫 단계가 MCP이고 마지막이 `fail`이며 사이에 provider CLI `fallback_api`가 오고 `Order`가 연속이라는 것이었다. 단계를 하나 늘리는 정당한 변경이 그 테스트를 깨뜨렸다. 이름이 "shape"인 테스트는 구조를 검사하고, 개수·인덱스는 그 구조가 요구할 때만 고정한다.
 - filesystem test는 temporary directory를 사용하고, workspace root 밖 접근 거부를 검증한다.
 - secret redaction test는 token-like fixture가 로그/응답에 남지 않는지 확인한다.
+- repo-owned validator의 단위 테스트(`scripts/*_test.py`: validate-skill,
+  verify-skill-shell, engelbart contract)는 `python3 -m unittest discover -s scripts
+  -p '*_test.py'`로 실행하며 CI가 같은 단계를 돌린다. `verify-skill-shell.py`는 스캔
+  루트 직하에서 `SKILL.md`를 가진 디렉터리로 해석되는 심링크만 로컬 외부 스킬 링크로
+  보고 건너뛰고(설치기·`inspect`의 `ListSkillNames`와 같은 규칙), 중첩 심링크와
+  `SKILL.md`가 없는 링크는 여전히 `symlink-not-allowed` 위반이다.
 - shipped skill의 executable shell fence는
   `python3 scripts/verify-skill-shell.py`로 syntax, swallowed failure,
   fabricated zero, unsafe command expansion/word splitting, destructive

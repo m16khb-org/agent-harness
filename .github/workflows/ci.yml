@@ -44,6 +44,14 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Lint (golangci-lint default linter set)
+        # Pinned to the same v1 release used locally; .golangci.yml only removes
+        # the per-linter/same-issue caps so CI and a local run report the same
+        # complete list. golangci-lint-action v7+ supports golangci-lint v2 only.
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+
       - name: Validate all skill frontmatter
         # Runs scripts/validate-skill.py over every skills/* dir so no SKILL.md
         # ships with malformed/unexpected frontmatter. `bash -e` (the default)
@@ -53,6 +61,12 @@ jobs:
             [ -f "${dir}SKILL.md" ] || continue
             python3 scripts/validate-skill.py "$dir"
           done
+
+      - name: Script unit tests (repo-owned validators)
+        # scripts/*_test.py cover validate-skill.py, verify-skill-shell.py, and
+        # the engelbart skill contract; the Go suite only shells out to the
+        # validators themselves, so their own unit tests need this step.
+        run: python3 -m unittest discover -s scripts -p '*_test.py'
 
       - name: Build
         run: go build -o bin/agent-harness ./cmd/harness

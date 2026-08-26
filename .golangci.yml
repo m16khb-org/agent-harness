@@ -1,0 +1,13 @@
+# golangci-lint v1 configuration.
+#
+# The linter set is the golangci-lint default (errcheck, gosimple, govet,
+# ineffassign, staticcheck, unused). This file only pins the timeout and
+# removes the per-linter/same-issue caps so a local `golangci-lint run ./...`
+# reports the same complete list as CI instead of a 3-per-message sample.
+# golangci-lint is a CI/developer gate; it is not part of the harness
+# install/update/self-verify readiness path (AGENTS.md §10).
+run:
+  timeout: 10m
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
