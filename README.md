@@ -243,7 +243,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 
 ## 스킬
 
-공용 스킬 29개의 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
+공용 스킬 31개의 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
 
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
@@ -253,6 +253,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`
 - 운영 개선: `self-verify`, `self-augment`, `stability-audit`
 - 한국어 작성: `fluent-korean`
+- 다이어그램과 시각화: `diagram-design`
 
 각 스킬의 사용 계약은 해당 `SKILL.md`에 정의되어 있습니다.
 

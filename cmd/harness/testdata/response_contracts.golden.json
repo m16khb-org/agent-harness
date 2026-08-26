@@ -806,6 +806,13 @@
           "path": "$HARNESS_ROOT/skills/codd"
         },
         {
+          "description": "MUST USE when creating, choosing, or improving any diagram or visual explanation - mermaid flowchart/sequence/state/ER diagrams, architecture sketches, gantt/mindmap/timeline, charts for docs or issues, ASCII art, or rendered HTML pages. Triggers include 다이어그램, 그림, diagram, flowchart, sequence diagram, mermaid, 시각화, architecture diagram, chart. Picks the best form and medium for the content, renders high-quality output, and verifies renderability before delivering.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "diagram-design",
+          "path": "$HARNESS_ROOT/skills/diagram-design"
+        },
+        {
           "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \\\"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\\\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -820,7 +827,14 @@
           "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
-          "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms.",
+          "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (kody-review-feedback) or for an uncommitted local diff (code-review).",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "fagan",
+          "path": "$HARNESS_ROOT/skills/fagan"
+        },
+        {
+          "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms, and removes AI-style writing patterns (AI티/slop) from Korean output.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "fluent-korean",
@@ -5144,8 +5158,10 @@
           "boehm",
           "brooks",
           "codd",
+          "diagram-design",
           "dijkstra",
           "engelbart",
+          "fagan",
           "fluent-korean",
           "gitlab-usecase",
           "hopper",
@@ -7056,6 +7072,13 @@
                 "path": "$HARNESS_ROOT/skills/codd"
               },
               {
+                "description": "MUST USE when creating, choosing, or improving any diagram or visual explanation - mermaid flowchart/sequence/state/ER diagrams, architecture sketches, gantt/mindmap/timeline, charts for docs or issues, ASCII art, or rendered HTML pages. Triggers include 다이어그램, 그림, diagram, flowchart, sequence diagram, mermaid, 시각화, architecture diagram, chart. Picks the best form and medium for the content, renders high-quality output, and verifies renderability before delivering.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "diagram-design",
+                "path": "$HARNESS_ROOT/skills/diagram-design"
+              },
+              {
                 "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \\\"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\\\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7070,7 +7093,14 @@
                 "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
-                "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms.",
+                "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (kody-review-feedback) or for an uncommitted local diff (code-review).",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "fagan",
+                "path": "$HARNESS_ROOT/skills/fagan"
+              },
+              {
+                "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms, and removes AI-style writing patterns (AI티/slop) from Korean output.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "fluent-korean",
@@ -8205,8 +8235,10 @@
                 "boehm",
                 "brooks",
                 "codd",
+                "diagram-design",
                 "dijkstra",
                 "engelbart",
+                "fagan",
                 "fluent-korean",
                 "gitlab-usecase",
                 "hopper",

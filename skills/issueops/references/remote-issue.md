@@ -153,3 +153,23 @@ Installed PreToolUse hooks include `--enforce-korean-remote-artifacts`. The hook
 Installed PreToolUse hooks also include `--enforce-vcs-issue-linking`. It inspects the same body (gh `--body`/`--body-file`, glab `--description`) and blocks issue create/edit when the body contains a `Plan Link` section (on any provider) or a `Related Issues` section on GitLab (where related issues belong in native linked items per the table above). It also blocks issue/PR/MR create commands when no label flag or assignee flag is inspectable, including deprecated GitLab issue-based MR commands such as `glab mr for` and structured MCP `glab_mr_for`. When an active IssueOps cycle has `branch_prepare.base_branch`, PR/MR create must also expose a target/base branch matching that recorded parent work branch; missing or mismatched `gh --base` / `glab --target-branch` is blocked. `--copy-issue-labels` and `--with-labels` count as label evidence for PR/MR create, including structured MCP-style tool input such as `flags.copy_issue_labels: true` or `flags.with_labels: true`, but they do not imply assignment; pass the current authenticated user through an assignee flag or structured field such as `--assignee`, `assignee`, or `flags.assignee`. GitLab placeholders such as `@me` are rejected, and `glab mr for` requires a numeric assignee id. Attach GitLab related issues with the issue links API, drop the Plan Link section, and include copied or explicit labels plus the current authenticated user assignee before retrying.
 
 원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.
+
+## Remote Artifact Writing Quality
+
+한국어 게이트는 한글 비율만 검사한다. 게이트를 통과한 본문도 AI가 쓴 티가 날 수 있다. issue와 child task, PR/MR 제목·본문을 작성하거나 수정할 때는 `fluent-korean` 스킬 지침을 적용하고, 아래 규칙을 확인한다.
+
+1. 명사구나 목록 항목을 제외하면 완성된 문장으로 쓴다. 서술어와 종결어미를 생략하지 않는다.
+2. 단정 회피 어미를 쓰지 않는다. 불확실성이 실제로 있으면 근거를 함께 쓴다.
+   - 나쁜 예: `해당 변경이 호환성 문제를 일으키지 않을 것으로 보여집니다.`
+   - 좋은 예: `기존 클라이언트는 응답 필드를 추가로 무시하므로 호환됩니다.`
+3. 서론 선언으로 시작하지 않는다. 첫 문장이 문제 정의나 요구 사항이다.
+   - 나쁜 예: `이 이슈에서는 배포 실패 문제를 다루고자 합니다.`
+   - 좋은 예: `v2.3 배포가 시크릿 누락으로 실패합니다.`
+4. 수락 기준은 검증 가능한 동작으로 쓴다. "적절히 처리된다" 같은 판단 불가능한 문구를 쓰지 않는다.
+   - 나쁜 예: `잘못된 입력이 적절하게 처리됩니다.`
+   - 좋은 예: `만료된 토큰으로 요청하면 401과 재발급 안내를 반환합니다.`
+5. 정보가 없는 수식어(`효율적인`, `전반적인`, `개선된`) 대신 무엇이 어떻게 바뀌는지 쓴다.
+6. 같은 개념에 하나의 용어를 유지한다. 본문 안에서 워커와 worker, 데몬과 daemon을 섞어 쓰지 않는다.
+7. 명령어, 코드 식별자, 경로, URL은 영어 원문을 유지하고, 나머지 서술은 위 규칙대로 한국어로 쓴다.
+
+이 규칙은 한국어 게이트보다 먼저 적용한다. 게이트는 최종 방어선이고, 자연스러운 본문은 게이트 전에 만들어진다.
