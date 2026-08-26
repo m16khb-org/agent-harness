@@ -66,8 +66,53 @@ func TestResponseContractsGolden(t *testing.T) {
 		"cli": buildCLIResponseContractSnapshot(t, replacements, stateDir, workspaceDir, gitRepoDir),
 		"mcp": buildMCPResponseContractSnapshot(t, replacements, workspaceDir, gitRepoDir),
 	}
-	normalized := normalizeDocsCountsForGolden(snapshot)
+	normalized := normalizeWorkingTreeObservationsForGolden(normalizeDocsCountsForGolden(snapshot))
 	assertJSONGolden(t, "response_contracts.golden.json", normalizeIssueOpsStateKeysForGolden(normalized))
+}
+
+const workingTreeObservationGoldenPlaceholder = "$WORKING_TREE_OBSERVATION"
+
+// self-augment plan의 `implementation_delta` goal은 설계상 실제 harness working
+// tree의 `git status --porcelain`을 관찰한다(augmentplan/plan_evidence.go). 그
+// 관측값(evidence/score/passed)을 golden에 그대로 남기면 golden이 "지금 tree가
+// dirty한가"를 기록하게 되어 clean checkout(CI)에서 반드시 깨진다. #109의
+// docs_count와 같은 구조적 제거로, 응답의 형태만 남기고 관측값은 placeholder로
+// 치환한다. goal 로직 자체는 augmentplan/plan_evidence_test.go가 검증한다.
+func normalizeWorkingTreeObservationsForGolden(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, child := range typed {
+			out[key] = normalizeWorkingTreeObservationsForGolden(child)
+		}
+		if isWorkingTreeObservationGoal(out) {
+			out["evidence"] = []any{workingTreeObservationGoldenPlaceholder}
+			out["score"] = workingTreeObservationGoldenPlaceholder
+			out["passed"] = workingTreeObservationGoldenPlaceholder
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, child := range typed {
+			out = append(out, normalizeWorkingTreeObservationsForGolden(child))
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func isWorkingTreeObservationGoal(goal map[string]any) bool {
+	name, _ := goal["name"].(string)
+	if name != "implementation_delta" {
+		return false
+	}
+	for _, key := range []string{"evidence", "score", "passed"} {
+		if _, ok := goal[key]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 const docsCountGoldenPlaceholder = "$DOCS_COUNT"

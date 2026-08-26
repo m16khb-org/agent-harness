@@ -5061,12 +5061,12 @@
         {
           "description": "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
           "evidence": [
-            "git status --porcelain non-empty: uncommitted implementation diff observed"
+            "$WORKING_TREE_OBSERVATION"
           ],
           "korean_name": "개선 구현",
           "name": "implementation_delta",
-          "passed": true,
-          "score": 100,
+          "passed": "$WORKING_TREE_OBSERVATION",
+          "score": "$WORKING_TREE_OBSERVATION",
           "target_score": 95
         },
         {
@@ -8122,12 +8122,12 @@
               {
                 "description": "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
                 "evidence": [
-                  "git status --porcelain non-empty: uncommitted implementation diff observed"
+                  "$WORKING_TREE_OBSERVATION"
                 ],
                 "korean_name": "개선 구현",
                 "name": "implementation_delta",
-                "passed": true,
-                "score": 100,
+                "passed": "$WORKING_TREE_OBSERVATION",
+                "score": "$WORKING_TREE_OBSERVATION",
                 "target_score": 95
               },
               {
