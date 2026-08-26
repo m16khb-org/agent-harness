@@ -241,6 +241,46 @@ class VerifySkillShellTest(unittest.TestCase):
 
         self.assertEqual([violation.code for violation in violations], ["symlink-not-allowed"])
 
+    def test_skips_external_skill_links_directly_under_scanned_root(self) -> None:
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        skills_root = Path(temp.name) / "skills"
+        shipped = skills_root / "shipped-skill"
+        shipped.mkdir(parents=True)
+        (shipped / "SKILL.md").write_text("# safe\n", encoding="utf-8")
+        external = Path(temp.name) / "external-skill"
+        external.mkdir()
+        (external / "SKILL.md").write_text(
+            "```bash\n"
+            "git reset --hard HEAD~1\n"
+            "```\n",
+            encoding="utf-8",
+        )
+        (skills_root / "external-skill").symlink_to(external, target_is_directory=True)
+
+        violations = verify_skill_shell.verify_paths([skills_root])
+        scanned = verify_skill_shell.markdown_paths([skills_root])
+
+        self.assertEqual(violations, [])
+        self.assertEqual(scanned, [(shipped / "SKILL.md").resolve()])
+        self.assertEqual(
+            verify_skill_shell.external_skill_links([skills_root]),
+            [skills_root / "external-skill"],
+        )
+
+    def test_rejects_top_level_symlink_without_skill_contract(self) -> None:
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        skills_root = Path(temp.name) / "skills"
+        skills_root.mkdir()
+        outside = Path(temp.name) / "outside"
+        outside.mkdir()
+        (skills_root / "loose-link").symlink_to(outside, target_is_directory=True)
+
+        violations = verify_skill_shell.verify_paths([skills_root])
+
+        self.assertEqual([violation.code for violation in violations], ["symlink-not-allowed"])
+
     def test_rejects_remaining_dynamic_and_split_option_bypasses(self) -> None:
         root, _ = self.write_skill(
             "```bash\n"

@@ -106,8 +106,11 @@ def symlink_violations(paths: Sequence[Path]) -> list[Violation]:
             root_path = Path(root)
             for name in [*directories, *files]:
                 candidate = root_path / name
-                if candidate.is_symlink():
-                    seen.add(candidate)
+                if not candidate.is_symlink():
+                    continue
+                if root_path == raw_path and is_external_skill_link(candidate):
+                    continue
+                seen.add(candidate)
     for path in sorted(seen):
         violations.append(
             Violation(
@@ -118,6 +121,28 @@ def symlink_violations(paths: Sequence[Path]) -> list[Violation]:
             )
         )
     return violations
+
+
+def external_skill_links(paths: Sequence[Path]) -> list[Path]:
+    """Local, non-portable links to whole external skills directly under a scanned root."""
+    links: list[Path] = []
+    for raw_path in paths:
+        if raw_path.is_symlink() or not raw_path.is_dir():
+            continue
+        for candidate in sorted(raw_path.iterdir()):
+            if candidate.is_symlink() and is_external_skill_link(candidate):
+                links.append(candidate)
+    return links
+
+
+def is_external_skill_link(path: Path) -> bool:
+    """A symlink directly under a scanned skills root that resolves to a whole skill
+    directory (one carrying its own SKILL.md) is a local link to an external skill,
+    not a shipped contract. The installer and `inspect` already ignore such
+    entries, so the verifier skips them instead of failing; nested symlinks and
+    links without a SKILL.md remain violations because they would let a shipped
+    contract reach outside the scanned tree."""
+    return path.is_symlink() and path.is_dir() and (path / "SKILL.md").is_file()
 
 
 def is_skill_contract_markdown(path: Path) -> bool:
@@ -428,6 +453,8 @@ def main(argv: Sequence[str]) -> int:
         for path in invalid_paths:
             print(f"{path}: input path does not exist", file=sys.stderr)
         return 2
+    for link in external_skill_links(paths):
+        print(f"{link}: skipped external skill link (not part of the shipped tree)", file=sys.stderr)
     symlinks = symlink_violations(paths)
     if symlinks:
         for violation in symlinks:
