@@ -765,11 +765,11 @@
     "name": "loop_stop"
   },
   {
-    "description": "Evaluate unlazy-compatible task gate ledgers (GATES.md, gates/*.md). Runs CHECK commands for unmet gates through the command policy engine (workspace boundary, env allowlist, timeout, audit), matches EXPECT, flips checkboxes, and records evidence. Complete means zero unmet gates; ABANDON gates count as resolved.",
+    "description": "Evaluate task gate ledgers (.agent-harness/gates/*.md; compatible GATES.md and gates/*.md). Runs CHECK commands for unmet gates through the command policy engine (workspace boundary, env allowlist, timeout, audit), matches EXPECT, flips checkboxes, and records evidence. Complete means zero unmet gates; ABANDON gates count as resolved.",
     "inputSchema": {
       "properties": {
         "cwd": {
-          "description": "Directory holding GATES.md/gates/*.md and the CHECK working directory. Defaults to the agent project directory.",
+          "description": "Directory holding .agent-harness/gates/*.md or compatible gate ledgers, and the CHECK working directory. Defaults to the agent project directory.",
           "type": "string"
         },
         "env_allowlist": {
@@ -780,7 +780,7 @@
           "type": "array"
         },
         "files": {
-          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "description": "Explicit gate ledger files. Omit to discover .agent-harness/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
           "items": {
             "type": "string"
           },
@@ -812,11 +812,11 @@
     "inputSchema": {
       "properties": {
         "cwd": {
-          "description": "Directory holding GATES.md/gates/*.md. Defaults to the agent project directory.",
+          "description": "Directory holding .agent-harness/gates/*.md or compatible gate ledgers. Defaults to the agent project directory.",
           "type": "string"
         },
         "files": {
-          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "description": "Explicit gate ledger files. Omit to discover .agent-harness/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
           "items": {
             "type": "string"
           },
@@ -836,11 +836,11 @@
     "inputSchema": {
       "properties": {
         "cwd": {
-          "description": "Directory holding GATES.md/gates/*.md. Defaults to the agent project directory.",
+          "description": "Directory holding .agent-harness/gates/*.md or compatible gate ledgers. Defaults to the agent project directory.",
           "type": "string"
         },
         "files": {
-          "description": "Explicit gate ledger files. Omit to discover GATES.md plus gates/*.md under cwd.",
+          "description": "Explicit gate ledger files. Omit to discover .agent-harness/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
           "items": {
             "type": "string"
           },
@@ -860,7 +860,7 @@
     "inputSchema": {
       "properties": {
         "file": {
-          "description": "Gate ledger file. Defaults to GATES.md.",
+          "description": "Gate ledger file. Legacy default is GATES.md; pass namespaced .agent-harness/gates/\u003cname\u003e.md explicitly.",
           "type": "string"
         },
         "gate_id": {
@@ -885,7 +885,7 @@
     "inputSchema": {
       "properties": {
         "file": {
-          "description": "Gate ledger file to create. Defaults to GATES.md.",
+          "description": "Gate ledger file to create. Defaults to .agent-harness/gates/\u003cscope-slug\u003e.md.",
           "type": "string"
         },
         "gates": {
@@ -901,6 +901,7 @@
         }
       },
       "required": [
+        "scope",
         "gates"
       ],
       "type": "object"

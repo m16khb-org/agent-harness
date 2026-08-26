@@ -83,7 +83,7 @@ func parseCheckFlags(name string, args []string) (checkFlags, bool, error) {
 	var flags checkFlags
 	fs.StringVar(&flags.WorkspaceRoot, "workspace-root", "", "workspace root boundary (defaults to --cwd)")
 	fs.StringVar(&flags.CWD, "cwd", "", "gate file directory and CHECK working directory (defaults to cwd)")
-	fs.Var(&repeatedFlag{target: &flags.Files}, "file", "gate ledger file (repeatable; defaults to GATES.md plus gates/*.md under --cwd)")
+	fs.Var(&repeatedFlag{target: &flags.Files}, "file", "gate ledger file (repeatable; defaults to .agent-harness/gates/*.md plus compatible paths under --cwd)")
 	fs.IntVar(&flags.TimeoutSeconds, "timeout-seconds", gatescontract.TimeoutDefaultSeconds, "per-CHECK timeout")
 	fs.StringVar(&flags.EnvAllowlist, "env", "HOME,PATH", "comma-separated environment variable allowlist for CHECK commands")
 	fs.BoolVar(&flags.WriteAllowed, "write", true, "allow workspace-write commands for CHECK execution")
@@ -161,8 +161,8 @@ func runReport(deps Dependencies, args []string) error {
 
 func runInit(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("gates init", flag.ContinueOnError)
-	file := fs.String("file", "GATES.md", "gate ledger file to create")
-	scope := fs.String("scope", "", "gate scope name (heading)")
+	file := fs.String("file", "", "gate ledger file to create (defaults to .agent-harness/gates/<scope-slug>.md)")
+	scope := fs.String("scope", "", "gate scope name (required; used for the default file slug)")
 	var gateSpecs repeatedStrings
 	fs.Var(&gateSpecs, "gate", `gate spec: "ID: outcome | CHECK: cmd | EXPECT: expect" (repeatable)`)
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -175,7 +175,7 @@ func runInit(deps Dependencies, args []string) error {
 
 func runAbandon(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("gates abandon", flag.ContinueOnError)
-	file := fs.String("file", "GATES.md", "gate ledger file")
+	file := fs.String("file", "GATES.md", "gate ledger file (pass namespaced .agent-harness/gates/<name>.md explicitly)")
 	gateID := fs.String("gate", "", "gate id to abandon (e.g. G2)")
 	reason := fs.String("reason", "", "honest abandon reason")
 	jsonOut := fs.Bool("json", false, "print JSON")

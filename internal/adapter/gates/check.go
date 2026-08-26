@@ -212,8 +212,8 @@ func runGateCheck(root, cwd string, req gatescontract.CheckRequest, gate *gatesd
 	return outcome
 }
 
-// DiscoverGateFiles는 unlazy 기본 파일 규칙을 따른다: root의 GATES.md와
-// root/gates/*.md를 이름순으로 반환한다.
+// DiscoverGateFiles는 canonical .agent-harness/gates/*.md를 먼저 찾고,
+// 기존 unlazy의 root GATES.md와 gates/*.md도 읽기 호환 경로로 반환한다.
 func DiscoverGateFiles(root string) ([]string, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, nil
@@ -222,7 +222,13 @@ func DiscoverGateFiles(root string) ([]string, error) {
 	if info, err := os.Stat(filepath.Join(root, "GATES.md")); err == nil && !info.IsDir() {
 		files = append(files, filepath.Join(root, "GATES.md"))
 	}
-	entries, err := os.ReadDir(filepath.Join(root, "gates"))
+	files = appendMarkdownGateFiles(files, filepath.Join(root, ".agent-harness", "gates"))
+	files = appendMarkdownGateFiles(files, filepath.Join(root, "gates"))
+	return files, nil
+}
+
+func appendMarkdownGateFiles(files []string, dir string) []string {
+	entries, err := os.ReadDir(dir)
 	if err == nil {
 		names := []string{}
 		for _, entry := range entries {
@@ -232,8 +238,8 @@ func DiscoverGateFiles(root string) ([]string, error) {
 		}
 		sort.Strings(names)
 		for _, name := range names {
-			files = append(files, filepath.Join(root, "gates", name))
+			files = append(files, filepath.Join(dir, name))
 		}
 	}
-	return files, nil
+	return files
 }

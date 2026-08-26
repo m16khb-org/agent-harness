@@ -76,8 +76,9 @@ agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH]
 agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
 ```
 
-`gates` evaluates unlazy-compatible task gate ledgers (`GATES.md` plus
-`gates/*.md`). The format is the unlazy v2 contract: one checkbox per outcome,
+`gates` evaluates canonical task gate ledgers (`.agent-harness/gates/*.md`) and
+compatible unlazy ledgers (`GATES.md` plus `gates/*.md`). The format is the
+unlazy v2 contract: one checkbox per outcome,
 `CHECK:` command plus `EXPECT:` substring-or-`/regex/` match, and `EVIDENCE:`
 recorded from the deciding output tail. A checkbox is a claim; evidence is the
 proof — a checked gate whose evidence still reads `pending` counts as unmet
@@ -88,6 +89,16 @@ they are tokenized to argv and executed through the command policy engine
 (workspace boundary, env allowlist — default `HOME,PATH`, secret redaction,
 timeout, audit log, shell interpreters denied). Exit codes follow unlazy: `0`
 all met or abandoned, `1` unmet remain, `2` usage error.
+
+`gates init` no longer writes a shared root file by default. With no `--file`,
+it derives `.agent-harness/gates/<scope-slug>.md` from the required `--scope`.
+IssueOps uses the stronger stable convention
+`.agent-harness/gates/issue-<provider-issue-number>.md` and passes that same
+path to `gates abandon`. Distinct task paths let concurrent worktrees merge
+without both branches adding or rewriting root `GATES.md`, and keep harness
+artifacts out of the source root. Existing `GATES.md` and `gates/*.md` files
+remain discoverable for unlazy compatibility, but new IssueOps cycles must not
+create them.
 
 MCP exposes the same operations as `gates_init`, `gates_check`, `gates_status`,
 `gates_report`, and `gates_abandon` sharing one contract DTO (schema version 1).
@@ -110,7 +121,7 @@ order. `recv --wait` returns exit 0 with messages or exit 1 on timeout
 sessions sharing the same harness state — no cross-machine semantics.
 
 IssueOps integration is opt-in through file presence: when a cycle's worktree
-contains `GATES.md` or `gates/*.md`, unmet gates add `gates_incomplete:<file>`
+contains `.agent-harness/gates/*.md` or a compatible gate ledger, unmet gates add `gates_incomplete:<file>`
 to strict PR readiness and block entering the `pr` phase until the ledger is
 complete (all gates met with evidence, or honestly abandoned). Repos without
 ledger files are unaffected. Because the ledger lives in the worktree, real

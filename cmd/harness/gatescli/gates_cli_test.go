@@ -58,6 +58,25 @@ func TestGatesCLIRoundTrip(t *testing.T) {
 	}
 }
 
+func TestGatesCLIInitDefaultsToScopeNamespacedFile(t *testing.T) {
+	deps := cliDeps()
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	if err := Run(deps, []string{"init", "--scope", "Issue #42 Merge proof", "--gate", "G1: no root collision"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(".agent-harness", "gates", "issue-42-merge-proof.md")); err != nil {
+		t.Fatalf("namespaced default gate file missing: %v", err)
+	}
+	if _, err := os.Stat("GATES.md"); !os.IsNotExist(err) {
+		t.Fatalf("root GATES.md must not be created, got %v", err)
+	}
+	if _, err := os.Stat("gates"); !os.IsNotExist(err) {
+		t.Fatalf("root gates directory must not be created, got %v", err)
+	}
+}
+
 func TestGatesCLIJSONOutput(t *testing.T) {
 	deps := cliDeps()
 	dir := t.TempDir()

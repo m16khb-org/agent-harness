@@ -51,7 +51,8 @@ instead of duplicating their content here or in a guide.
    verify-until-done state and strict readiness gates without executing
    verification commands.
 5. Task gate ledgers: `agent-harness gates init/check/status/report/abandon`
-   evaluates unlazy-compatible `GATES.md`/`gates/*.md` acceptance ledgers.
+   evaluates canonical `.agent-harness/gates/*.md` and compatible
+   `GATES.md`/`gates/*.md` acceptance ledgers.
    CHECK commands run through the command policy engine (never a raw shell),
    evidence is recorded from the deciding output tail, and unmet gates in a
    cycle worktree block strict PR readiness with `gates_incomplete:<file>`.

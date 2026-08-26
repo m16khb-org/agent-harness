@@ -18,6 +18,9 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
 - IssueOps 상태 전이·lease·publication은 durable `issueops` 명령이 소유하고 hook은
   fast deterministic 위반만 차단한다.
 - IssueOps worktree 밖 mutation은 hook guard + 절대경로 + status 재확인으로 막는다.
+- IssueOps gate ledger는 root `GATES.md`가 아니라
+  `.agent-harness/gates/issue-<provider-issue-number>.md`로 namespacing한다
+  ([2026-08-26 lesson](cautions/lessons/2026-08-26-gates-root-ledger-worktree-conflicts.md)).
 - self-verify는 외부 검증 메커니즘을 명시해야 하고 문서만 통과하는 가짜 안정성을 경계한다.
 - Omo MCP catalog는 server config hash로 장기 cache되므로 installer가
   advertised catalog SHA를 config env에 포함해 binary-only schema update도
@@ -74,6 +77,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-22 | [Kordoc install unblocks boehm pioneer; child tasks need CLI+handshake probe](cautions/lessons/2026-08-22-kordoc-install-unblocks-boehm-pioneer.md) |
 | 2026-08-26 | [CI gofmt gate drifted from the local battery; golden captured a dirty working tree](cautions/lessons/2026-08-26-ci-gofmt-gate-local-battery-drift.md) |
 | 2026-08-26 | [Merged-without-execution cycle had no typed cleanup exit; abandon accepts record-linked residue](cautions/lessons/2026-08-26-abandon-record-linked-residue-without-execution.md) |
+| 2026-08-26 | [Root GATES.md caused add/add conflicts across IssueOps worktrees](cautions/lessons/2026-08-26-gates-root-ledger-worktree-conflicts.md) |
 
 ## Removed CLI modes (historical only)
 

@@ -171,7 +171,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json && rm -rf "$tmp_state"
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
-gates_demo="$(mktemp -d)" && ./bin/agent-harness gates init --file "$gates_demo/GATES.md" --scope smoke --gate "G1: smoke | CHECK: printf %s ok | EXPECT: ok" --json && ./bin/agent-harness gates check --cwd "$gates_demo" --workspace-root "$gates_demo" --json && ./bin/agent-harness gates report --cwd "$gates_demo" --workspace-root "$gates_demo" && rm -rf "$gates_demo"
+gates_demo="$(mktemp -d)" && (cd "$gates_demo" && "$OLDPWD/bin/agent-harness" gates init --scope smoke --gate "G1: smoke | CHECK: printf %s ok | EXPECT: ok" --json && "$OLDPWD/bin/agent-harness" gates check --cwd "$gates_demo" --workspace-root "$gates_demo" --json && "$OLDPWD/bin/agent-harness" gates report --cwd "$gates_demo" --workspace-root "$gates_demo") && rm -rf "$gates_demo"
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 codex mcp get agent_harness
 claude mcp list

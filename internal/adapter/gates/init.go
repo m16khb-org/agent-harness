@@ -7,15 +7,24 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // Init은 게이트 파일을 스캐폴드한다. 이미 있는 파일은 덮어쓰지 않는다.
 // gate spec 형식: "G1: outcome | CHECK: command | EXPECT: expectation".
 func Init(req gatescontract.InitRequest) (gatescontract.InitResult, error) {
 	result := gatescontract.InitResult{SchemaVersion: gatescontract.SchemaVersion}
+	scope := strings.TrimSpace(req.Scope)
+	if scope == "" {
+		return result, fmt.Errorf("scope is required")
+	}
 	file := strings.TrimSpace(req.File)
 	if file == "" {
-		file = "GATES.md"
+		slug := gateFileSlug(scope)
+		if slug == "" {
+			return result, fmt.Errorf("scope must contain a letter or number")
+		}
+		file = filepath.Join(".agent-harness", "gates", slug+".md")
 	}
 	result.File = file
 	if len(req.Gates) == 0 {
@@ -25,7 +34,7 @@ func Init(req gatescontract.InitRequest) (gatescontract.InitResult, error) {
 		return result, fmt.Errorf("gate file already exists: %s", file)
 	}
 	var body strings.Builder
-	fmt.Fprintf(&body, "# Gates: %s\n\n", strings.TrimSpace(req.Scope))
+	fmt.Fprintf(&body, "# Gates: %s\n\n", scope)
 	for _, spec := range req.Gates {
 		gateText, err := renderGateSpec(spec)
 		if err != nil {
@@ -47,6 +56,30 @@ func Init(req gatescontract.InitRequest) (gatescontract.InitResult, error) {
 	result.Created = true
 	result.GateCount = len(ledger.Gates)
 	return result, nil
+}
+
+func gateFileSlug(scope string) string {
+	var slug strings.Builder
+	pendingDash := false
+	runesWritten := 0
+	for _, char := range strings.ToLower(strings.TrimSpace(scope)) {
+		if !unicode.IsLetter(char) && !unicode.IsDigit(char) {
+			if slug.Len() > 0 {
+				pendingDash = true
+			}
+			continue
+		}
+		if pendingDash {
+			slug.WriteByte('-')
+			pendingDash = false
+		}
+		slug.WriteRune(char)
+		runesWritten++
+		if runesWritten == 64 {
+			break
+		}
+	}
+	return strings.TrimSuffix(slug.String(), "-")
 }
 
 func renderGateSpec(spec string) (string, error) {

@@ -2,7 +2,7 @@
 // 합성한다.
 //
 // loopgate가 loop run 상태를 readiness에 더하는 것과 같은 조립 구조다.
-// 게이트 파일(worktree의 GATES.md 또는 gates/*.md)이 존재하면 미충족 게이트가
+// 게이트 파일(worktree의 .agent-harness/gates/*.md 또는 호환 경로)이 존재하면 미충족 게이트가
 // PR 진입을 막고, 파일이 없으면 게이트가 적용되지 않는다 — unlazy와 같은
 // opt-in: 게이트를 만드는 순간 완료가 구조적으로 강제된다.
 package gatesgate
@@ -22,7 +22,7 @@ import (
 // adapter를 직접 import하지 않는다(크로스 케퍼빌리티 adapter edge 금지,
 // loopgate의 RepoGateMissing 패턴과 같다).
 var (
-	// DiscoverGateFiles는 게이트 파일(GATES.md + gates/*.md) 발견 연산이다.
+	// DiscoverGateFiles는 canonical/compatible 게이트 파일 발견 연산이다.
 	DiscoverGateFiles func(root string) ([]string, error)
 	// CheckGateLedger는 게이트 ledger 평가 연산이다.
 	CheckGateLedger func(req gatescontract.CheckRequest) (gatescontract.CheckResult, error)

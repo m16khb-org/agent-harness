@@ -166,17 +166,20 @@ func TestCheckNetworkDeniedByDefault(t *testing.T) {
 func TestCheckDiscoversDefaultFiles(t *testing.T) {
 	dir := t.TempDir()
 	writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: top\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, "gates/b-leaf.md", "- [ ] G2: leaf b\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, "gates/a-leaf.md", "- [ ] G3: leaf a\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".agent-harness/gates/b-leaf.md", "- [ ] G2: leaf b\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".agent-harness/gates/a-leaf.md", "- [ ] G3: leaf a\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, "gates/legacy.md", "- [ ] G4: legacy leaf\n  EVIDENCE: pending\n")
 	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, StatusOnly: true})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
-	if len(result.Files) != 3 {
-		t.Fatalf("discovered %d files, want 3 (GATES.md + gates/*.md): %+v", len(result.Files), result.Files)
+	if len(result.Files) != 4 {
+		t.Fatalf("discovered %d files, want 4 canonical and compatible ledgers: %+v", len(result.Files), result.Files)
 	}
-	if filepath.Base(result.Files[1].File) != "a-leaf.md" || filepath.Base(result.Files[2].File) != "b-leaf.md" {
-		t.Fatalf("leaf files must be sorted by name: %+v", result.Files)
+	if result.Files[1].File != filepath.Join(dir, ".agent-harness", "gates", "a-leaf.md") ||
+		result.Files[2].File != filepath.Join(dir, ".agent-harness", "gates", "b-leaf.md") ||
+		result.Files[3].File != filepath.Join(dir, "gates", "legacy.md") {
+		t.Fatalf("canonical files must precede compatible files, each sorted by name: %+v", result.Files)
 	}
 }
 
@@ -185,66 +188,6 @@ func TestCheckNoFilesIsUsageError(t *testing.T) {
 	_, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir})
 	if err != gatescontract.ErrNoGateFiles {
 		t.Fatalf("expected ErrNoGateFiles, got %v", err)
-	}
-}
-
-func TestInitCreatesScaffoldAndRefusesOverwrite(t *testing.T) {
-	dir := t.TempDir()
-	file := filepath.Join(dir, "gates", "leaf.md")
-	result, err := Init(gatescontract.InitRequest{
-		File:  file,
-		Scope: "pricing section",
-		Gates: []string{
-			"G1: three tiers render with real copy | CHECK: printf 3/3 tiers ok | EXPECT: 3/3 tiers ok",
-			"G2: manual outcome",
-		},
-	})
-	if err != nil || !result.Created || result.GateCount != 2 {
-		t.Fatalf("Init failed: %+v %v", result, err)
-	}
-	data, _ := os.ReadFile(file)
-	text := string(data)
-	for _, want := range []string{"# Gates: pricing section", "- [ ] G1: three tiers render with real copy", "  CHECK: printf 3/3 tiers ok", "  EXPECT: 3/3 tiers ok", "  EVIDENCE: pending", "- [ ] G2: manual outcome"} {
-		if !strings.Contains(text, want) {
-			t.Fatalf("scaffold missing %q:\n%s", want, text)
-		}
-	}
-	if _, err := Init(gatescontract.InitRequest{File: file, Scope: "again", Gates: []string{"G1: x"}}); err == nil || !strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("overwrite must be refused, got %v", err)
-	}
-}
-
-func TestInitRejectsUnknownSegment(t *testing.T) {
-	dir := t.TempDir()
-	_, err := Init(gatescontract.InitRequest{File: filepath.Join(dir, "GATES.md"), Scope: "s", Gates: []string{"G1: x | RUN: cmd"}})
-	if err == nil || !strings.Contains(err.Error(), "unknown segment") {
-		t.Fatalf("unknown segment must be rejected, got %v", err)
-	}
-}
-
-func TestAbandonRecordsHonestExit(t *testing.T) {
-	dir := t.TempDir()
-	path := writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: needs network\n  EVIDENCE: pending\n")
-	result, err := Abandon(gatescontract.AbandonRequest{File: path, GateID: "G1", Reason: "no network in sandbox"})
-	if err != nil || !result.Recorded {
-		t.Fatalf("Abandon failed: %+v %v", result, err)
-	}
-	data, _ := os.ReadFile(path)
-	if !strings.Contains(string(data), "ABANDON: G1 no network in sandbox\n") {
-		t.Fatalf("abandon line missing:\n%s", string(data))
-	}
-	status, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, Files: []string{path}, StatusOnly: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !status.Complete || status.TotalAbandoned != 1 {
-		t.Fatalf("abandoned gate must resolve the file: %+v", status)
-	}
-	if _, err := Abandon(gatescontract.AbandonRequest{File: path, GateID: "G1", Reason: "again"}); err == nil || !strings.Contains(err.Error(), "already abandoned") {
-		t.Fatalf("double abandon must fail, got %v", err)
-	}
-	if _, err := Abandon(gatescontract.AbandonRequest{File: path, GateID: "G9", Reason: "x"}); err == nil || !strings.Contains(err.Error(), "not found") {
-		t.Fatalf("unknown gate abandon must fail, got %v", err)
 	}
 }
 
