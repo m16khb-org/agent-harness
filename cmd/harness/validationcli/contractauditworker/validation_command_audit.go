@@ -19,7 +19,7 @@ func ValidateCommandAuditWithDeps(binary, root string, seed int64, deps Validati
 	if err != nil {
 		return commandstep.FailedStep("command audit smoke", err)
 	}
-	defer deps.RemoveAll(auditDir)
+	defer func() { _ = deps.RemoveAll(auditDir) }()
 	auditLog := filepath.Join(auditDir, "audit.jsonl")
 	step := deps.RunCommandStepEnv(root, "command audit smoke", 30*time.Second, "", []string{"HARNESS_AUDIT_LOG=" + auditLog}, binary, "policy", "audit", "--workspace-root", root, "--cwd", root, "--json", "--", "git", "status", "--short")
 	if !step.OK {

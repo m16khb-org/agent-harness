@@ -70,12 +70,12 @@ func validateCommandPolicyWithDeps(binary, root string, deps commandPolicyValida
 	if err != nil {
 		return commandstep.FailedStep("command policy smoke", err)
 	}
-	defer deps.removeAll(tempWorkspace)
+	defer func() { _ = deps.removeAll(tempWorkspace) }()
 	outside, err := deps.makeTempDir("outside")
 	if err != nil {
 		return commandstep.FailedStep("command policy smoke", err)
 	}
-	defer deps.removeAll(outside)
+	defer func() { _ = deps.removeAll(outside) }()
 
 	stdoutParts := []string{}
 	commands := []string{}

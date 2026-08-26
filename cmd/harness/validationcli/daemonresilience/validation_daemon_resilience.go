@@ -35,7 +35,7 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 	if err != nil {
 		return commandstep.FailedStep("daemon resilience", err)
 	}
-	defer deps.removeAll(tempDaemon)
+	defer func() { _ = deps.removeAll(tempDaemon) }()
 	paths := daemonPaths{
 		Dir:    tempDaemon,
 		Socket: filepath.Join(tempDaemon, "agent-harness.sock"),

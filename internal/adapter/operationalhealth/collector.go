@@ -540,10 +540,6 @@ func cycleFromRecordAt(record issueopscontract.IssueOpsRecord, inspect NativePro
 	return cycle, problems
 }
 
-func issueCreateIntentNeedsReconciliation(intent *issueopscontract.IssueOpsIssueCreateIntent) bool {
-	return issueCreateIntentNeedsReconciliationAt(intent, time.Now().UTC())
-}
-
 func issueCreateIntentNeedsReconciliationAt(intent *issueopscontract.IssueOpsIssueCreateIntent, now time.Time) bool {
 	if intent == nil {
 		return false

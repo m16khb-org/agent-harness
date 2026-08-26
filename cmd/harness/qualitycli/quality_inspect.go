@@ -270,16 +270,6 @@ func addSNRRegressionFinding(result *InspectResult, baseline, current float64) {
 	result.GateStatus = GateStatusBlock
 }
 
-// signalValue returns the Value of the signal with the given id, or 0.
-func signalValue(signals []Signal, id string) float64 {
-	for _, s := range signals {
-		if s.ID == id {
-			return s.Value
-		}
-	}
-	return 0
-}
-
 func successfulSignalValue(signals []Signal, id string) (float64, bool) {
 	for _, signal := range signals {
 		if signal.ID == id {

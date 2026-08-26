@@ -15,14 +15,13 @@ import (
 // 판정으로 검증하므로 같은 배선을 재현한다.
 func TestMain(m *testing.M) {
 	hookcli.ConfigureLifecycle(hookcli.LifecycleDeps{
-		RecordLifecycleToolUse:            lifecycle.RecordLifecycleToolUse,
-		SourceCheckoutMisdirectWarning:    lifecycle.SourceCheckoutMisdirectWarning,
-		BuildLifecyclePreCompactCapsule:   lifecycle.BuildLifecyclePreCompactCapsule,
-		BuildLifecycleStopReminder:        lifecycle.BuildLifecycleStopReminder,
-		BuildLifecyclePreToolUseDecision:  lifecycle.BuildLifecyclePreToolUseDecision,
-		RecordStopNextActionRelay:         lifecycle.RecordStopNextActionRelay,
-		ClearStopNextActionRelay:          lifecycle.ClearStopNextActionRelay,
-		BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+		RecordLifecycleToolUse:           lifecycle.RecordLifecycleToolUse,
+		SourceCheckoutMisdirectWarning:   lifecycle.SourceCheckoutMisdirectWarning,
+		BuildLifecyclePreCompactCapsule:  lifecycle.BuildLifecyclePreCompactCapsule,
+		BuildLifecycleStopReminder:       lifecycle.BuildLifecycleStopReminder,
+		BuildLifecyclePreToolUseDecision: lifecycle.BuildLifecyclePreToolUseDecision,
+		RecordStopNextActionRelay:        lifecycle.RecordStopNextActionRelay,
+		ClearStopNextActionRelay:         lifecycle.ClearStopNextActionRelay,
 	})
 	projectbootstrap.ConfigureLifecycle(lifecycle.InitProjectLifecycleState)
 	hookprompt.ConfigureLifecycle(hookprompt.LifecycleDeps{

@@ -60,7 +60,7 @@ func startSQLStoreHelper(t *testing.T, mode, dir string) *sqlstoreHelperProcess 
 	if err := h.cmd.Start(); err != nil {
 		t.Fatalf("start %s helper: %v", mode, err)
 	}
-	t.Cleanup(func() { h.killAndWait() })
+	t.Cleanup(func() { _ = h.killAndWait() })
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {

@@ -9,13 +9,12 @@ import (
 // composition root 하나뿐이다.
 func configureHookCLILifecycle() {
 	hookcli.ConfigureLifecycle(hookcli.LifecycleDeps{
-		RecordLifecycleToolUse:            lifecycle.RecordLifecycleToolUse,
-		SourceCheckoutMisdirectWarning:    lifecycle.SourceCheckoutMisdirectWarning,
-		BuildLifecyclePreCompactCapsule:   lifecycle.BuildLifecyclePreCompactCapsule,
-		BuildLifecycleStopReminder:        lifecycle.BuildLifecycleStopReminder,
-		BuildLifecyclePreToolUseDecision:  lifecycle.BuildLifecyclePreToolUseDecision,
-		RecordStopNextActionRelay:         lifecycle.RecordStopNextActionRelay,
-		ClearStopNextActionRelay:          lifecycle.ClearStopNextActionRelay,
-		BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+		RecordLifecycleToolUse:           lifecycle.RecordLifecycleToolUse,
+		SourceCheckoutMisdirectWarning:   lifecycle.SourceCheckoutMisdirectWarning,
+		BuildLifecyclePreCompactCapsule:  lifecycle.BuildLifecyclePreCompactCapsule,
+		BuildLifecycleStopReminder:       lifecycle.BuildLifecycleStopReminder,
+		BuildLifecyclePreToolUseDecision: lifecycle.BuildLifecyclePreToolUseDecision,
+		RecordStopNextActionRelay:        lifecycle.RecordStopNextActionRelay,
+		ClearStopNextActionRelay:         lifecycle.ClearStopNextActionRelay,
 	})
 }

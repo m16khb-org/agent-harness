@@ -12,7 +12,8 @@ import (
 
 func TestWithSpanRejectsNilArguments(t *testing.T) {
 	d := openTestDB(t)
-	if err := d.WithSpan(nil, func(context.Context) error { return nil }); err == nil {
+	var nilContext context.Context // 의도적으로 nil을 넘겨 거부 경로를 검증한다.
+	if err := d.WithSpan(nilContext, func(context.Context) error { return nil }); err == nil {
 		t.Fatal("nil context was accepted")
 	}
 	if err := d.WithSpan(context.Background(), nil); err == nil {

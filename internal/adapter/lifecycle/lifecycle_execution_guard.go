@@ -916,7 +916,7 @@ func exactExecutionSyncBaseMutationActor(req lifecyclecontract.HookToolUseLifecy
 	pid, _ := oneFlag(flags, "--session-pid")
 	cwd, _ := oneFlag(flags, "--cwd")
 	parsedPID, err := strconv.Atoi(pid)
-	if err != nil || parsedPID <= 0 || strings.ToLower(strings.TrimSpace(host)) != strings.ToLower(strings.TrimSpace(req.Host)) ||
+	if err != nil || parsedPID <= 0 || !strings.EqualFold(strings.TrimSpace(host), strings.TrimSpace(req.Host)) ||
 		strings.TrimSpace(sessionID) != strings.TrimSpace(req.SessionID) || !sameExecutionPath(cwd, root) {
 		return false
 	}
@@ -926,7 +926,7 @@ func exactExecutionSyncBaseMutationActor(req lifecyclecontract.HookToolUseLifecy
 }
 
 func sameExecutionActorRequest(holder *issueopscontract.NativeActor, req lifecyclecontract.HookToolUseLifecycleRequest) bool {
-	if holder == nil || strings.ToLower(strings.TrimSpace(holder.Host)) != strings.ToLower(strings.TrimSpace(req.Host)) ||
+	if holder == nil || !strings.EqualFold(strings.TrimSpace(holder.Host), strings.TrimSpace(req.Host)) ||
 		strings.TrimSpace(holder.SessionID) != strings.TrimSpace(req.SessionID) || strings.TrimSpace(holder.AgentID) != strings.TrimSpace(req.AgentID) {
 		return false
 	}

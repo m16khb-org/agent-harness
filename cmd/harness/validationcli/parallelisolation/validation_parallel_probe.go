@@ -55,7 +55,7 @@ func runParallelIsolationProbeWithDeps(binary, root string, seed int64, worker i
 		return probe
 	}
 	probe.TempRoot = tempRoot
-	defer deps.removeAll(tempRoot)
+	defer func() { _ = deps.removeAll(tempRoot) }()
 	probe.StateDir = filepath.Join(tempRoot, "state")
 	probe.DaemonDir = filepath.Join(tempRoot, "daemon")
 	buildDir := filepath.Join(tempRoot, "build")

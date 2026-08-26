@@ -323,7 +323,8 @@ func checkBinaryDrift(r *HarnessDoctorResult, harnessRoot string) {
 		filepath.Join(harnessRoot, "internal"),
 	}
 	for _, dir := range sourceDirs {
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		// walk 오류는 callback 안에서 건너뛰므로 반환값은 항상 nil이다.
+		_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".go") {
 				return nil
 			}

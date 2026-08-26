@@ -3,7 +3,6 @@ package harnessapp
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -224,7 +223,7 @@ func runEnabledPreparationHook(t *testing.T, host, cwd string, actor issueopscon
 	}
 	os.Stdin = reader
 	go func() {
-		_, _ = io.WriteString(writer, string(payload))
+		_, _ = writer.Write(payload)
 		_ = writer.Close()
 	}()
 	t.Cleanup(func() {

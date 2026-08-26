@@ -82,5 +82,5 @@ func parseRetryAfter(value string) time.Duration {
 	if err != nil {
 		return 0
 	}
-	return when.Sub(time.Now())
+	return time.Until(when)
 }

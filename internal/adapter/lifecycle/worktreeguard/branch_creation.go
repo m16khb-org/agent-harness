@@ -241,7 +241,6 @@ func localIssueOpsWorktreeBranchCreation(args []string) BranchCreation {
 		}
 		if token == "--" {
 			if !pathSeen && i+1 < len(args) {
-				pathSeen = true
 				i++
 			}
 			if branch != "" {

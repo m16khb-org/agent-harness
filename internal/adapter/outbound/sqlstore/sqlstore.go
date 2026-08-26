@@ -678,7 +678,7 @@ func (d *DB) Apply(ctx context.Context, mutations []port.RecordMutation) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if err := applyMutationsTx(ctx, tx, mutations); err != nil {
 		return err
 	}
@@ -712,7 +712,7 @@ func (d *DB) CompareAndApplyFunc(ctx context.Context, expected []port.ExpectedRe
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for _, item := range expected {
 		var current []byte
 		err := tx.QueryRowContext(ctx, `SELECT data FROM records WHERE bucket = ? AND id = ?`, item.Bucket, item.ID).Scan(&current)

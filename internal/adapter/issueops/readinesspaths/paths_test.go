@@ -31,7 +31,9 @@ func TestWorktreePathValid(t *testing.T) {
 func TestPlanPathExists(t *testing.T) {
 	dir := t.TempDir()
 	planPath := filepath.Join(dir, "plan.md")
-	os.WriteFile(planPath, []byte("content"), 0o644)
+	if err := os.WriteFile(planPath, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name     string
@@ -57,7 +59,9 @@ func TestPlanPathExists(t *testing.T) {
 func TestPlanPathInsideWorktree(t *testing.T) {
 	dir := t.TempDir()
 	sub := filepath.Join(dir, "sub")
-	os.MkdirAll(sub, 0o755)
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name     string

@@ -29,12 +29,12 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 	if err != nil {
 		return commandstep.FailedStep("install dry-run smoke", err)
 	}
-	defer deps.removeAll(tempHome)
+	defer func() { _ = deps.removeAll(tempHome) }()
 	tempRoot, err := deps.makeTempDir("root", seed)
 	if err != nil {
 		return commandstep.FailedStep("install dry-run smoke", err)
 	}
-	defer deps.removeAll(tempRoot)
+	defer func() { _ = deps.removeAll(tempRoot) }()
 	skillDir := filepath.Join(tempRoot, "skills", skillName)
 	if err := deps.makeDirAll(skillDir, 0o755); err != nil {
 		return commandstep.FailedStep("install dry-run smoke", err)

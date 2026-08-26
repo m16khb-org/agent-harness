@@ -216,13 +216,13 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 
 	var persisted issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {
-		current, stored := record, expected
+		current := record
 		if expectedRecordRaw == nil && expectedIntentRaw == nil {
-			var err error
-			current, stored, err = readAndMatchOrcaIntent(stateRoot, record.ID, expected)
+			matched, stored, err := readAndMatchOrcaIntent(stateRoot, record.ID, expected)
 			if err != nil {
 				return err
 			}
+			current = matched
 			if !reflect.DeepEqual(stored, expected) {
 				return fmt.Errorf("Orca intent payload changed before receipt CAS")
 			}

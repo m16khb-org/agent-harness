@@ -57,10 +57,6 @@ func fetchGitHubPullRequestArtifactContext(ctx context.Context, artifactURL stri
 	return artifact, nil
 }
 
-func fetchGitHubIssueArtifact(artifactURL string) (liveRemoteArtifact, error) {
-	return fetchGitHubIssueArtifactContext(context.Background(), artifactURL)
-}
-
 func fetchGitHubIssueArtifactContext(ctx context.Context, artifactURL string) (liveRemoteArtifact, error) {
 	out, err := runRemoteVerifyCommand(ctx, func(ctx context.Context) *exec.Cmd {
 		return exec.CommandContext(ctx, "gh", "issue", "view", artifactURL, "--json", "url,labels,assignees,state")

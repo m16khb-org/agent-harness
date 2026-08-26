@@ -53,7 +53,9 @@ func TestSendRecvRoundTripAcrossChannelIsolation(t *testing.T) {
 func TestRecvSinceIDReturnsOnlyNewMessages(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	first, _ := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "1"})
-	Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "2"})
+	if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "2"}); err != nil {
+		t.Fatal(err)
+	}
 	recv, err := Recv(channelcontract.RecvRequest{Channel: "c", SinceID: first.Message.ID})
 	if err != nil {
 		t.Fatalf("recv since: %v", err)
@@ -73,9 +75,11 @@ func TestRecvSinceIDReturnsOnlyNewMessages(t *testing.T) {
 
 func TestRecvLimitBoundsResult(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "1"})
-	Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "2"})
-	Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "3"})
+	for _, body := range []string{"1", "2", "3"} {
+		if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: body}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	recv, err := Recv(channelcontract.RecvRequest{Channel: "c", Limit: 2})
 	if err != nil {
 		t.Fatalf("recv limit: %v", err)
@@ -87,7 +91,9 @@ func TestRecvLimitBoundsResult(t *testing.T) {
 
 func TestRecvWaitReturnsImmediatelyWhenMessageExists(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	Send(channelcontract.SendRequest{Channel: "c", From: "server", Body: "ready"})
+	if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "server", Body: "ready"}); err != nil {
+		t.Fatal(err)
+	}
 	started := time.Now()
 	recv, err := Recv(channelcontract.RecvRequest{Channel: "c", Wait: true, TimeoutSeconds: 5})
 	if err != nil {

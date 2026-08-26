@@ -171,7 +171,9 @@ func TestProjectTypes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			if tt.cmdDir {
-				os.MkdirAll(filepath.Join(dir, "cmd"), 0o755)
+				if err := os.MkdirAll(filepath.Join(dir, "cmd"), 0o755); err != nil {
+					t.Fatal(err)
+				}
 			}
 			var evidence []string
 			types := ProjectTypes(dir, tt.languages, tt.frameworks, tt.monorepo, func(e string) { evidence = append(evidence, e) })

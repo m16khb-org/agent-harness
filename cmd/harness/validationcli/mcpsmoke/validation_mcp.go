@@ -12,12 +12,12 @@ func ValidateMCPWithDeps(binary, root string, deps MCPValidationDeps) StepResult
 	if err != nil {
 		return failedStep("MCP smoke", err)
 	}
-	defer deps.RemoveAll(tempState)
+	defer func() { _ = deps.RemoveAll(tempState) }()
 	daemonDir, err := deps.MkdirTemp("", "ahd-*")
 	if err != nil {
 		return failedStep("MCP smoke", err)
 	}
-	defer deps.RemoveAll(daemonDir)
+	defer func() { _ = deps.RemoveAll(daemonDir) }()
 	env := []string{
 		"HARNESS_STATE_DIR=" + tempState,
 		"HARNESS_DAEMON_DIR=" + daemonDir,

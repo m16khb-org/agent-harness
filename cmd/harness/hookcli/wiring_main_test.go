@@ -20,14 +20,13 @@ func TestMain(m *testing.M) {
 	// 들어오면 4개 테스트가 항상 실패한다(#395).
 	hookenv.ClearInheritedOperatorSwitches()
 	ConfigureLifecycle(LifecycleDeps{
-		RecordLifecycleToolUse:            lifecycle.RecordLifecycleToolUse,
-		SourceCheckoutMisdirectWarning:    lifecycle.SourceCheckoutMisdirectWarning,
-		BuildLifecyclePreCompactCapsule:   lifecycle.BuildLifecyclePreCompactCapsule,
-		BuildLifecycleStopReminder:        lifecycle.BuildLifecycleStopReminder,
-		BuildLifecyclePreToolUseDecision:  lifecycle.BuildLifecyclePreToolUseDecision,
-		RecordStopNextActionRelay:         lifecycle.RecordStopNextActionRelay,
-		ClearStopNextActionRelay:          lifecycle.ClearStopNextActionRelay,
-		BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+		RecordLifecycleToolUse:           lifecycle.RecordLifecycleToolUse,
+		SourceCheckoutMisdirectWarning:   lifecycle.SourceCheckoutMisdirectWarning,
+		BuildLifecyclePreCompactCapsule:  lifecycle.BuildLifecyclePreCompactCapsule,
+		BuildLifecycleStopReminder:       lifecycle.BuildLifecycleStopReminder,
+		BuildLifecyclePreToolUseDecision: lifecycle.BuildLifecyclePreToolUseDecision,
+		RecordStopNextActionRelay:        lifecycle.RecordStopNextActionRelay,
+		ClearStopNextActionRelay:         lifecycle.ClearStopNextActionRelay,
 	})
 	projectbootstrap.ConfigureLifecycle(lifecycle.InitProjectLifecycleState)
 	hookprompt.ConfigureLifecycle(hookprompt.LifecycleDeps{

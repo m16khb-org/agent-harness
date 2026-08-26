@@ -129,7 +129,9 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 			_, _ = StateUpdate("ctr2", func(cur statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error) {
 				v := 0
 				if cur.Content != "" {
-					fmt.Sscanf(cur.Content, "%d", &v)
+					if _, err := fmt.Sscanf(cur.Content, "%d", &v); err != nil {
+						return cur, err
+					}
 				}
 				content := fmt.Sprintf("%d", v+1)
 				return statecontract.RecordEnvelope{Key: "ctr2", SchemaVersion: statecontract.SchemaVersion, Content: content, Bytes: len([]byte(content))}, nil
@@ -139,7 +141,9 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	wg.Wait()
 	read, _ := StateRead("ctr2")
 	var final int
-	fmt.Sscanf(read.Record.Content, "%d", &final)
+	if _, err := fmt.Sscanf(read.Record.Content, "%d", &final); err != nil {
+		t.Fatal(err)
+	}
 	if final != n {
 		t.Fatalf("lost update under StateUpdate: expected %d, got %d", n, final)
 	}

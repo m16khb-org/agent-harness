@@ -10,7 +10,9 @@ func TestForRoot(t *testing.T) {
 	t.Run("with git dir", func(t *testing.T) {
 		dir := t.TempDir()
 		gitDir := filepath.Join(dir, ".git")
-		os.MkdirAll(gitDir, 0o755)
+		if err := os.MkdirAll(gitDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
 		fp := ForRoot(dir)
 		if fp.GitDir != gitDir {
 			t.Errorf("GitDir = %q, want %q", fp.GitDir, gitDir)
@@ -20,8 +22,12 @@ func TestForRoot(t *testing.T) {
 	t.Run("with git worktree file", func(t *testing.T) {
 		dir := t.TempDir()
 		realGit := filepath.Join(dir, "real.git")
-		os.MkdirAll(realGit, 0o755)
-		os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: "+realGit+"\n"), 0o644)
+		if err := os.MkdirAll(realGit, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: "+realGit+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		fp := ForRoot(dir)
 		if fp.GitDir != "gitdir: "+realGit {
 			t.Errorf("GitDir = %q, want %q", fp.GitDir, "gitdir: "+realGit)

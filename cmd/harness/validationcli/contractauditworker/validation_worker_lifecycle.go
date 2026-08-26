@@ -19,7 +19,7 @@ func ValidateWorkerLifecycleWithDeps(binary, root string, seed int64, deps Valid
 	if err != nil {
 		return commandstep.FailedStep("worker lifecycle smoke", err)
 	}
-	defer deps.RemoveAll(workerDir)
+	defer func() { _ = deps.RemoveAll(workerDir) }()
 	env := []string{"HARNESS_WORKER_DIR=" + workerDir}
 	enqueue := deps.RunCommandStepEnv(root, "worker lifecycle enqueue", 30*time.Second, "", env, binary, "worker", "enqueue", "--kind", "smoke", "--payload", fmt.Sprintf("seed=%d", seed), "--json")
 	if !enqueue.OK {

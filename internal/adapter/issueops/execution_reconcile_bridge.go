@@ -137,11 +137,7 @@ func executionReconcileIntentState(record issueops.IssueOpsRecord, recordRaw []b
 }
 
 func executionReconcileIntentPayload(expected ExecutionReconcileIntentState) (externalOrcaIntentPayload, error) {
-	return executionResumeIntentPayload(ExecutionResumeIntentState{
-		Record: expected.Record, RecordRaw: expected.RecordRaw, IntentRaw: expected.IntentRaw,
-		OperationID: expected.OperationID, Stage: expected.Stage, InvocationState: expected.InvocationState,
-		InvocationAttempts: expected.InvocationAttempts, Pending: expected.Pending,
-	})
+	return executionResumeIntentPayload(ExecutionResumeIntentState(expected))
 }
 
 // ClearExecutionReconcileIntent는 authoritative zero로 확인된 reconcile intent를

@@ -38,7 +38,9 @@ func TestNormalizeRoot(t *testing.T) {
 	t.Run("file not dir", func(t *testing.T) {
 		dir := t.TempDir()
 		f := filepath.Join(dir, "file.txt")
-		os.WriteFile(f, []byte("x"), 0o644)
+		if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		_, err := NormalizeRoot(f)
 		if err == nil {
 			t.Error("expected error for file path")
@@ -49,7 +51,9 @@ func TestNormalizeRoot(t *testing.T) {
 func TestResolveFile(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "test.md")
-	os.WriteFile(file, []byte("content"), 0o644)
+	if err := os.WriteFile(file, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name    string

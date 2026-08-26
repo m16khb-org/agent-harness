@@ -217,7 +217,8 @@ func (e *evidenceExtractor) resolveClass(className string) (text, path string, o
 }
 
 func (e *evidenceExtractor) buildClassIndex() {
-	filepath.WalkDir(e.repo, func(path string, d fs.DirEntry, err error) error {
+	// walk 오류는 callback 안에서 건너뛰므로 반환값은 항상 nil이다.
+	_ = filepath.WalkDir(e.repo, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}

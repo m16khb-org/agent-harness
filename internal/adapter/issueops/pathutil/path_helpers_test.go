@@ -79,8 +79,12 @@ func TestGitBranchFromHead(t *testing.T) {
 	t.Run("reads branch from HEAD", func(t *testing.T) {
 		dir := t.TempDir()
 		gitDir := filepath.Join(dir, ".git")
-		os.MkdirAll(gitDir, 0o755)
-		os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+		if err := os.MkdirAll(gitDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		got := GitBranchFromHead(dir)
 		if got != "main" {
 			t.Errorf("expected 'main', got %q", got)
@@ -90,8 +94,12 @@ func TestGitBranchFromHead(t *testing.T) {
 	t.Run("detached HEAD returns empty", func(t *testing.T) {
 		dir := t.TempDir()
 		gitDir := filepath.Join(dir, ".git")
-		os.MkdirAll(gitDir, 0o755)
-		os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("abc123def456\n"), 0o644)
+		if err := os.MkdirAll(gitDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("abc123def456\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		got := GitBranchFromHead(dir)
 		if got != "" {
 			t.Errorf("expected empty for detached HEAD, got %q", got)

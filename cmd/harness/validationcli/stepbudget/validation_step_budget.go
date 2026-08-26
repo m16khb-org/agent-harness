@@ -66,7 +66,7 @@ func ValidateStepBudgetBaselineWithDeps(binary, root string, seed int64, deps St
 	if err != nil {
 		return commandstep.FailedStep("step budget baseline", err)
 	}
-	defer deps.RemoveAll(tempState)
+	defer func() { _ = deps.RemoveAll(tempState) }()
 	baselineKey := fmt.Sprintf("self-verify-budget-baseline-%d", seed)
 	candidateKey := fmt.Sprintf("self-verify-budget-candidate-%d", seed)
 	baselineSummary, candidateSummary := StepBudgetBaselineSummaries(seed)

@@ -59,7 +59,7 @@ func ValidateSelfVerifyCandidateExportWithDeps(binary, root string, seed int64, 
 	if err != nil {
 		return commandstep.FailedStep("candidate export", err)
 	}
-	defer deps.RemoveAll(tempState)
+	defer func() { _ = deps.RemoveAll(tempState) }()
 	key := fmt.Sprintf("self-verify-candidates-%d", seed)
 	env := []string{"HARNESS_STATE_DIR=" + tempState}
 	stdoutParts := []string{}

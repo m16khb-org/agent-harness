@@ -28,21 +28,17 @@ var (
 	clearStopNextActionRelay = func(repo string) lifecyclecontract.StopNextActionRelayResult {
 		return lifecyclecontract.StopNextActionRelayResult{}
 	}
-	buildLifecyclePostCompactReminder = func(repo string) lifecyclecontract.LifecycleCompactResult {
-		return lifecyclecontract.LifecycleCompactResult{}
-	}
 )
 
 // LifecycleDeps는 composition root가 실제 lifecycle 어댑터를 꽂는 진입점이다.
 type LifecycleDeps struct {
-	RecordLifecycleToolUse            func(lifecyclecontract.HookToolUseLifecycleRequest) (lifecyclecontract.HookToolUseLifecycleResult, error)
-	SourceCheckoutMisdirectWarning    func(lifecyclecontract.HookToolUseLifecycleRequest) (string, string)
-	BuildLifecyclePreCompactCapsule   func(string) lifecyclecontract.LifecycleCompactResult
-	BuildLifecycleStopReminder        func(string) lifecyclecontract.LifecycleStopReminderResult
-	BuildLifecyclePreToolUseDecision  func(lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult
-	RecordStopNextActionRelay         func(string, nextaction.NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayResult
-	ClearStopNextActionRelay          func(string) lifecyclecontract.StopNextActionRelayResult
-	BuildLifecyclePostCompactReminder func(string) lifecyclecontract.LifecycleCompactResult
+	RecordLifecycleToolUse           func(lifecyclecontract.HookToolUseLifecycleRequest) (lifecyclecontract.HookToolUseLifecycleResult, error)
+	SourceCheckoutMisdirectWarning   func(lifecyclecontract.HookToolUseLifecycleRequest) (string, string)
+	BuildLifecyclePreCompactCapsule  func(string) lifecyclecontract.LifecycleCompactResult
+	BuildLifecycleStopReminder       func(string) lifecyclecontract.LifecycleStopReminderResult
+	BuildLifecyclePreToolUseDecision func(lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult
+	RecordStopNextActionRelay        func(string, nextaction.NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayResult
+	ClearStopNextActionRelay         func(string) lifecyclecontract.StopNextActionRelayResult
 }
 
 func ConfigureLifecycle(deps LifecycleDeps) {
@@ -66,8 +62,5 @@ func ConfigureLifecycle(deps LifecycleDeps) {
 	}
 	if deps.ClearStopNextActionRelay != nil {
 		clearStopNextActionRelay = deps.ClearStopNextActionRelay
-	}
-	if deps.BuildLifecyclePostCompactReminder != nil {
-		buildLifecyclePostCompactReminder = deps.BuildLifecyclePostCompactReminder
 	}
 }

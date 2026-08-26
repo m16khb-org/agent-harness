@@ -547,7 +547,9 @@ func (session *daemonProxySession) resume(ctx context.Context, connection *daemo
 		return fmt.Errorf("replay daemon initialize: %w", err)
 	}
 
-	for connection.scanner.Scan() {
+	// 재초기화 응답은 정확히 한 줄만 소비한다. 모든 분기가 return하므로 loop가 아니라
+	// 단일 read다.
+	if connection.scanner.Scan() {
 		line := append([]byte(nil), connection.scanner.Bytes()...)
 		line = append(line, '\n')
 		messages, isBatch, ok := decodeDaemonProxyMessages(line)

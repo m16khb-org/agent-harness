@@ -66,10 +66,14 @@ func TestCleanRelativePath(t *testing.T) {
 func TestPathMatchesPlan(t *testing.T) {
 	dir := t.TempDir()
 	subDir := filepath.Join(dir, "sub")
-	os.MkdirAll(subDir, 0o755)
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	planPath := filepath.Join(dir, "plan.md")
-	os.WriteFile(planPath, []byte("content"), 0o644)
+	if err := os.WriteFile(planPath, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	record := model.IssueOpsRecord{PlanPath: planPath}
 

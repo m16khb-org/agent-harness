@@ -30,7 +30,7 @@ func analyzeTraceJSONL(text string) ([]tracecontract.TraceAnalysisFinding, []str
 			traceTypes = append(traceTypes, "doc_upkeep_jsonl")
 			continue
 		}
-		if stringField(doc, "event") == "step_end" && boolField(doc, "ok") == false {
+		if stringField(doc, "event") == "step_end" && !boolField(doc, "ok") {
 			step := stringField(doc, "step")
 			if step == "" {
 				step = "unknown step"

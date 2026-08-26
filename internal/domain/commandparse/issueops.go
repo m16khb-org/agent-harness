@@ -1274,7 +1274,7 @@ func ExactReadOnlyOrcaTerminalCommand(tokens []string) bool {
 	if len(tokens) < 4 || tokens[0] != "orca" || tokens[1] != "terminal" {
 		return false
 	}
-	values := map[string]bool{}
+	var values map[string]bool
 	booleans := map[string]bool{"--json": true}
 	switch tokens[2] {
 	case "list":

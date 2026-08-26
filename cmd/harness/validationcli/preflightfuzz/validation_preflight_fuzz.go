@@ -27,7 +27,7 @@ func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflig
 	if err != nil {
 		return commandstep.FailedStep("preflight fuzz", err)
 	}
-	defer deps.removeAll(tempRepo)
+	defer func() { _ = deps.removeAll(tempRepo) }()
 	if code, _, stderr := deps.git(tempRepo, "init", "-q"); code != 0 {
 		return commandstep.FailedStep("preflight fuzz", fmt.Errorf("git init: %s", stderr))
 	}

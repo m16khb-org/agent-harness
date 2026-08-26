@@ -20,7 +20,7 @@ func validateStateRoundtripWithDeps(binary, root string, seed int64, deps stateR
 	if err != nil {
 		return failedStep("state roundtrip", err)
 	}
-	defer deps.removeAll(tempState)
+	defer func() { _ = deps.removeAll(tempState) }()
 
 	key := fmt.Sprintf("self-verify-%d", seed)
 	content := fmt.Sprintf("seed=%d\nLore: state roundtrip\n", seed)

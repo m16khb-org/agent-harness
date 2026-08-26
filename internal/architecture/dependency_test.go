@@ -100,21 +100,6 @@ func TestEvaluateEdgesAllowsPreparationDomainContract(t *testing.T) {
 	}
 }
 
-func TestEvaluateEdgesAllowsOnlyWaveTwoStorageAdapterImports(t *testing.T) {
-	for _, edge := range []dependencyEdge{
-		{"internal/core/issueops", "internal/adapter/outbound/sqlstore"},
-		{"internal/core/lifecycle", "internal/adapter/outbound/state"},
-	} {
-		if violations := evaluateEdges([]dependencyEdge{edge}); len(violations) != 0 {
-			t.Fatalf("wave-two storage edge %s must remain buildable until the owning core caller moves: %v", formatEdge(edge), violations)
-		}
-	}
-	edge := dependencyEdge{"internal/core/issueops", "internal/adapter/outbound/webfetch"}
-	if violations := evaluateEdges([]dependencyEdge{edge}); !containsViolation(violations, "core_must_not_import_adapter_or_cmd", edge) {
-		t.Fatalf("unrelated core adapter edge must remain forbidden: %v", violations)
-	}
-}
-
 func TestCurrentIssueOpsVerticalOnly(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	forbidden := []string{
@@ -1065,7 +1050,7 @@ func sourceCallCounts(node ast.Node) map[string]int {
 func evaluateEdges(edges []dependencyEdge) []violation {
 	var violations []violation
 	for _, edge := range edges {
-		if isCore(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) && !isWaveTwoStorageAdapterEdge(edge) {
+		if isCore(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) {
 			violations = append(violations, violation{"core_must_not_import_adapter_or_cmd", edge})
 		}
 		if isAdapter(edge.importer) && isCommand(edge.imported) {
@@ -1127,15 +1112,6 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		}
 	}
 	return violations
-}
-
-func isWaveTwoStorageAdapterEdge(edge dependencyEdge) bool {
-	if !isCore(edge.importer) {
-		return false
-	}
-	// T6가 storage 구현을 먼저 이동하고 T7이 남은 core caller를 다음 merge에서
-	// 제거하므로, 봉인된 두 adapter만 중간 parent HEAD에서 허용한다.
-	return edge.imported == "internal/adapter/outbound/sqlstore" || edge.imported == "internal/adapter/outbound/state"
 }
 
 func evaluateOwnershipEdges(edges []dependencyEdge) []violation {
@@ -1399,20 +1375,6 @@ func sortedEdges(edges []dependencyEdge) []dependencyEdge {
 	}
 	sort.Slice(sorted, func(i, j int) bool { return formatEdge(sorted[i]) < formatEdge(sorted[j]) })
 	return sorted
-}
-
-func difference(left, right []dependencyEdge) []dependencyEdge {
-	set := make(map[dependencyEdge]struct{}, len(right))
-	for _, edge := range right {
-		set[edge] = struct{}{}
-	}
-	var diff []dependencyEdge
-	for _, edge := range left {
-		if _, found := set[edge]; !found {
-			diff = append(diff, edge)
-		}
-	}
-	return diff
 }
 
 func formatViolations(violations []violation) string {

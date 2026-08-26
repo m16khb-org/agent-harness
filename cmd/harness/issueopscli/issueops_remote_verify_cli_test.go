@@ -117,7 +117,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueop
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, actor := seedIssueOpsCLIExecution(t, record)
+	_, actor := seedIssueOpsCLIExecution(t, record)
 	if _, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
