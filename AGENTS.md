@@ -122,7 +122,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - CLI는 사람이 직접 실행해도 이해 가능한 JSON/text 출력을 제공해야 한다.
 - MCP tool schema와 CLI JSON 출력은 호스트별로 다르게 만들지 않는다.
 - command policy는 built-in catalog를 기본으로 하되 workspace별 `.agent-harness/policy.json` override를 매 평가마다 로드한다. load/parse 문제는 기존 `warnings` 필드로 노출하고, 전역 first-root cache를 만들지 않는다.
-- IssueOps record JSON에는 `schema_version`이 포함된다. missing/zero legacy record는 현재 버전으로 읽고, future/unsupported schema는 fail-safe로 거부한다.
+- IssueOps record JSON에는 `schema_version`이 포함된다. 현재 쓰기 버전은 1이며, missing/zero/future/unsupported schema는 모두 generic `invalid state`로 fail-safe 거부한다(`TestIssueOpsReaderRejectsMissingAndZeroSchema`). 자동 승격이나 변환 명령은 없다.
 - local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다. 현재 daemon은 MCP proxy backend다.
 - 에이전트 state는 repo 소스와 분리한다. 추적해야 할 지식은 `.agent-harness/`에, 런타임 캐시/로그는 user state 또는 ignored workspace state에 둔다.
 
@@ -130,7 +130,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `gates`, `channel`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. top-level 명령(정규 목록은 `agent-harness --help`): `api-doc`, `bootstrap`, `channel`, `contract`, `daemon`, `docs`, `doctor`, `gates`, `guard`, `hook`, `inspect`, `install`, `issueops`, `loop`, `mcp`, `policy`, `preflight`, `project`, `quality`, `self-augment`, `self-verify`, `state`, `status`, `trace`, `update`, `verify-work`, `version`, `web-fetch`, `worker` |
 | `internal/contract/` | CLI, MCP, state가 공유하는 versioned DTO와 response contract |
 | `internal/domain/` | filesystem, process, DB를 모르는 순수 규칙, reducer, classifier |
 | `internal/application/` | domain과 좁은 port를 조합하는 capability use case |

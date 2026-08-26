@@ -61,7 +61,7 @@ gate 동작을 바꾸는 변경은 이 테스트를 통과해야 하고, 새로�
 
 ## Prompt contract tests
 
-Reusable LLM prompts should follow the shared prompt structure through `internal/core.BuildStructuredPrompt` or equivalent JSON packet keys. When adding or changing prompt builders, add or update tests that check for identity, objective, operating phases, inputs, rules, output contract, and verification checklist. Strict-output prompts must also keep tests for JSON-only/no-fence/no-preamble behavior.
+Reusable LLM prompts should follow the shared prompt structure through `internal/domain/prompt.BuildStructuredPrompt` or equivalent JSON packet keys. When adding or changing prompt builders, add or update tests that check for identity, objective, operating phases, inputs, rules, output contract, and verification checklist. Strict-output prompts must also keep tests for JSON-only/no-fence/no-preamble behavior.
 
 `nextcandle-api`에서 확인한 좋은 기준:
 

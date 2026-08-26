@@ -127,8 +127,8 @@ go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
 ./scripts/install-native.sh --skip-build
-./bin/agent-harness install-native --json
-./bin/agent-harness install-native --dry-run --json
+./bin/agent-harness install --json
+./bin/agent-harness install --dry-run --json
 ```
 
 예정 사용 예:
@@ -142,14 +142,13 @@ agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json
 agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 agent-harness verify-work --json -- git status --short
 agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
-harness state write --key checkpoint --input checkpoint.json --json
-harness state read --key checkpoint --json
-harness state list --json
-harness state prune --max-age 720h --json
-harness state prune --max-age 720h --confirm --json
-harness state doctor --json
-harness state maintain --json
-harness state maintain --confirm --json
+agent-harness state write --key checkpoint --input checkpoint.json --json
+agent-harness state read --key checkpoint --json
+agent-harness state list --json
+agent-harness state prune --max-age 720h --json
+agent-harness state prune --max-age 720h --confirm --json
+agent-harness state doctor --json
+agent-harness state maintain --json
 agent-harness daemon start --json
 agent-harness daemon status --json
 agent-harness daemon stop --json
@@ -160,7 +159,7 @@ agent-harness self-verify history --prefix self-verify --json
 agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 agent-harness self-augment --cycles=1 --target-score=95 --json
-agent-harness worker start
+agent-harness worker list --json
 ```
 
 ---

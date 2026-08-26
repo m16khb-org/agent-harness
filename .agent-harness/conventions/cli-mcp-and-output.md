@@ -14,18 +14,18 @@
 - 사람이 읽는 기본 출력과 agent가 파싱하는 `--json` 출력을 구분한다.
 - `--json` 출력 field는 snake_case를 사용한다.
 - 실패 시 stderr에는 짧은 설명, JSON 모드에는 machine-readable error code를 포함한다.
-- exit code는 의미 있게 유지한다.
+- exit code는 의미 있게 유지한다(`cmd/harness/harnessapp/root_command_facade.go`, `cmd/harness/rootcmd/root_command.go`).
   - `0`: 성공
-  - `1`: 일반 실패
-  - `2`: 잘못된 사용법/flag
-  - `3`: policy 거부
-  - `4`: workspace/config 문제
+  - `1`: 일반 실패. flag/usage 오류도 현재는 `gates`를 제외하면 `1`이다.
+  - `2`: 알 수 없는 subcommand, `gates` usage 오류
+  - `3`: policy 거부(`policy`)와 guard 차단(`guard`)
+  - workspace/config 전용 코드는 없다. 새 코드를 도입하면 이 목록과 `usage.golden.txt`를 함께 갱신한다.
 
 ---
 
 ## 4. MCP 컨벤션
 
-- MCP tool 이름은 `harness.<verb>` 형태를 사용한다.
+- MCP tool 이름은 snake_case `<capability>_<verb>` 형태다(예: `harness_inspect`, `state_write`, `issueops_execution`). 목록은 `cmd/harness/testdata/mcp_tools.golden.json`이 고정한다.
 - CLI와 MCP는 같은 core request/response DTO를 공유한다.
 - tool response에는 불필요한 대용량 파일 내용을 싣지 않는다. 요약, 경로, hash, line range를 우선한다.
 - command 실행 tool은 policy 결과와 audit log id를 함께 반환한다.
@@ -53,7 +53,7 @@ Reusable harness prompts follow the strong prompt shape from the user-provided e
 - Output contract: define the exact response format and forbidden wrapper text.
 - Verification checklist: require a final self-check against the prompt contract.
 
-New reusable prompts should use `internal/core.BuildStructuredPrompt` where possible. JSON packet prompts may use equivalent structured keys instead of Markdown headings, but they still need the same identity/objective/phases/inputs/rules/output/checklist shape. Existing prompt-specific strictness, such as JSON-only output or no Markdown fences, must remain stronger than the generic structure.
+New reusable prompts should use `internal/domain/prompt.BuildStructuredPrompt` where possible. JSON packet prompts may use equivalent structured keys instead of Markdown headings, but they still need the same identity/objective/phases/inputs/rules/output/checklist shape. Existing prompt-specific strictness, such as JSON-only output or no Markdown fences, must remain stronger than the generic structure.
 
 ## Project Docs Bootstrap 컨벤션
 

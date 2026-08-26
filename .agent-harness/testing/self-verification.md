@@ -19,8 +19,8 @@ go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
-./bin/agent-harness install-native --json
-./bin/agent-harness install-native --dry-run --json
+./bin/agent-harness install --json
+./bin/agent-harness install --dry-run --json
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness guard check --staged --json
@@ -34,7 +34,7 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state read --key smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state list --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state prune --max-age 720h --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state doctor --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon status --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon start --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon stop --json

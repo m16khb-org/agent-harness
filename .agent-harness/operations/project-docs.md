@@ -65,7 +65,7 @@ Dry-run/default-write rules:
 - `project_docs_bootstrap_plan` is dry-run only.
 - `project_docs_revise` is dry-run without `confirm=true`.
 - `project_docs_append` is append-only and narrow.
-- `state_prune`, `state_migrate`, and `self_verify_promote` are dry-run unless confirmed.
+- `state_prune` and `self_verify_promote` are dry-run unless confirmed.
 
 ## Standalone Docs Policy
 

@@ -50,8 +50,7 @@ agent-harness state list --json
 agent-harness state prune --max-age 720h --json
 agent-harness state prune --max-age 720h --confirm --json
 agent-harness state doctor --json
-agent-harness state migrate --json
-agent-harness state migrate --confirm --json
+agent-harness state maintain --json
 ```
 
 State commands use user-state storage, not target repo source files.

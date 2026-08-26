@@ -16,7 +16,7 @@
 
 ## Pioneer Skills Layer
 
-agent-harness는 12개의 pioneer skill을 `skills/` 디렉토리에 단일 진실 원천(single source of truth)으로 관리한다. 각 스킬은 컴퓨터 과학 선구자의 이름을 따서 명명되었으며, 그 선구자의 핵심 통찰을 설계 철학으로 삼는다. 자세한 namesake 설명과 실제 사용 계약은 각 `skills/<name>/SKILL.md`의 frontmatter와 identity를 참조한다.
+agent-harness는 `skills/` 디렉토리를 모든 공용 스킬(현재 30개)의 단일 진실 원천(single source of truth)으로 관리하며, 그중 12개가 `internal/domain/pioneerskill/catalog.go`가 고정하는 pioneer skill catalog다. 각 스킬은 컴퓨터 과학 선구자의 이름을 따서 명명되었으며, 그 선구자의 핵심 통찰을 설계 철학으로 삼는다. 자세한 namesake 설명과 실제 사용 계약은 각 `skills/<name>/SKILL.md`의 frontmatter와 identity를 참조한다.
 
 ### 스킬 목록과 IssueOps 연동
 
@@ -60,7 +60,7 @@ agent-harness는 12개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 
 - core behavior 변경: CLI, MCP, worker adapter가 같은 결과를 내는지 테스트한다.
 - command policy 변경: CAUTIONS와 TESTING에 위험과 검증을 업데이트한다.
-- guard 변경: portable anti-pattern rule은 `internal/core/guard/guard_test.go`로 block/warn/review 판정을 고정하고, CLI/contract golden을 함께 갱신한다.
+- guard 변경: portable anti-pattern rule은 `internal/adapter/guard/guard_test.go`로 block/warn/review 판정을 고정하고, CLI/contract golden을 함께 갱신한다.
 - host adapter 변경: core contract를 복제하지 않았는지 확인하고 `internal/adapter` contract matrix golden으로 Codex/Claude/Omo 설치 표면이 drift되지 않았는지 검증한다.
 - shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`, `~/.omo/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
 - state 위치 변경: migration/backward compatibility와 cleanup 전략을 문서화한다.

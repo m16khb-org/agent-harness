@@ -56,10 +56,10 @@ agent가 즉시 알아야 할 canonical 요약이다.
 - subcommand는 동사 중심으로 짧게: `inspect`, `state`, `run`, `mcp`,
   `worker`.
 - 사람 출력과 `--json` 출력을 구분한다. `--json` field는 snake_case.
-- exit code: `0` 성공 · `1` 일반 실패 · `2` 잘못된 사용법 · `3` policy 거부 ·
-  `4` workspace/config 문제.
-- MCP tool 이름은 `harness.<verb>`. CLI와 MCP는 같은 core request/response
-  DTO를 공유한다.
+- exit code: `0` 성공 · `1` 일반 실패(대부분의 flag/usage 오류 포함) · `2` 알 수
+  없는 subcommand와 `gates` usage 오류 · `3` policy/guard 거부.
+- MCP tool 이름은 snake_case `<capability>_<verb>`(예: `harness_inspect`,
+  `issueops_execution`). CLI와 MCP는 같은 core request/response DTO를 공유한다.
 - 단일 객체 응답은 wrapper로 다시 감싸지 않고 top-level로 spread한다.
 - 상세 schema·golden·prompt 구조·api-doc gate·커밋 형식은
   [`conventions/cli-mcp-and-output.md`](conventions/cli-mcp-and-output.md).

@@ -11,12 +11,12 @@
 
 | 모드 | 도입 단계 | 용도 | 원칙 |
 |------|----------|------|------|
-| `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/doctor/docs/policy/state/self-verify/self-augment` 사용 |
+| `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | top-level 명령은 `agent-harness --help`가 정규 목록이다: `api-doc bootstrap channel contract daemon docs doctor gates guard hook inspect install issueops loop mcp policy preflight project quality self-augment self-verify state status trace update verify-work version web-fetch worker` |
 | `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
 | `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 direct/Orca execution v1 lease | IssueOps가 단일 authority다. Orca는 readiness, workspace, native owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소유한다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
-| `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. |
+| `agent-harness worker` one-shot jobs | 구현됨 | lifecycle job record(`enqueue/status/list/cancel/cleanup-stuck`)와 policy-gated `run --read-only`(MCP `worker_run_read_only`) | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
@@ -44,16 +44,16 @@ Project docs bootstrap:
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
-- Loop 위치: `~/.local/state/agent-harness/loop/<loop-id>.json`. CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
+- Loop 위치: `~/.local/state/agent-harness/loop/harness.db`의 `loop` bucket row(loop id당 1 row, `internal/adapter/looprun/store.go`). CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
 - override: `HARNESS_STATE_DIR`
-- 파일: `<key>.json`
+- 저장: `<state root>/harness.db`의 `state` bucket row(key당 1 row). key별 JSON 파일은 없다.
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지
-- schema: current `schema_version=1`; version이 없는 legacy record는 read-compatible하고 `state migrate`로 승격한다.
-- 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
+- schema: current `schema_version=1`. `schema_version`이 1이 아닌 record(없음/0/future 포함)는 invalid state로 거부하고 `state doctor`가 보고한다(`internal/domain/state/validation.go`). 별도 승격 명령은 없다(current-only state).
+- 제공 표면: CLI `state write/read/list/prune/doctor/maintain`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_maintain`, resource `harness://state`
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
-- migration: `state migrate`는 기본 dry-run이고, 실제 legacy schema rewrite에는 `--confirm`이 필요하다.
+- maintenance: `state maintain`은 고정 store root(state, issueops, worker, loop)와 `projects/<repo-id>` store에 WAL checkpoint truncate와 sidecar 권한(0600) 복구를 수행한다. 세션 시작 hook이 24시간 간격으로 같은 유지보수를 자동 실행한다.
 - self-verify summary checkpoint는 `self-verify history/compare/promote`와 MCP `self_verify_history/self_verify_compare/self_verify_promote`로 조회·비교·승격한다.
 
 IssueOps v1 execution state, schema authority, capability verticals, and the
@@ -75,13 +75,13 @@ actor model live in [`issueops.md`](issueops.md).
 
 명령 실행 기능은 가장 위험한 capability이므로 별도 policy로 관리한다.
 
-현재 구현은 실제 shell runner가 아니라 **policy check + fake runner**다.
+현재 구현은 **policy check + fake runner**에 더해, 같은 policy로 gate되는 **read-only executor**(`policy run --read-only`, `worker run --read-only`; `internal/adapter/policy/policy_run.go`)를 제공한다. write 명령 실행 표면은 없다.
 
-- CLI: `policy check`, `policy fake-run`
-- MCP: `command_policy_check`, `command_fake_run`
+- CLI: `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit`, `worker run --read-only`
+- MCP: `command_policy_check`, `command_fake_run`, `command_policy_audit`, `worker_run_read_only`
 - Resource: `harness://command-policy`
 - fake runner는 policy 결과와 audit id만 반환하며 명령을 실행하지 않는다.
-- allow/deny 목록은 `internal/core/policy.go`의 catalog table이 source of truth이며, `CommandPolicySummary()`의 `catalog` 필드로 노출된다.
+- allow/deny 목록은 `internal/adapter/policy/policy_catalog.go`의 catalog table이 source of truth이며, `CommandPolicySummary()`의 `catalog` 필드로 노출된다.
 
 필수 필드:
 

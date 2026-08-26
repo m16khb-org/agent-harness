@@ -13,10 +13,10 @@ adapter parity is owned by
 GitLab MCP/CLI snapshot 계약을 바꿀 때는 다음 bounded set을 먼저 실행한다.
 
 ```bash
-go test ./internal/core/issueops ./internal/adapter/provider/gitlab -run 'IssueSnapshot|ExecutionIssueSnapshot' -count=1
-go test ./internal/adapter/mcp ./cmd/harness/mcpcli ./internal/core/toolconformance -count=1
+go test ./internal/adapter/issueops ./internal/adapter/provider/gitlab -run 'IssueSnapshot|ExecutionIssueSnapshot' -count=1
+go test ./internal/adapter/mcp ./cmd/harness/mcpcli ./internal/adapter/toolconformance -count=1
 go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/issueopscli -run 'Snapshot|ExecutionCLI|Usage' -count=1
-go test ./internal/core/skillcontract -run TestGitLabSnapshotSkillsPinPortableVCSContract -count=1
+go test ./internal/adapter/skillcontract -run TestGitLabSnapshotSkillsPinPortableVCSContract -count=1
 python3 scripts/validate-skill.py skills/gitlab-usecase
 python3 scripts/validate-skill.py skills/issueops
 go test ./cmd/harness/contractgolden -run Golden -count=1

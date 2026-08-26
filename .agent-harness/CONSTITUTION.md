@@ -145,8 +145,8 @@ Human CLI          ┘                                      ├─> fs/git/proce
                                                           └─> host config adapter
 ```
 
-- `internal/core`는 host와 무관한 usecase와 policy를 둔다.
-- `internal/port`는 core가 의존하는 interface와 DTO를 둔다.
+- `internal/domain`은 I/O를 모르는 순수 규칙·reducer·classifier를, `internal/application`은 domain과 좁은 port를 조합하는 use case를 둔다. host와 무관한 정책은 이 두 층에만 둔다.
+- `internal/port`는 application이 의존하는 외부 capability interface와 error contract를, `internal/contract`는 CLI/MCP/state가 공유하는 versioned DTO를 둔다.
 - `internal/adapter/*`는 CLI, MCP, worker, filesystem, process, git 같은 외부 기술 구현을 둔다.
 - Codex/Claude별 설정은 adapter/template이며 core behavior를 복제하지 않는다.
 - persistent worker는 CLI/MCP 계약이 안정된 뒤 도입한다.

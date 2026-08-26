@@ -55,7 +55,7 @@ Command:
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 tmp_state="$(mktemp -d)"
-HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json
 rm -rf "$tmp_state"
 ```
 
@@ -63,7 +63,7 @@ Observed result:
 
 - `inspect --json`: `ok=true`, `harness_root=/Users/m16khb/Workspace/agent-harness`, `codex_mcp_configured=true`, `claude_skill_installed=true`, `project_claude_mcp_config=true`.
 - `docs --json`: `ok=true`; docs index includes `.agent-harness/operations/release-reproducibility.md`.
-- `state migrate --json`: `ok=true`, `from_schema=0`, `to_schema=1`, `dry_run=true`, `issues=[]`.
+- `state maintain --json`: `ok=true` on an empty temp state root (this line replaced the retired schema-promotion command of the original 2026-06-13 transcript; schema promotion no longer exists).
 
 ## UX findings
 

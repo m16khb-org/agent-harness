@@ -142,7 +142,7 @@ Gate policy는 evidence 상태와 함께 fail-closed로 동작한다.
 | post-compact | 2 | 1ms | 2ms | 2ms | 0 |
 
 - **수용 기준 충족**: Stop hook p95 38ms ≪ 1s 목표(LLM 게이트 제거 후 heuristic이라 달성). 전 hook 5s 예산 대비 여유 大.
-- 출처: `internal/core/hookmetrics/metrics.go`, 로그 `~/.local/state/agent-harness/hook-metrics.jsonl`.
+- 출처: `internal/adapter/hookmetrics/metrics.go`, 로그 `~/.local/state/agent-harness/hook-metrics.jsonl`.
 
 ## 측정면 5 — Hook 실패율 (Q2)
 
@@ -151,7 +151,7 @@ Gate policy는 evidence 상태와 함께 fail-closed로 동작한다.
 - by_hook: pre-tool-use 26, user-prompt 5, --help 4, stop 2, post-tool-use 1.
 - **ErrHelp 노이즈 제거**: 초기 38건 중 16건이 help 요청이었음 → `Record`가 `flag.ErrHelp` 스킵하도록 수정(실 결함만 집계).
 - **rotation**: SessionStart hook이 720h 초과 항목 자동 prune(무한 성장 P1 해소). 로그 13KB.
-- 출처: `cmd/harness/hookcli/hookfailure/`, `internal/core/hookfailure/stats.go`.
+- 출처: `cmd/harness/hookcli/hookfailure/`, `internal/adapter/hookfailure/stats.go`.
 
 ## 측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)
 

@@ -24,9 +24,9 @@ scripts/release-repro-smoke.sh
 
 - `git status --short --branch`가 의도한 변경만 보여야 한다.
 - `scripts/release-repro-smoke.sh`가 temp `HOME`, `CODEX_HOME`, `HARNESS_STATE_DIR`, fixture `HARNESS_ROOT` 아래에서 통과해야 한다.
-- `install-native --dry-run --project-local --json` 결과는 `ok=true`, `dry_run=true`, `project_local=true`이며 host 목록이 정확히 `[codex, claude]`이고 둘 다 `ok=true`여야 한다.
+- `install --dry-run --project-local --json` 결과는 `ok=true`, `dry_run=true`, `project_local=true`이며 host 목록이 정확히 `[codex, claude]`이고 둘 다 `ok=true`여야 한다.
 - dry-run 결과의 `files[].written`과 `links[].created`는 모두 false여야 한다.
-- `inspect --json`, `docs --json`, `state migrate --json`가 temp state에서 모두 `ok=true`여야 한다.
+- `inspect --json`, `docs --json`, `state maintain --json`가 temp state에서 모두 `ok=true`여야 한다.
 - 사용자용 `README.md`에는 `Release User Guide: Install, Update, Rollback` 섹션이 있어야 한다.
 - `.agent-harness/operations/release-dogfood-notes.md`에 Codex/Claude MCP 등록과 `inspect/docs/state` dogfood 전사가 있어야 한다.
 
@@ -102,7 +102,7 @@ Decision record: `.agent-harness/ADR.md` section `2026-06-13 — Distribution de
 
 Rollback criteria:
 
-- `inspect --json`, `docs --json`, `state migrate --json`, `scripts/release-repro-smoke.sh`, `scripts/release-build-matrix.sh`, or `agent-harness self-verify --seed=100 --target-score=95 --json` fails on the release checkout.
+- `inspect --json`, `docs --json`, `state maintain --json`, `scripts/release-repro-smoke.sh`, `scripts/release-build-matrix.sh`, or `agent-harness self-verify --seed=100 --target-score=95 --json` fails on the release checkout.
 - Codex or Claude Code cannot complete the same `inspect/docs/state` workflow with the rebuilt binary.
 - The release checkout requires manual host-specific repair outside documented install/update steps.
 

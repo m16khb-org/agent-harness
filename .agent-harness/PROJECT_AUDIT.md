@@ -1,6 +1,14 @@
 # Agent-Harness Whole-Project Audit
 
 > Generated: 2026-06-14
+> Path note (2026-08-26): the `internal/core/<pkg>` paths cited in the dated
+> sections below predate the 2026-08-08 relocation (`ccee5d5f`). Current homes:
+> worker/lifecycle/hookfailure/hookmetrics/policy/preflight/guard → `internal/adapter/<pkg>`,
+> state → `internal/adapter/outbound/state`, structured JSON decoding →
+> `internal/domain/judgement`, the draft-wiki queue lock and the Z.AI
+> `externalllm` wrapper were removed with the draft-wiki worker, and the daemon
+> lock lives at `cmd/harness/daemoncli/daemonlock/lock.go`. Section file:line
+> references are kept as incident-time evidence.
 > Scope: All 31 subsystems: daemon, MCP proxy, worker, command policy, state, lifecycle hooks (7 types), project bootstrap/docs, self-verify, self-augment, CLI, install, hook input, search routing, command guard, next-action relay, remote artifact gate, VCS linking, lint diagnose, project docs detection, prompt/compact, context region, API doc, draft wiki, trace, guard, contract CLI, preflight, external LLM, agy settings, commit suggest, repopath, docs index
 
 ---
@@ -219,7 +227,7 @@ All external LLM calls go through the Z.AI chat-completions API wrapper in `inte
 
 **File:** `cmd/harness/mcpcli/mcp_sdk_server.go`, `cmd/harness/mcpcli/mcp_transport.go`
 
-Two JSON-RPC implementations coexist: the SDK-based transport (for daemon sockets) and a legacy hand-rolled parser (for test pipes). The legacy path is a maintenance burden.
+Two JSON-RPC implementations coexisted: the SDK-based transport (for daemon sockets) and a legacy hand-rolled parser (for test pipes). **Resolved 2026-08-03 (`034bda93`):** the hand-rolled path was removed and `serveMCPStreamSDK` (`cmd/harness/mcpcli/mcp_sdk_server.go`) now serves both split stdio and bidirectional daemon connections.
 
 ### 12.2 Tool Catalog Drift (P1)
 
@@ -251,13 +259,14 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 
 > **Triage 2026-06-16** (evidence-verified against code/commits/tests; see the
 > backlog-triage + quality-hardening workflows): of the original 24 P1/P2 items,
-> **18 resolved**, **4 accepted/documented**, **3 out-of-scope/theoretical**, and
+> **19 resolved**, **3 accepted/documented**, **3 out-of-scope/theoretical**, and
 > **0 open** — including the one item (SA1) that the hardening triage itself
 > surfaced and then fixed. `quality inspect`'s `audit_p1_p2_items` signal reads **0**
 > (the "Open" table below has no bare `P1`/`P2` rows; the resolved/accepted/out-of-scope
 > tables omit the severity column so the parser excludes them). The 7 prior
 > open/partial items were closed in the 2026-06-16 hardening pass: H2/P2/C2/SA1 fixed,
-> D2/L2/S2/M1 accepted with documented rationale.
+> D2/L2/S2 accepted with documented rationale; M1 was later resolved on 2026-08-03
+> (`034bda93` removed the legacy JSON-RPC transport).
 >
 > A follow-up **completeness audit** (2026-06-16) swept beyond this list and found
 > 4 more: W3/W4/TC1 fixed (worker atomic write, hook-prune Close, StateUpdate test);
@@ -284,7 +293,6 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | D2 | Daemon | NFS lock safety (O_EXCL) | accepted — daemonlock is transient (deleted after handoff) so flock is inapplicable; O_EXCL + stale/PID detection adequate; NFS caveat documented (CAUTIONS.md §13) |
 | L2 | External LLM | No retry on malformed output | accepted — decode is a pure decoder with no invoke handle; Z.AI response_format=json_object guarantees JSON; rationale comment added (structured.go); future retry belongs at the invoke layer |
 | S2 | State | No atomic multi-key transactions | accepted — no caller writes 2+ keys atomically; single-key writes already temp+rename under flock; known-limitation documented (CAUTIONS.md §6) |
-| M1 | MCP proxy | Dual transport code paths | accepted — serveMCPStreamLegacy is load-bearing for the split reader/writer stdio path (MCP smoke); SDK transport cannot cover it; both intentionally kept |
 
 ### Resolved — excluded from the count (verified fixed)
 
@@ -312,6 +320,7 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | CP1 | Command policy | Hardcoded catalog | resolved 2026-07-02 (`.agent-harness/policy.json` per workspace/root, warnings on load/parse failure) |
 | L1 | External LLM | Single provider | accepted 2026-07-02 (Z.AI-only wrapper; unused `port.ExternalLLM` removed) |
 | M2 | MCP proxy | Tool catalog drift | b8f2f11 (auto-generated DispatchMap) |
+| M1 | MCP proxy | Dual transport code paths | 034bda93 (legacy hand-rolled JSON-RPC path removed; `serveMCPStreamSDK` in `mcp_sdk_server.go` serves both split stdio and bidirectional daemon connections) |
 | HK1 | Hooks | Host output format divergence | ff0e668 (HostHookOutput interface) |
 
 ### Out-of-scope / theoretical — excluded from the count
@@ -363,6 +372,6 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 
 `os.Remove(lockPath)` in `withIssueOpsLock` (added by a previous sub-agent implementation) caused `flock`-based mutual exclusion to break. `flock` locks are associated with the open file description (the inode). Deleting the lock file and recreating it via `O_CREATE` creates a new inode, so concurrent goroutines acquire locks on different inodes and run their critical sections simultaneously.
 
-**Evidence:** `TestIssueOpsConcurrentFeedbackNoLostUpdate` consistently lost 35-38 of 50 updates.
+**Evidence:** `TestIssueOpsConcurrentFeedbackNoLostUpdate` (incident-time name; the lost-update coverage now lives in `TestPreCompactConcurrentMergeNoLostUpdate` and `TestStateUpdateLockedReadModifyWrite`) consistently lost 35-38 of 50 updates.
 
 **Fix:** Reverted to `defer unix.Flock(LOCK_UN)` + `defer f.Close()` without `os.Remove`. Lock files persist. Orphaned lock files (no matching `.json`) are cleaned by the off-hot-path stale scan.

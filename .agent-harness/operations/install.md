@@ -92,7 +92,7 @@ Release reproducibility smoke:
 scripts/release-repro-smoke.sh
 ```
 
-This script builds the current checkout, then verifies `install-native --dry-run --project-local --json` in temporary `HOME`, `CODEX_HOME`, and fixture `HARNESS_ROOT` directories. It also checks the clean `inspect/docs/state` workflow under a temporary state directory.
+This script builds the current checkout, then verifies `install --dry-run --project-local --json` in temporary `HOME`, `CODEX_HOME`, and fixture `HARNESS_ROOT` directories. It also checks the clean `inspect/docs/state` workflow under a temporary state directory.
 
 Release build matrix smoke:
 

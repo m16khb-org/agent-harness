@@ -58,7 +58,7 @@ CLI one-shot, `mcp` stdio proxy, `daemon` user-level backend, `issueops`,
   `BEGIN IMMEDIATE` sqlstore span으로 직렬화된다(프로세스 사막 시 자동 해제,
   span 중첩 금지).
 - project lifecycle state는 `projects/<repo-id>/`에, loop state는
-  `loop/<loop-id>.json`에, IssueOps v1 state는 `issueops_v1/harness.db`의
+  `loop/harness.db`의 `loop` bucket에, IssueOps v1 state는 `issueops_v1/harness.db`의
   `issueops_v1` bucket에 격리된다.
 - config 추적 기준(project 지식은 git 추적, 전역 설정/state는 비추적, cache는
   `.gitignore`, secret은 keychain/env 참조)과 XDG 우선/fallback 원칙.

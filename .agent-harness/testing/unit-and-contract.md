@@ -50,11 +50,11 @@ go test ./internal/architecture -count=1
 - Stability audit unit tests must prove it calls the freshly built top-level `doctor`, forwards only a non-empty exact `ORCA_TERMINAL_HANDLE`, requires exit zero plus JSON `ok=true` and `healthy=true`, and stores only bounded issue code/summary failure details.
 - Final live reconciliation verification runs `python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json` only after the external recovery manifest/journal is sealed and cleanup readbacks are complete. Orca snapshot evidence is archival-only; reset ambiguity follows forward recovery, never an inferred rollback.
 
-core 패키지 변경 시 최소 targeted 검증:
+domain/application 패키지 변경 시 최소 targeted 검증:
 
 ```bash
-go test ./internal/core -count=1
-go test ./cmd/harness -count=1
+go test ./internal/domain/... ./internal/application/... -count=1
+go test ./cmd/harness/harnessapp -count=1
 ```
 
 CLI/MCP contract를 의도적으로 바꾼 경우에만 golden 파일을 갱신한다. Codex/Claude native 설치 adapter 계약을 바꾼 경우에는 adapter matrix golden도 함께 갱신한다.

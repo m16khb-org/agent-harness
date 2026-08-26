@@ -7,7 +7,7 @@ IssueOps-execution-specific lives in
 [cli-mcp-and-hosts.md](cli-mcp-and-hosts.md); race package sets are cross-cut
 with [concurrency-and-race.md](concurrency-and-race.md).
 
-`execution release` production vertical은 `internal/core/issueops` differential
+`execution release` production vertical은 `internal/adapter/issueops` differential
 test로 schema v1·missing/zero legacy schema·rich sidecar·holder index와 denial
 atomicity를 비교한다. 변경 시 core focused race, outbound focused race,
 architecture ratchet, CLI/MCP contract, golden, scoped vet와 build를 실행하며,
@@ -58,8 +58,8 @@ Execution tests must cover:
   and zero operation/worktree/terminal/Run/task/dispatch/lease mutations on
   failure. Released recovery staging is limited to a clean holderless Orca
   generation and changes only the next reseal input. Run the focused regressions
-  with `go test ./internal/core/issueops ./cmd/harness/harnessapp -run 'PlanArtifact|Preparation.*Plan|Owner.*Plan|Replace.*Plan|Intent.*Plan|Resume.*Plan' -count=1`
-  plus `go test ./internal/core/issueops ./internal/core/lifecycle -run 'Artifact.*Released|Released.*Artifact' -count=1`.
+  with `go test ./internal/adapter/issueops ./cmd/harness/harnessapp -run 'PlanArtifact|Preparation.*Plan|Owner.*Plan|Replace.*Plan|Intent.*Plan|Resume.*Plan' -count=1`
+  plus `go test ./internal/adapter/issueops ./internal/adapter/lifecycle -run 'Artifact.*Released|Released.*Artifact' -count=1`.
 - completion only from `pr` with the durable verified PR/MR projection; the
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when
@@ -128,8 +128,8 @@ hidden by a ready-only listing.
 Use this focused package set before the full repository gates:
 
 ```bash
-go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/orca ./internal/adapter/codex ./internal/adapter/claude ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
-go test -race ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/orca ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
+go test ./internal/adapter/issueops/... ./internal/adapter/lifecycle ./internal/adapter/orca ./internal/adapter/codex ./internal/adapter/claude ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
+go test -race ./internal/adapter/issueops/... ./internal/adapter/lifecycle ./internal/adapter/orca ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
 ```
 
 Native activation tests use isolated temporary homes. They require same-

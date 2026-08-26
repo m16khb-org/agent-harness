@@ -103,7 +103,7 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 `internal/architecture`는 production import graph의 test-only fitness boundary다. `go list -json ./...`의 direct `Imports`만 정렬된 `importer -> imported` edge로 수집하며, test import와 transitive dependency는 graph에 포함하지 않는다.
 
 - `internal/domain|application/... -> internal/adapter/...|cmd/...`, `internal/adapter/... -> cmd/...`, `internal/port -> contract 외 internal/...`는 baseline 없이 즉시 실패한다. 과거 `core` 규칙도 재도입 방지용으로 유지한다.
-- legacy adapter edge는 0이다. `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만 import한다. 예외는 둘뿐이다 — 같은 capability의 하위 package 사이 edge는 구현 정리이므로 세지 않고(capability는 `internal/adapter/` 다음 경로 요소, `outbound`/`inbound`는 방향 분류이므로 그 다음 요소까지 읽는다), `outbound/sqlstore`는 capability가 아니라 공유 저장 엔진이므로 다른 outbound 어댑터가 직접 쓸 수 있다. 그 밖의 edge는 `TestProductionGraphHasNoLegacyAdapterEdges`가 막는다.
+- legacy adapter edge는 0이다. `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만 import한다. 예외는 셋뿐이다(`isSharedStorageEngineEdge`) — 같은 capability의 하위 package 사이 edge는 구현 정리이므로 세지 않고(capability는 `internal/adapter/` 다음 경로 요소, `outbound`/`inbound`는 방향 분류이므로 그 다음 요소까지 읽는다), `outbound/sqlstore`는 capability가 아니라 공유 저장 엔진이므로 outbound 어댑터와 `internal/adapter/issueops`가 직접 쓸 수 있으며, `outbound/issueopsrecord`는 `outbound/issueops*` 어댑터만 쓴다. 그 밖의 edge는 `TestProductionGraphHasNoLegacyAdapterEdges`가 막는다.
 - baseline을 줄이는 변경은 의도된 architecture 개선으로 같은 review에서만 허용한다. production package 이동이나 runtime wiring은 이 ratchet의 범위가 아니다.
 
 ## 현재 hardening 추가 사항
@@ -112,4 +112,4 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 - `internal/domain/mcp`가 advertised catalog와 dispatch group을 소유하고 `cmd/harness/mcpcli`가 stdio/JSON-RPC와 handler wiring을 담당한다. `internal/adapter/mcp`는 capture-only conformance probe로 제한한다.
 - `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
 - `agent-harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
-- `agent-harness worker`의 generic `enqueue/status/list/cancel`은 no-shell lifecycle MVP다.
+- `agent-harness worker`는 lifecycle job record(`enqueue/status/list/cancel/cleanup-stuck`)와 policy-gated `run --read-only`(MCP `worker_run_read_only`)를 제공한다. 장기 상주 job daemon은 없다.
