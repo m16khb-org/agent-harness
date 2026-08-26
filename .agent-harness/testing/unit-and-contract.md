@@ -29,8 +29,9 @@ go build -o bin/agent-harness ./cmd/harness
 정적 분석은 `go vet`이 harness 기본 게이트이고, CI는 그 위에 golangci-lint 기본 linter
 집합(errcheck, gosimple, govet, ineffassign, staticcheck, unused)을 `.golangci.yml`
 설정으로 추가 실행한다. 로컬에 golangci-lint가 설치돼 있으면 `golangci-lint run ./...`로
-같은 목록을 미리 확인한다. 이 도구는 install/update/self-verify readiness 경로의
-요구사항이 아니며 CI와 개발자 게이트로만 쓴다.
+같은 목록을 미리 확인하고, CI runner가 Linux이므로 `GOOS=linux golangci-lint run ./...`도
+함께 돌린다(플랫폼 build tag 분기에서만 unused가 되는 심볼을 잡는다). 이 도구는
+install/update/self-verify readiness 경로의 요구사항이 아니며 CI와 개발자 게이트로만 쓴다.
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 

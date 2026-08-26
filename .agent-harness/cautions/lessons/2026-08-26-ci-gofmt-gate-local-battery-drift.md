@@ -43,6 +43,12 @@ Family index: [CAUTIONS.md](../../CAUTIONS.md).
     `FAIL agent-harness/internal/adapter/skillcontract`(`symlink-not-allowed`).
   - `./bin/agent-harness quality inspect --json` → `ok:false`, `warnings:["coverage: exit status 1"]`
     (같은 테스트 실패가 coverage 수집을 막아 품질 게이트까지 `block`으로 보였다).
+- Follow-up (같은 날): 새 lint 게이트의 첫 두 CI 실행도 실패했다. (1) 배포된 golangci-lint
+  v1.64.8 바이너리는 Go 1.24로 빌드돼 `go 1.26` 모듈을 거부하므로 액션은
+  `install-mode: goinstall`로 go.mod 툴체인에서 직접 빌드해야 한다(`2ff7ea5a`). (2) macOS
+  로컬 lint는 Linux 빌드에서만 unused가 되는 `//go:build` 분기(`daemonpaths`의 `ps` helper)를
+  보지 못한다. CI 재현은 `GOOS=linux golangci-lint run ./...`와 `GOOS=linux go vet ./...`를
+  함께 돌린다(`1d9d8bf2`).
 - Rule: 새 CI 게이트를 추가하면 같은 명령을 `AGENTS.md §9`, `TESTING.md` 기본 검증, 그리고
   가능하면 `self-verify` 단계에도 같은 판정 조건으로 넣는다. golden이나 검증기가 환경 관측값을
   읽는다면 그 값을 placeholder로 정규화하거나 fixture로 고정하고, 절대 실제 tree 상태를
