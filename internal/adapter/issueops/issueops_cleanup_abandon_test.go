@@ -401,9 +401,11 @@ func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
 		}
 	})
 	// branch만 남은 잔여물은 #433 이후 정리 가능하다. 그 계약은
-	// TestCleanupAbandonClearsAsymmetricResidue가 고정한다. 여기서는 그
-	// 경로에도 execution 근거가 여전히 필요함을 고정한다 — 잔여물이 있는데
-	// record에 execution이 없으면 무엇을 지우는 것인지 설명할 수 없다.
+	// TestCleanupAbandonClearsAsymmetricResidue가 고정한다. 여기서는 소유 근거
+	// 없는 잔여물이 여전히 막힘을 고정한다 — record가 워크트리를 link하지도
+	// 않았고 execution도 없으면 무엇을 지우는 것인지 설명할 수 없다. record가
+	// link한 잔여물의 정리는 TestCleanupAbandonAcceptsRecordLinkedResidueWithoutExecution이
+	// 고정한다.
 	t.Run("branch ref present without execution", func(t *testing.T) {
 		stateRoot, record := abandonTestRecord(t)
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{branchOID: "abc123"}, authoritativeZeroOrca()))

@@ -454,3 +454,54 @@ func TestCleanupAbandonApplyRejectsCleanHeadDrift(t *testing.T) {
 		t.Fatalf("record must survive stale apply: %v", err)
 	}
 }
+
+// 실측(io-2fb20438b925, 2026-08-26): execution prepare 없이 진행된 사이클이 MR
+// 머지·이슈 종료까지 끝난 뒤 link된 워크트리·브랜치가 남아 있으면 세 typed
+// 경로가 모두 막혔다 — finish는 기록된 artifact를, orphan은 record 부재를,
+// abandon은 execution 소유 근거(local_residue_execution)를 요구했다. record가
+// link한 워크트리(record.WorktreePath)는 격리 경로·브랜치 일치가 검증된 record
+// 소유 잔여물이므로, 같은 canonical/branch/head/clean 검사와 fingerprint·confirm
+// 아래 abandon이 정리할 수 있어야 한다.
+func TestCleanupAbandonAcceptsRecordLinkedResidueWithoutExecution(t *testing.T) {
+	stateRoot := filepath.Join(t.TempDir(), "state")
+	fixture := newClaimableExecutionFixture(t, stateRoot, "2799-linked-no-execution")
+	if err := os.Remove(fixture.tokenPath); err != nil {
+		t.Fatal(err)
+	}
+	mutateFinishRecord(t, stateRoot, fixture.record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution = nil
+		rec.WorktreePath = fixture.worktree
+	})
+	head := strings.TrimSpace(preflight.GitOut(fixture.worktree, "rev-parse", "HEAD"))
+	deps := CleanupAbandonDeps{}
+
+	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
+	if err != nil {
+		t.Fatalf("record-linked residue without execution must be previewable: %v missing=%v", err, preview.Missing)
+	}
+	if preview.Fingerprint == "" || !preview.WorktreePresent || !preview.BranchPresent {
+		t.Fatalf("preview must seal both local targets: %+v", preview)
+	}
+	wantPlan := []string{
+		"local_worktree:" + fixture.worktree,
+		"local_branch:2799-linked-no-execution@" + head,
+		"record:" + fixture.record.ID,
+	}
+	if strings.Join(preview.RemovalPlan, "\n") != strings.Join(wantPlan, "\n") {
+		t.Fatalf("removal plan mismatch\nwant=%q\n got=%q", wantPlan, preview.RemovalPlan)
+	}
+
+	applied, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, preview.Fingerprint), deps)
+	if err != nil || !applied.RecordDeleted {
+		t.Fatalf("apply must clean the linked residue and delete the record: err=%v result=%+v", err, applied)
+	}
+	if _, err := os.Stat(fixture.worktree); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("apply must remove the linked worktree: %v", err)
+	}
+	if code, _, _ := preflight.GitCmd(fixture.record.Repo, "show-ref", "--verify", "--quiet", "refs/heads/2799-linked-no-execution"); code == 0 {
+		t.Fatal("apply must remove the linked local branch")
+	}
+	if _, err := ReadIssueOps(stateRoot, fixture.record.ID); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("apply must remove the record last: %v", err)
+	}
+}

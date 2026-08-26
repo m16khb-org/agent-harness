@@ -73,6 +73,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-22 | [underused-surface dogfood: shipped benchmark panic, mcpsmoke data race, hook help noise](cautions/lessons/2026-08-22-underused-surface-dogfood-defects.md) |
 | 2026-08-22 | [Kordoc install unblocks boehm pioneer; child tasks need CLI+handshake probe](cautions/lessons/2026-08-22-kordoc-install-unblocks-boehm-pioneer.md) |
 | 2026-08-26 | [CI gofmt gate drifted from the local battery; golden captured a dirty working tree](cautions/lessons/2026-08-26-ci-gofmt-gate-local-battery-drift.md) |
+| 2026-08-26 | [Merged-without-execution cycle had no typed cleanup exit; abandon accepts record-linked residue](cautions/lessons/2026-08-26-abandon-record-linked-residue-without-execution.md) |
 
 ## Removed CLI modes (historical only)
 

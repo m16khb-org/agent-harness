@@ -312,7 +312,17 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		inventory.WorktreeHead = record.CleanupAbandonFailure.WorktreeHead
 		result.WorktreeHead = inventory.WorktreeHead
 	}
-	if (inventory.WorktreePresent || result.BranchPresent) && record.Execution == nil {
+	// ⑥ 잔여물의 소유 근거. execution workspace receipt가 없어도 record가
+	// link한 워크트리(record.WorktreePath)는 격리 경로·브랜치 일치가 검증된
+	// record 소유 잔여물이다. 위 canonical/branch/head/clean 검사와 fingerprint·
+	// confirm이 그대로 적용되므로 abandon 대상으로 인정한다. record가 아무
+	// 워크트리도 link하지 않았는데 잔여물이 있으면 무엇을 지우는지 설명할 수
+	// 없으므로 계속 막는다.
+	//
+	// 실측(io-2fb20438b925, 2026-08-26): execution prepare 없이 진행된 사이클이
+	// MR 머지·이슈 종료까지 끝난 뒤, finish는 기록된 artifact를, orphan은 record
+	// 부재를, abandon은 이 게이트를 요구해 typed 출구가 하나도 없었다.
+	if (inventory.WorktreePresent || result.BranchPresent) && record.Execution == nil && strings.TrimSpace(record.WorktreePath) == "" {
 		missing = append(missing, "local_residue_execution")
 	}
 	// 비대칭 잔여물(한쪽만 남음)은 거부하지 않는다(#433).

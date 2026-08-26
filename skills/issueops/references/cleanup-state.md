@@ -201,3 +201,18 @@ a worktree, or delete a branch. After verified merge evidence, present the
 numbered cleanup choices above and perform only the explicitly authorized
 operations. A Stop hook, elapsed time, or missing prior session never grants
 destructive cleanup authority.
+
+## Retiring a cycle that never entered execution v1
+
+A cycle that was merged and closed on the provider without `issueops execution
+prepare` has no `Execution` and no recorded `remote_artifact`, so `cleanup
+finish` cannot verify an artifact and `cleanup orphan` requires the record to be
+absent. Retire it with `cleanup abandon`: a worktree or branch that the record
+linked (`worktree_path` from `link-worktree`/`branch prepare`) counts as
+record-owned residue and must still pass the canonical-path, branch-match, HEAD,
+and clean checks. Run `issueops cleanup abandon --id ID --reason TEXT --preview
+--json`, then execute the emitted `--apply --confirm --fingerprint` command.
+Residue the record never linked stays blocked as `local_residue_execution`.
+Abandon deletes the record without writing completion evidence to the issue; the
+provider MR/issue remain the evidence, so keep `--reason` factual (no `#` or
+control characters).
