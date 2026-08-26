@@ -71,7 +71,7 @@ command repeats `branch prepare` with `--link-verified` and the current owner
 actor flags. Claim is an authority transition, not an alternate branch-creation
 step; it does not change the five branch operations above.
 `link-plan` and implementation remain blocked until this update succeeds.
-Do not use `gh issue develop`: it resolves the base branch at link time and can
+Do not use `gh issue develop` to create the link: it resolves the base branch at link time and can
 therefore diverge from the sealed base SHA.
 
 ## Execution v1

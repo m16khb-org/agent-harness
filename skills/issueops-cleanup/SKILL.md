@@ -71,12 +71,14 @@ worktree HEAD OID exactly equal to the local branch OID. If the provider exposes
 the merged artifact head OID, require it to equal the local branch OID too.
 A detached, repurposed, mismatched, or advanced worktree blocks cleanup.
 
-Before asking for confirmation, treat `cleanup status.missing` as an unordered
-set:
-
-- if provider readback says the issue is open, it must equal exactly
-  `{"issue_closed"}`;
-- if provider readback says the issue is already closed, it must be empty.
+Before asking for confirmation, require `cleanup status.missing` to be empty.
+That command reports only the local/remote readiness gates (`pr_phase`,
+`remote_artifact_*`, `child_tasks_closed`, `worktree_*`, `branch_match`,
+`remote_branch_*`); it never emits `issue_closed`. The `issue_closed` and
+`completion_reflected` gates belong to `cleanup finish --preview`: before the
+apply steps below, that preview's `missing` may contain exactly those two entries
+(only `issue_closed` once completion is already reflected), and after steps 1-2
+it must be empty.
 
 The close-issue dry-run must also report `ok: true`. Any other missing gate or
 provider error blocks issue closure; report it and stop before any write.
@@ -93,7 +95,7 @@ From these results, state:
 - every readiness blocker.
 
 If any target is missing or ambiguous, or any blocker beyond the permitted
-`issue_closed` gate remains, stop. Never infer a path or branch from the issue
+`issue_closed`/`completion_reflected` preview gates remains, stop. Never infer a path or branch from the issue
 title.
 
 ## Confirmation boundary
@@ -112,7 +114,24 @@ The latest user message must confirm the exact targets. A prior generic
 
 ## Apply in fail-closed order
 
-### 1. Close and verify the issue
+### 1. Reflect completion into the issue
+
+`cleanup finish` fails closed with `completion_reflected` in `missing` until the
+completion section has been written to the issue; the execution reference
+(`skills/issueops/references/execution.md`) orders this before closure:
+preserve first, then close.
+
+```text
+agent-harness issueops remote reflect-completion --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --json
+agent-harness issueops remote reflect-completion --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --confirm --json
+```
+
+Continue only when the confirmed result reports `ok: true`. An already-reflected
+completion is an idempotent success.
+
+### 2. Close and verify the issue
 
 ```text
 agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
@@ -122,7 +141,7 @@ agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
 Continue only when the result reports `ok: true`, `closed: true`, and a verified
 closed state. Already-closed is an idempotent success.
 
-### 2. Re-preview local cleanup
+### 3. Re-preview local cleanup
 
 Issue closure changes cleanup readiness. Obtain a fresh fingerprint:
 
@@ -160,7 +179,7 @@ Require:
 If any path, name, or OID changed, stop and request confirmation for the new
 targets. Do not reuse a stale fingerprint.
 
-### 3. Apply the emitted command
+### 4. Apply the emitted command
 
 Execute the preview's `next_command` exactly. It must be the typed form:
 

@@ -268,10 +268,10 @@ A released direct cycle is recovered through the finite `next_command` chain
 returned by each read/mutation result:
 
 ```text
-execution status
-  -> execution replace --preview
-  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm
-  -> execution claim --claim-current-token
+execution status $ACTOR_FLAGS
+  -> execution replace --preview $ACTOR_FLAGS
+  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm $ACTOR_FLAGS
+  -> execution claim --claim-current-token $ACTOR_FLAGS
 ```
 
 Do not skip the preview or invent the fingerprint. A completed cycle does not
@@ -280,10 +280,10 @@ render this recovery chain.
 A claimable legacy Orca cycle uses the analogous explicit chain:
 
 ```text
-execution status
-  -> execution replace --preview
-  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm
-  -> execution resume --expected-generation <replacement generation> --confirm
+execution status $ACTOR_FLAGS
+  -> execution replace --preview $ACTOR_FLAGS
+  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm $ACTOR_FLAGS
+  -> execution resume --expected-generation <replacement generation> --confirm $ACTOR_FLAGS
 ```
 
 

@@ -82,8 +82,8 @@ Prefer the shared renderer/validator when preparing a remote body:
 ```bash
 agent-harness issueops remote render-template --kind issue --template implementation_task --provider github --title "$TITLE" --field problem="$PROBLEM" --json
 agent-harness issueops remote create-issue --id "$ISSUEOPS_ID" --template implementation_task --field problem="$PROBLEM" --label "$LABEL" --assignee "$ASSIGNEE" --json
-agent-harness issueops remote create-child --id "$ISSUEOPS_ID" --template child_task --field parent_issue="$PARENT_URL" --field goal="$GOAL" --label "$LABEL" --assignee "$ASSIGNEE" --json
-agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_request --label "$LABEL" --assignee "$ASSIGNEE" --json
+agent-harness issueops remote create-child --id "$ISSUEOPS_ID" --title "$CHILD_TITLE" --template child_task --field parent_issue="$PARENT_URL" --field goal="$GOAL" --label "$LABEL" --assignee "$ASSIGNEE" --host "$HOST" --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" --title "$TITLE" --head "$BRANCH" --base "$BASE_BRANCH" --template pull_request --label "$LABEL" --assignee "$ASSIGNEE" $ACTOR_FLAGS --json
 ```
 
 `--body` and `--body-file` are mutually exclusive. If `--template` is set without a body, the core renderer produces the body. If `--template` is set with a body or body file, the body is validated against the canonical section policy. Confirmed remote writes fail closed on critical validation failures, missing label, missing assignee, Korean artifact failure, and PR/MR target/base branch mismatch.
@@ -126,7 +126,7 @@ Rules:
 - Before creating child tasks, design the child execution graph to be parallelizable by default. Every child title, child task body, and parent child-task section must carry a mandatory `[p]` or `[s]` prefix: prefer `[p] parallelizable` for every child whose scope allows an independent start and independent verification, and reserve `[s] sequential` only for a child with a genuinely unavoidable cross-child dependency (one child's code, schema, migration, remote state, fixture, or decision output is a hard input to another and no contract/interface decoupling can remove that ordering). For each `[s]` child, state the specific unavoidable dependency that blocks parallelization; if no concrete hard dependency can be named, the child must be `[p]`. List prerequisites/dependencies (`none` for `[p]`) and place children in execution waves (parallelizable children first, then sequential children if any). If the dependency graph is unclear, stop for a user or owner decision before remote writes.
 - When child work is merged into its parent work branch, close only the linked child task with `issueops cleanup close-children --merged --confirm`; leave the parent issue open as the umbrella until the full parent scope is merged to the mainstream target.
 - After creating child tasks, verify the provider-native hierarchy, labels, assignee, and parent body update before reporting `parent body updated`. GitHub verification should inspect the parent sub-issues list and each child issue's labels/assignees. GitLab verification should inspect the parent work-item children/Tasks list and each child work item's labels/assignees.
-- Run the **Large Issue Breakdown Gate** before implementation with a default decision of no split. Create provider-native child work items only when one issue would be unsafe because it would hide genuinely large/risky independent delivery boundaries, or when the user/owners explicitly requested for collaboration, parallel ownership, or separate assignees. Supporting signals are not sufficient by themselves: independent acceptance criteria, multiple modules, rollout steps, and long task lists only justify a split when they prove one of those primary triggers. The gate requires provider-native child work items or an explicit non-split reason, and every created child must be recorded with `link-child`.
+- Run the **Large Issue Breakdown Gate** before implementation with a default decision of no split. Create provider-native child work items only when one issue would be unsafe because it would hide genuinely large/risky independent delivery boundaries, or when the user/owners explicitly requested for collaboration, parallel ownership, or separate assignees. Supporting signals are not sufficient by themselves: independent acceptance criteria, multiple modules, rollout steps, and long task lists only justify a split when they prove one of those primary triggers. The gate requires provider-native child work items or an explicit non-split reason, and every created child must be recorded in IssueOps state (`remote create-child` records it itself; `link-child` is only for a child created elsewhere).
 - When creating a PR/MR, copy labels from the linked issue into the provider create command. If the linked issue is unlabeled, apply an explicit manual label to the issue first or stop and record why no label can be chosen; do not create an unlabeled PR/MR. Label-copy flags such as `--copy-issue-labels` or GitLab issue-based MR flags such as `--with-labels` satisfy only the label requirement; the create command must still include an assignee flag for the current user.
 - If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 
@@ -137,11 +137,11 @@ IssueOps가 원격에 생성하거나 수정하는 issue와 PR/MR 제목·본문
 IssueOps cycle에서 `gh issue create`, `gh issue edit`, `gh pr create`, `gh pr edit` 또는 GitLab equivalent를 실행하기 전에는 매번 다음 gate를 통과해야 한다.
 
 1. 제목과 본문을 임시 파일 또는 heredoc으로 준비한다.
-2. bundled language gate를 실행한다.
+2. bundled language gate를 실행한다. `$ISSUEOPS_SKILL_DIR`는 설치된 issueops 스킬 디렉터리(예: `~/.claude/skills/issueops`, `~/.codex/skills/issueops`)다. 대상 repo에는 `skills/issueops/` 경로가 없으므로 repo-relative 경로는 실패한다.
 
 ```bash
-python3 skills/issueops/scripts/remote_artifact_gate.py --kind issue --title "$TITLE" --body-file "$BODY_FILE"
-python3 skills/issueops/scripts/remote_artifact_gate.py --kind pr --title "$TITLE" --body-file "$BODY_FILE"
+python3 "$ISSUEOPS_SKILL_DIR/scripts/remote_artifact_gate.py" --kind issue --title "$TITLE" --body-file "$BODY_FILE"
+python3 "$ISSUEOPS_SKILL_DIR/scripts/remote_artifact_gate.py" --kind pr --title "$TITLE" --body-file "$BODY_FILE"
 ```
 
 3. gate가 실패하면 원격 artifact를 생성하거나 수정하지 말고 한글 중심으로 다시 작성한다.

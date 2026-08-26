@@ -135,6 +135,18 @@ func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	}
 }
 
+// .agent-harness/SUB_AGENT_PATTERNS.md is routed from the issueops skill as the
+// sub-agent decision contract, so it must not resurrect removed decision
+// commands or MCP tools either.
+func TestSubAgentPatternsDocDoesNotNameRemovedIssueOpsSurfaces(t *testing.T) {
+	content := strings.ToLower(readIssueOpsContractFile(t, ".agent-harness", "SUB_AGENT_PATTERNS.md"))
+	for _, removed := range removedIssueOpsExecutionTerms() {
+		if strings.Contains(content, removed) {
+			t.Fatalf(".agent-harness/SUB_AGENT_PATTERNS.md retains removed surface %q", removed)
+		}
+	}
+}
+
 func removedIssueOpsCurrentCommandTerms() []string {
 	return []string{
 		"migrate-v9", "execution decide", "worktree prepare", "handoff start",

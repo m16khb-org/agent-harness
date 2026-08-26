@@ -28,7 +28,7 @@
 
 ## 12가지 Net-Positive Sub-Agent 패턴
 
-`agent-harness issueops execution decide`와 MCP `issueops_record_execution_decision`은 아래 slug만 허용한다. Sub-agent 계획은 이 slug 중 하나, 기대 이득, 알려진 tradeoff, 그리고 그 tradeoff에도 불구하고 net-positive인 이유를 함께 기록해야 한다.
+Sub-agent 계획은 아래 slug 중 하나, 기대 이득, 알려진 tradeoff, 그리고 그 tradeoff에도 불구하고 net-positive인 이유를 implementation plan 또는 durable evidence(`agent-harness issueops decision add`)에 함께 기록해야 한다. slug 목록은 이 문서가 정규 소유자다. 전용 결정 명령과 MCP decision tool은 제거됐으므로 문서가 곧 계약이다.
 
 | # | Pattern | Validation slug |
 |---|---------|-----------------|
@@ -58,7 +58,7 @@
 - **설명:** Git worktree로 분리된 공간에서 독립적 편집. 메인 작업공간과 충돌 방지.
 - **근거:** Claude Code `isolation: worktree`. IssueOps의 worktree 격리 패턴.
 - **agent-harness 적용:** IssueOps implement phase의 worktree 기반 작업.
-- **D1 delegated child cycle 적용:** parent가 `issueops execution decide`에 `isolated-worktree-work` 또는 `task-fan-out-coordination`을 기록한 뒤, child별 isolated worktree와 scoped session binding을 만든다. Child는 `issueops resume --id <child-id>`로 자기 cycle만 재개하고, parent가 결과를 검증해 accept/reject한다.
+- **D1 delegated child cycle 적용:** parent가 implementation plan 또는 `issueops decision add`에 `isolated-worktree-work` 또는 `task-fan-out-coordination`을 기록한 뒤, child별 isolated worktree와 scoped session binding을 만든다. Child는 `issueops execution resume --id <child-id> --expected-generation <n> --confirm $ACTOR_FLAGS`로 자기 cycle만 재개하고, parent가 결과를 검증해 accept/reject한다.
 
 #### 3. Forked Context 탐색 (Forked Context Exploration)
 - **설명:** 메인 대화의 전체 컨텍스트를 복제한 뒤, 분기 탐색만 하고 메인을 오염시키지 않음.
