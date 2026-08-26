@@ -139,3 +139,87 @@ func TestPlanHostSkillLinksPartitionsAndPlans(t *testing.T) {
 		t.Fatalf("TOMLString = %q", got)
 	}
 }
+
+func TestPlanHostSkillLinksPrunesOnlyStaleHarnessOwnedLinks(t *testing.T) {
+	root := t.TempDir()
+	dest := t.TempDir()
+	elsewhere := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "skills", "shared"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dest, "plain-dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustSymlink := func(target, path string) {
+		t.Helper()
+		if err := os.Symlink(target, path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustSymlink(filepath.Join(root, "skills", "removed-skill"), filepath.Join(dest, "removed-skill"))
+	mustSymlink(filepath.Join(root, "skills", "renamed-skill"), filepath.Join(dest, "renamed-skill"))
+	mustSymlink(filepath.Join(elsewhere, "skills", "foreign-missing"), filepath.Join(dest, "foreign-missing"))
+	mustSymlink(filepath.Join(root, "skills", "shared"), filepath.Join(dest, "shared"))
+
+	_, links, messages, errs := PlanHostSkillLinks(root, dest, []string{"shared"}, "claude", true)
+	if len(errs) != 0 {
+		t.Fatalf("dry-run errs = %v", errs)
+	}
+	var wouldRemove []string
+	for _, link := range links {
+		if link.WouldRemove {
+			wouldRemove = append(wouldRemove, filepath.Base(link.Path))
+		}
+		if link.Removed {
+			t.Fatalf("dry-run must not remove links: %+v", link)
+		}
+	}
+	if got, want := strings.Join(wouldRemove, ","), "removed-skill,renamed-skill"; got != want {
+		t.Fatalf("would-remove = %q, want %q (links=%+v)", got, want, links)
+	}
+	if !strings.Contains(strings.Join(messages, "\n"), "would prune stale skill link for claude: removed-skill") {
+		t.Fatalf("messages = %#v", messages)
+	}
+	for _, name := range []string{"removed-skill", "renamed-skill", "foreign-missing", "shared", "plain-dir"} {
+		if _, err := os.Lstat(filepath.Join(dest, name)); err != nil {
+			t.Fatalf("dry-run touched %s: %v", name, err)
+		}
+	}
+
+	_, links, messages, errs = PlanHostSkillLinks(root, dest, []string{"shared"}, "claude", false)
+	if len(errs) != 0 {
+		t.Fatalf("apply errs = %v", errs)
+	}
+	var removed []string
+	for _, link := range links {
+		if link.Removed {
+			removed = append(removed, filepath.Base(link.Path))
+		}
+	}
+	if got, want := strings.Join(removed, ","), "removed-skill,renamed-skill"; got != want {
+		t.Fatalf("removed = %q, want %q (links=%+v)", got, want, links)
+	}
+	if !strings.Contains(strings.Join(messages, "\n"), "prune stale skill link for claude: renamed-skill") {
+		t.Fatalf("messages = %#v", messages)
+	}
+	for _, name := range []string{"removed-skill", "renamed-skill"} {
+		if _, err := os.Lstat(filepath.Join(dest, name)); !os.IsNotExist(err) {
+			t.Fatalf("stale harness link %s survived: %v", name, err)
+		}
+	}
+	for _, name := range []string{"foreign-missing", "shared", "plain-dir"} {
+		if _, err := os.Lstat(filepath.Join(dest, name)); err != nil {
+			t.Fatalf("non-harness or live entry %s was removed: %v", name, err)
+		}
+	}
+	if target, err := os.Readlink(filepath.Join(dest, "shared")); err != nil || target != filepath.Join(root, "skills", "shared") {
+		t.Fatalf("live link was rewritten: %q %v", target, err)
+	}
+}
+
+func TestPruneStaleSkillLinksToleratesMissingDestRoot(t *testing.T) {
+	links, errs := PruneStaleSkillLinks(t.TempDir(), filepath.Join(t.TempDir(), "absent"), false)
+	if len(links) != 0 || len(errs) != 0 {
+		t.Fatalf("missing dest root must be a no-op, got links=%+v errs=%v", links, errs)
+	}
+}

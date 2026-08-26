@@ -31,7 +31,11 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 `install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex, Claude, and Omo MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`; Omo uses its native flat-layout `~/.omo` root. PATH setup is selected with `--path-mode=auto|manual|skip`. Every mode plans or writes the canonical `~/.local/bin/agent-harness` shim and the managed `~/.local/bin/ah -> ~/.local/bin/agent-harness` shorthand; `manual` and `skip` only omit shell rc changes. The default `auto` mode also adds a shell rc PATH line when needed.
 
 Each install/update refreshes user skill links for all three first-party hosts,
-managed MCP registration, and the two-event lifecycle surface. Omo receives
+managed MCP registration, and the two-event lifecycle surface. It also prunes
+stale links in each host skill directory whose target lies under this
+checkout's `skills/` but no longer exists (a removed or renamed shared skill);
+links that point elsewhere or still resolve are left alone, and `--dry-run`
+reports them as `would_remove` instead of deleting. Omo receives
 `~/.omo/mcp.json` plus `~/.omo/extensions/agent-harness.js`; explicit
 `--project-local` additionally writes `.omo/skills/*` and `.omo/mcp.json`.
 Before any non-dry-run activation, the installer renders the complete host and

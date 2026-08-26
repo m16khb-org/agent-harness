@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"agent-harness/internal/port"
 )
@@ -17,7 +18,72 @@ func PlanHostSkillLinks(root, destRoot string, skillNames []string, host string,
 		messages = append(messages, "skip skill for "+host+": "+skillName)
 	}
 	links, errs := PlanSkillLinks(root, destRoot, enabledSkills, dryRun)
+	pruned, pruneErrs := PruneStaleSkillLinks(root, destRoot, dryRun)
+	for _, link := range pruned {
+		verb := "prune"
+		if link.WouldRemove {
+			verb = "would prune"
+		}
+		messages = append(messages, verb+" stale skill link for "+host+": "+filepath.Base(link.Path)+" (target missing: "+link.Target+")")
+	}
+	links = append(links, pruned...)
+	errs = append(errs, pruneErrs...)
 	return enabledSkills, links, messages, errs
+}
+
+// PruneStaleSkillLinks removes symlinks in destRoot that point into this
+// checkout's skills/ directory but whose target no longer exists, which is what
+// a removed or renamed shared skill leaves behind in every host skill
+// directory. Only harness-owned links are touched: links that point elsewhere,
+// links whose target still exists, and non-symlink entries are left alone.
+// dryRun reports WouldRemove without deleting. A missing destRoot is not an
+// error because a fresh install has nothing to prune.
+func PruneStaleSkillLinks(root, destRoot string, dryRun bool) ([]port.InstallLink, []error) {
+	entries, err := os.ReadDir(destRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, []error{err}
+	}
+	skillsRoot := filepath.Clean(filepath.Join(root, "skills")) + string(filepath.Separator)
+	var links []port.InstallLink
+	var errs []error
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink == 0 {
+			continue
+		}
+		path := filepath.Join(destRoot, entry.Name())
+		target, err := os.Readlink(path)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		resolved := target
+		if !filepath.IsAbs(resolved) {
+			resolved = filepath.Join(destRoot, resolved)
+		}
+		if !strings.HasPrefix(filepath.Clean(resolved), skillsRoot) {
+			continue
+		}
+		if _, err := os.Stat(resolved); err == nil {
+			continue
+		} else if !os.IsNotExist(err) {
+			errs = append(errs, err)
+			continue
+		}
+		link := port.InstallLink{Path: path, Target: target}
+		if dryRun {
+			link.WouldRemove = true
+		} else if err := os.Remove(path); err != nil {
+			errs = append(errs, err)
+			continue
+		} else {
+			link.Removed = true
+		}
+		links = append(links, link)
+	}
+	return links, errs
 }
 
 func PlanSkillLinks(root, destRoot string, skillNames []string, dryRun bool) ([]port.InstallLink, []error) {

@@ -87,6 +87,10 @@ type InstallLink struct {
 	Target      string `json:"target"`
 	Created     bool   `json:"created"`
 	WouldCreate bool   `json:"would_create,omitempty"`
+	// Removed/WouldRemove report a stale harness-owned link (target under this
+	// checkout's skills/ no longer exists) that install/update pruned or would prune.
+	Removed     bool `json:"removed,omitempty"`
+	WouldRemove bool `json:"would_remove,omitempty"`
 }
 
 // HostInstaller is implemented by host-specific adapters such as Codex, Claude Code, and Omo.
