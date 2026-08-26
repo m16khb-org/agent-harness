@@ -8,7 +8,7 @@ description: Dated lesson — a cycle merged without execution prepare had no ty
 Family index: [CAUTIONS.md](../../CAUTIONS.md).
 
 - Kind: `caution`
-- Source: api-servers cycle `io-2fb20438b925` (`2799-image-fixer-spec-source`) 정리 시도
+- Source: 대상 repo의 IssueOps cycle `io-2fb20438b925` (`2799-image-fixer-spec-source`) 정리 시도
 - Summary: `execution prepare` 없이 커밋·MR·머지·이슈 종료까지 끝난 사이클은
   `Execution`도 기록된 `remote_artifact`도 없다. 이 상태에서 link된 워크트리나 로컬
   브랜치가 남아 있으면 세 typed 삭제 경로가 모두 막혔다: `cleanup finish`는 검증된
