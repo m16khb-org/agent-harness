@@ -48,9 +48,12 @@ jobs:
         # Pinned to the same v1 release used locally; .golangci.yml only removes
         # the per-linter/same-issue caps so CI and a local run report the same
         # complete list. golangci-lint-action v7+ supports golangci-lint v2 only.
+        # goinstall builds the linter with the go.mod toolchain: the prebuilt
+        # v1.64.8 binary is compiled with Go 1.24 and refuses a go 1.26 module.
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
+          install-mode: goinstall
 
       - name: Validate all skill frontmatter
         # Runs scripts/validate-skill.py over every skills/* dir so no SKILL.md
