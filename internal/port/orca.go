@@ -111,8 +111,9 @@ type CleanupOrcaTerminals interface {
 	// ListWorktreeTerminalsByPath는 등록되지 않은 워크트리(selector_not_found)를
 	// 빈 목록으로 돌려주고, 그 밖의 오류만 오류로 돌려준다.
 	ListWorktreeTerminalsByPath(ctx context.Context, path string) ([]OrcaTerminal, error)
-	// StopWorktreeTerminals는 그 워크트리의 터미널 전부를 닫고 닫은 수를 돌려준다.
-	StopWorktreeTerminals(ctx context.Context, path string) (int, error)
+	// CloseTerminal은 preview fingerprint가 승인한 exact handle 하나를 닫고,
+	// PTY 종료까지 확인되지 않으면 오류를 돌려준다.
+	CloseTerminal(ctx context.Context, handle string) error
 }
 
 type OrcaRepo struct {

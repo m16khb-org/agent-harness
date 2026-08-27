@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -45,8 +47,10 @@ type fakeCleanupOrca struct {
 	all       []port.OrcaTerminal
 	byPath    map[string][]port.OrcaTerminal
 	byPathErr error
-	stopped   int
-	stopErr   error
+	byPathSeq [][]port.OrcaTerminal
+	closed    []string
+	closeErr  error
+	remaining []port.OrcaTerminal
 	trace     *[]string
 }
 
@@ -71,6 +75,11 @@ func (f *fakeCleanupOrca) ListWorktreeTerminalsByPath(_ context.Context, path st
 	if f.byPathErr != nil {
 		return nil, f.byPathErr
 	}
+	if len(f.byPathSeq) > 0 {
+		rows := f.byPathSeq[0]
+		f.byPathSeq = f.byPathSeq[1:]
+		return rows, nil
+	}
 	rows, ok := f.byPath[path]
 	if !ok {
 		f.t.Fatalf("unexpected orca terminal list path %s", path)
@@ -78,9 +87,25 @@ func (f *fakeCleanupOrca) ListWorktreeTerminalsByPath(_ context.Context, path st
 	return rows, nil
 }
 
-func (f *fakeCleanupOrca) StopWorktreeTerminals(_ context.Context, path string) (int, error) {
-	f.record("orca:stop:" + path)
-	return f.stopped, f.stopErr
+func (f *fakeCleanupOrca) CloseTerminal(_ context.Context, handle string) error {
+	f.record("orca:close:" + handle)
+	if f.closeErr != nil {
+		return f.closeErr
+	}
+	f.closed = append(f.closed, handle)
+	for path, rows := range f.byPath {
+		kept := rows[:0:0]
+		for _, row := range rows {
+			if row.Handle != handle {
+				kept = append(kept, row)
+			}
+		}
+		if f.remaining != nil {
+			kept = f.remaining
+		}
+		f.byPath[path] = kept
+	}
+	return nil
 }
 
 func codexOccupant() issueops.CleanupWorkspaceProcess {
@@ -101,7 +126,7 @@ func readyOrca(t *testing.T, worktree string, handles ...string) *fakeCleanupOrc
 	for _, handle := range handles {
 		rows = append(rows, port.OrcaTerminal{Handle: handle, WorktreePath: worktree})
 	}
-	return &fakeCleanupOrca{t: t, status: port.OrcaStatus{RuntimeReachable: true, RuntimeState: "ready", AppPID: 903}, byPath: map[string][]port.OrcaTerminal{worktree: rows}, stopped: len(handles)}
+	return &fakeCleanupOrca{t: t, status: port.OrcaStatus{RuntimeReachable: true, RuntimeState: "ready", GraphState: "ready", AppPID: 903}, byPath: map[string][]port.OrcaTerminal{worktree: rows}}
 }
 
 // AC-01: 점유자가 있다는 사실은 더 이상 preview를 막지 않는다. 대신 receipt와
@@ -160,7 +185,7 @@ func TestCleanupFinishFingerprintBindsOccupantReceipts(t *testing.T) {
 	}
 }
 
-// AC-03: apply는 orca terminal stop → HUP+TERM → (KILL) → 재관측 순서로 점유를
+// AC-03: apply는 fingerprinted terminal close → HUP+TERM → (KILL) → 재관측 순서로 점유를
 // 없앤 뒤에야 git worktree remove로 넘어간다.
 func TestCleanupFinishApplyStopsOccupantsInOrder(t *testing.T) {
 	stateRoot, record, worktree := finishTestRecord(t, true)
@@ -194,7 +219,7 @@ func TestCleanupFinishApplyStopsOccupantsInOrder(t *testing.T) {
 	if result.OrcaTerminalsStopped != 1 || len(result.WorkspaceProcessesStopped) != 1 || result.WorkspaceProcessesStopped[0].PID != 4321 {
 		t.Fatalf("apply must report what it stopped: %+v", result)
 	}
-	stop, hup, remove := slices.Index(trace, "orca:stop:"+worktree), slices.Index(trace, "sig:4321:hangup"), slices.Index(trace, "git:worktree")
+	stop, hup, remove := slices.Index(trace, "orca:close:term_a"), slices.Index(trace, "sig:4321:hangup"), slices.Index(trace, "git:worktree")
 	if stop < 0 || hup < 0 || remove < 0 || !(stop < hup && hup < remove) {
 		t.Fatalf("order must be orca stop → signals → git worktree remove: %v", trace)
 	}
@@ -275,6 +300,30 @@ func TestCleanupFinishRequesterGatesRefuse(t *testing.T) {
 			t.Fatalf("an unmatched env handle must fail closed: %v", missing)
 		}
 	})
+	t.Run("matched requester terminal without worktree path", func(t *testing.T) {
+		orca := readyOrca(t, worktree)
+		orca.all = []port.OrcaTerminal{{Handle: "term_self", TabID: "tab-1", LeafID: "leaf-1"}}
+		if missing := run(occupiedWorld(t), env, orca); !containsString(missing, "requester_terminal_unresolved") {
+			t.Fatalf("a requester terminal with an unknown worktree must fail closed: %v", missing)
+		}
+	})
+	t.Run("duplicate requester pane identity", func(t *testing.T) {
+		orca := readyOrca(t, worktree)
+		orca.all = []port.OrcaTerminal{
+			{Handle: "term_first", TabID: "tab-1", LeafID: "leaf-1", WorktreePath: record.Repo},
+			{Handle: "term_self", TabID: "tab-1", LeafID: "leaf-1", WorktreePath: worktree},
+		}
+		if missing := run(occupiedWorld(t), env, orca); !containsString(missing, "requester_terminal_unresolved") {
+			t.Fatalf("duplicate requester identity must fail closed: %v", missing)
+		}
+	})
+	t.Run("matched requester terminal with unresolvable worktree path", func(t *testing.T) {
+		orca := readyOrca(t, worktree)
+		orca.all = []port.OrcaTerminal{{Handle: "term_self", TabID: "tab-1", LeafID: "leaf-1", WorktreePath: filepath.Join(t.TempDir(), "missing")}}
+		if missing := run(occupiedWorld(t), env, orca); !containsString(missing, "requester_terminal_unresolved") {
+			t.Fatalf("an unresolvable requester worktree must fail closed: %v", missing)
+		}
+	})
 	t.Run("env set but runtime not ready", func(t *testing.T) {
 		orca := &fakeCleanupOrca{t: t, status: port.OrcaStatus{RuntimeState: "starting"}, byPath: map[string][]port.OrcaTerminal{}}
 		if missing := run(occupiedWorld(t), env, orca); !containsString(missing, "requester_terminal_unresolved") {
@@ -296,6 +345,50 @@ func TestCleanupFinishRequesterGatesRefuseSourceCheckout(t *testing.T) {
 	result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
 	if err == nil || !containsString(result.Missing, "worktree_is_source_checkout") {
 		t.Fatalf("the source checkout is never a cleanup target: err=%v missing=%v", err, result.Missing)
+	}
+}
+
+func TestCleanupWorkspaceGatesRejectSourceCheckoutSymlinkAlias(t *testing.T) {
+	sourceParent := t.TempDir()
+	source := filepath.Join(sourceParent, "source")
+	if err := os.Mkdir(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	aliasParent := t.TempDir()
+	aliasLink := filepath.Join(aliasParent, "workspace")
+	if err := os.Symlink(sourceParent, aliasLink); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(aliasLink, "source")
+	record := issueops.IssueOpsRecord{Repo: source}
+	_, missing := cleanupWorkspaceGatesForRecord(
+		context.Background(),
+		record,
+		alias,
+		quietCleanupProcesses(),
+		readyOrca(t, alias),
+	)
+	if !containsString(missing, "worktree_is_source_checkout") {
+		t.Fatalf("a symlink alias of the source checkout must refuse: %v", missing)
+	}
+}
+
+func TestCleanupWorkspaceGatesRejectUnresolvedSourceIdentity(t *testing.T) {
+	source := t.TempDir()
+	loop := filepath.Join(t.TempDir(), "loop")
+	if err := os.Symlink("loop", loop); err != nil {
+		t.Fatal(err)
+	}
+	record := issueops.IssueOpsRecord{Repo: source}
+	_, missing := cleanupWorkspaceGatesForRecord(
+		context.Background(),
+		record,
+		loop,
+		quietCleanupProcesses(),
+		readyOrca(t, loop),
+	)
+	if !containsString(missing, "worktree_is_source_checkout") {
+		t.Fatalf("an unresolvable source identity must fail closed: %v", missing)
 	}
 }
 
@@ -327,12 +420,63 @@ func TestCleanupFinishOrcaTerminalsGates(t *testing.T) {
 			t.Fatalf("bound cycle with occupants and no runtime must refuse: %v", missing)
 		}
 	})
+	t.Run("bound cycle needs the runtime without native occupants", func(t *testing.T) {
+		mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+			rec.Execution.Mode = issueops.ExecutionModeOrca
+			rec.Execution.Workspace.Driver = "orca"
+			rec.Execution.Orca = &issueops.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
+		})
+		deps := finishDeps(&fakeFinishGit{branchOID: "abc123"})
+		deps.Processes = quietCleanupProcesses()
+		deps.OrcaTerminals = &fakeCleanupOrca{t: t, status: port.OrcaStatus{RuntimeState: "stopped"}, byPath: map[string][]port.OrcaTerminal{}}
+		result, _ := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+		if !containsString(result.Missing, "orca_runtime_ready") {
+			t.Fatalf("bound cycle must require the runtime even without native occupants: %v", result.Missing)
+		}
+	})
+	t.Run("bound cycle needs a reachable runtime", func(t *testing.T) {
+		orca := &fakeCleanupOrca{
+			t: t,
+			status: port.OrcaStatus{
+				RuntimeState: "ready",
+				GraphState:   "ready",
+			},
+			byPath: map[string][]port.OrcaTerminal{worktree: nil},
+		}
+		missing, _ := run(t, true, orca)
+		if !containsString(missing, "orca_runtime_ready") {
+			t.Fatalf("bound cycle must reject an unreachable runtime: %v", missing)
+		}
+	})
+	t.Run("bound cycle needs a ready graph", func(t *testing.T) {
+		orca := &fakeCleanupOrca{
+			t: t,
+			status: port.OrcaStatus{
+				RuntimeReachable: true,
+				RuntimeState:     "ready",
+				GraphState:       "starting",
+			},
+			byPath: map[string][]port.OrcaTerminal{worktree: nil},
+		}
+		missing, _ := run(t, true, orca)
+		if !containsString(missing, "orca_runtime_ready") {
+			t.Fatalf("bound cycle must reject a graph that is not ready: %v", missing)
+		}
+	})
 	t.Run("terminal inventory failure has its own slug", func(t *testing.T) {
 		orca := readyOrca(t, worktree)
 		orca.byPathErr = errors.New("orca runtime hiccup")
 		missing, _ := run(t, false, orca)
 		if !containsString(missing, "orca_terminals_observable") {
 			t.Fatalf("terminal inventory failure must be reported as unobservable: %v", missing)
+		}
+	})
+	t.Run("malformed terminal inventory has its own slug", func(t *testing.T) {
+		orca := readyOrca(t, worktree)
+		orca.byPath[worktree] = []port.OrcaTerminal{{WorktreePath: worktree}}
+		missing, _ := run(t, false, orca)
+		if !containsString(missing, "orca_terminals_observable") {
+			t.Fatalf("a terminal without a handle must be unobservable: %v", missing)
 		}
 	})
 	t.Run("unbound cycle falls back to signals without the runtime", func(t *testing.T) {
@@ -387,23 +531,59 @@ func TestCleanupFinishApplyFailsClosedWhenOrcaTerminalStopFails(t *testing.T) {
 		deps.OrcaTerminals = orca
 		return stateRoot, record, git, world, orca, deps
 	}
-	t.Run("terminal stop error", func(t *testing.T) {
+	t.Run("terminal close error", func(t *testing.T) {
 		stateRoot, record, git, world, orca, deps := newCase(t)
 		preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
 		if err != nil || len(preview.OrcaTerminals) != 1 {
 			t.Fatalf("preview must list the terminal: err=%v result=%+v", err, preview)
 		}
-		orca.stopErr = errors.New("orca terminal stop failed")
+		orca.closeErr = errors.New("orca terminal close failed")
 		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
 		if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop || result.OrcaTerminalsStopped != 0 {
-			t.Fatalf("a failed orca terminal stop must fail the stop step: err=%v result=%+v", err, result)
+			t.Fatalf("a failed Orca terminal close must fail the stop step: err=%v result=%+v", err, result)
 		}
 		if len(world.signals) != 0 || git.removedWorktree || git.deletedBranch {
-			t.Fatalf("nothing may be signalled or removed after a failed terminal stop: signals=%v git=%+v", world.signals, git)
+			t.Fatalf("nothing may be signalled or removed after a failed terminal close: signals=%v git=%+v", world.signals, git)
 		}
 		kept, err := ReadIssueOps(stateRoot, record.ID)
 		if err != nil || kept.CleanupFinishFailure == nil || kept.CleanupFinishFailure.Step != issueops.CleanupFailureStepWorkspaceProcessesStop {
 			t.Fatalf("failure receipt must name the stop step: err=%v failure=%+v", err, kept.CleanupFinishFailure)
+		}
+	})
+	t.Run("terminal substitution closes only previewed handle", func(t *testing.T) {
+		stateRoot, record, git, world, orca, deps := newCase(t)
+		worktree := record.Execution.Workspace.Root
+		previewed := port.OrcaTerminal{Handle: "term_a", WorktreePath: worktree}
+		replacement := port.OrcaTerminal{Handle: "term_b", WorktreePath: worktree}
+		orca.byPathSeq = [][]port.OrcaTerminal{{previewed}, {previewed}, {replacement}}
+		preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+		if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop {
+			t.Fatalf("a substituted terminal must fail closed: err=%v result=%+v", err, result)
+		}
+		if !reflect.DeepEqual(orca.closed, []string{"term_a"}) {
+			t.Fatalf("only the fingerprinted terminal may be closed: %v", orca.closed)
+		}
+		if len(world.signals) != 0 || git.removedWorktree {
+			t.Fatalf("terminal substitution must not signal or remove anything: signals=%v git=%+v", world.signals, git)
+		}
+	})
+	t.Run("terminal remains after successful stop", func(t *testing.T) {
+		stateRoot, record, git, world, orca, deps := newCase(t)
+		preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		orca.remaining = []port.OrcaTerminal{{Handle: "term_survivor", WorktreePath: preview.WorktreePath}}
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+		if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop {
+			t.Fatalf("a surviving terminal must fail closed: err=%v result=%+v", err, result)
+		}
+		if len(world.signals) != 0 || git.removedWorktree {
+			t.Fatalf("surviving terminal must not signal or remove anything: signals=%v git=%+v", world.signals, git)
 		}
 	})
 	t.Run("runtime lost after preview", func(t *testing.T) {
@@ -447,7 +627,35 @@ func TestCleanupFinishListsAndStopsOrcaTerminalsWithoutOccupants(t *testing.T) {
 	if err != nil || !applied.RecordDeleted || applied.OrcaTerminalsStopped != 1 {
 		t.Fatalf("apply must stop the listed terminal: err=%v result=%+v", err, applied)
 	}
-	if !containsString(trace, "orca:stop:"+worktree) {
-		t.Fatalf("apply must call orca terminal stop for the worktree: trace=%v", trace)
+	if !containsString(trace, "orca:close:term_a") {
+		t.Fatalf("apply must close the fingerprinted terminal handle: trace=%v", trace)
+	}
+}
+
+func TestCleanupFinishFinalTerminalObservationBlocksLateTerminal(t *testing.T) {
+	stateRoot, record, worktree := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution.Mode = issueops.ExecutionModeDirect
+		rec.Execution.Workspace.Driver = "git"
+		rec.Execution.Orca = nil
+	})
+	late := port.OrcaTerminal{Handle: "term_late", WorktreePath: worktree}
+	orca := readyOrca(t, worktree)
+	orca.byPathSeq = [][]port.OrcaTerminal{nil, nil, {late}}
+	git := &fakeFinishGit{branchOID: "abc123"}
+	deps := finishDeps(git)
+	deps.Processes = quietCleanupProcesses()
+	deps.OrcaTerminals = orca
+
+	preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+	if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop {
+		t.Fatalf("a terminal appearing before deletion must fail closed: err=%v result=%+v", err, result)
+	}
+	if git.removedWorktree || git.deletedBranch {
+		t.Fatalf("late terminal must block Git deletion: %+v", git)
 	}
 }

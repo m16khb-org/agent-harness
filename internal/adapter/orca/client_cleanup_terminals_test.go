@@ -63,25 +63,34 @@ func TestClientListAllTerminalsOmitsSelector(t *testing.T) {
 	}
 }
 
-// terminal stop은 워크트리 단위 선택자만 있고 동기적으로 stopped 수를 돌려준다
-// (실측). 비등록 워크트리는 selector_not_found이며 0으로 정규화한다.
-func TestClientStopWorktreeTerminalsUsesPathSelector(t *testing.T) {
+// cleanup은 preview fingerprint가 승인한 exact handle만 닫는다. 성공은 close
+// receipt의 handle 일치와 ptyKilled=true까지 확인해야 한다.
+func TestClientCloseTerminalRequiresExactHandleAndPTYDeath(t *testing.T) {
 	runner := newFakeRunner(t)
-	key := "orca terminal stop --worktree path:/tmp/wt-477 --json"
-	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"stopped":2},"_meta":{"runtimeId":"rt-1"}}`)}
+	key := "orca terminal close --terminal term_a --json"
+	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"close":{"handle":"term_a","tabId":"tab-1","ptyKilled":true}},"_meta":{"runtimeId":"rt-1"}}`)}
 	client := NewClient(runner)
-	stopped, err := client.StopWorktreeTerminals(context.Background(), "/tmp/wt-477")
-	if err != nil || stopped != 2 {
-		t.Fatalf("stopped = %d err=%v, want 2", stopped, err)
+	if err := client.CloseTerminal(context.Background(), "term_a"); err != nil {
+		t.Fatalf("exact close must accept a confirmed PTY death: %v", err)
 	}
 	last := runner.calls[len(runner.calls)-1]
 	if strings.Join(last, " ") != key {
 		t.Fatalf("argv = %q, want %q", strings.Join(last, " "), key)
 	}
 
-	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":false,"error":{"code":"selector_not_found","message":"selector_not_found"},"_meta":{"runtimeId":"rt-1"}}`)}
-	if stopped, err := client.StopWorktreeTerminals(context.Background(), "/tmp/wt-477"); err != nil || stopped != 0 {
-		t.Fatalf("selector_not_found must normalize to zero: %d %v", stopped, err)
+	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"close":{"handle":"term_a","tabId":"tab-1","ptyKilled":false,"ptyStopVerdict":"live"}},"_meta":{"runtimeId":"rt-1"}}`)}
+	if err := client.CloseTerminal(context.Background(), "term_a"); err == nil {
+		t.Fatal("an unconfirmed PTY death must fail closed")
+	}
+
+	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"close":{"handle":"term_b","tabId":"tab-1","ptyKilled":true}},"_meta":{"runtimeId":"rt-1"}}`)}
+	if err := client.CloseTerminal(context.Background(), "term_a"); err == nil {
+		t.Fatal("a mismatched close receipt handle must fail closed")
+	}
+
+	runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":false,"error":{"code":"runtime_error","message":"tab_not_found"},"_meta":{"runtimeId":"rt-1"}}`)}
+	if err := client.CloseTerminal(context.Background(), "term_a"); err != nil {
+		t.Fatalf("a torn-down background tab is already absent: %v", err)
 	}
 }
 

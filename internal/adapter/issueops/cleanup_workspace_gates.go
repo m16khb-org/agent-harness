@@ -3,10 +3,10 @@ package issueops
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
@@ -24,7 +24,8 @@ type cleanupWorkspaceObservation struct {
 // cleanupWorkspaceGatesForRecord는 finish/abandon이 공유하는 워크트리 게이트다.
 // 소스 체크아웃은 관측 전에 거부하고, Orca 바인딩 여부를 레코드에서 읽는다.
 func cleanupWorkspaceGatesForRecord(ctx context.Context, record issueops.IssueOpsRecord, root string, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) (cleanupWorkspaceObservation, []string) {
-	if pathutil.CleanAbsPath(root) == pathutil.CleanAbsPath(record.Repo) {
+	sourceCheckout, pathErr := cleanupStrictSamePath(root, record.Repo)
+	if pathErr != nil || sourceCheckout {
 		return cleanupWorkspaceObservation{}, []string{"worktree_is_source_checkout"}
 	}
 	bound := record.Execution != nil && record.Execution.Orca != nil && strings.TrimSpace(record.Execution.Orca.WorktreeID) != ""
@@ -89,12 +90,11 @@ func (env cleanupRequesterEnv) hosted() bool { return env.paneKey != "" || env.h
 // 평가하고 observation의 Terminals/RuntimeReady/AppPID를 채운다.
 func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cleanupRequesterEnv, orca port.CleanupOrcaTerminals, observation *cleanupWorkspaceObservation) []string {
 	missing := []string{}
-	occupied := len(observation.Occupants) > 0
 	if orca == nil {
-		// Orca 표면이 배선되지 않으면 apply도 orca terminal stop을 부르지 않으므로
+		// Orca 표면이 배선되지 않으면 apply도 exact terminal close를 부르지 않으므로
 		// 요청자 터미널 게이트가 막아야 할 터미널 단위 종료가 없다. 요청자 보호는
 		// pid-조상 게이트로 남고, Orca 바인딩 사이클은 여전히 런타임을 요구한다.
-		if bound && occupied {
+		if bound {
 			missing = append(missing, "orca_runtime_ready")
 		}
 		return missing
@@ -103,7 +103,8 @@ func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cl
 	// cwd를 옮긴 셸은 점유자가 아니어도 Orca 레지스트리에는 워크트리 터미널로
 	// 남아 있고, apply ①′가 닫아야 한다(AC-01).
 	status, err := orca.Status(ctx)
-	ready := err == nil && status.RuntimeState == "ready"
+	runtimeReady := err == nil && status.RuntimeReachable && status.RuntimeState == "ready"
+	ready := runtimeReady && (!bound || status.GraphState == "ready")
 	observation.RuntimeReady = ready
 	observation.AppPID = status.AppPID
 	if requester.hosted() {
@@ -115,9 +116,14 @@ func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cl
 		if listErr != nil {
 			missing = append(missing, "orca_terminals_observable")
 		} else {
-			observation.Terminals = cleanupTerminalHandles(rows)
+			handles, handlesErr := cleanupTerminalHandles(root, rows)
+			if handlesErr != nil {
+				missing = append(missing, "orca_terminals_observable")
+			} else {
+				observation.Terminals = handles
+			}
 		}
-	case bound && occupied:
+	case bound:
 		// Orca 바인딩 사이클은 런타임 없이 터미널을 죽이면 ②(orca 회수)가 확실히
 		// 실패하는 파괴적 부분 apply가 된다(brooks 2차 finding 11).
 		missing = append(missing, "orca_runtime_ready")
@@ -134,10 +140,18 @@ func cleanupRequesterTerminalMissing(ctx context.Context, root string, requester
 		return []string{"requester_terminal_unresolved"}
 	}
 	row, found := cleanupRequesterTerminal(rows, requester.paneKey, requester.handle)
+	worktreePath := strings.TrimSpace(row.WorktreePath)
 	switch {
 	case !found:
 		return []string{"requester_terminal_unresolved"}
-	case pathutil.CleanAbsPath(row.WorktreePath) == pathutil.CleanAbsPath(root):
+	case worktreePath == "":
+		return []string{"requester_terminal_unresolved"}
+	}
+	same, err := cleanupStrictSamePath(worktreePath, root)
+	switch {
+	case err != nil:
+		return []string{"requester_terminal_unresolved"}
+	case same:
 		return []string{"requester_terminal_outside_worktree"}
 	}
 	return nil
@@ -148,20 +162,59 @@ func cleanupRequesterTerminalMissing(ctx context.Context, root string, requester
 // 수 있지만 tab/leaf 조합은 현재 pane을 계속 식별한다(cautions §149).
 func cleanupRequesterTerminal(rows []port.OrcaTerminal, paneKey, handle string) (port.OrcaTerminal, bool) {
 	if paneKey != "" {
+		var matched port.OrcaTerminal
+		count := 0
 		for _, row := range rows {
 			if row.TabID != "" && row.LeafID != "" && row.TabID+":"+row.LeafID == paneKey {
-				return row, true
+				matched = row
+				count++
 			}
+		}
+		if count > 0 {
+			return matched, count == 1
 		}
 	}
 	if handle != "" {
+		var matched port.OrcaTerminal
+		count := 0
 		for _, row := range rows {
 			if row.Handle == handle {
-				return row, true
+				matched = row
+				count++
 			}
+		}
+		if count > 0 {
+			return matched, count == 1
 		}
 	}
 	return port.OrcaTerminal{}, false
+}
+
+func cleanupStrictSamePath(left, right string) (bool, error) {
+	canonical := func(path string) (string, error) {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return "", fmt.Errorf("path is empty")
+		}
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		resolved, err := filepath.EvalSymlinks(absolute)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Clean(resolved), nil
+	}
+	leftPath, err := canonical(left)
+	if err != nil {
+		return false, err
+	}
+	rightPath, err := canonical(right)
+	if err != nil {
+		return false, err
+	}
+	return leftPath == rightPath, nil
 }
 
 func cleanupOccupantReceipts(occupants []issueops.CleanupWorkspaceProcess) []issueops.NativeProcessReceipt {
@@ -173,24 +226,30 @@ func cleanupOccupantReceipts(occupants []issueops.CleanupWorkspaceProcess) []iss
 	return receipts
 }
 
-func cleanupTerminalHandles(rows []port.OrcaTerminal) []string {
+func cleanupTerminalHandles(root string, rows []port.OrcaTerminal) ([]string, error) {
 	handles := make([]string, 0, len(rows))
+	seen := make(map[string]bool, len(rows))
 	for _, row := range rows {
-		if handle := strings.TrimSpace(row.Handle); handle != "" {
-			handles = append(handles, handle)
+		handle := strings.TrimSpace(row.Handle)
+		worktreePath := strings.TrimSpace(row.WorktreePath)
+		sameWorktree, pathErr := cleanupStrictSamePath(worktreePath, root)
+		if handle == "" || pathErr != nil || !sameWorktree || seen[handle] {
+			return nil, fmt.Errorf("malformed Orca terminal inventory")
 		}
+		seen[handle] = true
+		handles = append(handles, handle)
 	}
 	sort.Strings(handles)
-	return handles
+	return handles, nil
 }
 
 // cleanupStopWorkspace는 apply ①′다: preview가 나열한 Orca 터미널이 있으면
-// `orca terminal stop --worktree`를 먼저 부르고, 남은 점유자를 receipt 결속
+// exact handle별 `orca terminal close`를 먼저 부르고, 남은 점유자를 receipt 결속
 // 아래 HUP/TERM/KILL로 종료한다. 터미널 stop 실패는 fail-closed다 — 시그널
 // 경로로 넘어가면 터미널은 죽고 Orca 회수는 실패하는 파괴적 부분 apply가 된다.
 // Orca 상태(ready, app pid)는 apply 직전 게이트 재평가가 fingerprint로 고정했으므로
 // 여기서 다시 묻지 않는다; 런타임이 사라졌다면 fingerprint가 이미 어긋난다.
-func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops.CleanupWorkspaceProcess, terminals []string, appPID int, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) ([]issueops.CleanupWorkspaceProcess, int, error) {
+func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops.CleanupWorkspaceProcess, terminals []string, orcaRuntimeReady bool, appPID int, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) ([]issueops.CleanupWorkspaceProcess, int, error) {
 	excluded := map[int]bool{}
 	if appPID > 0 {
 		excluded[appPID] = true
@@ -200,12 +259,42 @@ func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops
 		if orca == nil {
 			return nil, 0, fmt.Errorf("orca terminals %v were previewed but no orca surface is wired", terminals)
 		}
-		stopped, err := orca.StopWorktreeTerminals(ctx, root)
-		if err != nil {
-			return nil, 0, fmt.Errorf("orca terminal stop --worktree %s: %w", root, err)
+		for _, handle := range terminals {
+			if err := orca.CloseTerminal(ctx, handle); err != nil {
+				return nil, terminalsStopped, fmt.Errorf("close Orca terminal %s for %s: %w", handle, root, err)
+			}
+			terminalsStopped++
 		}
-		terminalsStopped = stopped
+		if err := cleanupRequireNoOrcaTerminals(ctx, root, orca); err != nil {
+			return nil, terminalsStopped, err
+		}
 	}
 	stopped, err := stopCleanupWorkspaceProcesses(root, occupants, excluded, processes)
-	return stopped, terminalsStopped, err
+	if err != nil {
+		return stopped, terminalsStopped, err
+	}
+	if orcaRuntimeReady {
+		if orca == nil {
+			return stopped, terminalsStopped, fmt.Errorf("Orca runtime was previewed ready but no Orca surface is wired")
+		}
+		if err := cleanupRequireNoOrcaTerminals(ctx, root, orca); err != nil {
+			return stopped, terminalsStopped, err
+		}
+	}
+	return stopped, terminalsStopped, nil
+}
+
+func cleanupRequireNoOrcaTerminals(ctx context.Context, root string, orca port.CleanupOrcaTerminals) error {
+	remaining, err := orca.ListWorktreeTerminalsByPath(ctx, root)
+	if err != nil {
+		return fmt.Errorf("observe Orca terminals before deletion for %s: %w", root, err)
+	}
+	handles, err := cleanupTerminalHandles(root, remaining)
+	if err != nil {
+		return fmt.Errorf("observe Orca terminals before deletion for %s: %w", root, err)
+	}
+	if len(handles) > 0 {
+		return fmt.Errorf("Orca terminals remain before deletion for %s: %v", root, handles)
+	}
+	return nil
 }

@@ -70,7 +70,8 @@ type cleanupFinishInventory struct {
 	OrcaTerminals      []string                        `json:"orca_terminals,omitempty"`
 	// OrcaAppPID는 ①′가 시그널에서 제외할 Orca 앱 pid다. fingerprint 입력이므로
 	// preview 뒤 런타임이 사라지거나 재시작되면 apply가 멈춘다.
-	OrcaAppPID int `json:"orca_app_pid,omitempty"`
+	OrcaAppPID       int  `json:"orca_app_pid,omitempty"`
+	OrcaRuntimeReady bool `json:"orca_runtime_ready,omitempty"`
 }
 
 // CleanupFinish는 preview 게이트를 평가하고, apply에서 orca→git 순의 멱등
@@ -129,8 +130,8 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료. 재관측으로 점유 0을 증명하지
 	// 못하면 아무것도 지우지 않고 멈춘다(#477).
-	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0) {
-		stopped, terminals, err := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, inventory.OrcaAppPID, deps.Processes, deps.OrcaTerminals)
+	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0 || inventory.OrcaRuntimeReady) {
+		stopped, terminals, err := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, inventory.OrcaRuntimeReady, inventory.OrcaAppPID, deps.Processes, deps.OrcaTerminals)
 		result.WorkspaceProcessesStopped = stopped
 		result.OrcaTerminalsStopped = terminals
 		if err != nil {
@@ -308,6 +309,7 @@ func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req
 		inventory.WorkspaceProcesses = observation.Receipts
 		inventory.OrcaTerminals = observation.Terminals
 		inventory.OrcaAppPID = observation.AppPID
+		inventory.OrcaRuntimeReady = observation.RuntimeReady
 		result.WorkspaceProcesses = observation.Occupants
 		result.OrcaTerminals = observation.Terminals
 		if code, out := deps.Git(inventory.WorktreeRoot, "status", "--porcelain=v1"); code != 0 || strings.TrimSpace(out) != "" {

@@ -448,30 +448,53 @@ func (c *Client) ListWorktreeTerminalsByPath(ctx context.Context, path string) (
 	return inventory.Rows, err
 }
 
-// stopTerminalsTimeout은 terminal stop 상한이다. 실측 약 2초에 여유를 두되
+// closeTerminalTimeout은 terminal close 상한이다. 실측 약 2초에 여유를 두되
 // createTimeout(2분)처럼 armed cleanup을 오래 붙잡지 않는다.
-const stopTerminalsTimeout = 15 * time.Second
+const closeTerminalTimeout = 15 * time.Second
 
-// StopWorktreeTerminals는 워크트리의 Orca 터미널 전부를 닫고 닫은 수를 돌려준다.
-// 터미널 단위 선택자가 없으므로 호출자가 요청자 터미널이 그 워크트리에 매이지
-// 않았음을 먼저 증명해야 한다(#477).
-func (c *Client) StopWorktreeTerminals(ctx context.Context, path string) (int, error) {
+// CloseTerminal은 fingerprint가 승인한 exact handle만 닫고, Orca가 같은 handle의
+// PTY 종료를 확인한 receipt를 돌려준 경우에만 성공한다.
+func (c *Client) CloseTerminal(ctx context.Context, handle string) error {
+	handle = strings.TrimSpace(handle)
+	if !concreteTerminalHandlePattern.MatchString(handle) {
+		return fmt.Errorf("invalid Orca terminal handle %q", handle)
+	}
 	var payload struct {
-		Stopped int `json:"stopped"`
+		Close struct {
+			Handle         string `json:"handle"`
+			PTYKilled      bool   `json:"ptyKilled"`
+			PTYStopVerdict string `json:"ptyStopVerdict"`
+			PTYStopReason  string `json:"ptyStopReason"`
+		} `json:"close"`
 	}
-	_, err := c.runJSON(ctx, "", stopTerminalsTimeout, []string{"orca", "terminal", "stop", "--worktree", pathSelector(path), "--json"}, &payload)
-	if isOrcaSelectorNotFound(err) {
-		return 0, nil
-	}
+	_, err := c.runJSON(ctx, "", closeTerminalTimeout, []string{"orca", "terminal", "close", "--terminal", handle, "--json"}, &payload)
 	if err != nil {
-		return 0, err
+		// background 워크트리 터미널(가시 탭 없음)은 close가 PTY를 죽인 뒤에도
+		// tab 조회 경합으로 runtime_error/tab_not_found를 돌려준다(2026-08-27
+		// 실측: zsh 종료·inventory 공함). 부재로 정규화하고, 실제 생존 여부는
+		// 호출자의 최종 worktree inventory 증명이 거부한다.
+		if isOrcaTabNotFound(err) {
+			return nil
+		}
+		return err
 	}
-	return payload.Stopped, nil
+	if strings.TrimSpace(payload.Close.Handle) != handle {
+		return fmt.Errorf("Orca terminal close receipt handle %q does not match %q", payload.Close.Handle, handle)
+	}
+	if !payload.Close.PTYKilled {
+		return fmt.Errorf("Orca terminal %s PTY death is unconfirmed: verdict=%s reason=%s", handle, payload.Close.PTYStopVerdict, payload.Close.PTYStopReason)
+	}
+	return nil
 }
 
 func isOrcaSelectorNotFound(err error) bool {
 	orcaErr, ok := errors.AsType[*port.OrcaError](err)
 	return ok && orcaErr.Code == "selector_not_found"
+}
+
+func isOrcaTabNotFound(err error) bool {
+	orcaErr, ok := errors.AsType[*port.OrcaError](err)
+	return ok && orcaErr.Code == "runtime_error" && orcaErr.Detail == "tab_not_found"
 }
 
 func (c *Client) listTerminalsBySelector(ctx context.Context, selector string) (executionTerminalInventory, error) {

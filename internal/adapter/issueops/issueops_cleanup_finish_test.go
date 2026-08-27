@@ -296,7 +296,7 @@ func TestCleanupFinishResumableConvergesAndRecordDeleted(t *testing.T) {
 }
 
 func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
-	stateRoot, record, _ := finishTestRecord(t, true)
+	stateRoot, record, worktree := finishTestRecord(t, true)
 	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.Execution.Mode = issueops.ExecutionModeOrca
 		rec.Execution.Workspace.Driver = "orca"
@@ -304,6 +304,7 @@ func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
+	deps.OrcaTerminals = readyOrca(t, worktree)
 	calls := []string{}
 	deps.RemoveOrcaWorktree = func(_ context.Context, worktreeID string) error {
 		calls = append(calls, "orca:"+worktreeID)
@@ -340,6 +341,7 @@ func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
+	deps.OrcaTerminals = readyOrca(t, worktree)
 	deps.RemoveOrcaWorktree = func(_ context.Context, worktreeID string) error {
 		if worktreeID != "wt-1" {
 			t.Fatalf("unexpected worktree id: %s", worktreeID)
