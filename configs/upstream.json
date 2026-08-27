@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "name": "eli5",
+      "marketplace": "claude-community",
+      "source": "anthropics/claude-plugins-community"
+    },
+    {
+      "name": "open-code-review",
+      "marketplace": "open-code-review",
+      "source": "alibaba/open-code-review"
+    },
+    {
+      "name": "fluent-korean",
+      "marketplace": "fluent-korean",
+      "source": "snflkd/fluent-korean"
+    },
+    {
+      "name": "diagram-design",
+      "marketplace": "diagram-design",
+      "source": "cathrynlavery/diagram-design"
+    }
+  ],
+  "skills": [
+    {
+      "name": "cua-driver",
+      "repo": "https://github.com/trycua/cua",
+      "path": "libs/cua-driver/rust/Skills/cua-driver",
+      "ref": "main"
+    }
+  ]
+}
