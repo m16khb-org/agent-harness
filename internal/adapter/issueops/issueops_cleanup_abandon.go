@@ -442,7 +442,8 @@ func cleanupAbandonFailureInventoryMatches(record issueops.IssueOpsRecord, inven
 		// ①′/③ 실패는 아직 아무것도 지우지 않은 상태다.
 		return origWorktree && inventory.WorktreePresent && worktreeMatches(false) && branchMatches(false)
 	case "branch_delete":
-		return origBranch && branchPresent && worktreeMatches(true) && branchMatches(false)
+		// ④ 실패는 worktree 제거 뒤다. 다시 나타난 worktree는 외부 변경이므로 거부한다.
+		return origBranch && branchPresent && !inventory.WorktreePresent && branchMatches(false)
 	case "record_delete":
 		return !inventory.WorktreePresent && !branchPresent && worktreeMatches(true) && branchMatches(true)
 	}
