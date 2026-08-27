@@ -70,7 +70,7 @@ metadata:
 
 ## 전달 전 검증
 
-1. 문법 검증: `npx -y @mermaid-js/mermaid-cli mmdc --input <file> --output <svg>`로 컴파일한다. 실행 환경에서 불가능하면 괄호·따옴표 균형, 예약어 충돌, 에지 화살표 문법을 직접 대조 검토한다.
+1. 문법 검증: `npx -y @mermaid-js/mermaid-cli --input <file> --output <svg>`로 컴파일한다. 패키지 이름 뒤에 `mmdc`를 덧붙이지 않는다. `npx @mermaid-js/mermaid-cli`가 이미 `mmdc` 바이너리로 해석되므로 `mmdc`는 위치 인자가 되어 `error: too many arguments. Expected 0 arguments but got 1.`로 거부된다(2026-08-27 확인). 굳이 바이너리 이름을 쓰려면 `npx -y -p @mermaid-js/mermaid-cli mmdc --input <file> --output <svg>`처럼 `-p`로 패키지를 지정한다. 실행 환경에서 불가능하면 괄호·따옴표 균형, 예약어 충돌, 에지 화살표 문법을 직접 대조 검토한다.
 2. 렌더링 확인: SVG/PNG 출력 파일을 실제로 열어 라벨 잘림, 겹침, 방향을 눈으로 확인한다. CJK 라벨 잘림이 흔하다.
 3. Git 호스트 렌더링 대상이라면 안정 계열인지 다시 확인한다. 호스트 렌더러 버전은 문서화되어 있지 않으므로 새 계열은 검증 전에 신뢰하지 않는다.
 4. 검증에 실패했는데 고칠 수 없으면, 그려진다고 암시하지 말고 소스 펜스와 함께 "렌더링 검증 못 함"을 명시한다.

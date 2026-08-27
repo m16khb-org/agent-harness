@@ -9,6 +9,10 @@ Delegate Slack work to an ephemeral Claude Code or Codex session that already ha
 user's Slack connection. `capabilities.json` is the source of truth for supported tools,
 backend availability, and side-effect risk.
 
+## Runtime requirements
+
+`scripts/` runs on Python 3 with `typer` and `pydantic` installed. `install.json` scopes this skill to the `omo` host, so Claude Code and Codex skip it on install and neither package is provisioned there. Verify both imports resolve before invoking any script; without them `slack_delegate.py` fails at import with `ModuleNotFoundError` before it can report a routing decision.
+
 **User's request:** $ARGUMENTS
 
 ## Route the request
