@@ -3,6 +3,7 @@ package gates
 import (
 	gatescontract "agent-harness/internal/contract/gates"
 	gatesdomain "agent-harness/internal/domain/gates"
+	"agent-harness/internal/domain/shelltoken"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -95,7 +96,11 @@ func renderGateSpec(spec string) (string, error) {
 		upper := strings.ToUpper(segment)
 		switch {
 		case strings.HasPrefix(upper, "CHECK:"):
-			lines = append(lines, "  CHECK: "+strings.TrimSpace(segment[len("CHECK:"):]))
+			check := strings.TrimSpace(segment[len("CHECK:"):])
+			if shelltoken.HasUnquotedControlOperator(check) {
+				return "", fmt.Errorf("gate spec %q: CHECK must be one argv command; shell syntax is not executed (&&, ;) — wrap the sequence in one script or python3 -c", spec)
+			}
+			lines = append(lines, "  CHECK: "+check)
 		case strings.HasPrefix(upper, "EXPECT:"):
 			lines = append(lines, "  EXPECT: "+strings.TrimSpace(segment[len("EXPECT:"):]))
 		case strings.HasPrefix(upper, "EVIDENCE:"):
