@@ -199,6 +199,9 @@ type IssueProviderCompletionSection struct {
 	SpecBody            string                        `json:"spec_body"`
 	PlanBody            string                        `json:"plan_body"`
 	CleanupAudit        string                        `json:"cleanup_audit,omitempty"`
+	// MissingArtifacts lists required sealed artifacts (plan) that were absent
+	// from the workspace artifact directory when the section was gathered (#482).
+	MissingArtifacts []string `json:"missing_artifacts,omitempty"`
 }
 
 // IssueProviderUpdateIssueBodySectionRequest describes reflecting one managed,

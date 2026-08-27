@@ -88,6 +88,9 @@ func RenderCompletionSection(c port.IssueProviderCompletionSection, ts string, l
 		for _, a := range c.ArtifactManifest {
 			fmt.Fprintf(&b, "- %s: `%s`\n", a.Name, a.SHA256)
 		}
+		if len(c.MissingArtifacts) > 0 {
+			fmt.Fprintf(&b, "- 봉인 아티팩트 없음: %s\n", strings.Join(c.MissingArtifacts, ", "))
+		}
 		fmt.Fprintf(&b, "### Turing 요약\n%s\n", orPlaceholder(turingBody))
 		b.WriteString(renderCollapsed("spec 전문", specBody))
 		b.WriteString(renderCollapsed("plan 전문", planBody))

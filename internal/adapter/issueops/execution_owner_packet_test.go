@@ -84,7 +84,8 @@ func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPath := filepath.Join(worktree, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	// #482: linked issue 16 seals under the issue folder, recorded in workspace.artifact_dir.
+	wantPath := filepath.Join(worktree, ".agent-harness", "issues", "16", "artifact", "plan.md")
 	wantDigest := digestExecutionOwnerBytes([]byte(plan))
 	if artifacts.PlanPath != wantPath {
 		t.Fatalf("plan path=%q want %q", artifacts.PlanPath, wantPath)
