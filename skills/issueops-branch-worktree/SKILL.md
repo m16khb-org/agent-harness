@@ -1,9 +1,9 @@
 ---
-name: issue-branch-worktree
+name: issueops-branch-worktree
 description: Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says "이슈 브랜치", "이슈 워크트리", "브랜치를 이슈에 등록". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.
 ---
 
-# Issue Branch Worktree
+# IssueOps Branch Worktree
 
 > Focused flow: **issue → pinned base SHA → branch → isolated worktree → provider-side branch registration → verify**. The full lifecycle (grilling, plan, execution lease, PR) belongs to the **`issueops`** skill; advanced git surgery belongs to **`torvalds`**.
 

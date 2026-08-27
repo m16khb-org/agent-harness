@@ -848,18 +848,18 @@
           "path": "$HARNESS_ROOT/skills/hopper"
         },
         {
-          "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "issue-branch-worktree",
-          "path": "$HARNESS_ROOT/skills/issue-branch-worktree"
-        },
-        {
           "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops",
           "path": "$HARNESS_ROOT/skills/issueops"
+        },
+        {
+          "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-branch-worktree",
+          "path": "$HARNESS_ROOT/skills/issueops-branch-worktree"
         },
         {
           "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
@@ -5178,8 +5178,8 @@
           "fluent-korean",
           "gitlab-usecase",
           "hopper",
-          "issue-branch-worktree",
           "issueops",
+          "issueops-branch-worktree",
           "issueops-cleanup",
           "karpathy",
           "parnas",
@@ -7130,18 +7130,18 @@
                 "path": "$HARNESS_ROOT/skills/hopper"
               },
               {
-                "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "issue-branch-worktree",
-                "path": "$HARNESS_ROOT/skills/issue-branch-worktree"
-              },
-              {
                 "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops",
                 "path": "$HARNESS_ROOT/skills/issueops"
+              },
+              {
+                "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-branch-worktree",
+                "path": "$HARNESS_ROOT/skills/issueops-branch-worktree"
               },
               {
                 "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
@@ -8271,8 +8271,8 @@
                 "fluent-korean",
                 "gitlab-usecase",
                 "hopper",
-                "issue-branch-worktree",
                 "issueops",
+                "issueops-branch-worktree",
                 "issueops-cleanup",
                 "karpathy",
                 "parnas",

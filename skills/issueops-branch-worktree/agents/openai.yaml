@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue Branch Worktree"
+  short_description: "Create and register issue-linked branches and worktrees"
+  default_prompt: "Use $issueops-branch-worktree to create an issue-based local branch and isolated worktree, register the branch with the linked GitHub or GitLab issue, and verify every local and provider-side result without deleting existing resources."
