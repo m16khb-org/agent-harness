@@ -56,7 +56,8 @@ func TestOrcaIntentWorktreeReceiptPersistsPlanBeforeNextIntent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPath := filepath.Join(worktree, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	// #482: linked issue 16 seals under the issue folder, recorded in workspace.artifact_dir.
+	wantPath := filepath.Join(worktree, ".agent-harness", "issues", "16", "artifact", "plan.md")
 	if advanced.PlanPath != wantPath || next.Stage != "terminal_create" {
 		t.Fatalf("advanced plan=%q stage=%q want plan=%q terminal_create", advanced.PlanPath, next.Stage, wantPath)
 	}

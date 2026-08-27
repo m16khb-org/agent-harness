@@ -35,7 +35,7 @@ var (
 // strict readiness다.
 func StrictPRReadinessWithState(stateRoot string, record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	ready := loopgate.StrictPRReadinessWithState(stateRoot, record)
-	ready = withGatesGate(ready, GatesRootFor(record))
+	ready = withGatesGate(ready, GatesRootFor(record), linkedIssueNumber(record))
 	return withDuplicateIssueArtifactGate(ready, GatesRootFor(record), linkedIssueNumber(record))
 }
 
@@ -79,6 +79,50 @@ func withDuplicateIssueArtifactGate(ready issueopscontract.IssueOpsReadiness, ro
 		}
 	}
 	return ready
+}
+
+// scopeLedgers는 발견된 원장을 현재 사이클이 판정할 것(judged)과 다른 이슈의
+// 것(skipped)으로 가른다(#483). issueNumber가 비면 전부 판정한다(fail-closed).
+// 판정: issues/<issueNumber>/gates.md(폴더명 문자열 완전일치 — `021`·`210`은
+// `21`이 아니다), 전부 숫자가 아닌 폴더(소유자 불명), `.agent-harness/gates/`의
+// 같은 번호 또는 번호 없는 파일, 그 밖의 호환 원장(root GATES.md, gates/*.md).
+// 제외: 다른 숫자 폴더의 gates.md와 다른 번호 접두의 `.agent-harness/gates/` 파일.
+func scopeLedgers(root string, files []string, issueNumber string) (judged, skipped []string) {
+	issueNumber = strings.TrimSpace(issueNumber)
+	if issueNumber == "" {
+		return files, nil
+	}
+	issuesDir := filepath.Join(root, ".agent-harness", "issues") + string(filepath.Separator)
+	legacyDir := filepath.Join(root, ".agent-harness", "gates") + string(filepath.Separator)
+	for _, file := range files {
+		switch {
+		case strings.HasPrefix(file, issuesDir):
+			folder := strings.SplitN(strings.TrimPrefix(file, issuesDir), string(filepath.Separator), 2)[0]
+			if folder != issueNumber && allDigits(folder) {
+				skipped = append(skipped, file)
+				continue
+			}
+		case strings.HasPrefix(file, legacyDir):
+			if n := legacyLedgerIssueNumber(filepath.Base(file)); n != "" && n != issueNumber {
+				skipped = append(skipped, file)
+				continue
+			}
+		}
+		judged = append(judged, file)
+	}
+	return judged, skipped
+}
+
+func allDigits(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // legacyLedgerIssueNumber는 호환 원장 파일명 `issue-<n>*.md` 또는 `<n>-*.md`에서
@@ -135,7 +179,7 @@ func guardPRPhase(stateRoot, id, to string) error {
 	return nil
 }
 
-func withGatesGate(ready issueopscontract.IssueOpsReadiness, root string) issueopscontract.IssueOpsReadiness {
+func withGatesGate(ready issueopscontract.IssueOpsReadiness, root, issueNumber string) issueopscontract.IssueOpsReadiness {
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return ready
@@ -144,8 +188,16 @@ func withGatesGate(ready issueopscontract.IssueOpsReadiness, root string) issueo
 	if err != nil || len(files) == 0 {
 		return ready
 	}
+	files, skipped := scopeLedgers(root, files, issueNumber)
 	missing := append([]string{}, ready.Missing...)
 	warnings := []string{}
+	if len(skipped) > 0 {
+		rels := make([]string, 0, len(skipped))
+		for _, file := range skipped {
+			rels = append(rels, relPath(root, file))
+		}
+		warnings = append(warnings, fmt.Sprintf("gates_skipped:%d (%s)", len(skipped), strings.Join(rels, ", ")))
+	}
 	for _, file := range files {
 		result, err := CheckGateLedger(gatescontract.CheckRequest{
 			WorkspaceRoot: root,

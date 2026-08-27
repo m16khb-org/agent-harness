@@ -190,3 +190,14 @@ func IssueNumber(issueURL string) string {
 func isGitLabIssueLikePath(part string) bool {
 	return part == "issues" || part == "work_items"
 }
+
+// IssueArtifactDir은 linked issue URL로 결정하는 봉인 아티팩트 디렉터리
+// (워크트리 상대, slash)다: `.agent-harness/issues/<n>/artifact`. 번호를 알 수
+// 없으면 빈 문자열이며, 읽는 쪽은 그것을 legacy `.agent-harness/artifact`로
+// 해석한다(#482).
+func IssueArtifactDir(issueURL string) string {
+	if n := IssueNumber(issueURL); n != "" {
+		return ".agent-harness/issues/" + n + "/artifact"
+	}
+	return ""
+}
