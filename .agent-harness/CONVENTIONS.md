@@ -92,7 +92,7 @@ agent가 즉시 알아야 할 canonical 요약이다.
   plan.md      추적  기본 플랜(`issueops link-plan` 대상). 같은 번호에 플랜이 여럿이면 plan-<slug>.md
   gates.md     추적  `gates init/check` 원장. `gates check`와 IssueOps `gates_incomplete`가 1순위로 읽는다
   spec.md      추적  선택. superpowers 스펙을 이슈에 붙일 때
-  review/      무시  fagan·review-agent-feedback 작업 파일(`<provider>-<mr번호>/`)
+  review/      무시  parnas·review-agent-feedback 작업 파일(`<provider>-<mr번호>/`)
   artifact/    무시  Orca 봉인 아티팩트(plan/spec/turing-loop, 0600 불변). 레코드
                      `execution.workspace.artifact_dir`가 이 경로를 영속한다(#482)
 ```
@@ -107,7 +107,7 @@ agent가 즉시 알아야 할 canonical 요약이다.
   `duplicate_issue_artifact:<번호>`로 fail-closed된다.
 - 봉인 디렉터리는 레코드 필드로만 결정한다. `artifact_dir`가 비어 있는 옛 레코드는
   legacy `.agent-harness/artifact/`를 그대로 읽는다.
-- 이 표가 유일한 규정이다. 스킬(`issueops`, `von-neumann`, `fagan`, `review-agent-feedback`)과
+- 이 표가 유일한 규정이다. 스킬(`issueops`, `von-neumann`, `parnas`, `review-agent-feedback`)과
   `CAUTIONS.md`는 여기를 가리킨다.
 
 ## 생성물 / dependency 보조 규칙

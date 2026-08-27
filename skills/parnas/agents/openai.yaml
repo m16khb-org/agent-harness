@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parnas"
+  short_description: "Evidence-verified MR/PR inspection for GitLab and GitHub"
+  default_prompt: "Use $parnas to inspect this merge request: build the context pack, run the lens finders and skeptics, and post only verified findings."

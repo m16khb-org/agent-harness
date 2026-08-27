@@ -1,18 +1,25 @@
 ---
-name: fagan
+name: parnas
 description: "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review)."
 ---
 
-# Fagan — evidence-verified MR/PR inspection
+# Parnas — evidence-verified MR/PR inspection
 
 **A claim about code you did not open is not a finding.** Every posted defect was traced
 through its real definitions, one hop upstream to the validation boundary and one hop
 downstream to the consumer, checked against the cumulative diff, and attacked by three
-skeptics. One-pass bots post what one model believed; Fagan posts what survived refutation.
+skeptics. One-pass bots post what one model believed; this skill posts what survived
+refutation.
 
-Canonical location: `agent-harness/skills/fagan` (`~/.claude/skills/fagan` is a symlink
+Named after David Parnas, whose *Active Design Reviews* (Parnas & Weiss, 1985) showed that
+a passive review produces "looks fine": reviewers must be forced to answer specific
+questions and demonstrate they actually used the artifact. That is what the lenses and
+skeptics below do — each inspector answers one question with opened code, and each
+candidate must survive an attempt to refute it.
+
+Canonical location: `agent-harness/skills/parnas` (`~/.claude/skills/parnas` is a symlink
 installed by `agent-harness update`). Provider auto-detected from `origin`: GitLab (`glab`)
-or GitHub (`gh`). `agents/openai.yaml` exposes it as `$fagan` on Codex.
+or GitHub (`gh`). `agents/openai.yaml` exposes it as `$parnas` on Codex.
 
 ## Pipeline
 
@@ -31,7 +38,7 @@ python3 <skill>/scripts/mr_context.py --mr <ref> --repo-dir <repo> --worktree --
 ```
 
 Read `<out_dir>/summary.md`. Stop and say so when `eligible=false` (closed/merged/draft, or a
-Fagan review already exists for this head) unless the user explicitly asked to review it
+review by this skill already exists for this head) unless the user explicitly asked to review it
 anyway. When `large=true` (> 40 files or > 2000 added lines), tell the user the scale and
 ask whether to narrow (directories or lenses) before spending agents.
 
@@ -74,8 +81,8 @@ Write `<out_dir>/findings.json` (schema: `post_review.py` docstring):
   preferring ones that contradict an existing bot thread (`thread` set).
 - Drop a finding whose line already has a bot/human thread unless it contradicts that thread
   (then say so in `what`). Never repeat a claim in `prior_review_lessons`.
-- Re-review of a moved head: `context.json → prior_fagan_threads` lists earlier Fagan
-  threads; resolved ones go to `verified_ok` as "이전 지적 Fn 해결 확인", unresolved ones are
+- Re-review of a moved head: `context.json → prior_review_threads` lists earlier threads
+  this skill posted (either marker); resolved ones go to `verified_ok` as "이전 지적 Fn 해결 확인", unresolved ones are
   referenced, not re-posted.
 - `verified_ok` = the risky-looking things inspectors traced and cleared, each with evidence.
 - `rule_candidates` = each refutation that hinged on a project fact, as one Korean sentence

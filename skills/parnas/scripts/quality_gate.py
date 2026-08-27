@@ -157,7 +157,7 @@ def node_gates(wt: str, files: list[str], ctx: dict, skip: set, timeout: int) ->
             if roots:
                 cfg = {"extends": f"./{base}", "files": roots, "include": [], "exclude": [],
                        "compilerOptions": {"noEmit": True, "incremental": False, "composite": False}}
-                tmp = Path(wt) / ".fagan.tsconfig.json"
+                tmp = Path(wt) / ".parnas.tsconfig.json"
                 tmp.write_text(json.dumps(cfg))
                 try:
                     rc, o = run([str(bin_dir / "tsc"), "-p", str(tmp), "--noEmit"], wt, timeout)

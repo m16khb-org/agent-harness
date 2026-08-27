@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render and (optionally) post a Fagan review from findings.json to a GitLab MR or GitHub PR.
+"""Render and (optionally) post a Parnas review from findings.json to a GitLab MR or GitHub PR.
 
 Usage:
   post_review.py --context DIR/context.json --findings DIR/findings.json [--post] [--force]
@@ -56,17 +56,17 @@ SEV_BADGE = {
     "low": "![low](https://img.shields.io/badge/severity-low-6B6B92)",
 }
 CAT_BADGE = "![{c}](https://img.shields.io/badge/{c}-1E88E5)"
-BRAND = "![fagan](https://img.shields.io/badge/fagan-inspection-312B4B?labelColor=C9BBF2)"
+BRAND = "![parnas](https://img.shields.io/badge/parnas-inspection-312B4B?labelColor=C9BBF2)"
 
 
-CALL_TIMEOUT = int(os.environ.get("FAGAN_CALL_TIMEOUT", "90"))
+CALL_TIMEOUT = int(os.environ.get("PARNAS_CALL_TIMEOUT", "90"))
 
 
 def run(cmd: list[str], check: bool = True) -> str:
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=CALL_TIMEOUT)
     except subprocess.TimeoutExpired:
-        raise SystemExit(f"command timed out after {CALL_TIMEOUT}s: {' '.join(cmd[:4])}... (remote slow? set FAGAN_CALL_TIMEOUT)")
+        raise SystemExit(f"command timed out after {CALL_TIMEOUT}s: {' '.join(cmd[:4])}... (remote slow? set PARNAS_CALL_TIMEOUT)")
     if check and p.returncode != 0:
         raise SystemExit(f"command failed ({p.returncode}): {' '.join(cmd[:4])}...\n{p.stderr.strip()[:500]}")
     return p.stdout
@@ -143,7 +143,7 @@ def render_gate_finding(f: dict) -> str:
     parts.append(f["how"])
     if f.get("evidence") and not m:
         parts += ["", "```", *f["evidence"][:8], "```"]
-    parts += ["", f"<!-- fagan-finding id={f['id']} -->"]
+    parts += ["", f"<!-- parnas-finding id={f['id']} -->"]
     return "\n".join(parts)
 
 
@@ -177,7 +177,7 @@ def render_finding(f: dict, provider: str) -> str:
     parts += ["", "<details><summary>LLM 에게 넘길 프롬프트</summary>", "", "```", *llm, "```", "", "</details>"]
     if f.get("rule"):
         parts += ["", f"<sub>규칙: `{f['rule']}`</sub>"]
-    parts += [f"<!-- fagan-finding id={f['id']} -->"]
+    parts += [f"<!-- parnas-finding id={f['id']} -->"]
     return "\n".join(parts)
 
 
@@ -196,7 +196,7 @@ def render_summary(ctx: dict, data: dict, posted: list[dict], skipped: list[dict
     verdict = data.get("verdict", "comment")
     n_inline = len(posted)
     verdict_ko = {"approve": "✅ 병합 가능", "request_changes": "🛑 수정 필요", "comment": "💬 병합 차단 없음"}.get(verdict, verdict)
-    L = [f"## Fagan 리뷰 — {verdict_ko} (인라인 {n_inline})", "", (data.get("summary") or "").strip(), ""]
+    L = [f"## Parnas 리뷰 — {verdict_ko} (인라인 {n_inline})", "", (data.get("summary") or "").strip(), ""]
     if posted:
         L += [f"### 지적 ({len(posted)})", "", "| # | 심각도 | 분류 | 위치 | 요약 |", "|---|---|---|---|---|"]
         L += [f"| {f['id']} | {f['severity']} | {f.get('category', '')} | `{f['path']}:{f['new_line']}` | {f['title']} |" for f in posted]
@@ -238,7 +238,7 @@ def render_summary(ctx: dict, data: dict, posted: list[dict], skipped: list[dict
     if data.get("rule_candidates"):
         L += [f"<details><summary>다음 리뷰 규칙 제안 {len(data['rule_candidates'])}건 (별도 MR 로 반영)</summary>", ""] + [f"- {x}" for x in data["rule_candidates"]] + ["", "</details>", ""]
     L += [f"<sub>head `{head[:12]}` · 게시한 지적은 모두 정의·호출자 추적과 테스트/타입체크로 확인했습니다. 잘못된 지적은 👎 + 이유를 남겨 주세요. 다음 리뷰 규칙에 반영합니다.</sub>",
-          f"<!-- fagan-review head={head} -->"]
+          f"<!-- parnas-review head={head} -->"]
     return "\n".join(L)
 
 
@@ -261,7 +261,7 @@ def post_gitlab(ctx: dict, posted: list[dict], bodies: dict, summary_body: str) 
     seen = {d["id"] for d in discs}
     for r in results:
         r["verified"] = r["remote_id"] in seen
-    marker_ok = any(f"fagan-review head={refs['head_sha']}" in (x.get("body") or "") for d in discs for x in d.get("notes", []))
+    marker_ok = any(f"parnas-review head={refs['head_sha']}" in (x.get("body") or "") for d in discs for x in d.get("notes", []))
     results.append({"id": "summary", "remote_id": s.get("id"), "ok": bool(s.get("id")), "verified": marker_ok})
     return results, marker_ok
 
@@ -281,12 +281,12 @@ def post_github(ctx: dict, posted: list[dict], bodies: dict, summary_body: str, 
     marker_ok = False
     if rid:
         got = api("gh", host, f"repos/{proj}/pulls/{n}/reviews/{rid}")
-        marker_ok = f"fagan-review head={refs['head_sha']}" in (got.get("body") or "")
+        marker_ok = f"parnas-review head={refs['head_sha']}" in (got.get("body") or "")
         rc = api("gh", host, f"repos/{proj}/pulls/{n}/reviews/{rid}/comments?per_page=100", paginate=True)
         ids_seen = {m for c in rc for m in [c.get("body", "")]}
         for f in posted:
-            results.append({"id": f["id"], "remote_id": next((c["id"] for c in rc if f"fagan-finding id={f['id']}" in c.get("body", "")), None),
-                            "ok": True, "verified": any(f"fagan-finding id={f['id']}" in b for b in ids_seen)})
+            results.append({"id": f["id"], "remote_id": next((c["id"] for c in rc if f"parnas-finding id={f['id']}" in c.get("body", "")), None),
+                            "ok": True, "verified": any(f"parnas-finding id={f['id']}" in b for b in ids_seen)})
     results[0]["verified"] = marker_ok
     return results, marker_ok
 
@@ -375,7 +375,7 @@ def main() -> None:
         return
 
     if ctx["eligibility"].get("already_reviewed_head") and not a.force:
-        raise SystemExit(f"fagan review already posted for head {refs['head_sha'][:12]}; use --force to post again")
+        raise SystemExit(f"a review by this skill is already posted for head {refs['head_sha'][:12]}; use --force to post again")
     # Live re-check right before writing.
     if provider == "gitlab":
         live = api("glab", ctx["hostname"], f"projects/{ctx['project_encoded']}/merge_requests/{ctx['number']}")

@@ -827,13 +827,6 @@
           "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
-          "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "fagan",
-          "path": "$HARNESS_ROOT/skills/fagan"
-        },
-        {
           "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms, and removes AI-style writing patterns (AI티/slop) from Korean output.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -883,6 +876,13 @@
           "path": "$HARNESS_ROOT/skills/karpathy"
         },
         {
+          "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "parnas",
+          "path": "$HARNESS_ROOT/skills/parnas"
+        },
+        {
           "description": "Orchestrate first-time agent-harness project setup for a repository: AGENTS.md routing block, repo profile metadata, and the .agent-harness document family through the project-docs-bootstrap sub-skill, plus lifecycle routing to project-docs-update and project-docs-optimize. Use when asked to bootstrap a repo for agent-harness, set up project docs, or initialize agent guidance for a repository. Each sub-skill is also usable standalone.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -918,7 +918,7 @@
           "path": "$HARNESS_ROOT/skills/read-public-artifact"
         },
         {
-          "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
+          "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Parnas, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (parnas), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "review-agent-feedback",
@@ -5175,7 +5175,6 @@
           "diagram-design",
           "dijkstra",
           "engelbart",
-          "fagan",
           "fluent-korean",
           "gitlab-usecase",
           "hopper",
@@ -5183,6 +5182,7 @@
           "issueops",
           "issueops-cleanup",
           "karpathy",
+          "parnas",
           "project-bootstrap",
           "project-docs-bootstrap",
           "project-docs-optimize",
@@ -7109,13 +7109,6 @@
                 "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
-                "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "fagan",
-                "path": "$HARNESS_ROOT/skills/fagan"
-              },
-              {
                 "description": "MUST USE whenever writing, revising, or reviewing Korean text, or when replying to a user in Korean. Produces clear and natural Korean while preserving code conventions and established technical terms, and removes AI-style writing patterns (AI티/slop) from Korean output.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7165,6 +7158,13 @@
                 "path": "$HARNESS_ROOT/skills/karpathy"
               },
               {
+                "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "parnas",
+                "path": "$HARNESS_ROOT/skills/parnas"
+              },
+              {
                 "description": "Orchestrate first-time agent-harness project setup for a repository: AGENTS.md routing block, repo profile metadata, and the .agent-harness document family through the project-docs-bootstrap sub-skill, plus lifecycle routing to project-docs-update and project-docs-optimize. Use when asked to bootstrap a repo for agent-harness, set up project docs, or initialize agent guidance for a repository. Each sub-skill is also usable standalone.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7200,7 +7200,7 @@
                 "path": "$HARNESS_ROOT/skills/read-public-artifact"
               },
               {
-                "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
+                "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Parnas, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (parnas), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "review-agent-feedback",
@@ -8268,7 +8268,6 @@
                 "diagram-design",
                 "dijkstra",
                 "engelbart",
-                "fagan",
                 "fluent-korean",
                 "gitlab-usecase",
                 "hopper",
@@ -8276,6 +8275,7 @@
                 "issueops",
                 "issueops-cleanup",
                 "karpathy",
+                "parnas",
                 "project-bootstrap",
                 "project-docs-bootstrap",
                 "project-docs-optimize",

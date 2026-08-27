@@ -1,6 +1,6 @@
 ---
 name: review-agent-feedback
-description: "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback)."
+description: "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Parnas, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (parnas), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback)."
 ---
 
 # Review Agent Feedback
@@ -36,7 +36,7 @@ python3 <skill>/scripts/review_threads.py list --pr <number|!n|#n|URL> --repo-di
 ```
 
 `threads.json`, `plan.json`, and the ledger live under that `$out` — the per-issue
-artifact folder's ignored `review/` area (same rule as `fagan`); they are working files,
+artifact folder's ignored `review/` area (same rule as `parnas`); they are working files,
 not commits. The issue number comes from the PR/MR body's issue link or the IssueOps record.
 
 Read `threads.json`. It contains only bot-authored threads (`--all` adds humans);

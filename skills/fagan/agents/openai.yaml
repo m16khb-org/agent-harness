@@ -1,4 +1,0 @@
-interface:
-  display_name: "Fagan"
-  short_description: "Evidence-verified MR/PR inspection for GitLab and GitHub"
-  default_prompt: "Use $fagan to inspect this merge request: build the context pack, run the lens finders and skeptics, and post only verified findings."

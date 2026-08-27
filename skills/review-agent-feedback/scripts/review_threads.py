@@ -64,7 +64,7 @@ REVIEWERS = [
     {"key": "coderabbit", "mention": "@coderabbitai", "logins": (r"^coderabbitai",), "markers": ("coderabbit",)},
     {"key": "copilot", "mention": None, "logins": (r"^copilot",), "markers": ("copilot-pull-request",)},
     {"key": "gemini", "mention": "@gemini-code-assist", "logins": (r"^gemini-code-assist",), "markers": ("gemini-code-assist",)},
-    {"key": "fagan", "mention": None, "logins": (), "markers": ("fagan-review", "fagan-finding")},
+    {"key": "parnas", "mention": None, "logins": (), "markers": ("parnas-review", "parnas-finding")},
 ]
 BOT_LOGIN_RE = re.compile(r"(\[bot\]$|^project_\d+_bot|^group_\d+_bot|[-_]bot$|^bot[-_])", re.I)
 SECRET_RE = re.compile(r"\b(glpat-[A-Za-z0-9_\-]{10,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9\-]{10,})\b")

@@ -388,7 +388,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	}
 	// ⑨ orca 자원 잔여. 게이트 ⑥은 로컬 디렉터리만 보므로 orca 레지스트리에
 	// 남은 task를 놓친다. 살아 있는 터미널은 apply ①′가 실제로 닫을 수 있을 때만
-	// 통과한다(fagan #478 F4).
+	// 통과한다(parnas #478 F4).
 	terminalsReachable := inventory.WorktreePresent && len(inventory.OrcaTerminals) > 0
 	if err := cleanupAbandonOrcaResourcesAbsent(ctx, record, deps, terminalsReachable); err != nil {
 		missing = append(missing, "orca_resources_absent")
@@ -601,7 +601,7 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.Issu
 	}
 	// 터미널 잔여는 apply ①′가 닫을 수 있을 때(워크트리 존재·런타임이 그 워크트리의
 	// 터미널을 나열)만 거부 사유가 아니다. 워크트리가 없거나 터미널이 나열되지 않으면
-	// ①′는 아무것도 닫지 못하므로 살아 있는 터미널은 소유자 없는 자원이 된다(fagan
+	// ①′는 아무것도 닫지 못하므로 살아 있는 터미널은 소유자 없는 자원이 된다(parnas
 	// #478 F4). task/dispatch 잔여는 항상 거부한다(#477).
 	if inventory.TaskLive || (inventory.TerminalLive && !terminalsReachable) {
 		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t terminal_reachable_by_stop=%t); abandon leaves them without an owner, so use `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`",

@@ -180,7 +180,7 @@ receipt 필수) → HUP+TERM → 최대 5초 → KILL → 재관측(점유·터�
 닫는다. 대화형 zsh/bash는 SIGTERM을 무시하고 SIGHUP에 종료된다(2026-08-27 실측).
 터미널 close가 실패하면 시그널 경로로 넘어가지 않고
 `workspace_processes_stop`에서 멈춘다 — 터미널만 죽고 orca 회수는 실패하는 부분 apply를
-막기 위해서다(fagan #478 finding 2).
+막기 위해서다(parnas #478 finding 2).
 
 주의:
 - 요청자 보호는 거부다. lease 경로(`executionQuiescenceFingerprint`)는 요청자 자손을
@@ -203,14 +203,14 @@ receipt 필수) → HUP+TERM → 최대 5초 → KILL → 재관측(점유·터�
   게이트만 남는다. 미등록 워크트리의 `terminal list`는 `selector_not_found`이며 빈 목록이다.
 - 런타임이 ready면 점유·바인딩·요청자 호스팅과 무관하게 워크트리 터미널을 나열한다. cwd를
   밖으로 옮긴 셸은 점유자가 아니어도 Orca 레지스트리에는 워크트리 터미널로 남아 있고 apply가
-  닫아야 한다(fagan #478 finding 3). Orca 앱 pid(시그널 제외 대상)는 fingerprint 입력이라
+  닫아야 한다(parnas #478 finding 3). Orca 앱 pid(시그널 제외 대상)는 fingerprint 입력이라
   preview 뒤 런타임이 사라지거나 재시작되면 apply가 stale fingerprint로 멈춘다; apply ①′는
   Orca 상태를 다시 묻지 않는다.
 - 새 실패 단계 `workspace_processes_stop`은 `knownCleanupFinishFailureStep`/
   `knownCleanupAbandonFailureStep`과 abandon failure inventory matcher에 등록돼 있다. 되돌릴
   때 이 값을 가진 receipt가 남아 있으면 `ReadIssueOps`가 거부한다. abandon receipt는 arm 시점
   자원 모양을 paired·worktree-only·branch-only·absent 네 가지로 인정하므로 #433 비대칭 잔여에서
-  ①′가 실패해도 재-preview가 `cleanup_failure_inventory`로 영구히 막히지 않는다(fagan #478
+  ①′가 실패해도 재-preview가 `cleanup_failure_inventory`로 영구히 막히지 않는다(parnas #478
   finding 1).
 
 ## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것

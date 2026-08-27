@@ -1,9 +1,9 @@
-// Fagan inspection workflow (Claude Code `Workflow` tool). Pass via `script`, with
+// Parnas inspection workflow (Claude Code `Workflow` tool). Pass via `script`, with
 // args = { outDir, checkout, codegraph, lenses: [...applicable lens ids], lensText: {id: text},
 //          maxCandidates: 24 }
 // The coordinator (you) builds the context pack BEFORE this runs and merges/posts AFTER.
 export const meta = {
-  name: 'fagan-inspection',
+  name: 'parnas-inspection',
   description: 'Parallel multi-lens MR inspection with adversarial verification',
   phases: [
     { title: 'Find', detail: 'one inspector per lens, independent' },
@@ -40,7 +40,7 @@ const VERDICT = {
 const { outDir, checkout, codegraph, lenses, lensText, maxCandidates = 24, perLensCap = 6 } = args
 const cg = codegraph ? '`codegraph explore "<symbol>"` prints definitions + call paths — use it before grep.' : 'Use rg and direct reads for symbol discovery.'
 
-const finderPrompt = (id) => `You are one inspector in a formal Fagan inspection. Lens: ${id} — ${lensText[id]}
+const finderPrompt = (id) => `You are one inspector in a formal design inspection. Lens: ${id} — ${lensText[id]}
 Repository checkout at head: ${checkout} (read-only; never edit, never checkout, never post).
 Context pack: ${outDir}/summary.md (read first), ${outDir}/diff.patch (the cumulative diff).
 Rule pack files are listed in summary.md; read the ones whose globs match the files you inspect.
@@ -64,7 +64,7 @@ const SKEPTIC_TEXT = {
   scoper: 'Prove this is not this change\'s problem. Check the cumulative diff hunks: is the defect on added/modified lines or newly reachable because of them? Check git log -L / git blame of the lines: pre-existing? Check the description, the linked issue in summary.md, and the other changes: is the behavior intentional AND correct with respect to what the issue asks? (Intentional but wrong per the issue is still a defect — do not refute on intent alone.) Check prior_review_lessons in context.json: was this exact claim refuted before? Refute if pre-existing, intentional-and-correct, or already refuted.',
 }
 
-const skepticPrompt = (id, c) => `You are a skeptic in a Fagan inspection. Your job is to try to REFUTE this candidate defect. Lens: ${id} — ${SKEPTIC_TEXT[id]}
+const skepticPrompt = (id, c) => `You are a skeptic in a design inspection. Your job is to try to REFUTE this candidate defect. Lens: ${id} — ${SKEPTIC_TEXT[id]}
 refuted=true ONLY when you actually neutralised the scenario with evidence (a definition, a boundary, a run that shows it cannot happen, proof it is pre-existing/already refuted). If you could not test it (no runnable environment, missing DB, tooling absent) or could not find the hop, return refuted=false with confidence ≤ 40 and reason starting with "미확인:" — inability to verify is not a refutation.
 Checkout (read-only except throwaway test files you delete afterwards): ${checkout}
 Context pack: ${outDir}/summary.md, ${outDir}/diff.patch, ${outDir}/context.json

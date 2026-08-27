@@ -11,7 +11,7 @@ anything else → `glab`). Both CLIs must already be authenticated.
 
 Outputs (inside --out, default: <repo>/.agent-harness/issues/<issue>/review/<provider>-<n>/ when the
 MR/PR names its issue (branch prefix `<issue>-…` or `#<issue>` in title/description), otherwise
-<repo>/.agent-harness/tmp/fagan/mr-<n>/ — both paths are gitignored working areas):
+<repo>/.agent-harness/tmp/parnas/mr-<n>/ — both paths are gitignored working areas):
   context.json   machine-readable pack (meta, diff_refs, files+hunks, rule pack,
                  existing threads, prior review lessons, verification hints, worktree)
   diff.patch     cumulative diff (base...head), unified
@@ -42,21 +42,23 @@ RULE_CANDIDATES = [
     "agent-docs/constitution.md",
     "agent-docs/constitution-compact.md",
 ]
-FAGAN_MARKER_RE = re.compile(r"<!--\s*fagan-review\s+head=([0-9a-f]{7,40})")
+# 이 스킬이 게시한 리뷰 마커.
+REVIEW_MARKER_RE = re.compile(r"<!--\s*parnas-review\s+head=([0-9a-f]{7,40})")
+REVIEW_MARKER_TOKENS = ("parnas-review", "parnas-finding")
 BOT_MARKERS = ("kody-codereview", "kody-pr-summary", "coderabbit", "copilot-pull-request", "gemini-code-assist")
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
 # ----------------------------------------------------------------------------- helpers
 
-CALL_TIMEOUT = int(os.environ.get("FAGAN_CALL_TIMEOUT", "90"))
+CALL_TIMEOUT = int(os.environ.get("PARNAS_CALL_TIMEOUT", "90"))
 
 
 def run(cmd: list[str], cwd: str | None = None, check: bool = True) -> str:
     try:
         p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=CALL_TIMEOUT)
     except subprocess.TimeoutExpired:
-        raise SystemExit(f"command timed out after {CALL_TIMEOUT}s: {' '.join(cmd[:5])}... (remote slow? set FAGAN_CALL_TIMEOUT)")
+        raise SystemExit(f"command timed out after {CALL_TIMEOUT}s: {' '.join(cmd[:5])}... (remote slow? set PARNAS_CALL_TIMEOUT)")
     if check and p.returncode != 0:
         raise SystemExit(f"command failed ({p.returncode}): {' '.join(cmd[:5])}...\n{p.stderr.strip()[:600]}")
     return p.stdout
@@ -322,7 +324,7 @@ def default_out_dir(repo_dir: str, provider: str, meta: dict, n: int) -> Path:
     issue = issue_number_hint(meta, n)
     if issue is not None:
         return Path(repo_dir) / ".agent-harness" / "issues" / str(issue) / "review" / f"{provider}-{n}"
-    return Path(repo_dir) / ".agent-harness" / "tmp" / "fagan" / f"mr-{n}"
+    return Path(repo_dir) / ".agent-harness" / "tmp" / "parnas" / f"mr-{n}"
 
 
 def linked_issues(p, meta: dict, this_n: int, limit: int = 3) -> list[dict]:
@@ -499,11 +501,11 @@ def main() -> None:
     (out_dir / "diff.patch").write_text("\n".join(patch_parts) + "\n")
 
     raw_threads = p.threads(n)
-    fagan_heads = sorted({m.group(1) for t in raw_threads for m in FAGAN_MARKER_RE.finditer(t["body"])})
+    review_heads = sorted({m.group(1) for t in raw_threads for m in REVIEW_MARKER_RE.finditer(t["body"])})
     threads = [{"thread_id": t["thread_id"], "author": t["author"], "is_bot": any(m in t["body"] for m in BOT_MARKERS),
-                "is_fagan": "fagan-review" in t["body"] or "fagan-finding" in t["body"], "path": t["path"], "new_line": t["new_line"],
+                "is_own_review": any(tok in t["body"] for tok in REVIEW_MARKER_TOKENS), "path": t["path"], "new_line": t["new_line"],
                 "resolvable": t["resolvable"], "resolved": t["resolved"], "note_count": t["note_count"], "excerpt": strip_md(t["body"])} for t in raw_threads]
-    already = head_sha in fagan_heads
+    already = head_sha in review_heads
 
     issues = linked_issues(p, meta, n)
     src_files = [f["path"] for f in files if not ({"test", "docs"} & set(f["tags"]))]
@@ -516,7 +518,7 @@ def main() -> None:
     if meta["draft"]:
         reasons.append("draft")
     if already:
-        reasons.append("fagan review already posted for this head_sha")
+        reasons.append("a review by this skill is already posted for this head_sha")
     eligibility = {"state": meta["state"], "draft": meta["draft"], "already_reviewed_head": already, "eligible": not reasons, "reasons": reasons}
 
     ctx = {
@@ -530,7 +532,7 @@ def main() -> None:
     }
     scale = {"files": len(files), "added": ctx["totals"]["added"], "large": len(files) > 40 or ctx["totals"]["added"] > 2000}
     ctx["scale"] = scale
-    ctx["prior_fagan_threads"] = [t for t in threads if t["is_fagan"]]
+    ctx["prior_review_threads"] = [t for t in threads if t["is_own_review"]]
     (out_dir / "context.json").write_text(json.dumps(ctx, ensure_ascii=False, indent=1))
     lenses = load_lenses()
     chosen = [l for l in select_lenses(files, "\n".join(patch_parts), issues, lessons) if l in lenses]
@@ -544,7 +546,7 @@ def main() -> None:
          f"head={head_sha} base={refs.get('base_sha')} start={refs.get('start_sha')} head_local={have_head} worktree={worktree or '-'}",
          f"eligible={eligibility['eligible']} reasons={reasons or '-'}",
          f"scale: files={scale['files']} added={scale['added']} large={scale['large']} → lenses={','.join(chosen)} (workflow_args.json)",
-         f"prior fagan threads at other heads: {len(ctx['prior_fagan_threads'])}", "", "## Description", ctx["description"][:3000] or "(empty)", "",
+         f"prior threads by this skill at other heads: {len(ctx['prior_review_threads'])}", "", "## Description", ctx["description"][:3000] or "(empty)", "",
          f"## Files ({ctx['totals']['files']}, +{ctx['totals']['added']}/-{ctx['totals']['removed']})"]
     for f in files:
         hs = ",".join(f"{h['new_start']}-{h['new_start'] + max(h['new_len'], 1) - 1}" for h in f["hunks"])
@@ -561,7 +563,7 @@ def main() -> None:
         L.append(f"- {r['path']} ({r['bytes']}B){extra}")
     L += ["", f"## Existing threads ({len(threads)})"]
     for t in threads:
-        who = "BOT" if t["is_bot"] else ("FAGAN" if t["is_fagan"] else t["author"])
+        who = "BOT" if t["is_bot"] else ("OURS" if t["is_own_review"] else t["author"])
         L.append(f"- [{who}] {t['path'] or '(general)'}:{t['new_line'] or '-'} resolved={t['resolved']} notes={t['note_count']} :: {t['excerpt'][:200]}")
     L += ["", f"## Prior review lessons from merged changes to the same files ({len(lessons)})"]
     for l in lessons:

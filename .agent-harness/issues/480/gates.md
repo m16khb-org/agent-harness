@@ -9,7 +9,7 @@
   EXPECT: ok
   EVIDENCE: ok  	agent-harness/internal/adapter/issueops/gatesgate	8.760s
 - [x] G3: 스킬·문서·gitignore가 새 레이아웃을 한 번만 규정하고 검사기를 통과한다
-  CHECK: python3 -c "import subprocess as S;r=[S.run(c,capture_output=True,text=True).returncode for c in (['python3','scripts/validate-skill.py','skills/issueops'],['python3','scripts/validate-skill.py','skills/von-neumann'],['python3','scripts/validate-skill.py','skills/fagan'],['python3','scripts/validate-skill.py','skills/review-agent-feedback'],['python3','scripts/verify-skill-shell.py'])];g=open('.gitignore').read();print('docs-ok' if not any(r) and 'issues/*/review/' in g and 'agent-harness/tmp/' in g else ('fail',r))"
+  CHECK: python3 -c "import subprocess as S;r=[S.run(c,capture_output=True,text=True).returncode for c in (['python3','scripts/validate-skill.py','skills/issueops'],['python3','scripts/validate-skill.py','skills/von-neumann'],['python3','scripts/validate-skill.py','skills/parnas'],['python3','scripts/validate-skill.py','skills/review-agent-feedback'],['python3','scripts/verify-skill-shell.py'])];g=open('.gitignore').read();print('docs-ok' if not any(r) and 'issues/*/review/' in g and 'agent-harness/tmp/' in g else ('fail',r))"
   EXPECT: docs-ok
   EVIDENCE: docs-ok
 - [x] G4: 번호 플랜 링크가 새 경로로 리라이트되어 옛 번호 플랜 경로 참조가 0건이다

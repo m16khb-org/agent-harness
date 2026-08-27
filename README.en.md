@@ -252,7 +252,7 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 - Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`, `issue-branch-worktree`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
-- Code review: `fagan`, `review-agent-feedback`
+- Code review: `parnas`, `review-agent-feedback`
 - Operational improvement: `self-verify`, `self-augment`, `stability-audit`
 - Korean writing: `fluent-korean`
 - Diagrams and visualization: `diagram-design`

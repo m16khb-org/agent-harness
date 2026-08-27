@@ -16,7 +16,7 @@ v3: brooks 2차 `revise` 반영 — `issueops status` 필드(T3) 삭제(레코�
   plan.md            추적   기본 플랜 (link-plan 대상). 같은 번호에 플랜이 여럿이면 plan-<slug>.md
   gates.md           추적   gates init/check 원장
   spec.md            추적   선택, superpowers 스펙을 이슈에 붙일 때
-  review/            무시   fagan·review-agent-feedback 작업 파일 (<provider>-<mr번호>/)
+  review/            무시   parnas·review-agent-feedback 작업 파일 (<provider>-<mr번호>/)
 ```
 
 `<n>`은 linked issue URL의 번호. 번호를 모르면 옛 규칙(`.agent-harness/tmp/`)을 그대로 쓰고 출력에 남긴다. `.agent-harness/artifact/`(Orca 봉인 아티팩트: gitignore + 0600 불변 + 레코드 절대 경로)는 **이번 범위 밖**이다 — 봉인 계약 재설계가 필요하므로 후속 이슈로 분리한다.
@@ -27,7 +27,7 @@ v3: brooks 2차 `revise` 반영 — `issueops status` 필드(T3) 삭제(레코�
 |---|---|---|---|
 | T1 | `internal/adapter/gates/check.go DiscoverGateFiles`: `.agent-harness/issues/*/gates.md`를 canonical 1순위 후보(이슈 번호 오름차순 → 파일명)로 추가, 기존 `GATES.md`·`.agent-harness/gates/*.md`·`gates/*.md` 후보 유지 | check.go, check_test.go | `go test ./internal/adapter/gates` |
 | T2 | `internal/adapter/issueops/gatesgate`: 레코드의 linked issue 번호 `n`(`issueopsremote.IssueNumber`)에 대해 `issues/<n>/gates.md`와 `.agent-harness/gates/{issue-<n>*,<n>-*}.md`가 동시에 있으면 `duplicate_issue_artifact:<n>` missing. 번호가 없으면 검사하지 않음 | gates_gate.go, gates_gate_test.go | `go test ./internal/adapter/issueops/gatesgate` |
-| T4 | 문서·스킬: CONVENTIONS(레이아웃 규정 한 번), CAUTIONS:22 정정, issueops SKILL:72 `GATE_FILE=".agent-harness/issues/<n>/gates.md"`·:248 플랜 경로, von-neumann 플랜 경로(`.agent-harness/issues/<n>/plan.md`, 이슈 없으면 `.agent-harness/plans/<slug>.md` 유지), issueops-cleanup, fagan `mr_context.py` `--out` 기본값(`issues/<n>/review/<provider>-<mr>` when issue known, else tmp), review-agent-feedback SKILL 출력 경로, `.gitignore`(`.agent-harness/issues/*/review/`, `.agent-harness/tmp/`) | 문서/스크립트 | validate-skill, verify-skill-shell, docs checker |
+| T4 | 문서·스킬: CONVENTIONS(레이아웃 규정 한 번), CAUTIONS:22 정정, issueops SKILL:72 `GATE_FILE=".agent-harness/issues/<n>/gates.md"`·:248 플랜 경로, von-neumann 플랜 경로(`.agent-harness/issues/<n>/plan.md`, 이슈 없으면 `.agent-harness/plans/<slug>.md` 유지), issueops-cleanup, parnas `mr_context.py` `--out` 기본값(`issues/<n>/review/<provider>-<mr>` when issue known, else tmp), review-agent-feedback SKILL 출력 경로, `.gitignore`(`.agent-harness/issues/*/review/`, `.agent-harness/tmp/`) | 문서/스크립트 | validate-skill, verify-skill-shell, docs checker |
 | T5 | 이동 커밋(별도): 분류 규칙 `^(\d+)-` 또는 `^issue-(\d+)`(확장자 무관). 63개 번호 파일(60 이슈) → `issues/<n>/plan.md`; 248·414(.md 2개씩)·46(.json 2개)은 `issues/<n>/plan-<slug>.<ext>`; 25개 무번호 → `issues/_unnumbered/`; `gates/477-cleanup-stops-worktree-processes.md` → `issues/477/gates.md`. 옛 번호 플랜 링크를 새 경로로 리라이트 — `skills/`, `.agent-harness/`, `docs/superpowers/{plans,specs}` 포함(`rg 'agent-harness/plans/(\d+-|issue-\d+)' --type md` 0건 게이트; 이슈 없는 플랜의 `.agent-harness/plans/<slug>.md` fallback 경로는 유지) | `git mv` + 링크 sed | 아래 T5 검증 |
 | T6 | 골든 재생성·전체 배터리·self-verify QA gate | testdata | AGENTS.md §9 |
 

@@ -13,7 +13,7 @@ script implements, so the same steps can be reproduced with a raw CLI, a GitLab 
 | CodeRabbit | GitHub `coderabbitai[bot]`, GitLab `coderabbitai` | login; body mentions `coderabbit` | replies addressed to `@coderabbitai` (learnings) | `@coderabbitai` |
 | Copilot | GitHub `copilot-pull-request-reviewer[bot]` | login | nothing (no feedback loop) | none |
 | Gemini Code Assist | GitHub/GitLab `gemini-code-assist[bot]` | login | `@gemini-code-assist` replies | `@gemini-code-assist` |
-| Fagan (this harness) | any | body `<!-- fagan-review head=… -->`, `fagan-finding id=…` | 👎 + reason feeds `rule_candidates` in the next run | none |
+| Parnas (this harness) | any | body `<!-- parnas-review head=… -->`, `parnas-finding id=…` | 👎 + reason feeds `rule_candidates` in the next run | none |
 | Unknown bot | any | GitHub `author.__typename == Bot` / login ends with `[bot]`; GitLab `author.bot == true` / `*_bot*` login | unknown | none |
 
 Summary notes ("코드 리뷰 완료", CodeRabbit walkthrough, Copilot overview) are not

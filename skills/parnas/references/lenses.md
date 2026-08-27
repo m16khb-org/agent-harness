@@ -35,7 +35,7 @@ Each finder returns at most `perLensCap` (6) candidates.
 Reference copy of the finder contract (keep in sync with workflow.js):
 
 ```
-You are one inspector in a formal Fagan inspection. Lens: <lens id> — <lens text>.
+You are one inspector in a formal design inspection. Lens: <lens id> — <lens text>.
 Repository checkout at head: <worktree or repo_dir> (read-only; never edit, never checkout, never post).
 Context pack: <out_dir>/summary.md (read first), <out_dir>/diff.patch (the cumulative diff).
 Rule pack files are listed in summary.md; read the ones whose globs match the files you inspect.
