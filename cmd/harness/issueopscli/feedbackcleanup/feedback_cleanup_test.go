@@ -230,7 +230,7 @@ func TestRunCleanupStatusProjectsFinishReadinessParity(t *testing.T) {
 		issueState  string
 		issueBody   string
 		mergedBase  string
-		processes   []string
+		processes   []issueopscontract.CleanupWorkspaceProcess
 		wantReady   bool
 		wantMissing string
 		wantWarning string
@@ -251,10 +251,12 @@ func TestRunCleanupStatusProjectsFinishReadinessParity(t *testing.T) {
 			mergedBase: "release", wantMissing: "base_branch_drifted",
 		},
 		{
-			name:       "workspace holder becomes warning",
+			// 점유 프로세스는 더 이상 차단 사유가 아니라 apply가 종료할 대상이다.
+			// status는 준비됨을 보고하되 무엇이 종료될지 경고로 알린다(#477).
+			name:       "workspace holder becomes a stop warning",
 			issueState: "closed", issueBody: port.IssueBodyCompletionStartMarker,
-			mergedBase: "main", processes: []string{"4321:codex"},
-			wantMissing: "workspace_processes_quiescent", wantWarning: "4321:codex",
+			mergedBase: "main", processes: []issueopscontract.CleanupWorkspaceProcess{{PID: 4321, Command: "codex", StartedAt: "2026-08-27T00:00:01Z", Executable: "codex"}},
+			wantReady: true, wantWarning: "4321:codex:2026-08-27T00:00:01Z",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -287,13 +289,21 @@ func TestRunCleanupStatusProjectsFinishReadinessParity(t *testing.T) {
 					return 1, ""
 				}
 			}
+			// 이 테스트 프로세스가 Orca 터미널 안에서 돌더라도 요청자 터미널 join을
+			// 시도하지 않게 env를 비운다(join은 adapter 테스트가 고정한다).
+			t.Setenv("ORCA_PANE_KEY", "")
+			t.Setenv("ORCA_TERMINAL_HANDLE", "")
 			processCalls := 0
-			deps.InspectCleanupProcesses = func(root string) ([]string, error) {
+			deps.InspectCleanupProcesses = func(root string) (port.CleanupWorkspaceOccupancy, error) {
 				processCalls++
 				if root != record.WorktreePath {
 					t.Fatalf("process root = %q, want %q", root, record.WorktreePath)
 				}
-				return tc.processes, nil
+				ancestry := map[int][]int{os.Getpid(): {1}}
+				for _, process := range tc.processes {
+					ancestry[process.PID] = []int{1}
+				}
+				return port.CleanupWorkspaceOccupancy{Occupants: tc.processes, Ancestry: ancestry}, nil
 			}
 
 			if err := RunCleanup([]string{"status", "--id", record.ID, "--merged", "--json"}, deps); err != nil {
@@ -515,7 +525,9 @@ func cleanupStatusDeps(printed *[]any) Deps {
 				return 1, "unexpected git call"
 			}
 		},
-		InspectCleanupProcesses: func(string) ([]string, error) { return nil, nil },
+		InspectCleanupProcesses: func(string) (port.CleanupWorkspaceOccupancy, error) {
+			return port.CleanupWorkspaceOccupancy{Ancestry: map[int][]int{os.Getpid(): {1}}}, nil
+		},
 	}
 }
 
@@ -773,5 +785,26 @@ func TestRunCleanupLinkedBranchDisciplineAndDispatch(t *testing.T) {
 	}
 	if len(printed) != 1 {
 		t.Fatalf("json output missing: %d", len(printed))
+	}
+}
+
+// status는 finish preview의 점유·터미널 관측을 "무엇이 종료될지" 경고로 투영한다
+// (#477, plans/285 parity: schema는 그대로, 점유는 Warnings로).
+func TestCleanupStatusWarningsProjectStoppedProcesses(t *testing.T) {
+	warnings := cleanupStatusWarnings(issueopscontract.CleanupFinishResult{
+		WorkspaceProcesses: []issueopscontract.CleanupWorkspaceProcess{
+			{PID: 4321, Command: "codex", StartedAt: "2026-08-27T00:00:01Z", Executable: "codex"},
+			{PID: 5555, Command: "zsh", StartedAt: "2026-08-27T00:00:02Z", Executable: "zsh"},
+		},
+		OrcaTerminals: []string{"term_a"},
+	})
+	if len(warnings) != 3 || warnings[0] != "4321:codex:2026-08-27T00:00:01Z" || warnings[1] != "5555:zsh:2026-08-27T00:00:02Z" {
+		t.Fatalf("occupants must be projected as pid:command:started_at: %v", warnings)
+	}
+	if !strings.Contains(warnings[2], "프로세스 2개") || !strings.Contains(warnings[2], "Orca 터미널 1개") {
+		t.Fatalf("the summary warning must state what apply will stop: %q", warnings[2])
+	}
+	if quiet := cleanupStatusWarnings(issueopscontract.CleanupFinishResult{}); len(quiet) != 0 {
+		t.Fatalf("quiet previews carry no stop warning: %v", quiet)
 	}
 }

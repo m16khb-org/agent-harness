@@ -282,7 +282,13 @@ func processField(pid int, field string) (string, error) {
 // parseWorkspaceProcesses의 pathWithinResolved가 수행하므로, 전체 open file
 // 목록을 받아 Go에서 걸러 같은 결과를 훨씬 싸게 얻는다.
 func inspectWorkspaceProcesses(root string, excluded map[int]bool) ([]workspaceProcess, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), nativeProcessProbeTimeout)
+	return inspectWorkspaceProcessesWithin(root, excluded, nativeProcessProbeTimeout)
+}
+
+// inspectWorkspaceProcessesWithin은 lsof 상한을 호출자가 정한다. cleanup은 부하가
+// 큰 머신에서도 관측 실패로 fail-closed되지 않도록 lease 경로보다 긴 상한을 쓴다.
+func inspectWorkspaceProcessesWithin(root string, excluded map[int]bool, timeout time.Duration) ([]workspaceProcess, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "lsof", "-nPw", "-Fpcfna")
 	cmd.Env = append(os.Environ(), "LC_ALL=C", "LANG=C")

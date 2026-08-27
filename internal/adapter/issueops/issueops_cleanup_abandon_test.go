@@ -73,7 +73,7 @@ func abandonRequest(id string, apply bool, fingerprint string) CleanupAbandonReq
 }
 
 func abandonDeps(git *fakeAbandonGit, orca port.ExecutionOrcaProvisioner) CleanupAbandonDeps {
-	return CleanupAbandonDeps{Git: git.run, Orca: orca}
+	return CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git.run, Orca: orca}
 }
 
 func authoritativeZeroOrca() *fakeAbandonOrca {
@@ -452,7 +452,7 @@ func TestCleanupAbandonPendingIntentGate(t *testing.T) {
 	})
 	t.Run("orca inspector absent", func(t *testing.T) {
 		stateRoot, record, _, _ := abandonOrcaPendingRecord(t, "worktree_create", true)
-		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{Git: (&fakeAbandonGit{}).run})
+		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: (&fakeAbandonGit{}).run})
 		if err == nil || !containsString(result.Missing, "pending_intent_safe") {
 			t.Fatalf("missing Orca inspector must block: %v %v", err, result.Missing)
 		}
@@ -543,7 +543,7 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 			}
 			orca := authoritativeZeroOrca()
 			owner := &fakeOwnerInspector{}
-			deps := CleanupAbandonDeps{Git: (&fakeAbandonGit{}).run, Orca: orca, OrcaOwner: owner}
+			deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: (&fakeAbandonGit{}).run, Orca: orca, OrcaOwner: owner}
 
 			result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), deps)
 			if err != nil {
@@ -576,7 +576,7 @@ func TestCleanupAbandonRejectsStaleOwnerIntentWithEarlierStageResidue(t *testing
 			WorktreeID: "worktree-still-present",
 		}}},
 	}}
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses(),
 		Git: (&fakeAbandonGit{}).run, Orca: orca, OrcaOwner: &fakeOwnerInspector{},
 	})
 	if err == nil || !containsString(result.Missing, "pending_intent_safe") ||
@@ -595,7 +595,7 @@ func TestCleanupAbandonRejectsStaleOwnerIntentWithPriorOwnerResidue(t *testing.T
 	if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
 		t.Fatal(err)
 	}
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses(),
 		Git: (&fakeAbandonGit{}).run, Orca: authoritativeZeroOrca(),
 		OrcaOwner: &fakeOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{
 			TaskLive: true, TaskStatus: "running",

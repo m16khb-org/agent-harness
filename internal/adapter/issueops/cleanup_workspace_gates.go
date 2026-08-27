@@ -1,0 +1,206 @@
+package issueops
+
+import (
+	"context"
+	"sort"
+	"strings"
+
+	"agent-harness/internal/adapter/issueops/pathutil"
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/port"
+)
+
+// cleanupWorkspaceObservation은 finish/abandon preview가 워크트리 점유와 Orca
+// 터미널을 한 번 관측한 결과다. Receipts와 Terminals는 fingerprint 입력이다.
+type cleanupWorkspaceObservation struct {
+	Occupants    []issueops.CleanupWorkspaceProcess
+	Receipts     []issueops.NativeProcessReceipt
+	Terminals    []string
+	RuntimeReady bool
+	AppPID       int
+}
+
+// cleanupWorkspaceGatesForRecord는 finish/abandon이 공유하는 워크트리 게이트다.
+// 소스 체크아웃은 관측 전에 거부하고, Orca 바인딩 여부를 레코드에서 읽는다.
+func cleanupWorkspaceGatesForRecord(ctx context.Context, record issueops.IssueOpsRecord, root string, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) (cleanupWorkspaceObservation, []string) {
+	if pathutil.CleanAbsPath(root) == pathutil.CleanAbsPath(record.Repo) {
+		return cleanupWorkspaceObservation{}, []string{"worktree_is_source_checkout"}
+	}
+	bound := record.Execution != nil && record.Execution.Orca != nil && strings.TrimSpace(record.Execution.Orca.WorktreeID) != ""
+	return cleanupWorkspaceGates(ctx, root, bound, processes, orca)
+}
+
+// cleanupWorkspaceGates는 점유 관측·요청자 게이트·Orca 터미널 인벤토리를
+// 평가한다(#477). 점유 자체는 게이트를 막지 않는다 — apply ①′의 종료 대상이다.
+//
+// 요청자 보호는 제외가 아니라 거부다. lease 경로는 요청자 자손을 quiescence
+// 후보에서 *제외*하지만(직접 승계가 성립해야 하므로), cleanup은 워크트리를
+// 지우므로 요청자가 그 안에 서 있으면 진행 자체가 잘못이다.
+func cleanupWorkspaceGates(ctx context.Context, root string, bound bool, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) (cleanupWorkspaceObservation, []string) {
+	processes = processes.withDefaults()
+	occupancy, err := processes.Observe(root)
+	if err != nil {
+		return cleanupWorkspaceObservation{}, []string{"workspace_processes_observable"}
+	}
+	missing, ok := cleanupRequesterOccupancyMissing(occupancy, processes.SelfPID)
+	if !ok {
+		return cleanupWorkspaceObservation{}, []string{"workspace_processes_observable"}
+	}
+	observation := cleanupWorkspaceObservation{Occupants: occupancy.Occupants, Receipts: cleanupOccupantReceipts(occupancy.Occupants)}
+	requester := cleanupRequesterEnv{
+		paneKey: strings.TrimSpace(processes.Getenv("ORCA_PANE_KEY")),
+		handle:  strings.TrimSpace(processes.Getenv("ORCA_TERMINAL_HANDLE")),
+	}
+	orcaMissing := cleanupOrcaGates(ctx, root, bound, requester, orca, &observation)
+	return observation, append(missing, orcaMissing...)
+}
+
+// cleanupRequesterOccupancyMissing은 요청자 계보가 관측됐는지(ok)와 요청자 또는
+// 그 조상이 점유 중인지를 판정한다.
+func cleanupRequesterOccupancyMissing(occupancy port.CleanupWorkspaceOccupancy, selfPID int) ([]string, bool) {
+	selfAncestry, ok := occupancy.Ancestry[selfPID]
+	if !ok {
+		return nil, false
+	}
+	protected := map[int]bool{selfPID: true}
+	for _, pid := range selfAncestry {
+		protected[pid] = true
+	}
+	for _, occupant := range occupancy.Occupants {
+		if protected[occupant.PID] {
+			return []string{"requester_occupies_worktree"}, true
+		}
+	}
+	return []string{}, true
+}
+
+// cleanupRequesterEnv는 요청자 터미널을 확정하는 env다. 무선택자
+// `orca terminal show`는 호출자가 아니라 UI-active 터미널을 돌려주므로(2026-08-27
+// 실측) env를 전체 터미널 인벤토리와 join해서만 요청자 행을 찾는다.
+type cleanupRequesterEnv struct {
+	paneKey string
+	handle  string
+}
+
+func (env cleanupRequesterEnv) hosted() bool { return env.paneKey != "" || env.handle != "" }
+
+// cleanupOrcaGates는 Orca 런타임 상태·요청자 터미널·워크트리 터미널 인벤토리를
+// 평가하고 observation의 Terminals/RuntimeReady/AppPID를 채운다.
+func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cleanupRequesterEnv, orca port.CleanupOrcaTerminals, observation *cleanupWorkspaceObservation) []string {
+	missing := []string{}
+	occupied := len(observation.Occupants) > 0
+	if orca == nil {
+		// Orca 표면이 배선되지 않으면 apply도 orca terminal stop을 부르지 않으므로
+		// 요청자 터미널 게이트가 막아야 할 터미널 단위 종료가 없다. 요청자 보호는
+		// pid-조상 게이트로 남고, Orca 바인딩 사이클은 여전히 런타임을 요구한다.
+		if bound && occupied {
+			missing = append(missing, "orca_runtime_ready")
+		}
+		return missing
+	}
+	if !occupied && !requester.hosted() && !bound {
+		return missing
+	}
+	status, err := orca.Status(ctx)
+	ready := err == nil && status.RuntimeState == "ready"
+	observation.RuntimeReady = ready
+	observation.AppPID = status.AppPID
+	if requester.hosted() {
+		missing = append(missing, cleanupRequesterTerminalMissing(ctx, root, requester, ready, orca)...)
+	}
+	switch {
+	case ready:
+		rows, listErr := orca.ListWorktreeTerminalsByPath(ctx, root)
+		if listErr != nil {
+			missing = append(missing, "orca_terminals_observable")
+		} else {
+			observation.Terminals = cleanupTerminalHandles(rows)
+		}
+	case bound && occupied:
+		// Orca 바인딩 사이클은 런타임 없이 터미널을 죽이면 ②(orca 회수)가 확실히
+		// 실패하는 파괴적 부분 apply가 된다(brooks 2차 finding 11).
+		missing = append(missing, "orca_runtime_ready")
+	}
+	return missing
+}
+
+func cleanupRequesterTerminalMissing(ctx context.Context, root string, requester cleanupRequesterEnv, ready bool, orca port.CleanupOrcaTerminals) []string {
+	if !ready {
+		return []string{"requester_terminal_unresolved"}
+	}
+	rows, err := orca.ListAllTerminals(ctx)
+	if err != nil {
+		return []string{"requester_terminal_unresolved"}
+	}
+	row, found := cleanupRequesterTerminal(rows, requester.paneKey, requester.handle)
+	switch {
+	case !found:
+		return []string{"requester_terminal_unresolved"}
+	case pathutil.CleanAbsPath(row.WorktreePath) == pathutil.CleanAbsPath(root):
+		return []string{"requester_terminal_outside_worktree"}
+	}
+	return nil
+}
+
+// cleanupRequesterTerminal은 pane key(tabId:leafId)를 우선하고 handle을 보조로
+// 써서 요청자 터미널 행을 찾는다. 런타임 롤오버 뒤 spawn-time handle은 stale해질
+// 수 있지만 tab/leaf 조합은 현재 pane을 계속 식별한다(cautions §149).
+func cleanupRequesterTerminal(rows []port.OrcaTerminal, paneKey, handle string) (port.OrcaTerminal, bool) {
+	if paneKey != "" {
+		for _, row := range rows {
+			if row.TabID != "" && row.LeafID != "" && row.TabID+":"+row.LeafID == paneKey {
+				return row, true
+			}
+		}
+	}
+	if handle != "" {
+		for _, row := range rows {
+			if row.Handle == handle {
+				return row, true
+			}
+		}
+	}
+	return port.OrcaTerminal{}, false
+}
+
+func cleanupOccupantReceipts(occupants []issueops.CleanupWorkspaceProcess) []issueops.NativeProcessReceipt {
+	receipts := make([]issueops.NativeProcessReceipt, 0, len(occupants))
+	for _, occupant := range occupants {
+		receipts = append(receipts, issueops.NativeProcessReceipt{PID: occupant.PID, StartedAt: occupant.StartedAt, Executable: occupant.Executable})
+	}
+	sort.Slice(receipts, func(i, j int) bool { return receipts[i].PID < receipts[j].PID })
+	return receipts
+}
+
+func cleanupTerminalHandles(rows []port.OrcaTerminal) []string {
+	handles := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if handle := strings.TrimSpace(row.Handle); handle != "" {
+			handles = append(handles, handle)
+		}
+	}
+	sort.Strings(handles)
+	return handles
+}
+
+// cleanupStopWorkspace는 apply ①′다: 런타임이 ready이고 터미널이 있으면
+// `orca terminal stop --worktree`를 먼저 부르고, 남은 점유자를 receipt 결속
+// 아래 HUP/TERM/KILL로 종료한다. 오류 판정은 재관측이 한다.
+func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops.CleanupWorkspaceProcess, terminals []string, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) ([]issueops.CleanupWorkspaceProcess, int, error) {
+	excluded := map[int]bool{}
+	terminalsStopped := 0
+	if orca != nil {
+		if status, err := orca.Status(ctx); err == nil {
+			if status.AppPID > 0 {
+				excluded[status.AppPID] = true
+			}
+			if status.RuntimeState == "ready" && len(terminals) > 0 {
+				if stopped, stopErr := orca.StopWorktreeTerminals(ctx, root); stopErr == nil {
+					terminalsStopped = stopped
+				}
+			}
+		}
+	}
+	stopped, err := stopCleanupWorkspaceProcesses(root, occupants, excluded, processes)
+	return stopped, terminalsStopped, err
+}

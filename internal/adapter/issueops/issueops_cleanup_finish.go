@@ -27,8 +27,12 @@ type CleanupFinishDeps struct {
 	// ReflectAudit는 ②(파괴 시작) 이전에 스냅샷한 completion payload에 감사
 	// 라인을 더해 멱등 병합한다 — 삭제된 워크트리를 다시 읽어 보존 본문을
 	// 빈 값으로 덮어쓰는 사고를 구조적으로 차단한다(C2-F1 (c)).
-	ReflectAudit     func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
-	InspectProcesses func(root string) ([]string, error)
+	ReflectAudit func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
+	// Processes는 워크트리 점유 관측·종료 표면이고 OrcaTerminals는 워크트리에 매인
+	// Orca 터미널 인벤토리·종료 표면이다. 둘 다 nil이면 기본 구현 또는 "Orca 없음"
+	// 으로 동작한다(#477).
+	Processes     CleanupProcessDeps
+	OrcaTerminals port.CleanupOrcaTerminals
 	// ObserveArtifact는 원격 artifact의 현재 상태를 provider에서 읽는다.
 	// replacement 증거 검증의 유일한 근거이며, 주입되지 않으면 그 경로는 열리지
 	// 않는다 — 관측 없이 증거를 인정하지 않는다(#283).
@@ -60,6 +64,10 @@ type cleanupFinishInventory struct {
 	// SupersededBy는 replacement 증거를 fingerprint 입력에 포함시킨다. 증거가
 	// 바뀌면 preview는 무효가 되어야 한다.
 	SupersededBy string `json:"superseded_by,omitempty"`
+	// WorkspaceProcesses와 OrcaTerminals는 apply ①′가 종료할 집합이다. preview 뒤
+	// 집합이 바뀌면 fingerprint가 달라져 apply가 멈춘다(#477).
+	WorkspaceProcesses []issueops.NativeProcessReceipt `json:"workspace_processes,omitempty"`
+	OrcaTerminals      []string                        `json:"orca_terminals,omitempty"`
 }
 
 // CleanupFinish는 preview 게이트를 평가하고, apply에서 orca→git 순의 멱등
@@ -74,25 +82,12 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 			return defaultExecutionSyncBaseGit(ctx, dir, args...)
 		}
 	}
-	if deps.InspectProcesses == nil {
-		deps.InspectProcesses = func(root string) ([]string, error) {
-			procs, err := inspectWorkspaceProcesses(root, nil)
-			if err != nil {
-				return nil, err
-			}
-			names := make([]string, 0, len(procs))
-			for _, proc := range procs {
-				names = append(names, fmt.Sprintf("%d:%s", proc.PID, proc.Command))
-			}
-			return names, nil
-		}
-	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return CleanupFinishResult{OK: false, ID: req.ID}, err
 	}
 	result := CleanupFinishResult{OK: true, ID: record.ID, Preview: !req.Apply}
-	inventory, missing := cleanupFinishGates(record, req, deps, &result)
+	inventory, missing := cleanupFinishGates(ctx, record, req, deps, &result)
 	result.Missing = missing
 	if len(missing) > 0 {
 		result.OK = false
@@ -128,6 +123,16 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 		recordCleanupFinishFailure(stateRoot, record.ID, step, stepErr)
 		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --preview --json", record.ID)
 		return result, fmt.Errorf("cleanup finish step %s failed (record preserved; re-run preview then apply): %w", step, stepErr)
+	}
+	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료. 재관측으로 점유 0을 증명하지
+	// 못하면 아무것도 지우지 않고 멈춘다(#477).
+	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0) {
+		stopped, terminals, err := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, deps.Processes, deps.OrcaTerminals)
+		result.WorkspaceProcessesStopped = stopped
+		result.OrcaTerminalsStopped = terminals
+		if err != nil {
+			return fail(issueops.CleanupFailureStepWorkspaceProcessesStop, err)
+		}
 	}
 	// ② orca 회수 먼저(인벤토리 정합), force=false.
 	if inventory.OrcaWorktreeID != "" {
@@ -177,8 +182,9 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	// ④' 감사 라인 best-effort 멱등 반영 — 실패해도 ⑤를 막지 않는다.
 	if deps.ReflectAudit != nil {
-		audit := fmt.Sprintf("cleanup 완료: worktree=%s branch=%s oid=%s at=%s",
+		audit := fmt.Sprintf("cleanup 완료: worktree=%s branch=%s oid=%s stopped=%d terminals=%d at=%s",
 			orNone(inventory.WorktreeRoot), orNone(inventory.Branch), orNone(inventory.BranchOID),
+			len(result.WorkspaceProcessesStopped), result.OrcaTerminalsStopped,
 			time.Now().UTC().Format(time.RFC3339))
 		if err := deps.ReflectAudit(record, completionSnapshot, audit); err == nil {
 			result.AuditReflected = true
@@ -195,7 +201,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	return result, nil
 }
 
-func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest, deps CleanupFinishDeps, result *CleanupFinishResult) (cleanupFinishInventory, []string) {
+func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req CleanupFinishRequest, deps CleanupFinishDeps, result *CleanupFinishResult) (cleanupFinishInventory, []string) {
 	missing := []string{}
 	if record.Phase != IssueOpsPhaseDone {
 		missing = append(missing, "phase_done")
@@ -292,19 +298,14 @@ func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest
 	}
 	// 부분 정리 상태는 정상 입력: 워크트리 부재 = clean 충족, 브랜치 부재 = ④ 생략.
 	if inventory.WorktreePresent {
-		if deps.InspectProcesses != nil {
-			// 관측 불가와 점유는 다음 행동이 다르다 — 전자는 관측 도구를 고쳐야
-			// 하고 후자는 프로세스를 종료해야 한다. 둘 다 fail-closed지만 같은
-			// 슬러그로 합치면 어느 쪽인지 알 수 없다(이슈 #154).
-			procs, err := deps.InspectProcesses(inventory.WorktreeRoot)
-			switch {
-			case err != nil:
-				missing = append(missing, "workspace_processes_observable")
-			case len(procs) > 0:
-				missing = append(missing, "workspace_processes_quiescent")
-				result.WorkspaceProcesses = procs
-			}
-		}
+		// 점유 프로세스는 차단 사유가 아니라 apply ①′의 종료 대상이다. 관측 불가,
+		// 요청자 점유, 소스 체크아웃만 fail-closed로 남는다(#154, #477).
+		observation, workspaceMissing := cleanupWorkspaceGatesForRecord(ctx, record, inventory.WorktreeRoot, deps.Processes, deps.OrcaTerminals)
+		missing = append(missing, workspaceMissing...)
+		inventory.WorkspaceProcesses = observation.Receipts
+		inventory.OrcaTerminals = observation.Terminals
+		result.WorkspaceProcesses = observation.Occupants
+		result.OrcaTerminals = observation.Terminals
 		if code, out := deps.Git(inventory.WorktreeRoot, "status", "--porcelain=v1"); code != 0 || strings.TrimSpace(out) != "" {
 			missing = append(missing, "worktree_clean")
 		}

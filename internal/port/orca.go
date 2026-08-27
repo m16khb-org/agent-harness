@@ -95,6 +95,24 @@ type OrcaStatus struct {
 	RuntimeReachable bool   `json:"runtime_reachable"`
 	RuntimeState     string `json:"runtime_state,omitempty"`
 	GraphState       string `json:"graph_state,omitempty"`
+	// AppPID는 Orca 데스크톱 앱 프로세스다. cleanup은 이 pid를 종료 대상에서
+	// 항상 제외한다(#477).
+	AppPID int `json:"app_pid,omitempty"`
+}
+
+// CleanupOrcaTerminals는 cleanup finish/abandon이 워크트리에 매인 Orca 터미널을
+// 관측하고 닫는 좁은 표면이다. 기존 OrcaClient/OwnerInspector fake를 건드리지
+// 않도록 별도 인터페이스로 둔다(#477).
+type CleanupOrcaTerminals interface {
+	Status(ctx context.Context) (OrcaStatus, error)
+	// ListAllTerminals는 요청자 터미널을 ORCA_PANE_KEY/ORCA_TERMINAL_HANDLE과
+	// join해 확정하기 위한 전체 인벤토리다.
+	ListAllTerminals(ctx context.Context) ([]OrcaTerminal, error)
+	// ListWorktreeTerminalsByPath는 등록되지 않은 워크트리(selector_not_found)를
+	// 빈 목록으로 돌려주고, 그 밖의 오류만 오류로 돌려준다.
+	ListWorktreeTerminalsByPath(ctx context.Context, path string) ([]OrcaTerminal, error)
+	// StopWorktreeTerminals는 그 워크트리의 터미널 전부를 닫고 닫은 수를 돌려준다.
+	StopWorktreeTerminals(ctx context.Context, path string) (int, error)
 }
 
 type OrcaRepo struct {

@@ -109,12 +109,18 @@ type CleanupAbandonResult struct {
 	RemoteBranchDeletion string   `json:"remote_branch_deletion"`
 	PendingOperationID   string   `json:"pending_operation_id,omitempty"`
 	IntentRowsDeleted    []string `json:"intent_rows_deleted,omitempty"`
-	WorktreeRemoved      bool     `json:"worktree_removed,omitempty"`
-	BranchDeleted        bool     `json:"branch_deleted,omitempty"`
-	RecordDeleted        bool     `json:"record_deleted,omitempty"`
-	AbandonedAt          string   `json:"abandoned_at,omitempty"`
-	FailedStep           string   `json:"failed_step,omitempty"`
-	NextCommand          string   `json:"next_command,omitempty"`
+	// WorkspaceProcesses/OrcaTerminals는 preview가 관측한 apply ①′ 종료 대상이고,
+	// *Stopped는 apply가 실제로 종료한 집합이다(#477).
+	WorkspaceProcesses        []CleanupWorkspaceProcess `json:"workspace_processes,omitempty"`
+	OrcaTerminals             []string                  `json:"orca_terminals,omitempty"`
+	WorkspaceProcessesStopped []CleanupWorkspaceProcess `json:"workspace_processes_stopped,omitempty"`
+	OrcaTerminalsStopped      int                       `json:"orca_terminals_stopped,omitempty"`
+	WorktreeRemoved           bool                      `json:"worktree_removed,omitempty"`
+	BranchDeleted             bool                      `json:"branch_deleted,omitempty"`
+	RecordDeleted             bool                      `json:"record_deleted,omitempty"`
+	AbandonedAt               string                    `json:"abandoned_at,omitempty"`
+	FailedStep                string                    `json:"failed_step,omitempty"`
+	NextCommand               string                    `json:"next_command,omitempty"`
 	// Record는 삭제 대상 레코드 전문이다. C2-F6 예외의 유일한 보존 채널이므로
 	// preview와 apply 양쪽 결과에 담는다 — preview에만 담으면 preview 이후
 	// apply 직전까지의 변경분이 어디에도 남지 않는다.
@@ -134,16 +140,22 @@ type CleanupFinishResult struct {
 	// 근거를 담는다. 게이트는 이미 PID와 명령명을 관측하는데 개수만 쓰고 버려서,
 	// 차단당한 사용자가 lsof를 직접 돌려야 했다 — 그 lsof마저 워크트리 경로를
 	// 인자로 주면 lifecycle 가드에 걸린다(이슈 #154).
-	WorkspaceProcesses []string `json:"workspace_processes,omitempty"`
-	OrcaWorktreeID     string   `json:"orca_worktree_id,omitempty"`
-	OrcaRemoved        bool     `json:"orca_removed,omitempty"`
-	WorktreeRemoved    bool     `json:"worktree_removed,omitempty"`
-	BranchDeleted      bool     `json:"branch_deleted,omitempty"`
-	AuditReflected     bool     `json:"audit_reflected,omitempty"`
-	AuditError         string   `json:"audit_error,omitempty"`
-	RecordDeleted      bool     `json:"record_deleted,omitempty"`
-	FailedStep         string   `json:"failed_step,omitempty"`
-	NextCommand        string   `json:"next_command,omitempty"`
+	WorkspaceProcesses []CleanupWorkspaceProcess `json:"workspace_processes,omitempty"`
+	// OrcaTerminals는 preview가 관측한 워크트리 Orca 터미널 handle이고,
+	// WorkspaceProcessesStopped/OrcaTerminalsStopped는 apply ①′가 실제로 종료한
+	// 집합이다(#477).
+	OrcaTerminals             []string                  `json:"orca_terminals,omitempty"`
+	WorkspaceProcessesStopped []CleanupWorkspaceProcess `json:"workspace_processes_stopped,omitempty"`
+	OrcaTerminalsStopped      int                       `json:"orca_terminals_stopped,omitempty"`
+	OrcaWorktreeID            string                    `json:"orca_worktree_id,omitempty"`
+	OrcaRemoved               bool                      `json:"orca_removed,omitempty"`
+	WorktreeRemoved           bool                      `json:"worktree_removed,omitempty"`
+	BranchDeleted             bool                      `json:"branch_deleted,omitempty"`
+	AuditReflected            bool                      `json:"audit_reflected,omitempty"`
+	AuditError                string                    `json:"audit_error,omitempty"`
+	RecordDeleted             bool                      `json:"record_deleted,omitempty"`
+	FailedStep                string                    `json:"failed_step,omitempty"`
+	NextCommand               string                    `json:"next_command,omitempty"`
 	// SupersededBy는 merged 게이트를 replacement 증거로 충족했을 때 그 artifact
 	// URL이다. 무엇을 근거로 통과했는지 결과만 보고 알 수 있어야 한다.
 	SupersededBy string `json:"superseded_by,omitempty"`
@@ -257,4 +269,17 @@ type AwaitBranchLinkResult struct {
 	Attempts       int    `json:"attempts"`
 	TimeoutSeconds int    `json:"timeout_seconds"`
 	NextCommand    string `json:"next_command,omitempty"`
+}
+
+// CleanupWorkspaceProcess는 cleanup preview가 관측한 워크트리 점유 프로세스 하나다.
+// receipt(pid·시작 시각·실행 파일)는 apply에서 PID 재사용을 배제하고, Descendants와
+// Collateral(워크트리를 점유하지 않는 자손 수)은 공유 서버처럼 자손이 많은
+// 점유자를 apply 전에 알아보게 한다(#477).
+type CleanupWorkspaceProcess struct {
+	PID         int    `json:"pid"`
+	Command     string `json:"command"`
+	StartedAt   string `json:"started_at"`
+	Executable  string `json:"executable"`
+	Descendants int    `json:"descendants"`
+	Collateral  int    `json:"collateral"`
 }

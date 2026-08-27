@@ -46,6 +46,9 @@ func (c *Client) Available() bool {
 
 func (c *Client) Status(ctx context.Context) (port.OrcaStatus, error) {
 	var payload struct {
+		App struct {
+			PID int `json:"pid"`
+		} `json:"app"`
 		Runtime struct {
 			State     string `json:"state"`
 			Reachable bool   `json:"reachable"`
@@ -62,7 +65,7 @@ func (c *Client) Status(ctx context.Context) (port.OrcaStatus, error) {
 	if payload.Runtime.RuntimeID != "" {
 		runtimeID = payload.Runtime.RuntimeID
 	}
-	return port.OrcaStatus{RuntimeID: runtimeID, RuntimeReachable: payload.Runtime.Reachable, RuntimeState: payload.Runtime.State, GraphState: payload.Graph.State}, nil
+	return port.OrcaStatus{RuntimeID: runtimeID, RuntimeReachable: payload.Runtime.Reachable, RuntimeState: payload.Runtime.State, GraphState: payload.Graph.State, AppPID: payload.App.PID}, nil
 }
 
 func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.OrcaProbeResult, error) {
@@ -420,6 +423,58 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 }
 
 func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) (executionTerminalInventory, error) {
+	selector := ""
+	if strings.TrimSpace(worktreeID) != "" {
+		selector = idSelector(worktreeID)
+	}
+	return c.listTerminalsBySelector(ctx, selector)
+}
+
+// ListAllTerminals는 런타임의 모든 터미널 행이다. cleanup이 요청자 터미널을
+// ORCA_PANE_KEY/ORCA_TERMINAL_HANDLE env와 join해 확정하는 데 쓴다(#477).
+func (c *Client) ListAllTerminals(ctx context.Context) ([]port.OrcaTerminal, error) {
+	inventory, err := c.listTerminalsBySelector(ctx, "")
+	return inventory.Rows, err
+}
+
+// ListWorktreeTerminalsByPath는 경로 선택자로 그 워크트리의 터미널을 돌려준다.
+// Orca에 등록되지 않은 워크트리는 구조화된 selector_not_found를 주며, 그것은
+// "터미널 없음"이지 관측 실패가 아니다(2026-08-27 실측).
+func (c *Client) ListWorktreeTerminalsByPath(ctx context.Context, path string) ([]port.OrcaTerminal, error) {
+	inventory, err := c.listTerminalsBySelector(ctx, pathSelector(path))
+	if isOrcaSelectorNotFound(err) {
+		return nil, nil
+	}
+	return inventory.Rows, err
+}
+
+// stopTerminalsTimeout은 terminal stop 상한이다. 실측 약 2초에 여유를 두되
+// createTimeout(2분)처럼 armed cleanup을 오래 붙잡지 않는다.
+const stopTerminalsTimeout = 15 * time.Second
+
+// StopWorktreeTerminals는 워크트리의 Orca 터미널 전부를 닫고 닫은 수를 돌려준다.
+// 터미널 단위 선택자가 없으므로 호출자가 요청자 터미널이 그 워크트리에 매이지
+// 않았음을 먼저 증명해야 한다(#477).
+func (c *Client) StopWorktreeTerminals(ctx context.Context, path string) (int, error) {
+	var payload struct {
+		Stopped int `json:"stopped"`
+	}
+	_, err := c.runJSON(ctx, "", stopTerminalsTimeout, []string{"orca", "terminal", "stop", "--worktree", pathSelector(path), "--json"}, &payload)
+	if isOrcaSelectorNotFound(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return payload.Stopped, nil
+}
+
+func isOrcaSelectorNotFound(err error) bool {
+	orcaErr, ok := errors.AsType[*port.OrcaError](err)
+	return ok && orcaErr.Code == "selector_not_found"
+}
+
+func (c *Client) listTerminalsBySelector(ctx context.Context, selector string) (executionTerminalInventory, error) {
 	var payload struct {
 		Terminals     []terminalPayload     `json:"terminals"`
 		VisualLayouts []visualLayoutPayload `json:"visualLayouts"`
@@ -427,8 +482,8 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 		Truncated     bool                  `json:"truncated"`
 	}
 	argv := []string{"orca", "terminal", "list"}
-	if strings.TrimSpace(worktreeID) != "" {
-		argv = append(argv, "--worktree", idSelector(worktreeID))
+	if selector != "" {
+		argv = append(argv, "--worktree", selector)
 	}
 	argv = append(argv, "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json")
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)

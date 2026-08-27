@@ -34,7 +34,7 @@ type Deps struct {
 	// read-only local observers to status tests without weakening production
 	// defaults. Both remain nil in the live composition root.
 	CleanupFinishGit        func(dir string, args ...string) (int, string)
-	InspectCleanupProcesses func(root string) ([]string, error)
+	InspectCleanupProcesses func(root string) (port.CleanupWorkspaceOccupancy, error)
 	OrphanPreview           func(context.Context, orphancontract.Request) (orphancontract.Result, error)
 	OrphanApply             func(context.Context, orphancontract.Request, orphancontract.ApplyRequest) (orphancontract.Result, error)
 	// RemoveOrcaWorktree는 cleanup finish의 ② 단계(orca 회수, force=false)다.
@@ -236,7 +236,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 		ID:                result.ID,
 		Merged:            true,
 		Missing:           append([]string(nil), result.Missing...),
-		Warnings:          append([]string(nil), result.WorkspaceProcesses...),
+		Warnings:          cleanupStatusWarnings(result),
 		WorktreePath:      result.WorktreePath,
 		Branch:            result.Branch,
 		RemoteArtifactURL: structural.RemoteArtifactURL,
@@ -703,4 +703,18 @@ func printCleanupLinkedBranchResult(result issueopscontract.CleanupLinkedBranchR
 	if result.AuditError != "" {
 		fmt.Printf("audit error: %s\n", result.AuditError)
 	}
+}
+
+// cleanupStatusWarnings는 finish preview가 관측한 점유 프로세스와 Orca 터미널을
+// status 경고로 투영한다. 점유는 더 이상 차단 사유가 아니라 apply가 종료할
+// 대상이므로, 무엇이 종료될지 한 줄로 알려 준다(#477, plans/285 parity).
+func cleanupStatusWarnings(result issueopscontract.CleanupFinishResult) []string {
+	warnings := make([]string, 0, len(result.WorkspaceProcesses)+1)
+	for _, process := range result.WorkspaceProcesses {
+		warnings = append(warnings, fmt.Sprintf("%d:%s:%s", process.PID, process.Command, process.StartedAt))
+	}
+	if len(result.WorkspaceProcesses) > 0 || len(result.OrcaTerminals) > 0 {
+		warnings = append(warnings, fmt.Sprintf("apply가 프로세스 %d개와 Orca 터미널 %d개를 종료합니다", len(result.WorkspaceProcesses), len(result.OrcaTerminals)))
+	}
+	return warnings
 }

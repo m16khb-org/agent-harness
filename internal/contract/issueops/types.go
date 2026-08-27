@@ -404,6 +404,9 @@ const (
 	CleanupFailureStepWorktreeRemove = "worktree_remove"
 	CleanupFailureStepBranchDelete   = "branch_delete"
 	CleanupFailureStepRecordDelete   = "record_delete"
+	// CleanupFailureStepWorkspaceProcessesStop은 apply ①′(워크트리 점유 프로세스·
+	// Orca 터미널 종료)이 재관측에서 점유 0을 증명하지 못한 지점이다(#477).
+	CleanupFailureStepWorkspaceProcessesStop = "workspace_processes_stop"
 )
 
 type IssueOpsCleanupFinishFailure struct {
