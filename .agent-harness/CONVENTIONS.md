@@ -97,6 +97,9 @@ agent가 즉시 알아야 할 canonical 요약이다.
 
 - 이슈가 없는 작업의 플랜은 `.agent-harness/plans/<slug>.md`, 리뷰 작업 파일은
   `.agent-harness/tmp/`에 둔다. 둘 다 이슈 번호를 알 수 없을 때만 쓰는 fallback이다.
+- PR readiness는 현재 사이클의 이슈 원장(`issues/<번호>/gates.md`, 같은 번호의 옛 파일)과
+  번호를 특정할 수 없는 원장만 판정하고, 다른 번호의 원장은 `gates_skipped:<개수> (…)`
+  warning 한 줄로 남긴다(#483). `gates check` CLI는 계속 전부 보고한다.
 - 옛 원장 경로(`.agent-harness/gates/*.md`, root `GATES.md`, `gates/*.md`)는 읽기 호환으로
   남지만, 현재 사이클의 이슈가 canonical과 호환 경로 양쪽에 원장을 두면 PR readiness가
   `duplicate_issue_artifact:<번호>`로 fail-closed된다.
