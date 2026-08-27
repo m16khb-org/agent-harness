@@ -52,10 +52,14 @@ first-party owner hosts are Codex and Claude.
 
 Orca-capable prepare 전에 승인된 child plan을 source checkout 밖의 coordinator
 임시 파일에 작성하고 `issueops artifact stage --id ID --name plan --file PATH --json`로
-stage한다. 이 command에는 actor flag가 없다. Fresh Orca prepare는 worktree receipt
-직후 `.agent-harness/artifact/plan.md`로 materialize하고 그 경로를 durable
-`plan_path`로 같은 CAS에 기록하며 동일 digest를 sealed packet에 넣은 뒤에만 owner를
-띄운다. `parent_plan_path`는 이 readiness를 만족시키지 않는다.
+stage한다. 이 command에는 actor flag가 없다. 새 Orca prepare는 worktree receipt
+직후 레코드의 `execution.workspace.artifact_dir` 아래에 권한이 `0600`인 artifact를
+materialize한다. 이슈에 연결된 cycle의 canonical 경로는
+`.agent-harness/issues/<provider-issue-number>/artifact/plan.md`이며,
+`artifact_dir`가 비어 있는 legacy 레코드만
+`.agent-harness/artifact/plan.md`를 fallback 경로로 사용한다. Prepare는 이 경로를
+durable `plan_path`로 같은 CAS에 기록하고, 동일 digest를 sealed packet에 넣은
+뒤에만 owner를 띄운다. `parent_plan_path`만으로는 readiness를 충족하지 못한다.
 
 엄브렐라 자식 cycle은 `issueops branch prepare`에 canonical
 `--parent-worktree`를 기록하고 preview의 `workspace.parent_worktree`가 부모

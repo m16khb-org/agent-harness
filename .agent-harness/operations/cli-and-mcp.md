@@ -37,7 +37,7 @@ agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json
 agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 ```
 
-`policy run --read-only` executes only argv-form allowlisted read-only commands with workspace/cwd policy, timeout, env allowlist, audit metadata, redaction, and bounded stdout/stderr. It does not open write, network, arbitrary shell, or background execution. Use `policy fake-run` for write-intent planning.
+`policy run --read-only` executes only argv-form allowlisted read-only commands with workspace/cwd policy, timeout, env allowlist, audit metadata, redaction, and bounded stdout/stderr. It does not allow write, network, arbitrary shell, or background execution. Use `policy fake-run` for write-intent planning.
 
 `guard check` is a portable quality gate. It blocks clear anti-patterns, warns on likely quality smells, and marks context-dependent cases for review. Current rules include secret-like paths, test sleeps, real external URLs in tests, ambiguous test names, snapshot/golden review needs, production-only changes, CLI/MCP/adapter contract changes without golden updates, and likely duplicate helpers.
 
@@ -76,8 +76,9 @@ agent-harness gates report [--file PATH]... [--workspace-root PATH] [--cwd PATH]
 agent-harness gates abandon --gate ID --reason TEXT [--file PATH] [--json]
 ```
 
-`gates` evaluates canonical task gate ledgers (`.agent-harness/gates/*.md`) and
-compatible unlazy ledgers (`GATES.md` plus `gates/*.md`). The format is the
+`gates` discovers per-issue ledgers (`.agent-harness/issues/<n>/gates.md`)
+first, then generic task ledgers (`.agent-harness/gates/*.md`) and compatible
+unlazy ledgers (`GATES.md` plus `gates/*.md`). The format is the
 unlazy v2 contract: one checkbox per outcome,
 `CHECK:` command plus `EXPECT:` substring-or-`/regex/` match, and `EVIDENCE:`
 recorded from the deciding output tail. A checkbox is a claim; evidence is the
@@ -91,14 +92,13 @@ timeout, audit log, shell interpreters denied). Exit codes follow unlazy: `0`
 all met or abandoned, `1` unmet remain, `2` usage error.
 
 `gates init` no longer writes a shared root file by default. With no `--file`,
-it derives `.agent-harness/gates/<scope-slug>.md` from the required `--scope`.
-IssueOps uses the stronger stable convention
-`.agent-harness/gates/issue-<provider-issue-number>.md` and passes that same
-path to `gates abandon`. Distinct task paths let concurrent worktrees merge
-without both branches adding or rewriting root `GATES.md`, and keep harness
-artifacts out of the source root. Existing `GATES.md` and `gates/*.md` files
-remain discoverable for unlazy compatibility, but new IssueOps cycles must not
-create them.
+it derives generic `.agent-harness/gates/<scope-slug>.md` from the required
+`--scope`. IssueOps uses the stable convention
+`.agent-harness/issues/<provider-issue-number>/gates.md` and passes that path to
+`gates abandon`. Distinct issue folders let concurrent worktrees merge without
+sharing root `GATES.md` and keep tracked plan/spec/gate artifacts together.
+Existing `.agent-harness/gates/*.md`, `GATES.md`, and `gates/*.md` files remain
+read-compatible, but new IssueOps cycles use the per-issue path.
 
 MCP exposes the same operations as `gates_init`, `gates_check`, `gates_status`,
 `gates_report`, and `gates_abandon` sharing one contract DTO (schema version 1).
@@ -111,21 +111,23 @@ agent-harness channel recv --channel NAME [--since MSG_ID] [--wait] [--timeout-s
 ```
 
 `channel` is a durable shared mailbox over harness state: Codex, Claude Code,
-and Omo sessions sharing the same state exchange messages through it. The
-front/server coordination pattern works as: the server session `send`s the API
-contract, the front session `recv --wait` blocks for it, and both sides keep a
-`--since <msg-id>` cursor from the last seen message to continue the dialog.
+and Omo sessions sharing the same state exchange messages through it. In the
+front/server coordination pattern, the server session `send`s the API
+contract, the front session `recv --wait` blocks for it, and both sides keep
+a `--since <msg-id>` cursor from the last seen message to continue the dialog.
 Messages are append-only with nanosecond-ordered IDs, so key order is arrival
 order. `recv --wait` returns exit 0 with messages or exit 1 on timeout
 (`timed_out: true` in JSON). Channels are a trust boundary only between
 sessions sharing the same harness state — no cross-machine semantics.
 
-IssueOps integration is opt-in through file presence: when a cycle's worktree
-contains `.agent-harness/gates/*.md` or a compatible gate ledger, unmet gates add `gates_incomplete:<file>`
-to strict PR readiness and block entering the `pr` phase until the ledger is
-complete (all gates met with evidence, or honestly abandoned). Repos without
-ledger files are unaffected. Because the ledger lives in the worktree, real
-cycles must commit it before PR readiness checks `worktree_clean`.
+IssueOps integration is opt-in through file presence. A linked cycle judges
+its own `.agent-harness/issues/<n>/gates.md`, anonymous ledgers, and compatible
+legacy paths; other numbered issue ledgers are skipped with one warning. A
+canonical and legacy ledger for the same issue fails closed as
+`duplicate_issue_artifact:<n>`. Unmet gates add `gates_incomplete:<file>` and
+block entering `pr` until every gate has evidence or an honest `ABANDON`.
+Because the ledger lives in the worktree, real cycles commit it before strict
+readiness checks `worktree_clean`.
 
 ## Daemon And MCP
 
@@ -166,6 +168,7 @@ rm -rf "$tmp_state"
 agent-harness worker enqueue --kind smoke --payload "TOKEN=redacted" --json
 agent-harness worker status --id "$JOB_ID" --json
 agent-harness worker list --json
+agent-harness worker cleanup-stuck --json
 agent-harness worker cancel --id "$JOB_ID" --json
 agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ```

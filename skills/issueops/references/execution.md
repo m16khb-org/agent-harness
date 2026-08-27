@@ -378,10 +378,14 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
 - Orca prepare preflight는 non-empty staged `plan`을 remote issue read와 모든 외부
   mutation 전에 요구한다. 이미 `plan_path`가 있으면 canonical child worktree 안의
   regular file이어야 하고 staged bytes와 SHA-256이 정확히 같아야 한다.
-- worktree receipt 직후 prepare가 `<worktree>/.agent-harness/artifact/<name>.md`(0600)로
-  materialize한다. Fresh Orca plan은 그 deterministic path를 durable `plan_path`로
-  같은 CAS에 기록하고, `artifact_manifest.plan`에 같은 SHA-256을 봉인한 뒤에만
-  terminal/Run/task/dispatch로 진행한다. 성공 readback 뒤 임시 source를 지워도 된다.
+- After the worktree receipt, prepare materializes each artifact as a `0600` file under
+  `execution.workspace.artifact_dir`. For an issue-linked cycle, the canonical path is
+  `<worktree>/.agent-harness/issues/<provider-issue-number>/artifact/<name>.md`; only a
+  legacy record with an empty `artifact_dir` uses `<worktree>/.agent-harness/artifact/`.
+  For a fresh Orca plan, prepare records that path as durable `plan_path` in the same
+  CAS and seals the same SHA-256 in `artifact_manifest.plan` before creating the
+  terminal/Run/task/dispatch. The temporary source may be deleted after successful
+  readback.
 - prepare 전 잘못 스테이징했으면 `issueops artifact unstage --id ID --name NAME`.
   Prepare 후 recovery staging은 **Orca + released + holder/pending/completion 없음**의
   clean generation에서 `--name plan`만 허용한다. 현재 sealed packet은 바뀌지 않으며

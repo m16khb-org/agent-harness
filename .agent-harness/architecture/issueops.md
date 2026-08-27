@@ -14,16 +14,17 @@
 ## Capability verticals
 
 - 태스크 게이트 ledger는 PR readiness에 파일 존재 기반 opt-in으로 합성된다.
-  worktree에 canonical `.agent-harness/gates/*.md` 또는 호환
-  `GATES.md`/`gates/*.md`가 있으면 미충족 게이트(unchecked,
-  또는 checked-but-EVIDENCE-pending)가 `gates_incomplete:<file>` missing으로 pr
-  단계 진입을 막는다. ledger가 없으면 아무 요구도 추가하지 않는다. 게이트
-  조회·평가 연산은 함수 변수로 주입되고 composition root만 배선한다(`loopgate`
-  합성과 같은 구조). 상세 계약은
-  [ADR 2026-08-22](../adr/decisions/2026-08-22-task-gate-ledger.md)를 참조.
-  신규 IssueOps cycle은 root `GATES.md`나 `gates/`를 만들지 않고
-  `.agent-harness/gates/issue-<provider-issue-number>.md`를 커밋한다. 기존
-  root 경로는 unlazy ledger의 읽기 호환 경로로만 남는다.
+  신규 IssueOps cycle의 canonical ledger는
+  `.agent-harness/issues/<provider-issue-number>/gates.md`다. 전역 `gates`
+  capability는 이 경로를 먼저 찾고 generic `.agent-harness/gates/*.md`,
+  root `GATES.md`, `gates/*.md`를 호환 경로로 읽는다. Linked issue 번호가 있는
+  readiness는 자기 번호와 anonymous ledger만 판정하고 다른 번호는 warning으로
+  건너뛰며, 같은 번호의 canonical·legacy ledger가 함께 있으면
+  `duplicate_issue_artifact:<n>`으로 fail-closed한다. 미충족 게이트(unchecked 또는
+  checked-but-EVIDENCE-pending)는 `gates_incomplete:<file>`로 pr 진입을 막고,
+  ledger가 없으면 요구를 추가하지 않는다. 조회·평가는 함수 변수로 주입되고
+  composition root만 배선한다(`loopgate`와 같은 구조). 상세 계약은
+  [ADR 2026-08-22](../adr/decisions/2026-08-22-task-gate-ledger.md)를 참조한다.
 
 - `execution release`는 첫 production vertical이다. CLI/MCP transport facade는 injected release handler만 호출하고, `internal/contract/issueopslease`의 stable v1 canonicalization → pure `internal/domain/issueopslease` → capability-local `internal/application/issueopslease` → inbound/outbound adapter 순서로 흐른다. `cmd/harness/harnessapp`만 SQLite store, process observation, clock, filesystem path matcher를 조립하며, 기존 two-argument `ReleaseExecution`은 외부 Go surface와 differential oracle을 위한 compatibility facade로만 남는다.
 - `execution reconcile`의 Orca `worktree_create`·`owner_launch`·`dispatch` confirm도 같은 vertical 경계를 사용한다. kind-local router가 injected handler로 보내고, application은 호출당 현재 durable stage 하나만 inventory/adopt 또는 bounded retry/CAS한다. preview와 no-pending은 side effect가 없는 compatibility router에 남는다.
