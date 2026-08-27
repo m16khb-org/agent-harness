@@ -197,7 +197,7 @@ func (Store) ReadRelated(
 	return sqlstore.GetExisting(stateRoot, relatedBucket, id)
 }
 
-func (Store) Delete(
+func (store Store) Delete(
 	ctx context.Context,
 	stateRoot string,
 	id string,
@@ -223,10 +223,15 @@ func (Store) Delete(
 		})
 	}
 	mutations = append(mutations, port.RecordMutation{Bucket: bucket, ID: id, Delete: true})
-	return database.Apply(ctx, mutations)
+	// 삭제는 update/related-update span과 같은 직렬화 게이트를 지나야 한다.
+	// 게이트 밖에서 커밋하면 열려 있는 span이 그 뒤에 related row를 되살려,
+	// 레코드는 사라졌는데 related state만 남는 고아가 생긴다.
+	return database.WithSpan(store.observe(ctx, "delete"), func(spanContext context.Context) error {
+		return database.Apply(spanContext, mutations)
+	})
 }
 
-func (Store) DeleteIfUnchanged(
+func (store Store) DeleteIfUnchanged(
 	ctx context.Context,
 	stateRoot string,
 	id string,
@@ -253,11 +258,15 @@ func (Store) DeleteIfUnchanged(
 		mutations = append(mutations, port.RecordMutation{Bucket: relatedBucket, ID: id, Delete: true})
 	}
 	mutations = append(mutations, port.RecordMutation{Bucket: bucket, ID: id, Delete: true})
-	return database.CompareAndApply(
-		ctx,
-		[]port.ExpectedRecord{{Bucket: bucket, ID: id, Data: expectedData}},
-		mutations,
-	)
+	// DeleteIfUnchanged도 같은 게이트를 지난다. CAS는 레코드 drift만 막고
+	// 열려 있는 span의 related Put과는 순서를 맺지 못한다.
+	return database.WithSpan(store.observe(ctx, "retention_delete"), func(spanContext context.Context) error {
+		return database.CompareAndApply(
+			spanContext,
+			[]port.ExpectedRecord{{Bucket: bucket, ID: id, Data: expectedData}},
+			mutations,
+		)
+	})
 }
 
 func open(ctx context.Context, stateRoot, id string) (string, *sqlstore.DB, error) {

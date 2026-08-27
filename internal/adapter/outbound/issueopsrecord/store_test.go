@@ -142,6 +142,94 @@ func TestDeleteIfUnchangedSerializesNewRelatedState(t *testing.T) {
 	}
 }
 
+// DeleteIfUnchanged는 related update span이 열려 있는 동안 커밋해서는 안 된다.
+// span이 직렬화 게이트를 쥔 채 콜백에서 블록돼 있으면 delete는 그 span이 끝날
+// 때까지 기다려야 한다. 기다리지 않으면 delete가 먼저 커밋되고 span의 Put이
+// related row를 되살려, 레코드는 사라졌는데 related state만 남는 고아가 된다.
+func TestDeleteIfUnchangedWaitsForOpenRelatedUpdateSpan(t *testing.T) {
+	stateRoot := filepath.Join(t.TempDir(), "issueops_v1")
+	id := "io-delete-span"
+	store := Store{}
+	expected := issueopscontract.IssueOpsRecord{
+		OK:            true,
+		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
+		ID:            id,
+		Repo:          t.TempDir(),
+		Branch:        "102-span",
+		Phase:         issueopscontract.IssueOpsPhaseDone,
+	}
+	data, err := Encode(expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	database, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Put(Bucket(), id, data); err != nil {
+		t.Fatal(err)
+	}
+
+	spanEntered := make(chan struct{})
+	releaseSpan := make(chan struct{})
+	updateDone := make(chan error, 1)
+	go func() {
+		_, updateErr := store.UpdateRelated(
+			context.Background(),
+			stateRoot,
+			id,
+			"artifact_stage_v1",
+			func(_ issueopscontract.IssueOpsRecord, _ []byte, _ bool) ([]byte, bool, error) {
+				close(spanEntered)
+				<-releaseSpan
+				return []byte(`{"plan":"new"}`), false, nil
+			},
+		)
+		updateDone <- updateErr
+	}()
+	<-spanEntered
+
+	deleteDone := make(chan error, 1)
+	go func() {
+		deleteDone <- store.DeleteIfUnchanged(
+			context.Background(),
+			stateRoot,
+			id,
+			expected,
+			"artifact_stage_v1",
+		)
+	}()
+
+	select {
+	case deleteErr := <-deleteDone:
+		t.Fatalf("delete committed while the related update span was still open: %v", deleteErr)
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	close(releaseSpan)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for name, result := range map[string]<-chan error{
+		"related update":   updateDone,
+		"retention delete": deleteDone,
+	} {
+		select {
+		case operationErr := <-result:
+			if operationErr != nil {
+				t.Fatalf("%s: %v", name, operationErr)
+			}
+		case <-ctx.Done():
+			t.Fatalf("%s did not finish: %v", name, ctx.Err())
+		}
+	}
+	if _, found, getErr := database.Get(Bucket(), id); getErr != nil || found {
+		t.Fatalf("record survived the delete: found=%v err=%v", found, getErr)
+	}
+	if _, found, getErr := database.Get("artifact_stage_v1", id); getErr != nil || found {
+		t.Fatalf("related state survived the delete: found=%v err=%v", found, getErr)
+	}
+}
+
 func TestStoreReadsUpdatesRelatedDataAndDeletesAtomically(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops_v1")
 	id := "io-record01"
