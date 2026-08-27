@@ -62,3 +62,42 @@ esac
 		t.Fatalf("close mutation must use state_event=close: %s", logged)
 	}
 }
+
+// 회귀(2026-08-26): GitLab 18.10+(관측 19.2.4-ee)은 일반 이슈의 web_url을
+// /-/work_items/:iid로 돌려주고 레코드는 그 값을 그대로 봉인한다. close-issue는 그 URL을 issues/:iid REST
+// endpoint로 해석해야 한다 — 경로 표식은 identity가 아니다.
+func TestGitLabCloseIssueAcceptsWorkItemsIssueURL(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	log := filepath.Join(binDir, "calls.log")
+	closedMarker := filepath.Join(binDir, "closed.marker")
+	// fail-closed fake: issues/105 endpoint 이외의 호출은 실패한다.
+	writeFakeGlab(t, binDir, `#!/bin/sh
+echo "$*" >> `+log+`
+case "$*" in
+"api projects/acme%2Frepo/issues/105 --hostname gitlab.example.com --method PUT -f state_event=close") : > `+closedMarker+`; echo '{"state":"closed"}' ;;
+"api projects/acme%2Frepo/issues/105 --hostname gitlab.example.com") if [ -f `+closedMarker+` ]; then echo '{"state":"closed"}'; else echo '{"state":"opened"}'; fi ;;
+*) echo "unexpected glab call: $*" >&2; exit 1 ;;
+esac
+`)
+	t.Setenv("PATH", binDir)
+	issueURL := "https://gitlab.example.com/acme/repo/-/work_items/105"
+
+	preview, err := NewProvider().CloseIssue(port.IssueProviderCloseIssueRequest{IssueURL: issueURL})
+	if err != nil {
+		t.Fatalf("preview must accept the work_items alias: %v", err)
+	}
+	if !preview.OK || preview.Closed || !strings.Contains(preview.Preview, "projects/acme%2Frepo/issues/105") {
+		t.Fatalf("preview must resolve the alias on the issues endpoint: %+v", preview)
+	}
+
+	res, err := NewProvider().CloseIssue(port.IssueProviderCloseIssueRequest{IssueURL: issueURL, Confirm: true})
+	if err != nil {
+		t.Fatalf("confirm must accept the work_items alias: %v", err)
+	}
+	if !res.Closed || res.AlreadyClosed || !strings.EqualFold(res.State, "closed") || res.IssueURL != issueURL {
+		t.Fatalf("close must be verified by readback on the issues endpoint: %+v", res)
+	}
+}

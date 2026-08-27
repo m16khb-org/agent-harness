@@ -863,9 +863,15 @@ func gitlabCreatedChildError(childURL string, err error) error {
 	return fmt.Errorf("created child %s but follow-up failed: %w", childURL, err)
 }
 
+// parseGitLabIssueURL decodes the parent/primary issue URL. GitLab 18.10+ (work
+// items list, GA; observed on 19.2.4-ee) redirects /-/issues/:iid to
+// /-/work_items/:iid and returns that web_url for plain issues, and the record
+// seals that value, so the path marker cannot discriminate Issue from Task:
+// identity is host + project + IID and both aliases resolve on the
+// projects/:path/issues/:iid REST endpoint (2026-08-26 lesson).
 func parseGitLabIssueURL(raw string) (hostname, projectPath, iid string, err error) {
-	host, project, issueIID, kind, perr := splitGitLabIssueURL(raw)
-	if perr != nil || kind != "issues" {
+	host, project, issueIID, _, perr := splitGitLabIssueURL(raw)
+	if perr != nil {
 		return "", "", "", fmt.Errorf("parent_issue_url must be a GitLab issue URL")
 	}
 	return host, project, issueIID, nil

@@ -859,11 +859,40 @@ func TestParseGitLabIssueURLAcceptsSelfHostedCustomDomain(t *testing.T) {
 }
 
 func TestParseGitLabIssueURLRejectsNonIssue(t *testing.T) {
-	if _, _, _, err := parseGitLabIssueURL("https://code.company.com/group/proj/-/work_items/5"); err == nil {
-		t.Fatal("work item URL must not parse as a parent issue URL")
+	if _, _, _, err := parseGitLabIssueURL("https://code.company.com/group/proj/-/merge_requests/5"); err == nil {
+		t.Fatal("merge request URL must not parse as a parent issue URL")
 	}
 	if _, _, _, err := parseGitLabIssueURL("https://github.com/acme/repo/issues/5"); err == nil {
 		t.Fatal("GitHub issue URL must be rejected by the GitLab issue parser")
+	}
+}
+
+// GitLab 18.10+(work items list, 관측 19.2.4-ee)는 일반 이슈의 web_url을
+// /-/work_items/:iid로 돌려주고 레코드는 그 값을 그대로 봉인한다. 경로 표식은 Issue/Task를 가르지
+// 못하며 identity는 host + project + IID다 — 두 별칭 모두 issues/:iid REST
+// endpoint로 해석돼야 한다(2026-08-26 lesson).
+func TestParseGitLabIssueURLAcceptsWorkItemsAlias(t *testing.T) {
+	cases := []struct {
+		name        string
+		raw         string
+		wantHost    string
+		wantProject string
+		wantIID     string
+	}{
+		{"self-hosted issue rendered as work item", "https://gitlab.example.com/acme/repo/-/work_items/105", "gitlab.example.com", "acme/repo", "105"},
+		{"nested group alias", "https://gitlab.example.com/group/subgroup/proj/-/work_items/7", "gitlab.example.com", "group/subgroup/proj", "7"},
+		{"custom domain without gitlab substring", "https://code.company.com/group/proj/-/work_items/5", "code.company.com", "group/proj", "5"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			host, project, iid, err := parseGitLabIssueURL(tc.raw)
+			if err != nil {
+				t.Fatalf("parseGitLabIssueURL(%q) error: %v", tc.raw, err)
+			}
+			if host != tc.wantHost || project != tc.wantProject || iid != tc.wantIID {
+				t.Fatalf("got host=%q project=%q iid=%q, want host=%q project=%q iid=%q", host, project, iid, tc.wantHost, tc.wantProject, tc.wantIID)
+			}
+		})
 	}
 }
 
@@ -895,5 +924,39 @@ func TestParseGitLabWorkItemURLAcceptsSelfHostedCustomDomain(t *testing.T) {
 func TestParseGitLabWorkItemURLRejectsNonWorkItem(t *testing.T) {
 	if _, _, _, err := parseGitLabWorkItemURL("https://code.company.com/group/proj/-/issues/5"); err == nil {
 		t.Fatal("issue URL must not parse as a work item URL")
+	}
+}
+
+// 회귀(2026-08-26): reflect-completion은 레코드의 GitLab web_url(/-/work_items/:iid)을
+// 그대로 넘긴다. dry-run이 그 URL을 issues/:iid endpoint로 해석해야 cleanup finish의
+// completion_reflected 게이트가 열린다.
+func TestGitLabUpdateIssueBodySectionAcceptsWorkItemsIssueURL(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		Section:  port.IssueBodySectionDevilsAdvocate,
+		IssueURL: "https://gitlab.example.com/acme/repo/-/work_items/105",
+		Findings: []string{"gold-plating"},
+	})
+	if err != nil {
+		t.Fatalf("dry-run must accept the work_items alias: %v", err)
+	}
+	if !res.OK || res.Updated || !strings.Contains(res.Preview, "glab api projects/acme%2Frepo/issues/105 --hostname gitlab.example.com") {
+		t.Fatalf("preview must resolve the alias on the issues endpoint: %+v", res)
+	}
+}
+
+// create-child/close-child의 부모 URL도 같은 파서를 지난다. 부모 이슈가
+// work_items 별칭으로 봉인된 사이클에서 Large Issue Breakdown이 막히면 안 된다.
+func TestGitLabCreateChildPreviewAcceptsWorkItemsParentURL(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/work_items/105",
+		Title:          "child task",
+	})
+	if err != nil {
+		t.Fatalf("preview must accept the work_items parent alias: %v", err)
+	}
+	if !res.OK || !strings.Contains(res.Preview, "--hostname gitlab.example.com") || !strings.Contains(res.Preview, "parent_iid=105") || !strings.Contains(res.Preview, "project=acme/repo") {
+		t.Fatalf("preview must carry the parent identity parsed from the alias: %+v", res)
 	}
 }

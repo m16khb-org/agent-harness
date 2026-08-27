@@ -100,7 +100,10 @@ func fetchGitLabIssueArtifactContext(ctx context.Context, artifactURL string) (l
 		return liveRemoteArtifact{}, err
 	}
 	parts := remoteparse.SplitGitLabIssuePath(parsed.EscapedPath())
-	if parts.Project == "" || parts.IID == "" || parts.Kind != "issues" {
+	// /-/issues/ and /-/work_items/ are aliases of one issue identity (GitLab
+	// 18.10+ work items list returns work_items web_urls for plain issues; observed
+	// on 19.2.4-ee); both resolve on issues/:iid.
+	if parts.Project == "" || parts.IID == "" {
 		return liveRemoteArtifact{}, fmt.Errorf("remote artifact url must be a GitLab issue URL")
 	}
 	endpoint := "projects/" + url.PathEscape(parts.Project) + "/issues/" + parts.IID

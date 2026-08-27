@@ -150,7 +150,54 @@ func TestFetchGitLabIssueArtifactRejectsNonIssueURL(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "remote artifact url must be a GitLab issue URL") {
 		t.Fatalf("expected invalid issue URL error, got %v", err)
 	}
-	if _, err := fetchGitLabIssueArtifact("https://gitlab.example.com/group/project/-/work_items/42"); err == nil {
-		t.Fatal("work item URL must not parse as a GitLab issue artifact")
+}
+
+// GitLab 18.10+(관측 19.2.4-ee)은 일반 이슈를 /-/work_items/:iid로 렌더하고 glab
+// issue create는 그 web_url을 그대로 출력한다. create-issue --confirm의 라이브 게이트는 원격 이슈가
+// 이미 만들어진 뒤에 도는 검증이므로, 별칭을 거부하지 말고 issues/:iid endpoint로
+// 해석해야 한다(2026-08-26 lesson).
+func TestFetchGitLabIssueArtifactAcceptsWorkItemsAlias(t *testing.T) {
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "glab.log")
+	// fail-closed fake: issues/42 REST endpoint 이외의 호출은 실패한다.
+	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+printf '%s\n' "$*" >> "$HARNESS_FAKE_GLAB_LOG"
+case "$*" in
+  "api projects/group%2Fproject/issues/42 --hostname gitlab.example.com")
+    printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/work_items/42","state":"opened","labels":["bug"],"assignees":[{"id":1,"username":"sample","name":"Habin"}]}'
+    ;;
+  *)
+    echo "unexpected glab call: $*" >&2
+    exit 1
+    ;;
+esac
+`)
+	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	issueURL := "https://gitlab.example.com/group/project/-/work_items/42"
+	artifact, err := fetchGitLabIssueArtifact(issueURL)
+	if err != nil {
+		t.Fatalf("work_items alias must resolve on the issues endpoint: %v", err)
+	}
+	if artifact.URL != issueURL {
+		t.Fatalf("unexpected artifact identity: %#v", artifact)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantArgs := "api projects/group%2Fproject/issues/42 --hostname gitlab.example.com"
+	if got := strings.TrimSpace(string(log)); got != wantArgs {
+		t.Fatalf("glab args = %q, want %q", got, wantArgs)
+	}
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "issue",
+		URL:       issueURL,
+		Labels:    []string{"bug"},
+		Assignees: []string{"sample"},
+	}); err != nil {
+		t.Fatalf("create-issue live gate must accept the work_items alias: %v", err)
 	}
 }
