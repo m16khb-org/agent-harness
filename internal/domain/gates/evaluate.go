@@ -18,9 +18,11 @@ const (
 )
 
 // ExpectMatches는 EXPECT 값이 명령 출력(stdout+stderr 결합)과 일치하는지 판정한다.
-// 기본은 부분 문자열 매치, `/pattern/flags` 형태면 정규식 매치다(unlazy 규칙).
-// 지원 플래그는 i(대소문자 무시), m(멀티라인), s(개행 매치)이며 그 외 JS 플래그는
-// 무시한다. 컴파일 실패는 false다 — 패닉이나 오류가 아니다.
+// 리터럴은 줄 단위로 본다: 어느 한 줄(trim)이 EXPECT와 같거나 EXPECT 뒤에 공백/탭이
+// 오면 일치다(`ok  \tpkg` 같은 go test 줄은 통과, `docs-ok: error: …` 같은 에러 줄은
+// 불일치 — #484). 줄 중간 부분일치가 필요하면 `/pattern/flags` 정규식을 쓴다(unlazy
+// 규칙). 지원 플래그는 i(대소문자 무시), m(멀티라인), s(개행 매치)이며 그 외 JS
+// 플래그는 무시한다. 컴파일 실패는 false다 — 패닉이나 오류가 아니다.
 func ExpectMatches(expect, output string) bool {
 	expect = strings.TrimSpace(expect)
 	if strings.HasPrefix(expect, "/") {
@@ -43,7 +45,16 @@ func ExpectMatches(expect, output string) bool {
 			return re.MatchString(output)
 		}
 	}
-	return strings.Contains(output, expect)
+	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == expect {
+			return true
+		}
+		if rest, ok := strings.CutPrefix(line, expect); ok && (rest[0] == ' ' || rest[0] == '\t') {
+			return true
+		}
+	}
+	return false
 }
 
 // EvidenceTail은 증거로 기록할 결정적 출력 꼬리를 만든다. unlazy처럼 비어 있지

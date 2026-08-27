@@ -5,12 +5,24 @@ import (
 	"testing"
 )
 
-func TestExpectMatchesSubstring(t *testing.T) {
+func TestExpectMatchesLineAnchored(t *testing.T) {
 	if !ExpectMatches("3/3 tiers ok", "checking...\n3/3 tiers ok\n") {
-		t.Fatal("substring match failed")
+		t.Fatal("whole-line match failed")
+	}
+	if !ExpectMatches("ok", "ok  \tagent-harness/internal/adapter/gates\t0.3s") {
+		t.Fatal("EXPECT followed by whitespace must match (go test lines)")
+	}
+	if !ExpectMatches("docs-ok", "Skill is valid!\n  docs-ok  \n") {
+		t.Fatal("trimmed line equal to EXPECT must match")
+	}
+	if ExpectMatches("docs-ok", "echo: error: SKILL.md not found\ndocs-ok: error: SKILL.md not found") {
+		t.Fatal("EXPECT followed by ':' inside an error line must not match (#484)")
+	}
+	if ExpectMatches("ok", "suite: 8/8 passed ok\nbroken") {
+		t.Fatal("EXPECT in the middle of a line must not match; use /regex/ for that")
 	}
 	if ExpectMatches("done", "starting...") {
-		t.Fatal("substring must not match absent text")
+		t.Fatal("absent text must not match")
 	}
 }
 

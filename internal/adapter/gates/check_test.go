@@ -212,6 +212,37 @@ func TestCheckDiscoversIssueFolderLedgers(t *testing.T) {
 	}
 }
 
+func TestCheckRefusesShellSyntaxInCheck(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: chained\n  CHECK: "+testEchoCommand()+" nope && "+testEchoCommand()+" docs-ok\n  EXPECT: docs-ok\n  EVIDENCE: pending\n"+
+		"- [ ] G2: no-space chain\n  CHECK: "+testEchoCommand()+" a;"+testEchoCommand()+" ok\n  EXPECT: ok\n  EVIDENCE: pending\n"+
+		"- [ ] G3: redirection\n  CHECK: "+testEchoCommand()+" ok 2>&1\n  EXPECT: ok\n  EVIDENCE: pending\n")
+	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, Files: []string{path}, WriteAllowed: true, EnvAllowlist: []string{"PATH", "HOME"}})
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	for _, gate := range result.Files[0].Gates {
+		if gate.State != "unchecked" || !strings.Contains(gate.CheckError, "shell syntax") {
+			t.Fatalf("shell syntax in CHECK must stay unchecked with a check error, got %+v", gate)
+		}
+		if gate.AuditLogID != "" {
+			t.Fatalf("shell syntax CHECK must not reach policy/exec: %+v", gate)
+		}
+	}
+}
+
+func TestCheckAllowsQuotedShellCharacters(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: quoted\n  CHECK: "+testEchoCommand()+" \"a; b && c\"\n  EXPECT: /a; b && c/\n  EVIDENCE: pending\n")
+	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, Files: []string{path}, WriteAllowed: true, EnvAllowlist: []string{"PATH", "HOME"}})
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	if gate := result.Files[0].Gates[0]; gate.State != "met" {
+		t.Fatalf("shell characters inside quotes are plain argv text and must run: %+v", gate)
+	}
+}
+
 func TestCheckNoFilesIsUsageError(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir})

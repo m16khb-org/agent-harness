@@ -155,6 +155,12 @@ type gateCheckOutcome struct {
 
 func runGateCheck(root, cwd string, req gatescontract.CheckRequest, gate *gatesdomain.Gate) gateCheckOutcome {
 	outcome := gateCheckOutcome{}
+	// CHECK는 argv 한 줄이다. 따옴표 밖 `; & |`는 셸이 아니라 첫 명령의 인자가
+	// 되어 오실행·거짓 met을 만들므로(#484) 정책 평가 전에 거부한다.
+	if shelltoken.HasUnquotedControlOperator(gate.CheckCmd) {
+		outcome.checkError = "CHECK contains shell syntax that argv execution does not honor (&&, ||, |, ;, 2>&1): wrap the sequence in one script or python3 -c"
+		return outcome
+	}
 	argv := shelltoken.SplitCommandTokens(gate.CheckCmd)
 	if len(argv) == 0 {
 		outcome.checkError = "empty CHECK command"
