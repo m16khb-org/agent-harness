@@ -9,14 +9,15 @@ Use this skill before GitLab work starts. It is a guardrail for repeated mistake
 
 ## Start Protocol
 
-1. Identify the exact GitLab object type before acting:
-   - Issue: `/issues/:iid`
-   - Work item / Task: `/work_items/:iid`
+1. Identify the exact GitLab object type before acting. **The URL path does not tell you whether an object is a plain Issue or a Task.**
+   - `/-/issues/:iid` and `/-/work_items/:iid` are two aliases of one issue identity. GitLab 18.10+ renders plain issues at `/-/work_items/:iid` as well. Verified 2026-08-27 on 19.2.4-ee: in a sampled project every plain issue (`issue_type: issue`) and every Task (`issue_type: task`) returned a `/-/work_items/` `web_url`, and not one returned `/-/issues/`. Never infer the type from the path.
+   - Read the type from the payload instead: REST `issue_type` (`issue` / `task`) or `type` (`ISSUE` / `TASK`), or GraphQL `workItemType.name` (`Issue` / `Task`).
    - MR: `/merge_requests/:iid`
    - Native linked item: non-hierarchical relation such as `relates_to`, `blocks`, `is_blocked_by`
    - Child item: parent-child hierarchy, not a link relation
-2. Pick the authenticated surface whose credentials and scope match the target GitLab host and project before the first call: generic `glab` CLI, or a configured GitLab MCP tool discovered by capability.
-3. Do not report completion from local state alone. Re-read the remote issue/MR/work item after mutation.
+2. Fetch work items through the issues endpoint. **There is no REST `projects/:id/work_items/:iid`**; it answers `404 Not Found` (verified 2026-08-27 on 19.2.4-ee). Read any work item, Task included, through `projects/:id/issues/:iid` and confirm the type from `issue_type` / `type`, or through the GraphQL work-item API. If a `/-/work_items/` URL is all you have, resolve it against `issues/:iid` with the same project path and IID.
+3. Pick the authenticated surface whose credentials and scope match the target GitLab host and project before the first call: generic `glab` CLI, or a configured GitLab MCP tool discovered by capability.
+4. Do not report completion from local state alone. Re-read the remote issue/MR/work item after mutation.
 
 ## Portable VCS Snapshot Discovery
 
@@ -61,7 +62,7 @@ IssueOps execution이 GitLab issue 본문을 봉인해야 할 때는 다음 순�
 Some environments expose `glab` through profile-scoped MCP servers, where each server pins one GitLab host, one token, and one default project workdir (server selection = target project + credential declaration). In that setup:
 
 - Before any call, confirm the server profile matches the task's target project. A wrong-profile call is not always an error — it can silently succeed against the wrong project or fail with a misleading 404.
-- Do not rely on repo autodetection. Without an explicit `-R <group/project>` or explicit API endpoint, `glab` resolves the repo from the current session's working directory, not the profile workdir — in a non-GitLab checkout it errors ("none of the git remotes correspond"), and in a different GitLab checkout it silently targets that repo. Verified 2026-07-09 against profile-scoped servers.
+- Do not rely on repo autodetection. Without an explicit `-R <group/project>` or explicit API endpoint, `glab` resolves the repo from the current session's working directory, not the profile workdir — in a non-GitLab checkout it errors ("None of the git remotes configured for this repository point to a known GitLab host", verified 2026-08-27), and in a different GitLab checkout it silently targets that repo. Verified 2026-07-09 against profile-scoped servers.
 - Profile tokens are often project-scoped bot tokens. A 404 on another project usually means token scope, not a missing project; switch to the matching profile instead of forcing `-R`.
 - Do not switch profiles mid-task without re-verifying the target object (issue/MR/work item) on the new profile.
 - These MCP tools run the same `glab` CLI under the profile's credentials; CLI-vs-MCP is a credential/scope choice, not a capability fallback order.
@@ -74,6 +75,8 @@ Some environments expose `glab` through profile-scoped MCP servers, where each s
 | Work breakdown | Child `Task` work item through work-item hierarchy | `relates_to`, issue link, sibling issue |
 | Parent task index | Parent issue body `## 하위 Task` plus real hierarchy | Comments-only checklist |
 | Existing child proof | Work-item hierarchy / parent widget | REST `has_tasks`, body reference, linked item |
+
+`has_tasks` is never child proof. Verified 2026-08-27 on 19.2.4-ee: a parent issue that held a real child Task still reported `has_tasks: false`, while its `task_completion_status` counted unrelated markdown checkboxes in the body. Prove children through the work-item hierarchy only.
 
 For IssueOps child tasks, use `agent-harness issueops remote create-child --confirm --json` when creating new children. It must create a GitLab `Task` work item, attach it with `workItemHierarchyAddChildrenItems`, verify hierarchy/labels/assignees, and record the child. Use `link-child` only for an already existing provider-native child that was verified separately.
 
@@ -93,11 +96,11 @@ If a Task is already a linked item and must become a child item, remove the link
 - Treat user-named branches such as `release/stg`, `development`, parent issue branches, and child branches as part of the contract.
 - Child MR targets the parent issue branch, not the default branch, unless the user explicitly says otherwise.
 - Copy or pass labels and assign the MR/issue to the concrete current user. Do not use `@me`.
-- For `glab mr for`, use a numeric assignee id.
+- `glab mr for` is deprecated: glab answers `Command "for" is deprecated, use 'glab mr create --related-issue <issueID>'` (verified 2026-08-27). Use `glab mr create --related-issue <issueID>` instead, and pass a numeric assignee id wherever that path takes an assignee.
 
 ## Review And Cleanup Rules
 
-- For Kody/Kodus/Gemini review feedback, inspect the real discussion thread, reply in-thread with evidence, then re-fetch discussions and resolve every remaining `resolvable=true` and `resolved=false` note.
+- Automated-reviewer threads (Kody/Kodus, CodeRabbit, Copilot, Gemini, `parnas`) are owned by the `review-agent-feedback` skill. Route there instead of hand-rolling the triage; this skill only fixes the GitLab-side rule that skill must satisfy: inspect the real discussion thread, reply in-thread with evidence, then re-fetch discussions and resolve every remaining `resolvable=true` and `resolved=false` note.
 - A merged MR does not prove the child Task is closed. Verify the Task state after merge and close it explicitly when needed.
 - Cleanup sequence: verify MR merged, verify remote/source branch state, verify child Task state, verify worktree cleanliness, then remove worktree/local branch.
 
