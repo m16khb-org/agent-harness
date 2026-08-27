@@ -39,10 +39,10 @@ description: Agent start, execution, verification, and completion flow.
 
 ## Hook context injection and lifecycle observation
 
-Codex/Claude 기본 설치는 `agent-harness hook ...`를 context-only로 사용한다. 두 installed hook은 필요한 project docs를 판단할 수 있게 static catalog만 주입하며, IssueOps authority나 lifecycle state를 관찰·갱신하지 않는다.
+Codex/Claude 기본 설치는 `agent-harness hook session-start`를 context-only로 사용한다. 이 installed hook은 필요한 project docs를 판단할 수 있게 static catalog만 주입하며, IssueOps authority나 lifecycle state를 관찰·갱신하지 않는다.
 
-- **SessionStart / PostCompact**: 안정적인 project-doc catalog를 주입한다(`hook session-start --host codex|claude`, `hook post-compact --host codex|claude`). Codex는 `additionalContext`에 user-visible catalog를 싣고, Claude Code는 `systemMessage`(pretty catalog)와 compact `additionalContext`를 분리한다. 두 경로 모두 IssueOps list/read, lifecycle reminder, runtime diagnostic, telemetry, SQLite maintenance, worker recovery, state write를 수행하지 않는다.
-- **Legacy CLI hooks**: `user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `stop`은 직접 실행하는 compatibility/diagnostic surface로 남지만 default host registration에는 없다. 이 명령의 존재를 IssueOps lifecycle authority로 해석하지 않는다.
+- **SessionStart**: 안정적인 project-doc catalog를 `startup`·`resume`·`clear`·`compact` 모든 source에서 주입한다(`hook session-start --host codex|claude`). 두 host 모두 압축 뒤 `SessionStart`를 `source:"compact"`로 다시 실행하므로 압축 후 컨텍스트도 이 hook이 담당한다. Codex는 `additionalContext`에 user-visible catalog를 싣고, Claude Code는 `systemMessage`(pretty catalog)와 compact `additionalContext`를 분리한다. IssueOps list/read, lifecycle reminder, runtime diagnostic, telemetry, SQLite maintenance, worker recovery, state write를 수행하지 않는다.
+- **post-compact**: Omo 확장이 `session_compact` 이벤트에서 `hook post-compact --json`으로 같은 catalog를 읽는다. Codex/Claude에는 등록하지 않는다(두 host의 `PostCompact` 출력은 사용자 표시 전용이다). 다른 hook subcommand는 없다.
 
 IssueOps에서 authority는 `agent-harness issueops ...` CLI/MCP 하나다. 이 경로가 `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` 상태 머신과 durable record를 소유한다. Default hooks는 issue 생성, 파일 편집, 테스트 실행, background wait, branch/worktree 준비, PR/MR 생성, review reply, merge, cleanup을 직접 수행하지 않으며 IssueOps record도 읽지 않는다.
 

@@ -72,8 +72,8 @@ agent가 즉시 알아야 할 canonical 요약이다.
 - config 우선순위: `flag → env → workspace config → user config → default`.
   secret 원문 저장 금지.
 - 구조화 로그. secret은 adapter 경계에서 redaction한다.
-- hook은 `SessionStart`/`PostCompact`만 context-only로 호출하고, 작업을
-  대신 실행하거나 shared docs를 직접 수정하지 않는다.
+- hook은 `SessionStart` 하나만 context-only로 등록하고(`post-compact`는 Omo·진단용),
+  작업을 대신 실행하거나 shared docs를 직접 수정하지 않는다. enforcement hook은 없다.
 - `guard check`는 언어 무관 1차 방어선. deterministic 신호만 core rule.
   차단은 사유를 함께 낸다.
 - `PolicyTier`는 명명 envelope지 deny 판정 로직이 아니다. tier ladder:

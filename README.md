@@ -159,7 +159,7 @@ flowchart LR
 1. 핵심 동작은 host plugin이나 hook이 아니라 Go core에 둡니다.
 2. CLI JSON, MCP response, daemon response는 같은 의미를 유지합니다.
 3. host adapter는 인증, command policy, workspace 경계를 우회하지 않습니다.
-4. hooks는 context와 deterministic guard를 제공하지만 issue/PR 생성, 파일 편집, 테스트 실행을 대신하지 않습니다.
+4. hooks는 `SessionStart` project-doc context만 제공하며 어떤 tool 호출도 차단하지 않고 issue/PR 생성, 파일 편집, 테스트 실행을 대신하지 않습니다.
 5. worker는 lifecycle job과 policy-gated read-only evidence command를 다루며 범용 writable shell runner가 아닙니다.
 
 ## 주요 명령 영역
@@ -170,7 +170,7 @@ flowchart LR
 | 상태 진단 | `inspect`, `status`, `doctor`, `docs` | 설치, daemon, state, project docs 상태 확인 |
 | 안전과 품질 | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc`, `preflight` | 실행 정책, 변경 품질, evidence와 public contract, 커밋 전 저장소 상태 검사 |
 | 작업 흐름 | `issueops`, `loop`, `gates`, `channel` | durable workflow, 완료 게이트 원장, 세션 간 메시지 채널 관리 |
-| 문서와 hook | `project`, `hook` | project docs 생성·라우팅·갱신과 host lifecycle hook 진입점 |
+| 문서와 hook | `project`, `hook` | project docs 생성·라우팅·갱신과 host `SessionStart` context hook 진입점 |
 | 상태와 실행 | `state`, `daemon`, `mcp`, `worker` | user state, MCP backend, 제한된 local job 관리 |
 | 개선과 조사 | `self-verify`, `self-augment`, `web-fetch` | 하네스 검증, 개선 후보 탐색, 실패에 대응하는 공개 웹 조회 |
 

@@ -22,9 +22,8 @@ export HARNESS_DISABLE_HOOKS=1    # 셸 세션 전체에 적용
 ```
 
 - 값이 `1`, `true`, `yes`, `on` 중 하나면 활성이다 (`hookenv.Bool` 계약).
-- 기본 설치 hook 이벤트(`session-start`, `post-compact`)가 검사 없이 exit 0으로 통과하고 telemetry나 state를 남기지 않는다.
-- `agent-harness hook failures`와 `hook metrics`는 계속 동작한다. kill-switch가 끄는 것은 강제이지 관측이 아니다.
-- 명시적으로 실행하는 legacy diagnostic hook CLI도 같은 kill-switch를 따른다.
+- context hook(`session-start`, Omo용 `post-compact`)이 아무것도 출력하지 않고 exit 0으로 끝난다. hook은 원래 telemetry나 state를 남기지 않는다.
+- 다른 hook subcommand는 없다(2026-08-27에 legacy enforcement/relay/telemetry hook 제거).
 
 ## Related references
 

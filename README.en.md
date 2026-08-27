@@ -161,7 +161,7 @@ The following boundaries are deliberate:
 1. Core behavior belongs in Go, not in a host plugin or hook.
 2. CLI JSON, MCP responses, and daemon responses keep the same meaning.
 3. Host adapters cannot bypass authentication, command policy, or workspace boundaries.
-4. Hooks provide context and deterministic guards; they do not create issues or PRs, edit files, or run tests for the agent.
+4. Hooks provide only the `SessionStart` project-doc context; they never block a tool call and do not create issues or PRs, edit files, or run tests for the agent.
 5. The worker manages lifecycle jobs and policy-gated read-only evidence commands. It is not a general writable shell runner.
 
 ## Core surfaces
@@ -172,7 +172,7 @@ The following boundaries are deliberate:
 | Health and docs | `inspect`, `status`, `doctor`, `docs` | Inspect installation, daemon, state, and project docs |
 | Safety and quality | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc`, `preflight` | Check execution policy, change quality, evidence, public contracts, and pre-commit repository state |
 | Workflows | `issueops`, `loop`, `gates`, `channel` | Manage durable workflows, task gate ledgers, and cross-session message channels |
-| Docs and hooks | `project`, `hook` | Create, route, and maintain project docs; host lifecycle hook entry points |
+| Docs and hooks | `project`, `hook` | Create, route, and maintain project docs; host `SessionStart` context hook entry point |
 | State and runtime | `state`, `daemon`, `mcp`, `worker` | Manage user state, the MCP backend, and constrained local jobs |
 | Improvement and research | `self-verify`, `self-augment`, `web-fetch` | Verify the harness, record improvements, and fetch public web content resiliently |
 

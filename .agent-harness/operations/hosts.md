@@ -35,17 +35,18 @@ must use `python3 scripts/validate-skill.py skills/<skill-name>` so local
 verification does not depend on upstream Codex system-skill changes or local
 PyYAML installation.
 
-Codex lifecycle hooks live in `~/.codex/hooks.json`. Default installation owns exactly `SessionStart` and `PostCompact`, both invoking the shared context CLI with `--host codex`.
+Codex lifecycle hooks live in `~/.codex/hooks.json`. Default installation owns exactly `SessionStart`, invoking the shared context CLI with `--host codex`.
 
 Hook behavior:
 
-- `SessionStart` and `PostCompact`: read the static project-doc catalog and emit host-compatible context. They do not read IssueOps, emit lifecycle reminders, inspect runtime state, write telemetry, maintain SQLite, recover workers, or mutate state.
-- Legacy hook CLI subcommands (`user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `stop`) remain available only when explicitly invoked for diagnosis or compatibility; installer upgrade removes their managed registrations while preserving non-harness groups.
+- `SessionStart` reads the static project-doc catalog and emits host-compatible context for every source, including the `compact` re-run Codex performs after compaction (verified against codex-cli 0.150.1: `post-compact.command.output` carries no `hookSpecificOutput`, so `PostCompact` is not registered). It does not read IssueOps, emit lifecycle reminders, inspect runtime state, write telemetry, maintain SQLite, recover workers, or mutate state.
+- `hook post-compact` stays available for Omo (`session_compact` has no SessionStart re-run there) and for diagnosis; installer upgrade removes any managed `PostCompact` group while preserving non-harness groups.
+- There is no other hook subcommand. `HARNESS_DISABLE_HOOKS=1` turns the context hooks into a silent no-op.
 
 Hook smoke:
 
 ```bash
-agent-harness hook session-start --host codex --json
+printf '{"cwd":"%s","source":"compact"}' "$PWD" | agent-harness hook session-start --host codex
 agent-harness hook post-compact --host codex --json
 ```
 
@@ -76,7 +77,7 @@ Inside Claude Code:
 
 Default install registers user-scope MCP server `agent_harness`. This repo's dogfood `.mcp.json` uses `agent_harness_project` to avoid scope collisions.
 
-Claude hooks live in `~/.claude/settings.json`. Default installation owns exactly `SessionStart` and `PostCompact`, both calling the same context CLI/core as Codex with `--host claude`; Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`.
+Claude hooks live in `~/.claude/settings.json`. Default installation owns exactly `SessionStart`, calling the same context CLI/core as Codex with `--host claude`; Claude separates the readable `systemMessage` from the model-facing `hookSpecificOutput.additionalContext`. Claude Code 2.1.247 re-runs `SessionStart` with `source:"compact"` after compaction and treats `PostCompact` stdout as a user display string only, so the catalog is re-established through `SessionStart` and `PostCompact` is not registered.
 
 Claude project-local hooks can be committed, so do not create `.claude/settings.json` in target repos without explicit opt-in.
 
@@ -110,6 +111,4 @@ Omo through its official distribution path.
 
 ## IssueOps Host Rule
 
-Hooks may suggest IssueOps but must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, or clean up branches/worktrees. The main agent loop owns the `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state.
-
-Default installed hooks have no authority boundary beyond static context injection. Explicit `agent-harness issueops ...` commands own durable CAS, lease authority, remote writes, verification, and publication; any legacy diagnostic hook must not be treated as an installed enforcement path.
+Hooks inject static project-doc context and nothing else. They must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, clean up branches/worktrees, or block tool events. The main agent loop owns the `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state, and explicit `agent-harness issueops ...` commands own durable CAS, lease authority, remote writes, verification, and publication. No hook output is an enforcement path or ownership evidence.

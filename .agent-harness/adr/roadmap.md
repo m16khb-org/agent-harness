@@ -165,7 +165,7 @@ Deliverables:
 
 - `configs/claude/` MCP 설정과 hook 설정 템플릿
 - 자주 쓰는 slash command 템플릿
-- hook은 공통 `agent-harness hook user-prompt/post-tool-use/stop` CLI처럼 read-only routing, lifecycle queue 기록, reminder로 제한
+- hook은 공통 `agent-harness hook session-start` CLI 하나로 project-doc catalog 주입에 제한(2026-08-27 이후 enforcement/relay hook 없음)
 
 Acceptance criteria:
 

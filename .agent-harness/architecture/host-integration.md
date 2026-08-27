@@ -10,8 +10,8 @@
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
-| Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` SessionStart/PostCompact context hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
-| Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` SessionStart/PostCompact context hooks | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
+| Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` SessionStart context hook | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
+| Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` SessionStart context hook | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 | Omo native | shell에서 `agent-harness` 실행 | `~/.omo/skills/*` native skills + `~/.omo/mcp.json` MCP server + `~/.omo/extensions/agent-harness.js` session lifecycle extension | Omo 설치를 대행하거나 readiness gate로 만들지 않는다. `.omo/skills`/`.omo/mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 
 ## Pioneer Skills Layer

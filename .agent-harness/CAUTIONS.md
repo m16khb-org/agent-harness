@@ -20,9 +20,9 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
   레코드가 dead-end에 빠졌다(#490, `io-71af6dd82f0d` 실측). 이제 준비 base가 원격에서
   사라졌고 관측 base가 기본 브랜치일 때만 정상 재타깃으로 통과한다. 관측 실패는
   `merged_base_remote_unobserved`로 fail-closed이며 손으로 base를 주장하는 플래그는 없다.
-- IssueOps 상태 전이·lease·publication은 durable `issueops` 명령이 소유하고 hook은
-  fast deterministic 위반만 차단한다.
-- IssueOps worktree 밖 mutation은 hook guard + 절대경로 + status 재확인으로 막는다.
+- IssueOps 상태 전이·lease·publication은 durable `issueops` 명령이 소유한다. hook은
+  `SessionStart` project-doc catalog 주입뿐이며 아무것도 차단하지 않는다(2026-08-27).
+- IssueOps worktree 밖 mutation은 절대경로 + `issueops execution status` 재확인으로 막는다.
 - 게이트 원장 `CHECK:`는 argv 한 줄이다. 따옴표 밖 `&& || ; |`는 셸이 아니라 첫 명령의
   인자가 되어 거짓 met을 만들었고(#484), 이제 `gates init`이 거부하고 `gates check`는
   unchecked로 둔다. 복합 검사는 스크립트나 `python3 -c` 하나로 감싼다. 리터럴 `EXPECT:`는

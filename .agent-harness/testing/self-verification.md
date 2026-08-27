@@ -24,7 +24,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness guard check --staged --json
-printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
+printf '{"cwd":"%s","source":"compact"}' "$PWD" | ./bin/agent-harness hook session-start --host claude
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 tmp_state="$(mktemp -d)"

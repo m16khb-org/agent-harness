@@ -129,6 +129,8 @@ Gate policy는 evidence 상태와 함께 fail-closed로 동작한다.
 
 ## 측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)
 
+> 2026-08-27: hook metrics/failures 원장은 legacy hook 표면과 함께 제거됐다. 아래 표는 당시 측정값의 기록이다. 남은 `session-start` context hook은 p50 17.5ms(프로세스 스폰 하한 13ms) 수준이다.
+
 2026-06-13 (`agent-harness hook metrics`, 총 303 events):
 
 | hook | count | p50 | p95 | max | blocks |

@@ -25,7 +25,7 @@ flowchart LR
     Claude["Claude Code<br/>CLAUDE.md · skills · hooks · MCP config"] --> MCPProxy
     Omo["Omo native<br/>AGENTS.md · skills · MCP · extension"] --> MCPProxy
     Human["Human shell"] --> CLI["CLI: agent-harness"]
-    Hook["SessionStart / PostCompact context hooks"] --> CLI
+    Hook["SessionStart context hook"] --> CLI
 
     MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
     CLI --> Core["contract · domain · application<br/>policy · workspace · docs · state"]
@@ -49,7 +49,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 - `internal/adapter/install.InstallNative`: 현재 host-neutral 설치 engine. 공통 입력과 skill 목록을 정규화하고 `port.HostInstaller`만 호출한다. 검증된 설치 계약을 유지하면서 신규 use case는 `internal/application/<capability>` vertical을 우선한다.
 - `internal/port`: `NativeInstallRequest`, `NativeInstallResult`, `HostInstaller` interface를 정의한다. port는 contract DTO 외의 concrete 내부 구현을 모른다.
 - `internal/adapter/codex`: Codex 구현체. user skill symlink, `~/.codex/config.toml` MCP 등록, `~/.codex/hooks.json` lifecycle hook을 기본 갱신한다.
-- `internal/adapter/claude`: Claude Code 구현체. user skill symlink, user-scope MCP 등록 경로, `~/.claude/settings.json`의 `SessionStart`/`PostCompact` context hook만 기본 갱신한다. legacy hook CLI subcommand는 명시적 진단 경로로만 유지한다.
+- `internal/adapter/claude`: Claude Code 구현체. user skill symlink, user-scope MCP 등록 경로, `~/.claude/settings.json`의 `SessionStart` context hook만 기본 갱신한다.
 - `internal/adapter/omo`: Omo native 구현체. user skill/MCP/extension 설정을 갱신하고 대상 repo에는 명시적 opt-in 없이 파일을 쓰지 않는다.
 - `cmd/harness/harnessapp`: concrete adapter를 조립하는 유일한 composition root다.
 - repo-local `.claude/skills`, `.claude/settings.json`, `.mcp.json`은 적용 대상 repo에 커밋될 수 있으므로 `--project-local` 같은 명시적 opt-in에서만 생성한다.

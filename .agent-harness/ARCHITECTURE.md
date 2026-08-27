@@ -74,8 +74,8 @@ owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소
 trust boundary는 exact native actor(host, session/agent ID, process
 PID/start/executable receipt, canonical cwd, lifecycle ID, generation)다.
 branch name·source cwd·generic session binding·terminal handle·stable diff는
-쓰기 권위가 아니다. Hook은 mismatch mutation에 대한 default-deny guard일 뿐
-scheduler나 lease grantor가 아니다.
+쓰기 권위가 아니다. Hook은 이 경계에 관여하지 않는다 — mutation fence는
+`issueops` CLI/MCP가 자기 입력에서 직접 판정한다.
 
 상세 capability vertical(`execution release`/`reconcile`,
 `issueopspublication`), operational surface, generated `next_command` 권위,
@@ -86,8 +86,8 @@ post-merge cleanup 순서 계약은
 ## Host integration (요약)
 
 Codex/Claude/Omo는 repo 지침과 `agent-harness` 실행이 최소 통합,
-user-scope native skill symlink + MCP server + `SessionStart`/`PostCompact`
-context hook이 권장 통합. plugin이나 hook에 core logic/위험 명령을 넣지 않고,
+user-scope native skill symlink + MCP server + `SessionStart` context hook이
+권장 통합. plugin이나 hook에 core logic/위험 명령을 넣지 않고,
 repo-local 파일은 `--project-local` 명시 opt-in에서만 생성한다. pioneer
 skills는 `skills/` 원본 하나로 host-neutral이며 hub-and-spoke cross-reference를
 따른다. 통합 map 표, skill 목록/연동, host-adapter 변경 체크리스트는

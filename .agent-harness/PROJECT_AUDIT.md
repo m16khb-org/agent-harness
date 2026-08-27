@@ -1,3 +1,7 @@
+---
+name: PROJECT_AUDIT.md
+description: Whole-project audit findings, triage status, and hardening follow-ups.
+---
 # Agent-Harness Whole-Project Audit
 
 > Generated: 2026-06-14

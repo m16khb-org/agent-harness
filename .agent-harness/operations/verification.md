@@ -27,10 +27,10 @@ The deterministic project gate pins `--llm-eval=false`. An ambient `HARNESS_SELF
 ### Orca execution focused and native hook smokes
 
 ```bash
-go test ./internal/domain/issueops/... ./internal/adapter/orca ./internal/domain/lifecycle ./internal/domain/commandparse ./internal/adapter/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
+go test ./internal/domain/issueops/... ./internal/adapter/orca ./internal/domain/commandparse ./internal/adapter/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
 ```
 
-The hook-input package is `./cmd/harness/hookcli/hookinput`; there is no domain-level hook-input package. Verify Codex, Claude, and Omo fixtures through the common parser and returned block shape.
+The hook-input package is `./cmd/harness/hookcli/hookinput`; there is no domain-level hook-input package. It only reads the repo/cwd the context hooks need; Codex, Claude, and Omo fixtures go through the same reader and the same catalog shape.
 
 Checkpoint commands:
 

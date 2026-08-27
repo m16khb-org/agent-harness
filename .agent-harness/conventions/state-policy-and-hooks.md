@@ -38,10 +38,11 @@
 
 ## Hook 컨벤션
 
-- 기본 설치는 `SessionStart`와 `PostCompact`만 context-only로 호출한다. 두 hook은 project-doc catalog만 읽어 host-compatible context를 만들며 IssueOps list/read, lifecycle reminder, runtime diagnostic, telemetry, SQLite maintenance, worker recovery, state write를 하지 않는다. `user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `stop` CLI는 backward-compatible 명시 진단 표면이지만 installer가 등록하지 않는다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
-- Hook 출력은 event별 host schema를 따른다. 기본 `SessionStart`/`PostCompact`는 additional context가 지원되는 host shape만 사용한다. Codex는 `--host codex`를 명시하고 Claude Code는 readable `systemMessage`와 compact `additionalContext`를 분리할 수 있다.
+- 기본 설치는 `SessionStart` 하나를 context-only로 등록한다. 이 hook은 project-doc catalog만 읽어 host-compatible context를 만들며 `startup`·`resume`·`clear`·`compact` 모든 source에서 같은 catalog를 주입한다(Claude Code 2.1.247과 codex-cli 0.150.1 모두 압축 뒤 `SessionStart`를 `source:"compact"`로 다시 실행하고, `PostCompact`에는 모델용 컨텍스트를 실을 수 없다 — [ADR 2026-08-27](../adr/decisions/2026-08-27-session-start-owns-compaction-context.md)). IssueOps list/read, lifecycle reminder, runtime diagnostic, telemetry, SQLite maintenance, worker recovery, state write를 하지 않는다.
+- `agent-harness hook`의 subcommand는 `session-start`와 `post-compact` 둘뿐이다. `post-compact`는 Omo 확장(`session_compact` → `--json`)과 진단용이며 host shape는 `systemMessage`만 싣는다. 주입할 문서가 없으면 두 hook 모두 `{}`를 낸다. enforcement·relay·telemetry hook은 존재하지 않으며 다시 추가하지 않는다.
+- Hook 출력은 event별 host schema를 따른다. Codex는 `--host codex`로 readable catalog를 `additionalContext`에 싣고 `systemMessage`를 생략하며, Claude Code는 readable `systemMessage`와 compact `additionalContext`를 분리한다. `--json`은 snake_case DTO(`should_inject`, `project_docs`, `compact`, `user_view`)를 그대로 낸다.
 - `.agent-harness/*.md` frontmatter descriptions are canonical bootstrap/sync metadata. Keep them concise English category descriptions, not prose summaries, because every `project bootstrap`/`project bootstrap --sync` target and every project-doc catalog inherits them.
-- Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing/compaction 판단은 공통 `agent-harness hook ...` CLI/core에 둔다.
+- Codex/Claude별 hook 설정은 adapter/template에서만 다루고, catalog 구성은 공통 `agent-harness hook ...` CLI/core에 둔다. `HARNESS_DISABLE_HOOKS`는 두 hook을 무출력 no-op으로 만든다.
 
 ## Guard 컨벤션
 
@@ -54,12 +55,7 @@
 - **관측 불가와 조건 위반을 다른 슬러그로 구분한다.** 둘 다 fail-closed지만 다음 행동이 다르다 — 전자는 관측 도구를 고치고 후자는 상태를 고친다(#154의 `workspace_processes_observable` vs `workspace_processes_quiescent`).
 - **`missing` 안의 슬러그는 요구형 극성으로 통일한다**(#185). `missing`은 *충족되지 않은 요구*의 목록이므로 상태 차단도 요구형으로 뒤집어 적는다 — 원격 브랜치가 남아 막혔으면 `remote_branch_absent`이고, 워크트리가 더러워 막혔으면 `worktree_clean`이다. 차단 사실을 그대로 적으면(`remote_branch_present`, `worktree_dirty`) "그 상태라는 요구가 미충족" = **반대 상태**로 읽힌다. `#181` 정리에서 `cleanup status`와 `cleanup finish`가 같은 상태를 반대 극성으로 보고해 운영자가 실제 상태를 따로 확인해야 했다. 이 축은 위의 관측/조건 축과 직교한다 — 관측 실패 슬러그(`remote_branch_check_failed`)는 그대로 둔다. 같은 이름이 다른 표면에서 진짜 요구일 수 있으므로(`execution sync-base`의 `remote_branch_present`는 브랜치가 **있어야** 한다는 요구다) 표면별로 그 조건이 요구인지 차단인지 먼저 정한다.
 - preview는 **자기 근거의 강도를 밝힌다.** 외부 자원을 조회하지 않고 낸 결과가 관측 증거로 읽히면 오진단이 생긴다(#99의 잘못된 의혹이 그렇게 나왔다, #154). 아울러 실행 가능성 판정은 preview에서도 수행한다 — 실행할 수 없는 계획을 preview가 성공으로 보여주면 운영자는 confirm에서 처음 막히고, 모드 자동 선택에서는 preview가 보여준 모드와 실제 모드가 달라진다(#152).
-- **lifecycle execution guard의 allowlist는 세 층으로 분류한다**(#170·#177). 층을 잘못 고르면 진단이 막히거나 mutation이 새어 나간다.
-  - **읽기 허용**(`executionObservation`): 상태를 바꾸지 않는 조회. `--preview`/`--status`처럼 같은 명령의 읽기 변종도 여기 속한다 — 진단 표면을 mutation으로 분류하면 갇힌 상태를 관측할 방법이 사라진다(#170에서 확인, 현재 예: `execution replace --preview`).
-  - **typed control plane**(`executionTypedControlPlane`): harness 자신의 typed 명령. 실행 주체가 owner가 아니어도 되는 lifecycle 조작이 여기 온다(#177의 `cleanup orphan`).
-  - **owner mutation**(`exactIssueOpsOwnerMutation`): 활성 홀더만 할 수 있는 provider/워크트리 변경. 형태를 exact matcher로 고정한다.
-- **allowlist matcher는 형태를 고정하되 의미를 확인한다.** provider API를 여는 matcher는 플래그 위치·개수와 함께 본문의 특징 문자열까지 검사해 임의 호출이 통과하지 않게 한다(#176의 `exactProviderBranchLink`가 GraphQL 본문의 `createLinkedBranch`를 요구한다).
-- **정적 분류를 깨는 명령 형태를 안내에 넣지 않는다.** 파이프·`&&`·리다이렉트·`$(...)`는 가드가 분류할 수 없어 거부된다. 값 전달이 필요하면 단계를 나눠 출력을 옮겨 적게 안내한다. GraphQL 변수처럼 `$`가 불가피한 경우는 단일 인용으로 표기한다 — 파라미터 확장 검사는 단일 인용 안을 건너뛰므로(`internal/domain/shelltoken/tokens.go`) 가드를 약화하지 않고 통과한다.
+- PreToolUse 실행 가드(observation/typed control plane/owner mutation 3층 allowlist, exact matcher, 정적 분류 불가 명령 형태 거부)는 [ADR 2026-08-27](../adr/decisions/2026-08-27-session-start-owns-compaction-context.md)로 제거됐다. 명령 형태 판정이 필요한 곳은 `issueops` CLI/MCP가 자기 입력에서 직접 수행하며, hook에 되살리지 않는다. `internal/domain/commandparse`에는 IssueOps 명령 파서(`ParseExactIssueOpsCommand`, `ExactIssueOpsOwnerMutation`)만 남는다.
 - `nondeterministic-context-serialization` rule은 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/domain/contextregion/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
 
 ## Policy tier 컨벤션

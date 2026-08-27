@@ -92,6 +92,8 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 
 ## 20. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn
 
+> 2026-08-27: agent-harness는 더 이상 Stop hook을 설치하거나 제공하지 않는다([ADR](../adr/decisions/2026-08-27-session-start-owns-compaction-context.md)). 아래는 host Stop hook 스키마에 대한 검증된 사실이며, 새 Stop hook을 만들 때만 참고한다.
+
 A Stop hook that wants the agent to *recover and keep going* (for example, to present the missing numbered choices) must NOT set `continue:false`. Doing so halts the agent and surfaces the reason to the user, instead of letting the agent act on it in-turn.
 
 주의:
@@ -144,11 +146,19 @@ the required agent-harness skill validation gate.
 
 ## 기본 context hook 축소에서 third-party group을 지우지 말 것
 
-기본 설치 표면을 `SessionStart`/`PostCompact`로 줄일 때 managed hook만 지워야 한다. known lifecycle event 전체를 비우면 unrelated host integration까지 제거하고 Codex trust key가 불필요하게 drift한다.
+기본 설치 표면을 `SessionStart` 하나로 줄일 때 managed hook만 지워야 한다. known lifecycle event 전체를 비우면 unrelated host integration까지 제거하고 Codex trust key가 불필요하게 drift한다.
 
 - upgrade는 모든 known event에서 agent-harness command group만 제거한 뒤 third-party group의 상대 순서를 보존한다.
-- 기본 surface 밖 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `Stop`에는 managed group이 남아서는 안 되며, empty event key만 제거한다.
-- child-host smoke는 exact two-event configuration과 simple native episode에서 `PreToolUse`가 관찰되지 않음을 함께 검증한다. PostCompact actual delivery는 compaction 발생이 host-controlled이므로 installed config contract로 검증한다.
+- 기본 surface 밖 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop`에는 managed group이 남아서는 안 되며, empty event key만 제거한다.
+- child-host smoke는 exact one-event configuration과 simple native episode에서 `PreToolUse`가 관찰되지 않음을 함께 검증한다. 압축 후 재주입은 host가 compaction을 발생시킨 경우에만 실행되므로 `SessionStart(compact)` 실행은 host 전사(hook attachment)로 증명한다.
+
+## PostCompact는 어느 host에서도 모델 컨텍스트 채널이 아니다
+
+2026-08-27 실측: Claude Code 2.1.247은 `PostCompact` hook stdout을 `userDisplayMessage`로만 소비하고 `hookSpecificOutput` 해석 switch에 `PostCompact` case가 없다. codex-cli 0.150.1의 `post-compact.command.output` 스키마는 `continue`·`stopReason`·`suppressOutput`·`systemMessage`뿐이다. 두 host 모두 압축 뒤 `SessionStart`를 `source:"compact"`로 다시 실행한다.
+
+- 압축 후 재주입은 `SessionStart`가 담당한다. `SessionStart`에서 `source == "compact"`를 특별 취급해 빈 컨텍스트를 내면 압축마다 모델이 catalog를 잃는다(과거 결함, 전사 `SessionStart:compact` attachment 84건이 빈 `additionalContext`였다).
+- `PostCompact`에 JSON을 실어도 Claude는 그 원문을 사용자 표시 줄로 그대로 보여 준다. 등록 자체를 하지 않는다.
+- host 동작은 설치된 바이너리로 확인한다: Claude는 `~/.local/share/claude/versions/<ver>`에서 `hook_event_name:"PostCompact"` 실행부와 hookSpecificOutput switch를, Codex는 vendored `codex` 바이너리의 `*.command.output` JSON schema 문자열을 읽는다.
 
 ## Codex co-resident hook merge에서 matcher 배열 위치를 바꾸지 말 것
 

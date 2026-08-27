@@ -1,3 +1,7 @@
+---
+name: SUB_AGENT_PATTERNS.md
+description: Net-positive sub-agent usage patterns and delegation boundaries.
+---
 # Sub-Agent Usage Patterns
 
 > **원칙:** 메인 에이전트가 직접 작업을 수행한다. Sub-agent는 메인 컨텍스트를 오염시키지 않고, 다른 관점이 필요하거나, 병렬화가 의미 있거나, 다른 권한·모델이 필요한 경우에만 예외적으로 사용한다.

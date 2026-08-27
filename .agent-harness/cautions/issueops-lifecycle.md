@@ -28,18 +28,16 @@ IssueOps 이슈 브랜치를 `git worktree add -b`로 바로 만들면 GitHub/Gi
 - GitHub는 linked development branch 생성을 위해 `gh issue develop` 또는 노출된 GitHub MCP linked-branch tool을 사용한다.
 - IssueOps branch prepare contract는 MCP 먼저, provider API/CLI fallback, 둘 다 실패하면 중단 순서다.
 
-## 15. IssueOps worktree edits must be hook-guarded
+## 15. IssueOps worktree edits are the agent's own discipline
 
-IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell `workdir`. Some edit tools can apply relative paths from a different checkout than the shell command just verified.
+IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell `workdir`. Some edit tools can apply relative paths from a different checkout than the shell command just verified. Until 2026-08-27 an installed PreToolUse hook (`--enforce-worktree`, `--enforce-gitops-kubectl`, `--enforce-staged-checks`) blocked such events; that hook surface was removed ([ADR](../adr/decisions/2026-08-27-session-start-owns-compaction-context.md)), so the rules below are enforced by the main agent, by `issueops execution status/claim`, and by review, not by a host hook.
 
 주의:
-- IssueOps sessions set `HARNESS_SOURCE_CHECKOUT` and `HARNESS_EXPECTED_WORKTREE` before implementation.
-- Installed Codex and Claude PreToolUse hooks include `--enforce-worktree` and block mutating tool events outside the expected worktree when that env is set.
-- Installed Codex and Claude PreToolUse hooks include `--enforce-gitops-kubectl`; direct mutating `kubectl` commands such as `apply`, `delete`, `patch`, or `rollout restart` must be represented as manifest changes in git and applied through the repo's GitOps path. Claude keeps native `ask` for `kubectl exec` and `port-forward`. Codex `port-forward` uses the exact-command one-shot token with a 10-minute pending/granted TTL. Codex read-only exec session approval requires explicit kube context and namespace and accepts only the exact DNS (`getent hosts`, `nslookup`, bounded `dig`), `/etc/resolv.conf`, and Linkerd localhost metrics grammars. Entering `승인 AH-XXXXXX` creates a 10-minute activation window; the first allowed diagnostic and each subsequent allowed command refresh a 30-minute idle TTL for the same session, canonical repo, context, and namespace, while target/container may vary. Unsafe or unclassified Codex exec blocks without a token and cannot be approved around. Project-scoped user state uses mode `0600` and stores fingerprints rather than raw commands or cluster identifiers. Expired/lost grants require a new token; do not disable the GitOps gate as routine recovery. Read-only commands and dry-runs such as `kubectl get`, `logs`, `diff`, and `apply --dry-run=server` remain allowed.
-- Installed Codex and Claude PreToolUse hooks include `--enforce-staged-checks`; broad Biome lint/format commands such as `biome check apps libs` or package scripts that expand to broad `apps libs` checks ask for explicit user confirmation. Prefer staged or changed-file commands such as `biome check --staged`, `biome format --staged`, lint-staged, or explicit changed file lists so existing repo debt does not become the current diff's failure.
-- Manual edit rules still require absolute paths rooted at the expected worktree and status checks for both source checkout and worktree, because host hook coverage can differ by runtime.
+- IssueOps sessions set `HARNESS_SOURCE_CHECKOUT` and `HARNESS_EXPECTED_WORKTREE` before implementation and root every mutating command at `HARNESS_EXPECTED_WORKTREE`.
+- Direct mutating `kubectl` commands (`apply`, `delete`, `patch`, `rollout restart`) must be represented as manifest changes in git and applied through the repo's GitOps path; read-only commands and dry-runs stay allowed. Broad Biome lint/format commands should be replaced by staged or changed-file scopes so existing repo debt does not become the current diff's failure.
+- Edit rules require absolute paths rooted at the expected worktree and status checks for both source checkout and worktree. No hook guards this any more (2026-08-27); the agent and `issueops execution status` are the only checks.
 - If a source checkout receives implementation edits by mistake, stop, move only your own changes into the IssueOps worktree, and verify the source checkout is clean before continuing.
-- Late-promotion gap: when work starts under `/goal`, ralph, or ad-hoc edits and is only promoted to IssueOps at the issue/PR phase, the worktree-first trigger ("`$issueops` explicitly invoked") never fires, so implementation can land in the source checkout on a feature branch without an isolated worktree. Observed 2026-06-03: gap-closure work was committed directly on `feat/...` in the main checkout; main ref stayed clean but the isolation contract was skipped. Mitigation: when a cycle is promoted to IssueOps, move remaining work into an isolated worktree or explicitly record the deviation. Implemented (issue #25) and hardened 2026-06-05: the `--enforce-worktree` PreToolUse guard judges by the current work's own cycle. IssueOps cycle ids are deterministic per (repo, branch) and `issueops start` resumes instead of duplicating, so cycles cannot accumulate as stale duplicates. The guard reads the current branch from `.git/HEAD` and loads only that branch's cycle (`ActiveIssueOpsCycleForBranch`). In `implement`/`ai-slop-clean`/`feedback`/`pr`, a missing `worktree_path` is now fail-closed for mutating source/worktree targets: create the sibling worktree and run `issueops link-worktree` before editing. The guard also blocks `git checkout -b`/`git switch -c` of a known IssueOps branch in the source checkout, while allowing `git worktree add ../<repo>.worktrees/...` as the preparation step. Legacy timestamp-id records and other branches' cycles have different ids and are never read, so they cannot cause a false linked-worktree lock; marking the cycle `done` releases the source checkout.
+- Late-promotion gap: when work starts under `/goal`, ralph, or ad-hoc edits and is only promoted to IssueOps at the issue/PR phase, the worktree-first trigger ("`$issueops` explicitly invoked") never fires, so implementation can land in the source checkout on a feature branch without an isolated worktree. Observed 2026-06-03. Mitigation: when a cycle is promoted to IssueOps, move remaining work into an isolated worktree or explicitly record the deviation. IssueOps cycle ids are deterministic per (repo, branch) and `issueops start` resumes instead of duplicating, so cycles cannot accumulate as stale duplicates; marking the cycle `done` releases the source checkout.
 - Tool-root drift: IssueOps may run implementation in a sibling worktree while a host session and some MCP servers remain rooted at the original source checkout. In a sampled `service-api` repository, verified 2026-06-05, Claude `.mcp.json` was gitignored and its `codegraph` server had `--path /Users/sample/workspace/service-api`, while Codex global `codegraph` was `codegraph serve --mcp` without `--path`. Do not solve this by asking the user to restart Claude Code in the worktree; preserve the current session and enforce per-call evidence instead.
 - External code-intelligence tools are the user's own installs; the harness no longer prepares their indexes or validates their `projectPath`. When using one in a worktree session, root every call at the expected worktree yourself.
 - In IssueOps worktrees, prefer native absolute-path file tools, `git -C "$HARNESS_EXPECTED_WORKTREE"`, `rg` rooted at the expected worktree, and worktree-local tests for correctness. Do not let a CodeGraph/Serena-first project rule override direct worktree evidence. Treat filesystem/Serena MCP tools as blocked or advisory unless their root is proven to be the expected worktree in the current session.
@@ -47,21 +45,19 @@ IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell 
 
 ## 16. IssueOps decision replies must have numbered choices
 
-When the user must choose a route, cleanup action, feedback response, or next phase, free-form prose is too easy to miss. Prompt discipline alone is insufficient.
+When the user must choose a route, cleanup action, feedback response, or next phase, free-form prose is too easy to miss. Prompt discipline is the only mechanism: the Stop hook that used to block missing choices (`--enforce-numbered-next-actions`) and the next-action relay were removed on 2026-08-27.
 
 주의:
-- Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`; when the host exposes `last_assistant_message` or a transcript path, missing `1.`, `2.`, and `3.` choices are blocked.
-- The Stop hook should explain the missing choices to the agent and instruct the agent to present context-specific next actions; it should not synthesize fixed choices itself.
-- Keep the three choices concrete: recommended proceed, narrower/lower-risk alternative, and pause/defer.
-- If the host does not expose the final assistant message to Stop hook input, the guard must no-op and record diagnostics rather than guessing.
+- End decision replies with `선택지:` and three concrete choices: recommended proceed, narrower/lower-risk alternative, and pause/defer.
+- Mark exactly one recommended option only when the main agent itself judges it safe, reversible, and aligned, and state that judgement in the reply.
+- A `no-auto-proceed` judgement is sticky across automated goal continuation: resume only after an explicit user choice or a new user instruction.
 
-## 16.1 IssueOps hooks must not become workflow workers
+## 16.1 IssueOps state work belongs to `issueops` commands, never to hooks
 
 IssueOps state is durable because `agent-harness issueops ...` commands record intent, issue links, branch preparation, worktree paths, tool preparation, design review, plan links, ai-slop-clean evidence, feedback joins, PR/MR readiness, and cleanup status. Moving any of that work into lifecycle hooks would make progress depend on host-specific event timing and incomplete hook payloads.
 
 주의:
-- Hooks may block fast, deterministic, inspectable violations only: wrong worktree target, Korean remote artifact failure, invalid VCS issue-linking body metadata, missing PR/MR target branch, missing labels/assignee, staged-check/live-command confirmation, or missing numbered next-action choices.
-- Hooks must not create or edit issues, mutate files, run tests, wait for background jobs, prepare branches or worktrees, create PRs/MRs, reply to reviews, merge, or delete branches/worktrees.
+- The installed hook is context-only (`SessionStart` project-doc catalog). It does not block tool events, create or edit issues, mutate files, run tests, wait for background jobs, prepare branches or worktrees, create PRs/MRs, reply to reviews, merge, or delete branches/worktrees. Korean remote-artifact and VCS-linking checks run inside the `issueops remote ...` commands that own the artifact.
 - When readiness reports `intent_contract`, `plan_prep_*`, `branch_prepare`, compatibility/design/plan evidence, canonical workspace/lease, `ai_slop_clean`, or contract feedback, run the owning `issueops` command in the main-agent loop and retry readiness. Workspace and write authority belong to `issueops execution prepare/status/claim/release/replace/reconcile/switch-mode/complete`; do not add a hook-side workaround.
 - `execution replace --revoke`는 **다른** 홀더를 걷어내는 명령이다. 자기 lease에 실행하면 `revoking` 상태와 살아 있는 홀더가 겹쳐 claim·release·replace가 모두 막힌다(2026-07-26 실측, 세션 재시작으로만 벗어났다). 자기 정리는 `release --generation N`이다. #170이 이 자기-revoke를 거부하도록 고쳤지만, 진단이 막히는 상태를 스스로 만들지 않는 규율이 먼저다.
 - `--session-id`는 host가 부여한 세션 식별자이며 조합해 만드는 값이 아니다. 세션을 재시작해도 그 값은 유지되고 PID만 바뀌므로, 재시작 후의 `holder_identity_mismatch`는 홀더가 죽었다는 뜻이 아니라 잘못된 id가 기록됐다는 뜻이다. `execution whoami`로 확인한다.
@@ -214,6 +210,8 @@ receipt 필수) → HUP+TERM → 최대 5초 → KILL → 재관측(점유·터�
   finding 1).
 
 ## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것
+
+> 2026-08-27: Stop hook orchestration relay는 제거됐다. 아래 규칙은 PR readiness의 child verdict 의미에만 계속 적용된다.
 
 IssueOps PR readiness는 `validation_verdict=dropped` child를 scope에서 제외하지만 Stop hook의 별도 reminder 경로가 같은 규칙을 적용하지 않아, 병합된 parent가 `child_incomplete`로 영구 재진입한 사고가 있었다.
 

@@ -33,11 +33,10 @@ Execution tests must cover:
   read-only Orca probe fails before the first external mutation.
 - claimable → active → revoking/released generation transitions, the
   `lease_holder_v1` reverse index, exact native process identity, and stale
-  holder/generation rejection across CLI, MCP, and hooks.
-- every record-specific hook block exposes exactly `code`, `lifecycle_id`,
-  `expected_root`, `current_generation`, and `next_command` in raw JSON. The
-  Codex/Claude native reason string must decode to the same five-field object
-  without adding fields rejected by either host's strict hook schema.
+  holder/generation rejection across CLI and MCP. Host hooks no longer take
+  part in this boundary (2026-08-27); every denial is emitted by the `issueops`
+  command itself as `code`, `lifecycle_id`, `expected_root`,
+  `current_generation`, and `next_command`.
 - replacement preview, revoke, and finalize with PID-reuse-safe process
   observation plus complete Orca owner inventory. A live terminal, task, or
   dispatch blocks finalization.
@@ -97,14 +96,11 @@ Execution tests must cover:
   Both adapters also cover
   execution reseed preview, cleanup finish preview/apply, exact current-binary path/hash binding,
   observation failure with no command fallback, and stale installed-binary versus
-  newer worktree-binary rejection before a mutation handler is entered. The same
-  envelope must decode to equivalent Codex and Claude hook decisions. A transition
+  newer worktree-binary rejection before a mutation handler is entered. A transition
   such as switch-mode apply that removes execution authority must return non-command
   guidance instead of an executable `next_command`.
-- Codex exec hook tests must include its stable command-only payload shape: top-level
-  turn cwd points at the source checkout and `tool_input` has no workdir. A current-
-  generation absolute generated IssueOps mutation may proceed only when its exact
-  `--cwd` selects the canonical worktree and the CLI independently proves that
+- A current-generation absolute generated IssueOps mutation may proceed only when its
+  exact `--cwd` selects the canonical worktree and the CLI independently proves that
   `os.Getwd()` matches it before mutation. Bare commands, mismatched process cwd,
   stale provenance, and delegation commands whose `--parent` identity is missing
   must remain fail-closed.
@@ -128,8 +124,8 @@ hidden by a ready-only listing.
 Use this focused package set before the full repository gates:
 
 ```bash
-go test ./internal/adapter/issueops/... ./internal/adapter/lifecycle ./internal/adapter/orca ./internal/adapter/codex ./internal/adapter/claude ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
-go test -race ./internal/adapter/issueops/... ./internal/adapter/lifecycle ./internal/adapter/orca ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
+go test ./internal/adapter/issueops/... ./internal/adapter/orca ./internal/adapter/codex ./internal/adapter/claude ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
+go test -race ./internal/adapter/issueops/... ./internal/adapter/orca ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
 ```
 
 Native activation tests use isolated temporary homes. They require same-
@@ -144,6 +140,7 @@ uniquely named disposable resources after an explicit cleanup decision. When
 Orca is absent, prove explicit Orca mode fails before mutation and `auto`
 returns the deterministic direct fallback projection.
 
-After native installation, exercise Codex and Claude hook fixtures through the
-common hook input boundary and require exact host, session, process, cwd, and
-allow/block projections.
+After native installation, exercise the Codex and Claude `SessionStart` fixtures
+(including `source:"compact"`) through the common hook input boundary in
+`./cmd/harness/hookcli/hookinput` and require the same project-doc catalog
+projection for both hosts; there are no allow/block hook projections any more.
