@@ -28,7 +28,7 @@ git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
 
 For GitLab, use equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
 
-After provider merge evidence is confirmed, run the harness cleanup status check. It is read-only: it does not remove branches or worktrees. It blocks cleanup readiness when merge evidence is missing, the worktree is dirty, the worktree branch does not match the IssueOps branch, the remote artifact was not verified, or the remote source branch still exists.
+After provider merge evidence is confirmed, run the harness cleanup status check. It is read-only: it does not remove branches or worktrees. It blocks cleanup readiness when merge evidence is missing, the worktree is dirty, the worktree branch does not match the IssueOps branch, the remote artifact was not verified, or the remote source branch still exists. Processes occupying the worktree and Orca terminals bound to it are not blockers: status reports them as warnings (`pid:command:started_at` plus "apply가 프로세스 N개와 Orca 터미널 M개를 종료합니다") because the typed apply stops them itself. Only the requester's own occupancy/terminal (`requester_occupies_worktree`, `requester_terminal_outside_worktree`, `requester_terminal_unresolved`), the source checkout (`worktree_is_source_checkout`), and observation failures (`workspace_processes_observable`, `orca_terminals_observable`, `orca_runtime_ready`) still block.
 
 ```bash
 agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
@@ -102,7 +102,7 @@ Only run recordless orphan cleanup after the user chooses the proceed option or 
 
 For a recordless orphan, do not use an unconditional raw fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. If the typed apply cannot remove the local branch with its preview HEAD CAS, report the reason and rerun preview; do not force-delete it.
 
-For ordinary record-backed cleanup status, if the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
+For ordinary record-backed cleanup status, if the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices. Do not stop occupying processes or Orca terminals by hand to satisfy a preview: the apply step owns that (`workspace_processes_stop`), binds it to the preview fingerprint, and refuses when the requester itself occupies the worktree.
 
 ## State Commands
 

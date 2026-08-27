@@ -170,6 +170,37 @@ automatically redirect to /work_items/:iid")는 일반 이슈(`type=ISSUE`)의 `
   `TestGitLabCreateChildPreviewAcceptsWorkItemsParentURL`,
   `TestFetchGitLabIssueArtifactAcceptsWorkItemsAlias`가 고정한다.
 
+## 32. cleanup은 워크트리 점유 프로세스를 종료 대상으로 본다 — 요청자는 제외가 아니라 거부
+
+`cleanup finish/abandon`은 워크트리를 점유한 프로세스와 그 워크트리에 매인 Orca
+터미널을 차단 사유가 아니라 apply ①′의 종료 대상으로 다룬다(#477). preview가
+receipt(pid·시작 시각·실행 파일)·자손/부수 피해 수·터미널 handle을 싣고 fingerprint에
+결속하며, apply는 `orca terminal stop --worktree` → HUP+TERM → 최대 5초 → KILL →
+재관측(점유 0 증명) 순서로 닫는다. 대화형 zsh/bash는 SIGTERM을 무시하고 SIGHUP에
+종료된다(2026-08-27 실측).
+
+주의:
+- 요청자 보호는 거부다. lease 경로(`executionQuiescenceFingerprint`)는 요청자 자손을
+  quiescence 후보에서 *제외*하지만(직접 승계가 성립해야 하므로), cleanup은 워크트리를
+  지우므로 요청자가 그 안에 서 있으면 진행 자체가 잘못이다 — `requester_occupies_worktree`,
+  `requester_terminal_outside_worktree`, `requester_terminal_unresolved`,
+  `worktree_is_source_checkout`으로 막는다. 한쪽을 다른 쪽에 맞춰 "고치지" 말 것.
+- 요청자 터미널은 `ORCA_PANE_KEY`(tabId:leafId)·`ORCA_TERMINAL_HANDLE` env를 `orca terminal
+  list --json` 전체 행과 join해서만 확정한다. 무선택자 `orca terminal show`는 호출자가 아니라
+  UI-active 터미널을 돌려준다(brooks 실측). `orca terminal stop --worktree`는 터미널 단위
+  선택자가 없어 요청자 터미널까지 닫는다 — cwd를 밖으로 옮긴 터미널도 종료된다.
+- 신호는 apply 시점에 실제로 점유 중인 프로세스에게만 보낸다. 자손 관계는 preview 점유자가
+  같은 receipt로 아직 점유 중일 때의 stale 허용 근거일 뿐, cwd만 워크트리인 공유 서버(tmux)의
+  다른 세션까지 죽이는 종료 범위 확장이 아니다.
+- 생존 판정은 `kill(pid,0)`이 아니라 점유 재관측이다(좀비는 점유하지 않는다). lsof에 있는데
+  ps 스냅샷에 없는 pid는 ESRCH면 소멸, 살아 있으면 `workspace_processes_observable`이다.
+- Orca 바인딩 사이클은 런타임이 ready가 아니면 `orca_runtime_ready`로 막는다(터미널을 죽인
+  뒤 orca 회수가 실패하는 부분 apply 방지). Orca 표면이 배선되지 않은 호출은 pid-조상
+  게이트만 남는다. 미등록 워크트리의 `terminal list`는 `selector_not_found`이며 빈 목록이다.
+- 새 실패 단계 `workspace_processes_stop`은 `knownCleanupFinishFailureStep`/
+  `knownCleanupAbandonFailureStep`과 abandon failure inventory matcher에 등록돼 있다. 되돌릴
+  때 이 값을 가진 receipt가 남아 있으면 `ReadIssueOps`가 거부한다.
+
 ## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것
 
 IssueOps PR readiness는 `validation_verdict=dropped` child를 scope에서 제외하지만 Stop hook의 별도 reminder 경로가 같은 규칙을 적용하지 않아, 병합된 parent가 `child_incomplete`로 영구 재진입한 사고가 있었다.
