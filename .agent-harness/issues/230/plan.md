@@ -9,7 +9,7 @@
 - Base branch: `228-clean-break-hexagonal-architecture`
 - Base SHA: `c6d82ea884664ae4858c91250c3935ab60c477e8`
 - Canonical worktree: `/Users/m16khb/Workspace/agent-harness.worktrees/230-current-only-state`
-- Parent plan: `.agent-harness/plans/228-clean-break-hexagonal-architecture.md`, Task 3 and the Normative Child Delivery Epilogue
+- Parent plan: `.agent-harness/issues/228/plan.md`, Task 3 and the Normative Child Delivery Epilogue
 
 ## Bounded scope
 

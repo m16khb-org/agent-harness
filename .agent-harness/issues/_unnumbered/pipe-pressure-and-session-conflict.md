@@ -77,7 +77,7 @@
 
 - [ ] 1. 미커밋 문서 변경을 즉시 원자 커밋 (main tree, 충돌 창 최소화)
 
-  **What to do**: main 작업 트리에서 `git add .agent-harness/CAUTIONS.md .agent-harness/plans/loop-article-gaps-123.md .agent-harness/plans/phase-aware-pioneer-hints.md .agent-harness/plans/pipe-pressure-and-session-conflict.md` 후 `docs(cautions): record macOS pipe-KVA hang diagnosis and follow-up plans` Conventional Commit + Lore body로 커밋. **updatecli 2개 파일은 절대 stage하지 않는다**(다른 세션 소유). atomic-commit-push 스킬 절차(preflight, 개별 파일 지정 add) 준수.
+  **What to do**: main 작업 트리에서 `git add .agent-harness/CAUTIONS.md .agent-harness/issues/_unnumbered/loop-article-gaps-123.md .agent-harness/issues/_unnumbered/phase-aware-pioneer-hints.md .agent-harness/issues/_unnumbered/pipe-pressure-and-session-conflict.md` 후 `docs(cautions): record macOS pipe-KVA hang diagnosis and follow-up plans` Conventional Commit + Lore body로 커밋. **updatecli 2개 파일은 절대 stage하지 않는다**(다른 세션 소유). atomic-commit-push 스킬 절차(preflight, 개별 파일 지정 add) 준수.
 
   **Must NOT do**: `git add -A`/`git add .` 금지. push는 사용자 지시 시.
   **Recommended Agent**: quick

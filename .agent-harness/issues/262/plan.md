@@ -49,7 +49,7 @@ Add a fresh-preflight table covering:
 All negative cases return `orca_plan_artifact_required`. The missing staged-plan case does not invoke the remote issue reader and exposes, only when `record.PlanPath` is an existing in-worktree regular file:
 
 ```text
-agent-harness issueops artifact stage --id 'io-262' --name plan --file '/repo.worktrees/262-orca-plan-readiness/.agent-harness/plans/262-orca-plan-readiness.md' --json
+agent-harness issueops artifact stage --id 'io-262' --name plan --file '/repo.worktrees/262-orca-plan-readiness/.agent-harness/issues/262/plan.md' --json
 ```
 
 Do not emit a misleading stage command for missing, empty, directory, or out-of-worktree `PlanPath`. Explicitly assert `delegation.parent_plan_path` alone still fails. Conversely, a valid staged plan with no `WorktreePath`/`PlanPath` passes fresh preflight because prepare owns canonical workspace creation.
@@ -250,8 +250,8 @@ Proceed only when the owner itself has produced a successful release and status 
 In the released primary path, write and independently review an issue-specific child plan inside the #248 worktree without production edits, then run with coordinator actor fields returned by `execution whoami` where the command supports them:
 
 ```bash
-agent-harness issueops link-plan --id io-268bd6ac6e7a --plan-path /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood/.agent-harness/plans/248-orca-ready-issueops-dogfood.md --host codex --session-id <coordinator-session-id> --cwd /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood --json
-agent-harness issueops artifact stage --id io-268bd6ac6e7a --name plan --file /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood/.agent-harness/plans/248-orca-ready-issueops-dogfood.md --json
+agent-harness issueops link-plan --id io-268bd6ac6e7a --plan-path /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood/.agent-harness/issues/248/plan-orca-ready-issueops-dogfood.md --host codex --session-id <coordinator-session-id> --cwd /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood --json
+agent-harness issueops artifact stage --id io-268bd6ac6e7a --name plan --file /Users/m16khb/Workspace/agent-harness.worktrees/248-orca-ready-issueops-dogfood/.agent-harness/issues/248/plan-orca-ready-issueops-dogfood.md --json
 agent-harness issueops execution replace --id io-268bd6ac6e7a --expected-generation 3 --preview <ACTOR_FLAGS> --json
 agent-harness issueops execution replace --id io-268bd6ac6e7a --expected-generation 3 --reseed --inventory-fingerprint <preview-fingerprint> <ACTOR_FLAGS> --confirm --json
 agent-harness issueops execution resume --id io-268bd6ac6e7a --expected-generation 4 <ACTOR_FLAGS> --confirm --json

@@ -9,7 +9,7 @@ It does not change the source plan's scope or mark user-decision items as
 complete.
 
 Source plan note: this worktree now includes
-`.agent-harness/plans/harness-quality-performance-program-v3.md`, copied
+`.agent-harness/issues/_unnumbered/harness-quality-performance-program-v3.md`, copied
 byte-for-byte from the original untracked plan in the main checkout. This file
 records the execution audit for the implementation branch.
 
@@ -95,7 +95,7 @@ This keeps P-3 partially complete: hook-path latency is bounded by the resolved
 compaction and relay optimizations, but the source plan's "queue file size
 bound" criterion remains open for pending-only queues. The follow-up
 implementation plan is
-`.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md`.
+`.agent-harness/issues/_unnumbered/p3-doc-upkeep-pending-retention-policy.md`.
 
 ## P-6 Cold Start
 

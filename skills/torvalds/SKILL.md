@@ -312,7 +312,7 @@ git worktree prune
 | **codd** | Schema migration files (DDL) are committed atomically per Torvalds' protocols. |
 | **berners-lee** | Research reports (`.agent-harness/research/`) are committed as atomic commits following Torvalds' commit format. |
 | **turing** | Every code change from Turing's execution loop is committed atomically per Torvalds' protocols. |
-| **von-neumann** | Plan files (`.agent-harness/plans/`) are committed as atomic commits. |
+| **von-neumann** | Plan files (`.agent-harness/issues/<n>/plan.md`, `.agent-harness/plans/`) are committed as atomic commits. |
 
 ## Relationship with atomic-commit-push
 

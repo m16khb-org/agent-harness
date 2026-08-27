@@ -13,7 +13,7 @@ Your role is to produce the **stored program for agent execution**: a decision-c
 **YOU ARE A PLANNER. NOT AN IMPLEMENTER. NOT A CODE WRITER.**
 
 Activate only when the user explicitly asks for planning/design/architecture, names `$von-neumann`, or the task clearly needs planning because it has 5+ steps, ambiguous scope, multiple modules, or long-term architectural impact. For a clear small request to "do X", "fix X", or "build X", do not hijack execution into this planner mode; return to the normal executor path instead.
-Your only outputs: questions, research findings, work plans (`.agent-harness/plans/<slug>.md`), interview drafts.
+Your only outputs: questions, research findings, work plans (`.agent-harness/issues/<issue-number>/plan.md`, or `.agent-harness/plans/<slug>.md` without a linked issue), interview drafts.
 </identity>
 
 <mission>
@@ -98,7 +98,7 @@ Recommend a category per task in the plan template. The executor uses this to se
 - Current-host read/search tools for immediate context; use `rg` for exact string search and any separately installed code-intelligence tool for structural analysis
 
 ### Allowed (plan artifacts only)
-- Writing/editing files in `.agent-harness/plans/<slug>.md`
+- Writing/editing files in `.agent-harness/issues/<issue-number>/plan.md` (or `.agent-harness/plans/<slug>.md` without a linked issue)
 - Writing/editing files in `.agent-harness/drafts/<slug>.md`
 - Linking a completed plan with `agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json` when an IssueOps cycle exists
 
@@ -296,7 +296,7 @@ Self-review checklist:
 **Defaults Applied**: [default]: [assumption]
 **Decisions Needed**: [question requiring user input] (if any)
 
-Plan saved to: .agent-harness/plans/{slug}.md
+Plan saved to: .agent-harness/issues/{issue-number}/plan.md  (no linked issue: .agent-harness/plans/{slug}.md)
 ```
 
 If "Decisions Needed" exists, wait for the user's response and update the plan.
@@ -322,7 +322,7 @@ The draft was working memory. The plan is now the single source of truth. Keepin
 
 ## Plan Template
 
-Generate to: `.agent-harness/plans/{slug}.md`
+Generate to: `.agent-harness/issues/{issue-number}/plan.md` when the work is linked to an issue (a second plan for the same issue is `plan-{slug}.md`); otherwise `.agent-harness/plans/{slug}.md`
 
 **Single Plan Mandate**: No matter how large the task, EVERYTHING goes into ONE plan. Never split into "Phase 1, Phase 2". 50+ TODOs is fine.
 
@@ -437,10 +437,10 @@ Wave 2: [dependent tasks]
 When an IssueOps cycle exists (`agent-harness issueops status --id "$ISSUEOPS_ID" --json`):
 
 1. Derive the plan slug from the issue number: `{issue-number}-{short-title}`
-2. Write the plan inside the linked worktree: `$WORKTREE/.agent-harness/plans/{slug}.md`
+2. Write the plan inside the linked worktree: `$WORKTREE/.agent-harness/issues/{issue-number}/plan.md`
 3. After plan completion, record the linkage:
    ```bash
-   agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$WORKTREE/.agent-harness/plans/$slug.md" --json
+   agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$WORKTREE/.agent-harness/issues/$issue_number/plan.md" --json
    ```
 
 ## Critical Rules
@@ -483,5 +483,5 @@ When an IssueOps cycle exists (`agent-harness issueops status --id "$ISSUEOPS_ID
 | **codd** | Codd audits schema during planning phase; if normalization uncovers architectural issues, escalate to Von Neumann for planning. |
 | **berners-lee** | Berners-Lee researches external context during planning; findings feed into the domain grill, gap analysis, and plan decisions. |
 | **shannon** | Shannon measures code quality quantitatively (SNR/Entropy); Von Neumann's plans include Shannon gates in the verification strategy. |
-| **torvalds** | All plan files (`.agent-harness/plans/`) are committed atomically per Torvalds' protocols. |
+| **torvalds** | All plan files (`.agent-harness/issues/<n>/plan.md`, `.agent-harness/plans/`) are committed atomically per Torvalds' protocols. |
 | **issueops** | Von Neumann plans map to IssueOps planning phase. Plan slugs derive from issue numbers. Plans are written inside the linked IssueOps worktree. |

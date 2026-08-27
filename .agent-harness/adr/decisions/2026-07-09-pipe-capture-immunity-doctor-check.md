@@ -3,7 +3,7 @@
 ← [ADR index](../../ADR.md)
 
 - Kind: `adr`
-- Source: `.agent-harness/plans/pipe-pressure-and-session-conflict.md`
+- Source: `.agent-harness/issues/_unnumbered/pipe-pressure-and-session-conflict.md`
 - Summary: macOS pipe KVA pressure is handled with three layers: tests are immune to small pipe buffers, doctor observes pipe capacity, and the runbook keeps host-process restart as the operator action.
 - Context: Under system-wide pipe pressure, new macOS pipes were observed at 512B instead of 16KB. CLI tests that wrote stdout/stderr completely before reading from the pipe could block forever once JSON output exceeded the degraded buffer. The problem was amplified by long-lived host processes and orphan `.test` binaries.
 - Decision:

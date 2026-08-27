@@ -47,7 +47,7 @@ Current `ReadPending` removes resolved/malformed lines but preserves pending lin
   - Add CLI flags and text/JSON output for pending archive dry-run/confirm.
 - Modify `cmd/harness/statecli/state_cli_test.go`
   - Cover dry-run default and `--confirm` behavior through the CLI.
-- Update `.agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md`
+- Update `.agent-harness/issues/_unnumbered/harness-quality-performance-program-v3-measurement-audit.md`
   - Replace the follow-up pointer with implementation evidence after completion.
 
 ## Policy
@@ -576,7 +576,7 @@ Expected: all focused CLI tests pass.
 ## Task 5: Verification And Audit Reconcile
 
 **Files:**
-- Modify: `.agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md`
+- Modify: `.agent-harness/issues/_unnumbered/harness-quality-performance-program-v3-measurement-audit.md`
 
 - [ ] **Step 1: Run package verification**
 
@@ -602,7 +602,7 @@ Expected: all commands exit 0.
 
 - [ ] **Step 3: Update measurement audit**
 
-Update `.agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md`:
+Update `.agent-harness/issues/_unnumbered/harness-quality-performance-program-v3-measurement-audit.md`:
 
 ```markdown
 | P-3 | Done | Resolved/malformed compaction remains automatic; duplicate pending compaction is non-destructive; stale pending archive is explicit dry-run-by-default operator action with `--confirm`. |
@@ -623,7 +623,7 @@ git add internal/core/lifecycle/model/types.go \
   cmd/harness/statecli/state_cli_router.go \
   cmd/harness/statecli/state_cli_maintenance.go \
   cmd/harness/statecli/state_cli_test.go \
-  .agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md
+  .agent-harness/issues/_unnumbered/harness-quality-performance-program-v3-measurement-audit.md
 git commit -m "fix: bound doc-upkeep pending retention"
 ```
 

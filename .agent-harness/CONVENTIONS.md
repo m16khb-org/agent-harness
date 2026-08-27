@@ -82,6 +82,29 @@ agent가 즉시 알아야 할 canonical 요약이다.
 - IssueOps 상태머신 reducer 계약과 외부 orchestration adapter 경계는
   [`conventions/state-policy-and-hooks.md`](conventions/state-policy-and-hooks.md).
 
+## 이슈 산출물 레이아웃
+
+이슈 하나의 수명주기 동안 생기는 산출물은 provider 이슈 번호로 한 폴더에 모은다(#480).
+번호는 linked issue URL의 번호이며 lifecycle id(`io-…`)가 아니다.
+
+```text
+.agent-harness/issues/<issue-number>/
+  plan.md      추적  기본 플랜(`issueops link-plan` 대상). 같은 번호에 플랜이 여럿이면 plan-<slug>.md
+  gates.md     추적  `gates init/check` 원장. `gates check`와 IssueOps `gates_incomplete`가 1순위로 읽는다
+  spec.md      추적  선택. superpowers 스펙을 이슈에 붙일 때
+  review/      무시  fagan·review-agent-feedback 작업 파일(`<provider>-<mr번호>/`)
+```
+
+- 이슈가 없는 작업의 플랜은 `.agent-harness/plans/<slug>.md`, 리뷰 작업 파일은
+  `.agent-harness/tmp/`에 둔다. 둘 다 이슈 번호를 알 수 없을 때만 쓰는 fallback이다.
+- 옛 원장 경로(`.agent-harness/gates/*.md`, root `GATES.md`, `gates/*.md`)는 읽기 호환으로
+  남지만, 현재 사이클의 이슈가 canonical과 호환 경로 양쪽에 원장을 두면 PR readiness가
+  `duplicate_issue_artifact:<번호>`로 fail-closed된다.
+- `.agent-harness/artifact/`(Orca 봉인 아티팩트)는 이 레이아웃에 포함하지 않는다.
+  0600 불변 파일·레코드 절대 경로 계약이라 별도 이슈에서 다룬다.
+- 이 표가 유일한 규정이다. 스킬(`issueops`, `von-neumann`, `fagan`, `review-agent-feedback`)과
+  `CAUTIONS.md`는 여기를 가리킨다.
+
 ## 생성물 / dependency 보조 규칙
 
 - 새 dependency는 표준 라이브러리로 명확히 부족할 때만 추가한다.

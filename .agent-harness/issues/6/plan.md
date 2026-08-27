@@ -1,7 +1,7 @@
 # 6: lifecycle state 초기화 read-while-write 레이스 수정
 
 이슈: https://github.com/m16khb/agent-harness/issues/6
-근거: `.agent-harness/plans/harness-quality-improvement-program.md` Q6 (P1), hopper 진단(ISOLATE 완료).
+근거: `.agent-harness/issues/_unnumbered/harness-quality-improvement-program.md` Q6 (P1), hopper 진단(ISOLATE 완료).
 
 ## Root Cause (확정)
 

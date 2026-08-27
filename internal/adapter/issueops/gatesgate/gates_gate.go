@@ -9,6 +9,8 @@ package gatesgate
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 	"agent-harness/internal/adapter/issueops/loopgate"
 	gatescontract "agent-harness/internal/contract/gates"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsremote "agent-harness/internal/domain/issueopsremote"
 )
 
 // gates ledger 조회·평가는 composition root가 설치한다. gatesgate는 gates
@@ -32,7 +35,68 @@ var (
 // strict readiness다.
 func StrictPRReadinessWithState(stateRoot string, record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	ready := loopgate.StrictPRReadinessWithState(stateRoot, record)
-	return withGatesGate(ready, GatesRootFor(record))
+	ready = withGatesGate(ready, GatesRootFor(record))
+	return withDuplicateIssueArtifactGate(ready, GatesRootFor(record), linkedIssueNumber(record))
+}
+
+// linkedIssueNumber는 레코드가 가리키는 provider 이슈 번호다. 없으면 빈 문자열.
+func linkedIssueNumber(record issueopscontract.IssueOpsRecord) string {
+	if n := issueopsremote.IssueNumber(record.IssueURL); n != "" {
+		return n
+	}
+	if record.BranchPrepare != nil {
+		return issueopsremote.IssueNumber(record.BranchPrepare.IssueURL)
+	}
+	return ""
+}
+
+// withDuplicateIssueArtifactGate는 현재 사이클의 이슈 원장이 canonical
+// `.agent-harness/issues/<n>/gates.md`와 호환 경로 `.agent-harness/gates/`
+// (`issue-<n>*`, `<n>-*`) 양쪽에 있으면 `duplicate_issue_artifact:<n>`으로
+// fail-closed한다(#480). 다른 이슈의 중복은 이 사이클을 막지 않으며, 번호를
+// 모르면 판정하지 않는다.
+func withDuplicateIssueArtifactGate(ready issueopscontract.IssueOpsReadiness, root, issueNumber string) issueopscontract.IssueOpsReadiness {
+	root, issueNumber = strings.TrimSpace(root), strings.TrimSpace(issueNumber)
+	if root == "" || issueNumber == "" {
+		return ready
+	}
+	canonical := filepath.Join(root, ".agent-harness", "issues", issueNumber, "gates.md")
+	if info, err := os.Stat(canonical); err != nil || info.IsDir() {
+		return ready
+	}
+	entries, err := os.ReadDir(filepath.Join(root, ".agent-harness", "gates"))
+	if err != nil {
+		return ready
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if legacyLedgerIssueNumber(entry.Name()) == issueNumber {
+			ready.Missing = uniqSorted(append(append([]string{}, ready.Missing...), "duplicate_issue_artifact:"+issueNumber))
+			ready.Ready = false
+			return ready
+		}
+	}
+	return ready
+}
+
+// legacyLedgerIssueNumber는 호환 원장 파일명 `issue-<n>*.md` 또는 `<n>-*.md`에서
+// 번호를 뽑는다. 둘 다 아니면 빈 문자열.
+func legacyLedgerIssueNumber(name string) string {
+	name = strings.TrimSuffix(name, ".md")
+	name = strings.TrimPrefix(name, "issue-")
+	digits := 0
+	for digits < len(name) && name[digits] >= '0' && name[digits] <= '9' {
+		digits++
+	}
+	if digits == 0 {
+		return ""
+	}
+	if digits == len(name) || name[digits] == '-' {
+		return name[:digits]
+	}
+	return ""
 }
 
 // AdvancePhaseWithActor는 pr 단계 진입 전에 게이트 ledger까지 포함한 strict

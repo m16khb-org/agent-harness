@@ -108,7 +108,7 @@ Tracked documentation already committed in the baseline phase:
 - `.agent-harness/operations/pioneer-skill-quality-scorecard.md`
 - `.agent-harness/operations/pioneer-skill-quality-handoff.md`
 - `.agent-harness/operations/pioneer-skill-rerun-fixtures.md`
-- `.agent-harness/plans/pioneer-skills-quality-improvement.md`
+- `.agent-harness/issues/_unnumbered/pioneer-skills-quality-improvement.md`
 - `.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md`
 
 Current local ignored evidence files:

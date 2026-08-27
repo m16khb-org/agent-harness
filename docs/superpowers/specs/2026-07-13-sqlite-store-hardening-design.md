@@ -1,7 +1,7 @@
 # SQLite Store Hardening Design
 
 **Date:** 2026-07-13
-**Scope:** `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md` T18 remaining work
+**Scope:** `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md` T18 remaining work
 **Status:** written spec approved with ordered cross-root correction; implementation planning in progress
 
 ## 1. Purpose

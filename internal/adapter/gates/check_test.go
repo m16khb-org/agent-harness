@@ -183,6 +183,35 @@ func TestCheckDiscoversDefaultFiles(t *testing.T) {
 	}
 }
 
+func TestCheckDiscoversIssueFolderLedgers(t *testing.T) {
+	dir := t.TempDir()
+	writeTestGateFile(t, dir, ".agent-harness/issues/480/gates.md", "- [ ] G1: issue 480\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".agent-harness/issues/97/gates.md", "- [ ] G2: issue 97\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".agent-harness/issues/480/plan.md", "not a ledger\n")
+	writeTestGateFile(t, dir, ".agent-harness/issues/_unnumbered/gates.md", "- [ ] G3: unnumbered\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".agent-harness/gates/legacy.md", "- [ ] G4: legacy\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, "GATES.md", "- [ ] G5: top\n  EVIDENCE: pending\n")
+	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, StatusOnly: true})
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	want := []string{
+		filepath.Join(dir, ".agent-harness", "issues", "97", "gates.md"),
+		filepath.Join(dir, ".agent-harness", "issues", "480", "gates.md"),
+		filepath.Join(dir, ".agent-harness", "issues", "_unnumbered", "gates.md"),
+		filepath.Join(dir, "GATES.md"),
+		filepath.Join(dir, ".agent-harness", "gates", "legacy.md"),
+	}
+	if len(result.Files) != len(want) {
+		t.Fatalf("discovered %d files, want %d: %+v", len(result.Files), len(want), result.Files)
+	}
+	for i, file := range result.Files {
+		if file.File != want[i] {
+			t.Fatalf("file %d = %s, want %s (issue folders first, numeric ascending, then non-numeric, then compatible): %+v", i, file.File, want[i], result.Files)
+		}
+	}
+}
+
 func TestCheckNoFilesIsUsageError(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir})
