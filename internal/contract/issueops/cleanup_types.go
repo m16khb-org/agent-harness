@@ -162,6 +162,18 @@ type CleanupFinishResult struct {
 	// SupersedeError는 replacement 증거가 제시됐으나 검증에 실패한 사유다.
 	// 비어 있으면 증거가 아예 없었다는 뜻이다.
 	SupersedeError string `json:"supersede_error,omitempty"`
+	// RetargetedBase는 준비 base와 관측 base가 다른데도 통과했을 때 그 근거다.
+	// 무엇을 관측해 정상 재타깃으로 판정했는지 결과만 보고 알 수 있어야 한다(#490).
+	RetargetedBase *CleanupRetargetedBase `json:"retargeted_base,omitempty"`
+}
+
+// CleanupRetargetedBase는 부모 브랜치가 머지·삭제되어 provider가 PR을 기본
+// 브랜치로 재타깃한 정상 흐름의 관측 근거다(#490).
+type CleanupRetargetedBase struct {
+	PreparedBase             string `json:"prepared_base"`
+	ObservedBase             string `json:"observed_base"`
+	DefaultBranch            string `json:"default_branch"`
+	PreparedBaseRemoteAbsent bool   `json:"prepared_base_remote_absent"`
 }
 type CleanupRemoteBranchResult struct {
 	OK                  bool     `json:"ok"`
