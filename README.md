@@ -251,6 +251,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`, `issue-branch-worktree`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`
+- 코드 리뷰: `fagan`, `review-agent-feedback`
 - 운영 개선: `self-verify`, `self-augment`, `stability-audit`
 - 한국어 작성: `fluent-korean`
 - 다이어그램과 시각화: `diagram-design`

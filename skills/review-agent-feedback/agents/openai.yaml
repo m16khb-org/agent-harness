@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Agent Feedback"
+  short_description: "Verify bot/agent review threads on a GitHub PR or GitLab MR, then reply, react, resolve, and read back"
+  default_prompt: "Use $review-agent-feedback to verify each automated review thread on this PR/MR against the real code, reply in-thread with the verdict and evidence, add the reaction, resolve handled threads, and report the read-back ledger."

@@ -1,6 +1,6 @@
 ---
 name: fagan
-description: "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (kody-review-feedback) or for an uncommitted local diff (code-review)."
+description: "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review)."
 ---
 
 # Fagan — evidence-verified MR/PR inspection

@@ -72,7 +72,7 @@ agent-harness의 `skills/` 디렉토리에는 **21개** 스킬이 있다(`ls ski
 | `draft-wiki-promoter` | draft-wiki 후보 판정·승격 |
 | `gitlab-usecase` | GitLab/glab/IssueOps remote 가이드 |
 | `issueops` | Issue-Driven Work Cycle Router |
-| `kody-review-feedback` | Kody/Kodus GitLab review 검증·답글·reaction |
+| `review-agent-feedback` | GitHub/GitLab 봇 리뷰 스레드 검증·답글·reaction·resolve |
 | `project-bootstrap` | repo-local AGENTS.md + `.agent-harness/` 문서 생성 |
 | `self-augment` | 자가 개선 루프(95점 게이트) |
 | `self-verify` | 자가 검증 루프(95점 게이트) |

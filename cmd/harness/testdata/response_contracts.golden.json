@@ -827,7 +827,7 @@
           "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
-          "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (kody-review-feedback) or for an uncommitted local diff (code-review).",
+          "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "fagan",
@@ -909,6 +909,13 @@
           "has_skill_md": true,
           "name": "project-docs-update",
           "path": "$HARNESS_ROOT/skills/project-docs-update"
+        },
+        {
+          "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "review-agent-feedback",
+          "path": "$HARNESS_ROOT/skills/review-agent-feedback"
         },
         {
           "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
@@ -5173,6 +5180,7 @@
           "project-docs-bootstrap",
           "project-docs-optimize",
           "project-docs-update",
+          "review-agent-feedback",
           "self-augment",
           "self-verify",
           "shannon",
@@ -7093,7 +7101,7 @@
                 "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
-                "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (kody-review-feedback) or for an uncommitted local diff (code-review).",
+                "description": "Use when asked to review, inspect, or comment on a GitLab merge request or GitHub pull request (by number, !iid, #n, URL, or branch) — 'MR 리뷰', 'PR 리뷰', '코드 리뷰 남겨줘', 'Kody처럼 리뷰', '머지 전 검토', 'review this MR/PR' — including when a bot (Kody/Kodus, CodeRabbit, Copilot) already reviewed it and a stronger, evidence-verified review is wanted. Not for replying to existing bot threads (review-agent-feedback) or for an uncommitted local diff (code-review).",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "fagan",
@@ -7175,6 +7183,13 @@
                 "has_skill_md": true,
                 "name": "project-docs-update",
                 "path": "$HARNESS_ROOT/skills/project-docs-update"
+              },
+              {
+                "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "review-agent-feedback",
+                "path": "$HARNESS_ROOT/skills/review-agent-feedback"
               },
               {
                 "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
@@ -8250,6 +8265,7 @@
                 "project-docs-bootstrap",
                 "project-docs-optimize",
                 "project-docs-update",
+                "review-agent-feedback",
                 "self-augment",
                 "self-verify",
                 "shannon",
