@@ -20,7 +20,7 @@
   CHECK: go test ./internal/adapter/issueops -run RequesterGates -count=1
   EXPECT: ok
   EVIDENCE: ok  	agent-harness/internal/adapter/issueops	0.444s
-- [x] G6: orca_runtime_ready for bound cycles, selector_not_found means no terminals, abandon gate refuses TaskLive only
+- [x] G6: orca_runtime_ready for bound cycles, selector_not_found means no terminals, abandon gate refuses TaskLive, and TerminalLive unless apply ①′ can reach the terminal
   CHECK: go test ./internal/adapter/issueops -run OrcaTerminalsGates -count=1
   EXPECT: ok
   EVIDENCE: ok  	agent-harness/internal/adapter/issueops	0.498s
