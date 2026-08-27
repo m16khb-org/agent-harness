@@ -1,6 +1,8 @@
 package rootcmd
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 )
@@ -43,6 +45,12 @@ func (c Command) runSubcommand(name string, args []string) (bool, int) {
 		return false, 0
 	}
 	if err := runner(args); err != nil {
+		// A help request is answered by the usage the subcommand already
+		// printed; it is not a failure and must not add a "flag: help
+		// requested" line or a non-zero exit.
+		if errors.Is(err, flag.ErrHelp) {
+			return true, 0
+		}
 		fmt.Fprintln(c.stderr(), name+":", err)
 		return true, c.errorExitCode(name, err)
 	}

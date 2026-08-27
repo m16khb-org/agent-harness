@@ -3,6 +3,7 @@ package rootcmd
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"strings"
 	"testing"
 )
@@ -91,6 +92,22 @@ func TestRunRootCommandUsesCustomErrorExitCode(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "guard: blocked") {
 		t.Fatalf("stderr = %q, want guard error", stderr.String())
+	}
+}
+
+// A subcommand answering --help returns flag.ErrHelp after printing its own
+// usage. That is a successful request: exit 0 and no "name: flag: help
+// requested" line on stderr.
+func TestRunRootCommandTreatsHelpRequestAsSuccess(t *testing.T) {
+	var stderr bytes.Buffer
+	cmd := testCommand(&bytes.Buffer{}, &stderr)
+	cmd.Runners["hook"] = func([]string) error { return flag.ErrHelp }
+
+	if code := cmd.Run([]string{"hook", "--help"}); code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want nothing for a help request", stderr.String())
 	}
 }
 
