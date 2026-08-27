@@ -104,7 +104,7 @@ IssueOps state is durable because `agent-harness issueops ...` commands record i
 
 ## 26. `ValidateArtifactURL`은 verify-artifact(pr/mr) 전용 — issue 케이스 추가 금지
 
-`remote.ValidateArtifactURL`의 유일한 prod 호출자는 `artifactverify.verificationFromRequest`이고, 이 함수는 호출 전에 `kind != pr/mr`을 하드 거부한다(이슈는 사이클의 remote-artifact가 아니다 — 사이클의 RemoteArtifact는 PR/MR이다). `create-issue --confirm`의 라이브 검증 게이트는 이 계층을 **거치지 않고** `VerifyRemoteArtifactLive` → `fetchGitHubIssueArtifact`/`fetchGitLabIssueArtifact`로 직행하며, fetcher가 자체 URL 파싱(GitLab은 `SplitGitLabIssuePath`+kind 체크, GitHub은 `gh issue view`)을 한다.
+`remote.ValidateArtifactURL`의 유일한 prod 호출자는 `artifactverify.verificationFromRequest`이고, 이 함수는 호출 전에 `kind != pr/mr`을 하드 거부한다(이슈는 사이클의 remote-artifact가 아니다 — 사이클의 RemoteArtifact는 PR/MR이다). `create-issue --confirm`의 라이브 검증 게이트는 이 계층을 **거치지 않고** `VerifyRemoteArtifactLive` → `fetchGitHubIssueArtifact`/`fetchGitLabIssueArtifact`로 직행하며, fetcher가 자체 URL 파싱(GitLab은 `SplitGitLabIssuePath`로 project/IID만 요구하고 `issues`·`work_items` 별칭을 모두 받는다 — §31, GitHub은 `gh issue view`)을 한다.
 
 주의:
 - `ValidateArtifactURL`/`verificationFromRequest`에 `github:issue`/`gitlab:issue` 분기를 추가하면 죽은 코드가 된다(116ebef 리뷰에서 지적·제거).
@@ -141,6 +141,34 @@ IssueOps worktree 세션에서도 host cwd, MCP root, file-edit tool root가 원
 - Guard는 source checkout의 모든 edit를 막지 않는다. §21의 multi-path deadlock 방지 때문에 non-cycle branch에서 source checkout에 새 파일을 만드는 정상 작업은 허용되어야 한다.
 - 방어층은 세 겹이다: PostToolUse source-checkout warning, PreToolUse mirror-file `ask`, SessionStart/UserPrompt worktree reminder. Host가 `ask`를 지원하지 않으면 Codex처럼 `block`으로 degrade될 수 있다.
 - 선택된 cycle의 구현은 canonical worktree로 이동한다. Holder 교체가 필요하면 source에서 구현을 계속하지 말고 `issueops execution status`가 안내하는 generation-CAS replacement 절차를 따른다. Source checkout은 unrelated work에 계속 사용할 수 있다.
+
+## 31. GitLab 이슈 URL의 `/-/issues/`·`/-/work_items/`는 같은 identity — 경로로 타입을 판별하지 말 것
+
+GitLab 18.10+(work items list GA, `work_item_planning_view` 플래그 제거;
+docs.gitlab.com/user/work_items/: "URLs that contain /epics/:iid or /issues/:iid
+automatically redirect to /work_items/:iid")는 일반 이슈(`type=ISSUE`)의 `web_url`도
+`/-/work_items/:iid`로 돌려주고(19.2.4-ee에서 관측) `glab issue create/view`는 그 값을
+그대로 출력하므로, 레코드의 `issue_url`은 `work_items` 별칭으로 봉인될 수 있다. provider
+파서 `parseGitLabIssueURL`이 `kind == "issues"`만 부모 이슈로 인정해 `close-issue`,
+`reflect-completion`, `create-child`, `close-child`가 레코드 자신의 URL을
+`parent_issue_url must be a GitLab issue URL`로 거부했고, `create-issue --confirm`의
+라이브 게이트(`fetchGitLabIssueArtifact`)도 같은 검사로 원격 이슈가 이미 생성된 뒤에
+실패할 수 있었다(2026-08-26 lesson).
+
+주의:
+- identity는 authority + project path + IID다. 두 별칭 모두 REST
+  `projects/:path/issues/:iid`로 해석하고, Issue/Task 구분은 payload의
+  `type`/`issue_type`으로만 판정한다(`verifyGitLabIssuePayloadIsTask` 선례).
+- 파서에 `kind == "issues"`류의 경로 표식 검사를 되살리지 말 것. 자식 Task URL을 받는
+  `parseGitLabWorkItemURL`은 GraphQL `workItemCreate`의 `webUrl`이 항상 `work_items`라
+  그대로 둔다.
+- "work_items URL은 부모 이슈가 아니다"를 단언하던 테스트는 잘못된 가정을 고정하는
+  테스트였다. URL 형태로 원격 객체 타입을 고정하는 테스트는 provider가 실제로 돌려주는
+  `web_url`을 재현해야 한다. 회귀는 `TestParseGitLabIssueURLAcceptsWorkItemsAlias`,
+  `TestGitLabCloseIssueAcceptsWorkItemsIssueURL`,
+  `TestGitLabUpdateIssueBodySectionAcceptsWorkItemsIssueURL`,
+  `TestGitLabCreateChildPreviewAcceptsWorkItemsParentURL`,
+  `TestFetchGitLabIssueArtifactAcceptsWorkItemsAlias`가 고정한다.
 
 ## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것
 
