@@ -17,8 +17,9 @@
 | `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 direct/Orca execution v1 lease | IssueOps가 단일 authority다. Orca는 readiness, workspace, native owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소유한다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
 | `agent-harness worker` one-shot jobs | 구현됨 | lifecycle job record(`enqueue/status/list/cancel/cleanup-stuck`)와 policy-gated `run --read-only`(MCP `worker_run_read_only`) | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. |
-| Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
-| Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
+| Codex native integration | 구현됨 | user skills, MCP config, `SessionStart` context hook | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
+| Claude Code native integration | 구현됨 | user skills, user-scope MCP, `SessionStart` context hook | core 정책 우회 금지 |
+| Omo native integration | 구현됨 | user skills, MCP config, `session_start`/`session_compact` extension | core 정책 우회 금지 |
 
 Daemon composition은 listener 시작 전에 MCP dependency를 한 번 구성하고
 immutable snapshot으로 각 stream에 전달한다. Connection accept 경로는 process
@@ -53,7 +54,7 @@ Project docs bootstrap:
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
-- maintenance: `state maintain`은 고정 store root(state, issueops, worker, loop)와 `projects/<repo-id>` store에 WAL checkpoint truncate와 sidecar 권한(0600) 복구를 수행한다. 세션 시작 hook이 24시간 간격으로 같은 유지보수를 자동 실행한다.
+- maintenance: `state maintain`은 고정 store root(`state`, `issueops`, `worker`, `loop`)와 `projects/<repo-id>` store의 WAL checkpoint를 truncate하고 sidecar 권한(0600)을 복구한다. 현재 context hook은 static project-doc catalog만 읽으므로 유지보수를 자동 실행하지 않는다.
 - self-verify summary checkpoint는 `self-verify history/compare/promote`와 MCP `self_verify_history/self_verify_compare/self_verify_promote`로 조회·비교·승격한다.
 
 IssueOps v1 execution state, schema authority, capability verticals, and the
@@ -64,9 +65,9 @@ actor model live in [`issueops.md`](issueops.md).
 | 종류 | 권장 위치 | 추적 여부 |
 |------|-----------|----------|
 | 프로젝트 지식 | `.agent-harness/`, `AGENTS.md`, `CLAUDE.md` | git 추적 |
-| 사용자 전역 설정 | `~/.config/agent-harness/config.yaml` | git 비추적 |
+| 사용자 전역 설정 | `HARNESS_*` env와 generated host config는 현재 구현이며, `~/.config/agent-harness/config.yaml` loader는 계획 상태 | git 비추적 |
 | 사용자 전역 state/log | `~/.local/state/agent-harness/` 또는 OS별 state dir | git 비추적 |
-| workspace local cache | `.harness/` | `.gitignore` 대상 |
+| workspace local cache | `.harness/`는 예약 경로이며 현재 생성하거나 불러오지 않는다 | 도입 시 `.gitignore` 대상 |
 | secret | OS keychain 또는 env reference | 원문 저장 금지 |
 
 구현 시 XDG base directory를 우선 검토하고, macOS에서도 예측 가능한 fallback을 둔다.
@@ -127,8 +128,8 @@ actor model live in [`issueops.md`](issueops.md).
 
 ## Standalone Runtime Policy
 
-`agent-harness install`, `bootstrap`, `update`, and `scripts/install-native.sh` install only agent-harness native integrations. They must not clone, install, patch, or register third-party toolchains as a side effect.
+`agent-harness install`, `bootstrap`, `update`, `scripts/install-native.sh`는 외부 계정·키·도구 없이 native activation, readiness, self-verification을 완료할 수 있어야 한다.
 
-External tools may be useful in a user's environment, but they are not agent-harness dependencies. If a workflow benefits from one of them, the user installs it through that tool's own documented path and the harness consumes only explicit, inspectable boundaries such as files, command output, or MCP data the user has already configured.
+Native activation 뒤에는 `configs/upstream.json`의 선언형 catalog를 선택적으로 처리할 수 있다. 현재 adapter는 Claude Code에서 누락된 plugin과 Git skill만 provision하며 dry-run plan도 제공한다. network 또는 host CLI 실패는 `upstream ...` 진단으로 남기지만 install 성공을 뒤집지 않는다. 이 catalog는 third-party 기능을 core에 복제하거나 readiness dependency로 만들지 않는다.
 
-Readiness gates, self-verification, install/update success, and core CLI/MCP contracts must remain reproducible without external accounts, API keys, companion hooks, or companion MCP servers. Do not add fallback shims that patch external plugin caches or weaken harness contracts when an external tool is missing or broken.
+그 밖의 외부 도구는 사용자가 공식 경로로 설치한다. 하네스는 사용자가 이미 구성한 파일, 명령 출력, MCP 데이터처럼 명시적이고 검증 가능한 경계만 소비하며, 외부 plugin cache를 수정하는 compatibility shim을 두지 않는다.

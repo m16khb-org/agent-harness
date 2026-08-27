@@ -9,15 +9,19 @@ implementation roadmap lives in [roadmap.md](roadmap.md).
 
 ## Status model
 
-Every record under `decisions/` is `accepted` at publication. A record becomes
-`superseded` only when a later dated record says so explicitly. Two supersessions
-the active records already cite:
+Legacy records under `decisions/` and append-generated records directly under
+`adr/` are `accepted` when published. A record becomes `superseded` only when a
+later dated record says so explicitly. Current supersessions include:
 
 - 2026-05-29 "upstream companion tools were opt-in dependencies" is superseded
   by the 2026-07-07 standalone harness policy.
 - The `gh issue develop` step in #163's Orca ordering is superseded by the
   2026-07-26 sealed-base-SHA linking decision. The Orca-before-linking ordering
   itself is unchanged.
+- The 2026-07-07 standalone policy's blanket prohibition on third-party
+  installation is superseded only for the constrained declarative path in the
+  2026-08-28 optional-upstream-provisioning decision. Standalone core success
+  remains.
 
 Historical host, schema, and command names inside dated records preserve the
 rationale at the time of writing. They are not current support contracts. The
@@ -26,11 +30,17 @@ current operating surface is set by root `AGENTS.md`, `ARCHITECTURE.md`,
 
 ## Naming and authoring
 
-- One file per accepted decision: `decisions/YYYY-MM-DD-<kebab-slug>.md`.
-- Records are append-only. Never edit a published record to change its
-  decision; supersede it with a new dated record that names what it replaces.
+- Keep existing immutable records at `decisions/YYYY-MM-DD-<kebab-slug>.md`; do
+  not move them.
+- Create new decisions with `project_docs_append(kind=adr)` at
+  `YYYY-MM-DD-<kebab-slug>.md` directly under this module.
+- Decisions are append-only. Supersede a decision with a later dated record that
+  explicitly names what it replaces. Use `project_docs_revise` only to correct a
+  factual statement about the current path or name; preserve the rationale and
+  record the amendment date.
 - Same-day decisions use a distinguishing slug after the date.
-- Each record links back to `../../ADR.md`.
+- Legacy records link to `../../ADR.md`. A separate SHA-guarded revision of the
+  root ADR index links append-generated records.
 - Structured records keep their `Kind`, `Source`, `Summary`, `Context`,
   `Decision`, `Consequences`, `Evidence`, and `Alternatives / rejected options`
   fields. Unstructured records keep their original prose and headings.

@@ -20,10 +20,10 @@
 
 ## 6. Config / env
 
-- env prefix는 `HARNESS_`를 사용한다.
-- config 파일 기본 후보는 `~/.config/agent-harness/config.yaml`이다.
-- workspace별 설정이 필요하면 `.harness/config.yaml`을 사용하되, secret 원문 저장은 금지한다.
-- config 우선순위는 `flag → env → workspace config → user config → default` 순서로 둔다.
+- 현재 runtime 입력은 command flag, `HARNESS_*` env, installer가 관리하는 host JSON/TOML config다.
+- `~/.config/agent-harness/config.yaml`과 `.harness/config.yaml`은 reserved 경로다. 현재 loader는 구현되지 않았으므로 이 경로를 읽거나 만들지 않는다.
+- 향후 generic config loader의 우선순위는 `flag → env → workspace config → user config → default`로 고정한다.
+- secret 원문은 저장하지 않는다.
 
 ---
 

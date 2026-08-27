@@ -36,8 +36,10 @@ description: System structure, component boundaries, and responsibilities.
   `cmd/...`를 import하지 않는다.
 - `internal/port`는 contract 외 `internal/...` concrete 구현에 의존하지 않는다.
 - `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만
-  조립된다. legacy adapter edge는 0이다(`outbound` 하위 package 사이 정리
-  edge와 공유 저장 엔진 `outbound/sqlstore` 예외만 허용).
+  조립되고 legacy adapter edge는 0이다. 좁은 outbound 예외의 canonical 목록은
+  [hexagonal-core.md](architecture/hexagonal-core.md)와
+  `internal/architecture/dependency_test.go`가 함께 소유한다. 이 요약에는 이를
+  중복해 나열하지 않으며, 새 package는 기존 예외를 일반 우회로 재사용하지 않는다.
 - 새 host 추가 시 공통 domain/application 정책을 복제하지 않고
   `port.HostInstaller` 구현체와 composition-root wiring만 추가한다.
 - `internal/architecture`는 위 규칙을 production import graph 기반 test-only

@@ -11,11 +11,11 @@ hygiene. Dated incident lessons live under [lessons/](lessons/).
 
 ## 5. Worker lifecycle 문제
 
-persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오래된 binary 문제가 생긴다.
+현재 worker는 state-first one-shot job record와 policy-gated `run --read-only`만 제공한다. 장기 상주 worker를 추가하면 stale lock, orphan process, socket 권한, 오래된 binary 문제가 생긴다.
 
 주의:
-- MVP에서는 CLI/MCP one-shot을 먼저 안정화한다.
-- worker 도입 시 health check, version handshake, graceful shutdown, stale lock cleanup을 구현한다.
+- 현재 daemon은 shared MCP backend이지 background job runner가 아니다.
+- persistent worker를 도입하기 전에 health/version handshake, graceful shutdown, stale lock cleanup, timeout/cancellation을 고정한다.
 - socket path와 permission을 문서화하고 테스트한다.
 
 ## 6. State 위치 혼동
@@ -26,7 +26,7 @@ persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오
 - 추적할 지식은 `.agent-harness/`에 둔다.
 - cache/log/runtime state는 user state dir 또는 ignored `.harness/`에 둔다.
 - `.harness/`를 도입하면 `.gitignore`에 추가한다.
-- **S2 (known limitation, accepted)**: state store는 per-key flock RMW(`StateUpdate`/`writeStateRecord`는 temp+rename으로 단일 key 원자성)만 보장하고 **cross-key atomic transaction은 없다**. 현재 2개 이상 key를 한 단위로 commit해야 하는 caller가 없어 의도된 한계다(journal/composite-record 미도입). 그런 invariant가 생기면 그때 도입한다.
+- **S2 (current boundary)**: state, IssueOps, worker, loop store는 SQLite `harness.db`를 사용하며, root별 `harness.lock.db`에서 `BEGIN IMMEDIATE` span으로 직렬화한다. 한 store root의 multi-record invariant는 하나의 `WithSpan`/transaction 안에서 갱신하며, 서로 다른 store root 사이의 cross-database atomicity는 가정하지 않는다.
 
 ## 11. 과도한 초기 추상화
 
@@ -66,13 +66,12 @@ Manual builds, smoke tests, and ad-hoc verification runs can leave stale binarie
 
 ## 26. SQLite WAL 고수위 및 사이드카 권한
 
-sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고수위로 유지되는 현상(M1), 사이드카 파일이 0600이 아닌 권한으로 생성되는 현상(M2)이 관측되었다.
+SQLite 전환 후 checkpoint 뒤에도 WAL이 truncate되지 않고 고수위로 유지되는 문제(M1)와 사이드카가 0600이 아닌 권한으로 생성되는 문제(M2)가 관측되었다.
 
 주의:
-- `sqlstore.Maintain`이 `PRAGMA wal_checkpoint(TRUNCATE)` + 사이드카 0600 재보증을 수행한다. `state maintain` CLI 또는 session-start hook의 `MaybeMaintainStateStores(24h)`가 자동 호출한다.
-- 정상 `done` 전이는 해당 사이클의 세션 바인딩을 제거한다. 비정상 종료로 남은 done/absent 바인딩만 `issueops cleanup stale --apply`로 정리하며, dry-run(`--apply` 없음)은 보고만 한다.
+- `sqlstore.Maintain`은 `PRAGMA wal_checkpoint(TRUNCATE)`와 사이드카 권한을 0600으로 재보증한다. context hook은 SQLite를 유지보수하지 않으므로 필요할 때 `agent-harness state maintain --json`을 명시적으로 실행한다.
+- 오래된 IssueOps record는 `issueops prune --max-age DURATION`으로 먼저 dry-run한 뒤 `--confirm`으로 삭제한다. cutoff보다 오래된 `done` record 중 lease가 released 상태이고 issue-create intent와 remote completion reflection이 정리된 record만 대상이다.
 - VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
-- `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.
 
 ## 레코드 삭제는 related write span과 같은 게이트를 지날 것
 

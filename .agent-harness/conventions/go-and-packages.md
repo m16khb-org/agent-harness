@@ -31,7 +31,8 @@ internal/adapter/inbound/          # capability inbound adapter
 internal/adapter/outbound/         # state/SQL/webfetch 등 capability outbound adapter
 internal/adapter/codex/
 internal/adapter/claude/
-internal/adapter/hook/
+internal/domain/hook/
+cmd/harness/hookcli/
 internal/adapter/installutil/
 internal/adapter/provider/         # github/gitlab issue provider
 configs/codex/
@@ -55,7 +56,7 @@ skills/
 | `cmd/harness/<cli>` | flag/stdout/stderr/JSON-RPC와 command dispatch | contract, domain catalog, application, 주입된 dependency | host별 정책 복제, domain 판정 재구현 |
 | `adapter/codex` | Codex user skill/MCP 설치 구현 | contract, port, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
 | `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | contract, port, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
-| `adapter/hook` | host별 hook 출력 schema formatter | contract, domain | host schema와 다른 응답 |
+| `domain/hook` + `cmd/harness/hookcli` | host별 hook 출력 변환과 context command 전달 | contract, domain catalog | host schema와 다른 응답, lifecycle 변경 |
 | `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | contract, port, os/exec | 정책 복제, root 밖 접근 |
 
 > `cmd/harness/harnessapp`가 concrete adapter를 조립하는 유일한 composition root다. command별 CLI와 daemon/MCP transport 구현은 현재 `cmd/harness/*cli`에 있고, 공통 catalog/판정은 `internal/domain`, DTO는 `internal/contract`가 소유한다.

@@ -8,8 +8,9 @@ description: Architecture decision record index and accepted baseline.
 
 > 이 파일의 날짜별 항목은 append-only 결정 이력이다. 과거 항목의 retired host/schema/command 명칭은 당시 근거를 보존하는 역사 표기이며 현재 지원 계약이 아니다. 현재 운영 표면은 루트 `AGENTS.md`, `ARCHITECTURE.md`, `OPERATIONS.md`와 가장 최근의 명시적 superseding 결정이 정한다.
 
-이 색인은 accepted architecture decision의 정규 입구다. 각 결정은
-`adr/decisions/` 아래 하나의 immutable record로 저장되고 본 색인으로 링크된다.
+이 색인은 accepted architecture decision의 정규 입구다. 기존 immutable record는
+`adr/decisions/`에 남고, `project_docs_append(kind=adr)`로 추가되는 새 record는
+`adr/YYYY-MM-DD-<slug>.md`에 저장된다. 두 경로의 accepted decision을 본 색인으로 링크한다.
 
 ## Accepted baseline
 
@@ -20,6 +21,10 @@ description: Architecture decision record index and accepted baseline.
   MCP, lifecycle activation contract를 사용한다. 근거는
   [Omo native first-party host](adr/decisions/2026-08-12-omo-native-first-party-host.md)
   결정에 있다.
+- **External integrations:** native activation, readiness, self-verification은
+  standalone으로 유지한다. Native activation 뒤 Claude-scoped declarative catalog를
+  non-fatal로 provision할 수 있는 좁은 예외는
+  [optional upstream provisioning](adr/2026-08-28-optional-upstream-provisioning-preserves-the-standalone-core.md)이 소유한다.
 - **구현 로드맵:** phase별 계획, 목표 아키텍처, MVP 범위, 위험, 다음 작업 후보는
   [adr/roadmap.md](adr/roadmap.md) 가 소유한다.
 - **결정 규칙:** status model, naming, authoring 규칙과 archived history
@@ -32,9 +37,12 @@ and supersession rules live in [adr/README.md](adr/README.md).
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-08-28 | Optional upstream provisioning preserves the standalone core; partially supersedes the 2026-07-07 blanket prohibition | [record](adr/2026-08-28-optional-upstream-provisioning-preserves-the-standalone-core.md) |
 | 2026-08-27 | SessionStart owns compaction context; legacy hook surface removed | [record](adr/decisions/2026-08-27-session-start-owns-compaction-context.md) |
 | 2026-08-22 | Cross-session channel capability | [record](adr/decisions/2026-08-22-cross-session-channel.md) |
 | 2026-08-22 | Task gate ledger (unlazy-compatible gates capability) | [record](adr/decisions/2026-08-22-task-gate-ledger.md) |
+| 2026-08-21 | Bootstrap preserves in-progress repos and transparent plans | [record](adr/decisions/2026-08-21-bootstrap-respects-inprogress-repos.md) |
+| 2026-08-21 | Engineering standards catalog for project-docs bootstrap and optimize | [record](adr/decisions/2026-08-21-engineering-standards-catalog.md) |
 | 2026-08-10 | Default hooks are thin static context only | [record](adr/decisions/2026-08-10-default-hooks-thin-static-context.md) |
 | 2026-08-08 | Dependency ratchet counts capability boundaries only | [record](adr/decisions/2026-08-08-dependency-ratchet-capability-boundary.md) |
 | 2026-08-08 | Legacy baseline removed; ratchet becomes an invariant | [record](adr/decisions/2026-08-08-legacy-baseline-invariant.md) |
@@ -57,7 +65,7 @@ and supersession rules live in [adr/README.md](adr/README.md).
 | 2026-07-09 | Loop contracts | [record](adr/decisions/2026-07-09-loop-contracts.md) |
 | 2026-07-08 | SQLite store maintenance policy | [record](adr/decisions/2026-07-08-sqlite-store-maintenance-policy.md) |
 | 2026-07-07 | State storage moves from JSON files + flock to SQLite (sqlstore) | [record](adr/decisions/2026-07-07-sqlite-state-storage-migration.md) |
-| 2026-07-07 | Standalone harness policy, upstream wiring removed | [record](adr/decisions/2026-07-07-standalone-harness-policy.md) |
+| 2026-07-07 | Standalone harness policy; broad upstream wiring removed; blanket prohibition partially superseded on 2026-08-28 | [record](adr/decisions/2026-07-07-standalone-harness-policy.md) |
 | 2026-07-03 | Codex PreToolUse ask fallback | [record](adr/decisions/2026-07-03-codex-pretooluse-ask-fallback.md) |
 | 2026-07-02 | External LLM calls emit per-call usage observation records | [record](adr/decisions/2026-07-02-external-llm-usage-observation.md) |
 | 2026-07-02 | IssueOps regress rounds are capped with a human-decision escalation | [record](adr/decisions/2026-07-02-issueops-regress-round-cap.md) |
