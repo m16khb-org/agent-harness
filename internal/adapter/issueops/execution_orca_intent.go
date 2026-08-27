@@ -150,7 +150,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 		}
 		prepared := record
 		prepared.WorktreePath = receipt.Workspace.Workspace.Root
-		prepared.Execution.Workspace = workspaceFromReceipt(receipt.Workspace.Workspace, expected.StartedAt)
+		prepared.Execution.Workspace = workspaceFromReceipt(prepared, receipt.Workspace.Workspace, expected.StartedAt)
 		snapshot, err := readExecutionOwnerSnapshot(ctx, prepared, readIssue)
 		if err != nil {
 			return record, expected, err
@@ -232,7 +232,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 		if expected.Stage == preparationcontract.IntentStageWorktree {
 			current.WorktreePath = updated.Prepared.Workspace.Root
 			current.PlanPath = ownerPlanPath
-			current.Execution.Workspace = workspaceFromReceipt(intentPortWorkspaceReceipt(updated.Prepared.Workspace), expected.StartedAt)
+			current.Execution.Workspace = workspaceFromReceipt(current, intentPortWorkspaceReceipt(updated.Prepared.Workspace), expected.StartedAt)
 		}
 		if expected.Stage == preparationcontract.IntentStageDispatch {
 			if expected.Launch == nil {

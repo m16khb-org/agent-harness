@@ -170,3 +170,14 @@ func TestCompletionAndDevilsAdvocateSectionsCoexist(t *testing.T) {
 		t.Fatalf("re-merging completion must preserve devils-advocate block: %q", body2)
 	}
 }
+
+func TestRenderCompletionSectionListsMissingSealedArtifacts(t *testing.T) {
+	section := RenderCompletionSection(port.IssueProviderCompletionSection{FinalHead: "abc", MissingArtifacts: []string{"plan"}}, "2026-08-27T00:00:00Z", 0)
+	if !strings.Contains(section, "- 봉인 아티팩트 없음: plan") {
+		t.Fatalf("missing sealed artifacts must be rendered under the manifest: %s", section)
+	}
+	plain := RenderCompletionSection(port.IssueProviderCompletionSection{FinalHead: "abc"}, "2026-08-27T00:00:00Z", 0)
+	if strings.Contains(plain, "봉인 아티팩트 없음") {
+		t.Fatalf("no missing artifacts must render no line: %s", plain)
+	}
+}

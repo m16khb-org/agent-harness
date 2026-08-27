@@ -75,6 +75,7 @@ func MaterializeExecutionPreparationDirect(stateRoot string, snapshot preparatio
 		Workspace: issueops.Workspace{
 			SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
 			BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree, Driver: receipt.Driver,
+			ArtifactDir: issueArtifactDirFor(record),
 		},
 	}
 	_, err = materializeStagedArtifacts(stateRoot, record)
@@ -116,7 +117,7 @@ func PrepareExecutionPreparationOwner(
 		return preparationcontract.OwnerArtifacts{}, err
 	}
 	record.WorktreePath = workspaceReceipt.Workspace.Root
-	record.Execution.Workspace = workspaceFromReceipt(workspaceReceipt.Workspace, intent.StartedAt)
+	record.Execution.Workspace = workspaceFromReceipt(record, workspaceReceipt.Workspace, intent.StartedAt)
 	owner, err := readExecutionOwnerSnapshot(ctx, record, readIssue)
 	if err != nil {
 		return preparationcontract.OwnerArtifacts{}, err

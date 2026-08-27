@@ -1,6 +1,7 @@
 package issueopspreparation
 
 import (
+	remote "agent-harness/internal/domain/issueopsremote"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -94,6 +95,7 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 				SourceRoot: commit.Workspace.SourceRoot, Root: commit.Workspace.Root,
 				Branch: commit.Workspace.Branch, BaseHead: commit.Workspace.BaseHead,
 				ParentWorktree: commit.Workspace.ParentWorktree, Driver: "git", LinkedAt: commit.LinkedAt,
+				ArtifactDir: remote.IssueArtifactDir(record.IssueURL),
 			},
 			Lease: leasecontract.Lease{
 				Generation: 1, Status: "active", Holder: &actor, ClaimedAt: commit.ClaimedAt,
@@ -186,6 +188,7 @@ func (repository *SQLiteRepository) BeginIntent(ctx context.Context, begin prepa
 				SourceRoot: begin.Workspace.SourceRoot, Root: begin.Workspace.Root,
 				Branch: begin.Workspace.Branch, BaseHead: begin.Workspace.BaseHead,
 				ParentWorktree: begin.Workspace.ParentWorktree, Driver: "orca", LinkedAt: begin.StartedAt,
+				ArtifactDir: remote.IssueArtifactDir(record.IssueURL),
 			},
 			Lease: leasecontract.Lease{Generation: 1, Status: "released"},
 			Pending: &leasecontract.ExternalIntent{
@@ -305,7 +308,7 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 			SourceRoot: prepared.Workspace.SourceRoot, Root: prepared.Workspace.Root,
 			Branch: prepared.Workspace.Branch, BaseHead: prepared.Workspace.BaseHead,
 			ParentWorktree: prepared.Workspace.ParentWorktree, Driver: prepared.Workspace.Driver,
-			LinkedAt: state.Intent.StartedAt,
+			LinkedAt: state.Intent.StartedAt, ArtifactDir: remote.IssueArtifactDir(record.IssueURL),
 		}
 	case preparationcontract.IntentStageTerminal:
 		if strings.TrimSpace(receipt.TerminalPTYID) == "" {

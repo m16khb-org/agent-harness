@@ -9,6 +9,7 @@ import (
 
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
+	remote "agent-harness/internal/domain/issueopsremote"
 )
 
 // artifactStageBucket은 prepare 이전에 코디네이터가 스테이징한 artifact를
@@ -16,9 +17,38 @@ import (
 // 없다(설계 v5 WS2).
 const artifactStageBucket = "artifact_stage_v1"
 
-// IssueOpsArtifactDir은 워크트리 안에서 materialize된 artifact가 놓이는
-// 상대 경로다. `.gitignore` 대상이며 보존은 completion 섹션이 담당한다.
+// IssueOpsArtifactDir은 execution.workspace.artifact_dir이 비어 있을 때의
+// legacy 봉인 디렉터리다. `.gitignore` 대상이며 보존은 completion 섹션이
+// 담당한다. 새 prepare는 issueArtifactDirFor로 이슈 폴더 아래를 고른다(#482).
 const IssueOpsArtifactDir = ".agent-harness/artifact"
+
+// sealedArtifactDir은 레코드가 봉인 아티팩트를 두는 워크트리 상대 디렉터리다.
+// 레코드 필드만 본다 — 파일시스템 상태나 PlanPath 파싱으로 추론하지 않는다.
+func sealedArtifactDir(record issueops.IssueOpsRecord) string {
+	if record.Execution != nil {
+		if dir := strings.TrimSpace(record.Execution.Workspace.ArtifactDir); dir != "" {
+			return dir
+		}
+	}
+	return IssueOpsArtifactDir
+}
+
+// sealedArtifactPath는 워크트리 root 아래 봉인 아티팩트 name.md의 절대 경로다.
+func sealedArtifactPath(record issueops.IssueOpsRecord, root, name string) string {
+	return filepath.Join(root, filepath.FromSlash(sealedArtifactDir(record)), name+".md")
+}
+
+// issueArtifactDirFor는 새 Workspace가 기록할 artifact_dir이다: linked issue
+// 번호가 있으면 `.agent-harness/issues/<n>/artifact`, 없으면 빈 값(legacy).
+func issueArtifactDirFor(record issueops.IssueOpsRecord) string {
+	if dir := remote.IssueArtifactDir(record.IssueURL); dir != "" {
+		return dir
+	}
+	if record.BranchPrepare != nil {
+		return remote.IssueArtifactDir(record.BranchPrepare.IssueURL)
+	}
+	return ""
+}
 
 type PlanIdentity struct {
 	Path   string
@@ -137,7 +167,7 @@ func materializeExecutionOwnerArtifacts(stateRoot string, record issueops.IssueO
 	}
 	prepared := record
 	prepared.WorktreePath = record.Execution.Workspace.Root
-	prepared.PlanPath = filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	prepared.PlanPath = sealedArtifactPath(record, record.Execution.Workspace.Root, "plan")
 	identity, err := readLinkedPlanIdentity(prepared)
 	if err != nil || !strings.EqualFold(identity.Digest, planDigest) {
 		return OwnerPlanIdentity{}, nil, newPlanArtifactRequiredError(prepared, false)
@@ -182,7 +212,7 @@ func materializeStagedArtifacts(stateRoot string, record issueops.IssueOpsRecord
 	manifest := map[string]string{}
 	root := record.Execution.Workspace.Root
 	for name, content := range staged {
-		path := filepath.Join(root, filepath.FromSlash(IssueOpsArtifactDir), name+".md")
+		path := sealedArtifactPath(record, root, name)
 		if err := writeExecutionOwnerArtifact(root, path, []byte(content)); err != nil {
 			return nil, fmt.Errorf("materialize artifact %s: %w", name, err)
 		}

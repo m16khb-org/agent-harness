@@ -149,7 +149,7 @@ func TestReflectCleanupAuditDoesNotStampOnFailure(t *testing.T) {
 
 func TestReflectIssueCompletionGathersArtifactsFromDisk(t *testing.T) {
 	stateRoot, record := completionTestRecord(t)
-	artifactDir := filepath.Join(record.Repo, completionArtifactDir)
+	artifactDir := filepath.Join(record.Repo, IssueOpsArtifactDir)
 	if err := os.MkdirAll(artifactDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

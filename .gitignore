@@ -32,3 +32,4 @@ skills/*/background.local.md
 # Per-issue artifact folder: review working files and tmp are never committed (#480)
 .agent-harness/issues/*/review/
 .agent-harness/tmp/
+.agent-harness/issues/*/artifact/

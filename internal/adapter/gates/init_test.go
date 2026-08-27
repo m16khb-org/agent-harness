@@ -76,6 +76,19 @@ func TestInitRejectsUnknownSegment(t *testing.T) {
 	}
 }
 
+func TestInitRejectsShellSyntaxInCheck(t *testing.T) {
+	dir := t.TempDir()
+	for _, spec := range []string{"G1: x | CHECK: go vet ./... && echo ok | EXPECT: ok", "G1: x | CHECK: a;b | EXPECT: ok"} {
+		_, err := Init(gatescontract.InitRequest{File: filepath.Join(dir, "GATES.md"), Scope: "s", Gates: []string{spec}})
+		if err == nil || !strings.Contains(err.Error(), "shell syntax") {
+			t.Fatalf("%q: shell syntax in CHECK must be rejected, got %v", spec, err)
+		}
+	}
+	if _, err := Init(gatescontract.InitRequest{File: filepath.Join(dir, "GATES.md"), Scope: "s", Gates: []string{`G1: x | CHECK: python3 -c "a; b" | EXPECT: ok`}}); err != nil {
+		t.Fatalf("quoted shell characters must stay allowed, got %v", err)
+	}
+}
+
 func TestAbandonRecordsHonestExit(t *testing.T) {
 	dir := t.TempDir()
 	path := writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: needs network\n  EVIDENCE: pending\n")
