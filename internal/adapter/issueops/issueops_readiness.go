@@ -3,6 +3,7 @@ package issueops
 import (
 	"strings"
 
+	"agent-harness/internal/adapter/issueops/delegation"
 	"agent-harness/internal/adapter/issueops/implementation"
 	"agent-harness/internal/adapter/issueops/intentdesign"
 	"agent-harness/internal/adapter/issueops/readinesspaths"
@@ -71,7 +72,9 @@ func planPrepItemValid(item issueops.IssueOpsPlanPrepItem) bool {
 }
 
 func IssueOpsAISlopCleanReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
-	ready := IssueOpsImplementationReadiness(record)
+	// 구현 중 플랜 편집(체크박스 등)은 ai-slop-clean 진입을 막지 않는다 — plan
+	// binding은 implement 진입 게이트다.
+	ready := issueOpsImplementationReadiness(record, false)
 	missing := append([]string{}, ready.Missing...)
 	if !implementation.HasEvidence(record) {
 		missing = append(missing, "implementation_changes")
@@ -107,6 +110,10 @@ func IssueOpsCompatibilityReviewReadiness(record issueops.IssueOpsRecord) issueo
 }
 
 func IssueOpsImplementationReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
+	return issueOpsImplementationReadiness(record, true)
+}
+
+func issueOpsImplementationReadiness(record issueops.IssueOpsRecord, checkPlanBinding bool) issueops.IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
 		missing = append(missing, "worktree_path")
@@ -120,7 +127,7 @@ func IssueOpsImplementationReadiness(record issueops.IssueOpsRecord) issueops.Is
 		missing = append(missing, "plan_in_worktree")
 	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
-	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
+	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record, checkPlanBinding)...)
 	if record.Execution == nil {
 		missing = append(missing, "execution")
 	} else {
@@ -146,17 +153,39 @@ func IssueOpsImplementationReadiness(record issueops.IssueOpsRecord) issueops.Is
 }
 
 // issueOpsDevilsAdvocateReviewMissing is the fail-closed implement-entry gate for
-// the brooks devil's advocate: a review must be recorded, and a stop/revise
-// verdict must be explicitly waived, before implementation can begin.
-func issueOpsDevilsAdvocateReviewMissing(record issueops.IssueOpsRecord) []string {
+// the brooks devil's advocate: a review must be recorded, a stop/revise verdict
+// must be explicitly waived, and (when checkPlanBinding) the verdict must have
+// been recorded against the plan content that is about to be implemented —
+// otherwise `devils_advocate_review_stale` blocks entry until a fresh review is
+// recorded on the final plan.
+func issueOpsDevilsAdvocateReviewMissing(record issueops.IssueOpsRecord, checkPlanBinding bool) []string {
 	review := record.DevilsAdvocateReview
 	if review == nil || strings.TrimSpace(review.RecordedAt) == "" {
 		return []string{"devils_advocate_review"}
 	}
+	missing := []string{}
 	if (review.Verdict == "stop" || review.Verdict == "revise") && !review.Waived {
-		return []string{"devils_advocate_review"}
+		missing = append(missing, "devils_advocate_review")
 	}
-	return nil
+	if checkPlanBinding && strings.TrimSpace(record.PlanPath) != "" && !issueOpsDevilsAdvocateDigestExempt(*review) {
+		if strings.TrimSpace(review.ReviewedPlanDigest) == "" {
+			missing = append(missing, "devils_advocate_review_stale")
+		} else if digest, err := issueOpsLinkedPlanDigest(record); err != nil || !strings.EqualFold(digest, review.ReviewedPlanDigest) {
+			// A plan that cannot be identified (symlink, empty file, unreadable) is
+			// not the plan that was reviewed either — fail closed, same as Record
+			// and the owner preflight do. plan_exists is weaker (Stat follows
+			// symlinks), so this is not a duplicate report.
+			missing = append(missing, "devils_advocate_review_stale")
+		}
+	}
+	return missing
+}
+
+// issueOpsDevilsAdvocateDigestExempt: a delegated child inherits the parent's
+// verdict by policy (delegation.ParentReviewPattern) and never reviewed its own
+// plan, so plan binding does not apply to it.
+func issueOpsDevilsAdvocateDigestExempt(review issueops.IssueOpsDevilsAdvocateReview) bool {
+	return review.ReviewerPattern == delegation.ParentReviewPattern
 }
 
 func issueOpsCompatibilityReviewMissing(record issueops.IssueOpsRecord) []string {

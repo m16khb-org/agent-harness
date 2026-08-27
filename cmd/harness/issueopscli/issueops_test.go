@@ -111,7 +111,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("compatibility review should move to compatibility-review phase: %#v", compatibilityRecord)
 	}
 	captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"devils-advocate", "review", "--id", id, "--verdict", "pass", "--json"})
+		return runIssueOps([]string{"devils-advocate", "review", "--id", id, "--verdict", "pass", "--reviewer-context", "subagent", "--finding", "attacked gate 3: no second caller exists", "--json"})
 	})
 	current, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
@@ -229,5 +229,12 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 	if unblocked["ready"] != true || strings.Contains(unblockedReadiness, "contract_feedback_issue_update") {
 		t.Fatalf("issue update mark should unblock PR readiness: %#v", unblocked)
+	}
+}
+
+func TestIssueOpsDevilsAdvocateReviewRequiresReviewerContext(t *testing.T) {
+	err := runIssueOpsDevilsAdvocate([]string{"review", "--id", "io-missing", "--verdict", "pass", "--finding", "attacked gate 3"})
+	if err == nil || !strings.Contains(err.Error(), "--reviewer-context") {
+		t.Fatalf("devils-advocate review without --reviewer-context must fail before touching state, got %v", err)
 	}
 }

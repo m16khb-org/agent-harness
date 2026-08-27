@@ -392,3 +392,64 @@ func writePlanArtifactTestFile(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestRequireStagedExecutionOwnerPlanRejectsStaleDevilsAdvocateReview(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	record.WorktreePath = t.TempDir()
+	record.PlanPath = filepath.Join(record.WorktreePath, "plan.md")
+	writePlanArtifactTestFile(t, record.PlanPath, "# Plan v2\n")
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte("# Plan v2\n")); err != nil {
+		t.Fatal(err)
+	}
+	record.DevilsAdvocateReview = &issueopscontract.IssueOpsDevilsAdvocateReview{
+		Verdict: "pass", Findings: []string{"attacked gate 3"}, ReviewerContext: "subagent",
+		ReviewedPlanDigest: digestExecutionOwnerBytes([]byte("# Plan v1\n")), RecordedAt: "t",
+	}
+	_, err := RequireStagedExecutionOwnerPlan(stateRoot, record)
+	if err == nil {
+		t.Fatal("a verdict recorded against an older plan must not launch an owner")
+	}
+	fields, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok {
+		t.Fatalf("error %T does not expose IssueOps fields: %v", err, err)
+	}
+	got := fields.IssueOpsErrorFields()
+	if got["code"] != "devils_advocate_review_stale" || !reflect.DeepEqual(got["missing"], []string{"devils_advocate_review_stale"}) {
+		t.Fatalf("code/missing must both name the stale gate: %#v", got)
+	}
+	if next, _ := got["next_command"].(string); !strings.Contains(next, "issueops devils-advocate review --id "+quoteExecutionOwnerArg(record.ID)) || !strings.Contains(next, "--reviewer-context subagent") {
+		t.Fatalf("next_command must show the re-record command: %#v", got)
+	}
+
+	record.DevilsAdvocateReview.ReviewedPlanDigest = digestExecutionOwnerBytes([]byte("# Plan v2\n"))
+	if _, err := RequireStagedExecutionOwnerPlan(stateRoot, record); err != nil {
+		t.Fatalf("a verdict bound to the staged plan must pass: %v", err)
+	}
+	record.DevilsAdvocateReview = &issueopscontract.IssueOpsDevilsAdvocateReview{Verdict: "pass", Waived: true, WaiverRationale: "delegated:io-parent parent DA verdict pass", ReviewerPattern: "delegated-parent-review", RecordedAt: "t"}
+	if _, err := RequireStagedExecutionOwnerPlan(stateRoot, record); err != nil {
+		t.Fatalf("delegated parent verdicts are exempt from plan binding: %v", err)
+	}
+}
+
+func TestRequireStagedExecutionOwnerPlanSkipsPlanBindingAfterImplementEntry(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	if _, err := stageIssueOpsArtifactForTest(stateRoot, record.ID, "plan", []byte("# Plan edited during implementation\n")); err != nil {
+		t.Fatal(err)
+	}
+	record.DevilsAdvocateReview = &issueopscontract.IssueOpsDevilsAdvocateReview{
+		Verdict: "pass", Findings: []string{"attacked gate 3"}, ReviewerContext: "subagent",
+		ReviewedPlanDigest: digestExecutionOwnerBytes([]byte("# Plan v1\n")), RecordedAt: "t",
+	}
+	// Before implement entry the mismatch blocks the first owner launch.
+	if _, err := RequireStagedExecutionOwnerPlan(stateRoot, record); err == nil {
+		t.Fatal("pre-implement mismatch must block the first owner launch")
+	}
+	// Owner replacement/reseed during implementation reseals the edited plan
+	// without a fresh devil's-advocate round.
+	for _, phase := range []issueopscontract.IssueOpsPhase{IssueOpsPhaseImplement, IssueOpsPhaseAISlopClean, IssueOpsPhasePR} {
+		record.Phase = phase
+		if _, err := RequireStagedExecutionOwnerPlan(stateRoot, record); err != nil {
+			t.Fatalf("phase %s: plan binding must not gate owner replacement after implement entry: %v", phase, err)
+		}
+	}
+}

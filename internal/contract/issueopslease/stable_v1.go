@@ -174,13 +174,25 @@ type stableV1CompatibilityReview struct {
 	ReviewedAt            string   `json:"reviewed_at"`
 }
 type stableV1DevilsAdvocateReview struct {
-	Verdict          string   `json:"verdict"`
-	Findings         []string `json:"findings,omitempty"`
-	Waived           bool     `json:"waived,omitempty"`
-	WaiverRationale  string   `json:"waiver_rationale,omitempty"`
-	ReviewerPattern  string   `json:"reviewer_pattern,omitempty"`
-	RecordedAt       string   `json:"recorded_at"`
-	IssueReflectedAt string   `json:"issue_reflected_at,omitempty"`
+	Verdict            string                        `json:"verdict"`
+	Findings           []string                      `json:"findings,omitempty"`
+	Waived             bool                          `json:"waived,omitempty"`
+	WaiverRationale    string                        `json:"waiver_rationale,omitempty"`
+	ReviewerPattern    string                        `json:"reviewer_pattern,omitempty"`
+	ReviewerContext    string                        `json:"reviewer_context,omitempty"`
+	ReviewedPlanDigest string                        `json:"reviewed_plan_digest,omitempty"`
+	History            []stableV1DevilsAdvocateRound `json:"history,omitempty"`
+	RecordedAt         string                        `json:"recorded_at"`
+	IssueReflectedAt   string                        `json:"issue_reflected_at,omitempty"`
+}
+type stableV1DevilsAdvocateRound struct {
+	Verdict            string   `json:"verdict"`
+	Findings           []string `json:"findings,omitempty"`
+	Waived             bool     `json:"waived,omitempty"`
+	WaiverRationale    string   `json:"waiver_rationale,omitempty"`
+	ReviewerContext    string   `json:"reviewer_context,omitempty"`
+	ReviewedPlanDigest string   `json:"reviewed_plan_digest,omitempty"`
+	RecordedAt         string   `json:"recorded_at"`
 }
 type stableV1DomainReview struct {
 	Terminology       []string `json:"terminology,omitempty"`

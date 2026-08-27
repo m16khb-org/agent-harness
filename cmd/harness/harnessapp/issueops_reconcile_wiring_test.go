@@ -203,10 +203,10 @@ func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentSta
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	seedPlannerGates(t, stateRoot, record.ID)
 	if _, err := stageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Reconcile plan\n")); err != nil {
 		t.Fatal(err)
 	}
+	seedPlannerGates(t, stateRoot, record.ID)
 	fake := &reconcileProvisionerFake{failStage: failStage}
 	prepare := newIssueOpsPreparationHandler(issueOpsPreparationCompositionDeps{
 		Orca: fake, ReadIssue: func(_ context.Context, _ string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {

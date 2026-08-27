@@ -172,8 +172,8 @@ func TestStartIssueOpsChildCreatesDelegatedProfile(t *testing.T) {
 	if child, err = AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseCompatibilityReview)); err != nil {
 		t.Fatalf("child should enter compatibility-review after earning own setup gates: %v", err)
 	}
-	if _, err := AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "execution") {
-		t.Fatalf("child implement should still require its own execution lease, got %v", err)
+	if _, err := AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "execution") || strings.Contains(err.Error(), "devils_advocate") {
+		t.Fatalf("child implement should require only its own execution lease (the synthesized parent verdict is exempt from plan binding), got %v", err)
 	}
 }
 

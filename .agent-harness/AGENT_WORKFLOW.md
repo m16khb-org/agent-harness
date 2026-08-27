@@ -58,7 +58,7 @@ Delegated child cycle은 parent plan/evidence가 sub-agent pattern slug, 기대 
 
 독립적인 일시 fan-out은 host의 native subagent concurrency controls를 사용한다. Durable delegated work는 IssueOps child cycle, isolated canonical worktree, generation-fenced execution ownership, 그리고 parent accept/reject validation을 사용한다.
 
-phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contract`)를, `plan` 진입은 grill 완료(`issue_url`+`branch`+`plan_prep`+`split_decision`+`domain_review`)를 요구한다. `phase_ledger`는 phase 전이 시 entered_at/completed_at를 stamp하고, 없으면 `issueops status --json`이 sentinel timestamp로 파생해 보여준다 — resume 시 이 ledger와 missing artifact로 어느 phase부터 이어갈지 판단한다. plan/compatibility-review에서 `brooks` devil's-advocate(sub-agent-only)가 `stop`을 내면 `issueops regress --id --reason`으로 `grill`로 회귀해 재조사·재계획한다(design 승인 무효화 + plan/compat ledger stale 표기). 안전성, 되돌릴 수 있음, 사용자 의도 정합성, sub-agent tradeoff 판단이 흔들리는 지점은 hook이 판단하지 않고 main agent가 세 가지 선택지로 멈춘다.
+phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contract`)를, `plan` 진입은 grill 완료(`issue_url`+`branch`+`plan_prep`+`split_decision`+`domain_review`)를 요구한다. `phase_ledger`는 phase 전이 시 entered_at/completed_at를 stamp하고, 없으면 `issueops status --json`이 sentinel timestamp로 파생해 보여준다 — resume 시 이 ledger와 missing artifact로 어느 phase부터 이어갈지 판단한다. plan/compatibility-review에서 `brooks` devil's-advocate(sub-agent-only)가 `stop`을 내면 `issueops regress --id --reason`으로 `grill`로 회귀해 재조사·재계획한다(design 승인 무효화 + plan/compat ledger stale 표기). 판정 기록은 검토한 플랜의 sha256(`reviewed_plan_digest`)에 묶이므로, 판정 뒤 플랜을 고쳤으면 최종 플랜으로 brooks를 다시 돌려 기록해야 implement에 들어갈 수 있다(`devils_advocate_review_stale`; implement 진입 이후의 플랜 편집은 게이트 대상이 아니다). 안전성, 되돌릴 수 있음, 사용자 의도 정합성, sub-agent tradeoff 판단이 흔들리는 지점은 hook이 판단하지 않고 main agent가 세 가지 선택지로 멈춘다.
 
 ## MCP Usage Rule
 

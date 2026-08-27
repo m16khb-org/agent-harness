@@ -232,7 +232,7 @@ func newOrcaApplicationFixture() *orcaApplicationFixture {
 		// owner를 띄우지 않는다(#319). fixture는 유효한 출발 상태여야 한다.
 		Intent:               []byte(`{"raw_request":"r","interpreted_intent":"i","success_criteria":["c"]}`),
 		DesignReview:         []byte(`{"problem_summary":"p","proposed_design":"d","verification":["v"],"approved":true}`),
-		DevilsAdvocateReview: []byte(`{"verdict":"pass","recorded_at":"2026-08-09T00:00:00Z"}`),
+		DevilsAdvocateReview: []byte(`{"verdict":"pass","findings":["fixture"],"reviewer_context":"subagent","reviewed_plan_digest":"fixture-digest","recorded_at":"2026-08-09T00:00:00Z"}`),
 	}
 	fixture.repository = &orcaApplicationRepositoryFake{trace: &fixture.trace, snapshot: preparationcontract.Snapshot{Record: record, RecordRaw: []byte("raw")}, beginIndex: -1}
 	fixture.gateway = &orcaApplicationGatewayFake{trace: &fixture.trace, probe: preparationcontract.ProbeResult{Available: true, Ready: true}, firstEffectIndex: -1}

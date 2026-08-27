@@ -6,6 +6,11 @@ import (
 	model "agent-harness/internal/contract/issueops"
 )
 
+// ParentReviewPattern marks a child cycle's synthesized devil's-advocate verdict
+// that inherits the parent's pass. Plan-binding gates exempt it explicitly: the
+// child never had its own review, so there is no reviewed digest to compare.
+const ParentReviewPattern = "delegated-parent-review"
+
 func MissingPreconditions(parent model.IssueOpsRecord, req model.IssueOpsChildStartRequest) []string {
 	var missing []string
 	if parent.Phase != model.IssueOpsPhaseImplement {
@@ -102,7 +107,7 @@ func BuildDelegatedProfile(parent, child model.IssueOpsRecord, req model.IssueOp
 		Verdict:          "pass",
 		Waived:           true,
 		WaiverRationale:  "delegated:" + parent.ID + " parent DA verdict pass",
-		ReviewerPattern:  "delegated-parent-review",
+		ReviewerPattern:  ParentReviewPattern,
 		RecordedAt:       now,
 		IssueReflectedAt: "",
 	}

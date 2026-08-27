@@ -447,7 +447,7 @@ func recordIssueOpsDevilsAdvocateReview(stateRoot, id string, req issueops.Issue
 			return actorErr
 		}
 		var e error
-		rec, e = devilsadvocate.Record(devilsadvocate.Store{Read: ReadIssueOps, TouchWrite: touchAndWriteIssueOps}, stateRoot, id, req)
+		rec, e = devilsadvocate.Record(devilsadvocate.Store{Read: ReadIssueOps, TouchWrite: touchAndWriteIssueOps, PlanDigest: issueOpsReviewedPlanDigest}, stateRoot, id, req)
 		return e
 	})
 	return rec, err

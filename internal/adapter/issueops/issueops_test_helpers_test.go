@@ -298,7 +298,7 @@ func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string
 	}
 	// The devil's-advocate verdict is a fail-closed implement-entry gate, so bring
 	// the cycle to implement-readiness with a pass verdict alongside compatibility.
-	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, id, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, id, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass", ReviewerContext: "subagent", Findings: []string{"attacked gate 3: no second caller exists"}}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -326,7 +326,9 @@ func issueOpsCompatibilityReviewForTest() *issueops.IssueOpsCompatibilityReview 
 func issueOpsDevilsAdvocateReviewForTest() *issueops.IssueOpsDevilsAdvocateReview {
 	return &issueops.IssueOpsDevilsAdvocateReview{
 		Verdict:         "pass",
+		Findings:        []string{"attacked gate 3: no second caller exists"},
 		ReviewerPattern: "devils-advocate-review",
+		ReviewerContext: "subagent",
 		RecordedAt:      "2026-06-29T00:00:00Z",
 	}
 }

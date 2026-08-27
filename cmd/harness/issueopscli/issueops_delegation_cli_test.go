@@ -287,7 +287,7 @@ func recordIssueOpsCLIParentDelegationPrereqs(t *testing.T, id, planPath string)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass", ReviewerContext: "subagent", Findings: []string{"attacked gate 3"}}); err != nil {
 		t.Fatal(err)
 	}
 }

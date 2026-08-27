@@ -55,7 +55,9 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 	assertSkillContains(t, "brooks", []string{
 		"## IssueOps Integration",
 		"agent-harness issueops devils-advocate review",
-		"issueops_record_devils_advocate_review",
+		"--reviewer-context subagent|inline",
+		"reviewed_plan_digest",
+		"delta review",
 	})
 	assertSkillContains(t, "karpathy", []string{
 		"Shannon measures generated code artifacts, not prompt quality.",

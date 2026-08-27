@@ -196,13 +196,33 @@ type IssueOpsCompatibilityReviewRequest struct {
 // rationale) is a fail-closed precondition of implement entry; a stop's findings
 // are reflected into the remote issue before the cycle regresses.
 type IssueOpsDevilsAdvocateReview struct {
-	Verdict          string   `json:"verdict"` // pass | revise | stop
-	Findings         []string `json:"findings,omitempty"`
-	Waived           bool     `json:"waived,omitempty"`
-	WaiverRationale  string   `json:"waiver_rationale,omitempty"`
-	ReviewerPattern  string   `json:"reviewer_pattern,omitempty"`
-	RecordedAt       string   `json:"recorded_at"`
-	IssueReflectedAt string   `json:"issue_reflected_at,omitempty"`
+	Verdict         string   `json:"verdict"` // pass | revise | stop
+	Findings        []string `json:"findings,omitempty"`
+	Waived          bool     `json:"waived,omitempty"`
+	WaiverRationale string   `json:"waiver_rationale,omitempty"`
+	ReviewerPattern string   `json:"reviewer_pattern,omitempty"`
+	// ReviewerContext는 감사 기록이다(subagent | inline) — 하네스는 자기신고를
+	// 검증할 수 없으므로 게이트 조건이 아니다(ImplementationReview.reviewer_*와 같은 원칙).
+	ReviewerContext string `json:"reviewer_context,omitempty"`
+	// ReviewedPlanDigest는 기록 시점 링크된 플랜 파일의 sha256이다. implement
+	// 진입과 owner preflight는 현재 플랜과 비교해 stale 판정을 거부한다.
+	ReviewedPlanDigest string `json:"reviewed_plan_digest,omitempty"`
+	// History는 같은 plan phase의 이전 라운드다(오래된 순). regress가 review를
+	// 지우면 함께 사라진다 — stop 라운드는 원격 이슈 반영과 Decisions에 남는다.
+	History          []IssueOpsDevilsAdvocateRound `json:"history,omitempty"`
+	RecordedAt       string                        `json:"recorded_at"`
+	IssueReflectedAt string                        `json:"issue_reflected_at,omitempty"`
+}
+
+// IssueOpsDevilsAdvocateRound는 덮어쓰기 전의 라운드 사본이다(History 제외).
+type IssueOpsDevilsAdvocateRound struct {
+	Verdict            string   `json:"verdict"`
+	Findings           []string `json:"findings,omitempty"`
+	Waived             bool     `json:"waived,omitempty"`
+	WaiverRationale    string   `json:"waiver_rationale,omitempty"`
+	ReviewerContext    string   `json:"reviewer_context,omitempty"`
+	ReviewedPlanDigest string   `json:"reviewed_plan_digest,omitempty"`
+	RecordedAt         string   `json:"recorded_at"`
 }
 
 type IssueOpsDevilsAdvocateReviewRequest struct {
@@ -210,6 +230,7 @@ type IssueOpsDevilsAdvocateReviewRequest struct {
 	Findings        []string
 	Waived          bool
 	WaiverRationale string
+	ReviewerContext string
 }
 
 // IssueOpsDomainReview captures the grill-phase domain grilling outcome:

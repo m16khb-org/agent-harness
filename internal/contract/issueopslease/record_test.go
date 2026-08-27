@@ -305,3 +305,29 @@ func TestSelectionReceiptRequiresExactAutoFallbackCode(t *testing.T) {
 		}
 	}
 }
+
+func TestDevilsAdvocateReviewBindingFieldsRoundTrip(t *testing.T) {
+	record := completionHistoryRecord()
+	record.DevilsAdvocateReview = json.RawMessage(`{"verdict":"pass","findings":["attacked gate 3"],"reviewer_pattern":"devils-advocate-review","reviewer_context":"subagent","reviewed_plan_digest":"` + strings.Repeat("d", 64) + `","history":[{"verdict":"revise","findings":["gate 1"],"reviewer_context":"subagent","reviewed_plan_digest":"` + strings.Repeat("e", 64) + `","recorded_at":"2026-08-28T00:00:00Z"}],"recorded_at":"2026-08-28T00:01:00Z"}`)
+	encoded, err := Encode(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(record.ID, encoded)
+	if err != nil {
+		t.Fatalf("plan-bound devil's-advocate review must stay readable by the lease decoder: %v", err)
+	}
+	var review struct {
+		ReviewerContext    string `json:"reviewer_context"`
+		ReviewedPlanDigest string `json:"reviewed_plan_digest"`
+		History            []struct {
+			Verdict string `json:"verdict"`
+		} `json:"history"`
+	}
+	if err := json.Unmarshal(decoded.DevilsAdvocateReview, &review); err != nil {
+		t.Fatal(err)
+	}
+	if review.ReviewerContext != "subagent" || review.ReviewedPlanDigest != strings.Repeat("d", 64) || len(review.History) != 1 || review.History[0].Verdict != "revise" {
+		t.Fatalf("binding fields did not round trip: %+v", review)
+	}
+}

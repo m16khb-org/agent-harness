@@ -46,7 +46,7 @@ func seedPlannerGates(t *testing.T, stateRoot, id string) {
 		t.Fatalf("seed design review: %v", err)
 	}
 	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(stateRoot, id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{
-		Verdict: "pass", Findings: []string{"fixture"},
+		Verdict: "pass", ReviewerContext: "subagent", Findings: []string{"fixture"},
 	}); err != nil {
 		t.Fatalf("seed devils advocate review: %v", err)
 	}

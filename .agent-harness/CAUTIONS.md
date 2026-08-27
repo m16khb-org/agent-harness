@@ -66,6 +66,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 
 | Date | Lesson |
 |---|---|
+| 2026-08-28 | [devil's-advocate 기록이 플랜에 묶이지 않아 게이트가 연극 가능했다](cautions/lessons/2026-08-28-devils-advocate-record-was-unbound.md) |
 | 2026-07-02 | [Re-verify stale memory observations against HEAD](cautions/lessons/2026-07-02-reverify-stale-memory-observations-against-head.md) |
 | 2026-07-07 | [IssueOps orchestration locks, additive fields, worker leases](cautions/lessons/2026-07-07-issueops-orchestration-locks-additive-fields-worker-leases.md) |
 | 2026-07-07 | [SQLite sqlstore span discipline: active-root chain, fresh start](cautions/lessons/2026-07-07-sqlite-sqlstore-span-discipline.md) |
