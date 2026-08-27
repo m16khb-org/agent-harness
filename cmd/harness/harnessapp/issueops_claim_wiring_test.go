@@ -84,10 +84,10 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueopscontract.IssueOpsRecor
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"
 	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: record.IssueURL, Branch: record.Branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
 	const plan = "# Snapshot owner plan\n"
-	seedPlannerGates(t, stateRoot, record.ID)
 	if _, err := stageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
 		t.Fatal(err)
 	}
+	seedPlannerGates(t, stateRoot, record.ID)
 	record.WorktreePath = worktree
 	record.PlanPath = filepath.Join(worktree, "plans", "linked.md")
 	if err := os.MkdirAll(filepath.Dir(record.PlanPath), 0o755); err != nil {

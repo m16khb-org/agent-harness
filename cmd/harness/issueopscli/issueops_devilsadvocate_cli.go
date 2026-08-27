@@ -9,7 +9,7 @@ import (
 
 func runIssueOpsDevilsAdvocate(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]")
+		fmt.Println("Usage: agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop --reviewer-context subagent|inline [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]")
 		return nil
 	}
 	if args[0] != "review" {
@@ -19,6 +19,7 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	actor := addIssueOpsActorFlags(fs)
 	verdict := fs.String("verdict", "", "devil's-advocate verdict: pass|revise|stop")
+	reviewerContext := fs.String("reviewer-context", "", "how the review ran: subagent|inline (audit field, required)")
 	waive := fs.Bool("waive", false, "explicitly waive a stop/revise verdict")
 	rationale := fs.String("waiver-rationale", "", "rationale required when --waive is set")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -27,11 +28,15 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
+	if *reviewerContext == "" {
+		return fmt.Errorf("--reviewer-context subagent|inline is required: record how the devil's-advocate review ran")
+	}
 	record, err := issueOpsCLIDeps.RecordIssueOpsDevilsAdvocateReviewWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{
 		Verdict:         *verdict,
 		Findings:        findings,
 		Waived:          *waive,
 		WaiverRationale: *rationale,
+		ReviewerContext: *reviewerContext,
 	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

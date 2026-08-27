@@ -12,7 +12,7 @@ func plannerReadyRecord() leasecontract.Record {
 		SchemaVersion: 1, ID: "io-planner", Repo: "/repo",
 		Intent:               []byte(`{"raw_request":"r","interpreted_intent":"i","success_criteria":["c"]}`),
 		DesignReview:         []byte(`{"problem_summary":"p","proposed_design":"d","verification":["v"],"approved":true}`),
-		DevilsAdvocateReview: []byte(`{"verdict":"pass","recorded_at":"2026-08-09T00:00:00Z"}`),
+		DevilsAdvocateReview: []byte(`{"verdict":"pass","findings":["f"],"reviewer_context":"subagent","reviewed_plan_digest":"abc","recorded_at":"2026-08-09T00:00:00Z"}`),
 	}
 }
 
@@ -80,7 +80,7 @@ func TestMissingPlannerGatesNamesEachOwnerUnfillablePrerequisite(t *testing.T) {
 // stop/revise라도 명시적으로 waive됐으면 planner가 판단을 내린 것이다.
 func TestMissingPlannerGatesAcceptsAWaivedAdverseVerdict(t *testing.T) {
 	record := plannerReadyRecord()
-	record.DevilsAdvocateReview = []byte(`{"verdict":"stop","waived":true,"recorded_at":"2026-08-09T00:00:00Z"}`)
+	record.DevilsAdvocateReview = []byte(`{"verdict":"stop","waived":true,"reviewed_plan_digest":"abc","recorded_at":"2026-08-09T00:00:00Z"}`)
 	if gates := MissingPlannerGates(record); len(gates) != 0 {
 		t.Fatalf("waive된 판정은 통과해야 한다: %v", PlannerGateKeys(gates))
 	}
@@ -109,5 +109,25 @@ func TestMissingPlannerGatesTreatsUnparseableRecordsAsMissing(t *testing.T) {
 	keys := PlannerGateKeys(MissingPlannerGates(record))
 	if len(keys) != 1 || keys[0] != "design_review" {
 		t.Fatalf("파싱 실패는 부재로 다뤄야 한다: %v", keys)
+	}
+}
+
+func TestMissingPlannerGatesRequiresAPlanBoundDevilsAdvocateReview(t *testing.T) {
+	record := plannerReadyRecord()
+	record.DevilsAdvocateReview = []byte(`{"verdict":"pass","findings":["f"],"reviewer_context":"subagent","recorded_at":"2026-08-28T00:00:00Z"}`)
+	gates := MissingPlannerGates(record)
+	if keys := PlannerGateKeys(gates); len(keys) != 1 || keys[0] != "devils_advocate_review" {
+		t.Fatalf("an unbound review (legacy record) must gate before an owner is launched: %v", keys)
+	}
+	if !strings.Contains(gates[0].Command, "--reviewer-context subagent") {
+		t.Fatalf("command hint must show the binding flag: %q", gates[0].Command)
+	}
+	record.DevilsAdvocateReview = []byte(`{"verdict":"pass","findings":["f"],"reviewer_context":"subagent","reviewed_plan_digest":"abc","recorded_at":"2026-08-28T00:00:00Z"}`)
+	if gates := MissingPlannerGates(record); len(gates) != 0 {
+		t.Fatalf("a bound review must be quiet: %v", PlannerGateKeys(gates))
+	}
+	record.DevilsAdvocateReview = []byte(`{"verdict":"pass","waived":true,"waiver_rationale":"delegated:io-parent parent DA verdict pass","reviewer_pattern":"delegated-parent-review","recorded_at":"2026-08-28T00:00:00Z"}`)
+	if gates := MissingPlannerGates(record); len(gates) != 0 {
+		t.Fatalf("delegated child reviews inherit the parent verdict and must be quiet: %v", PlannerGateKeys(gates))
 	}
 }

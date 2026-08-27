@@ -287,7 +287,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		}
 		return values, b("--approved", "--json"), r, true
 	case "devils-advocate review":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--finding", "--waiver-rationale")
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--reviewer-context", "--finding", "--waiver-rationale")
 		r["--finding"] = true
 		return values, b("--waive", "--json"), r, true
 	case "phase":

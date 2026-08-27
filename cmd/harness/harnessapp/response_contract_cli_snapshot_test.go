@@ -151,7 +151,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runIssueOps([]string{"status", "--id", issueopsID, "--json"})
 	})
 	cliSnapshot["issueops_record_devils_advocate_review"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"devils-advocate", "review", "--id", issueopsID, "--verdict", "stop", "--finding", "second-system effect: three cache backends for one need", "--json"})
+		return runIssueOps([]string{"devils-advocate", "review", "--id", issueopsID, "--verdict", "stop", "--reviewer-context", "subagent", "--finding", "second-system effect: three cache backends for one need", "--json"})
 	})
 	cliSnapshot["issueops_remote_reflect_devils_advocate"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"remote", "reflect-devils-advocate", "--id", issueopsID, "--confirm", "--json"})

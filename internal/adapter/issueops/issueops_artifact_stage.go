@@ -86,6 +86,9 @@ func RequireStagedExecutionOwnerPlan(stateRoot string, record issueops.IssueOpsR
 		return PlanIdentity{}, newPlanArtifactRequiredError(record, true)
 	}
 	identity := PlanIdentity{Digest: digestExecutionOwnerBytes([]byte(plan))}
+	if err := requireDevilsAdvocateBoundToPlan(record, identity.Digest); err != nil {
+		return PlanIdentity{}, err
+	}
 	if strings.TrimSpace(record.PlanPath) == "" {
 		return identity, nil
 	}
@@ -94,6 +97,43 @@ func RequireStagedExecutionOwnerPlan(stateRoot string, record issueops.IssueOpsR
 		return PlanIdentity{}, newPlanArtifactRequiredError(record, false)
 	}
 	return linked, nil
+}
+
+// devilsAdvocateStaleError: the recorded verdict describes a different plan than
+// the one being sealed for the owner. Caught here so the planner fixes it before
+// an owner is launched into a gate it cannot fill (#319).
+type devilsAdvocateStaleError struct {
+	nextCommand string
+}
+
+func (e *devilsAdvocateStaleError) Error() string {
+	return "devil's-advocate verdict was recorded against a different plan; re-run the review on the plan being staged"
+}
+
+func (e *devilsAdvocateStaleError) IssueOpsErrorFields() map[string]any {
+	return map[string]any{
+		"code":         "devils_advocate_review_stale",
+		"missing":      []string{"devils_advocate_review_stale"},
+		"next_command": e.nextCommand,
+	}
+}
+
+// 강제 범위는 implement 진입 전까지다: implement 이후의 owner 교체(replacement/
+// reseed)는 구현 중 편집된 플랜을 다시 봉인하는 경로라 brooks 재검토를 요구하지
+// 않는다 — ai-slop-clean 진입이 plan binding을 보지 않는 것과 같은 이유다.
+func requireDevilsAdvocateBoundToPlan(record issueops.IssueOpsRecord, stagedDigest string) error {
+	review := record.DevilsAdvocateReview
+	if review == nil || issueOpsDevilsAdvocateDigestExempt(*review) {
+		return nil
+	}
+	if issueOpsPhaseRank(record.Phase) >= issueOpsPhaseRank(IssueOpsPhaseImplement) {
+		return nil
+	}
+	if strings.EqualFold(strings.TrimSpace(review.ReviewedPlanDigest), stagedDigest) {
+		return nil
+	}
+	return &devilsAdvocateStaleError{nextCommand: "agent-harness issueops devils-advocate review --id " + quoteExecutionOwnerArg(record.ID) +
+		" --reviewer-context subagent --verdict <VERDICT> --finding <TEXT> --json"}
 }
 
 func newPlanArtifactRequiredError(record issueops.IssueOpsRecord, allowStageCommand bool) error {

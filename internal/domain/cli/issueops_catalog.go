@@ -37,7 +37,7 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops link-worktree --id ID --worktree-path PATH RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] RECORD_ACTOR_FLAGS [--json]
+  agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop --reviewer-context subagent|inline [--finding TEXT]... [--waive --waiver-rationale TEXT] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops link-plan --id ID --plan-path PATH RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]
   agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]

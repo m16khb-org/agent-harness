@@ -35,6 +35,7 @@ func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T
 		t.Fatalf("compatibility review alone should still require devils_advocate_review, got %+v", ready)
 	}
 	record.DevilsAdvocateReview = issueOpsDevilsAdvocateReviewForTest()
+	record.DevilsAdvocateReview.ReviewedPlanDigest = digestExecutionOwnerBytes([]byte("plan\n"))
 	ready = IssueOpsImplementationReadiness(record)
 	if !ready.Ready || len(ready.Missing) != 0 {
 		t.Fatalf("compatibility + devils-advocate review should satisfy the last implementation gate, got %+v", ready)
@@ -86,7 +87,7 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	if record.Phase != IssueOpsPhaseCompatibilityReview {
 		t.Fatalf("compatibility review should persist the compatibility-review phase, got %+v", record)
 	}
-	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, record.ID, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, record.ID, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass", ReviewerContext: "subagent", Findings: []string{"attacked gate 3"}}); err != nil {
 		t.Fatal(err)
 	}
 	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)

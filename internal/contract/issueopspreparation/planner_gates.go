@@ -50,7 +50,7 @@ func MissingPlannerGates(record leasecontract.Record) []PlannerGate {
 	if !plannerDevilsAdvocateCleared(record.DevilsAdvocateReview) {
 		missing = append(missing, PlannerGate{
 			Key:     "devils_advocate_review",
-			Command: "agent-harness issueops devils-advocate review --id " + id + " --verdict <VERDICT> ...",
+			Command: "agent-harness issueops devils-advocate review --id " + id + " --reviewer-context subagent --verdict <VERDICT> --finding <TEXT> ...",
 		})
 	}
 	return missing
@@ -95,11 +95,17 @@ func plannerDesignReviewApproved(raw json.RawMessage) bool {
 
 // plannerDevilsAdvocateCleared는 review가 기록됐고, stop/revise 판정이면
 // 명시적으로 waive됐는지 본다. adapter의 implement-entry 게이트와 같은 규칙이다.
+// 판정은 검토한 플랜 내용에 묶여 있어야(reviewed_plan_digest) 한다 — 여기는
+// fs가 없으므로 digest 존재만 보고, 현재 플랜과의 비교는 adapter(implement
+// 진입·owner preflight)가 한다. delegation이 합성한 자식 판정
+// (reviewer_pattern delegated-parent-review)은 부모 판정을 상속하므로 면제다.
 func plannerDevilsAdvocateCleared(raw json.RawMessage) bool {
 	var review struct {
-		Verdict    string `json:"verdict"`
-		Waived     bool   `json:"waived"`
-		RecordedAt string `json:"recorded_at"`
+		Verdict            string `json:"verdict"`
+		Waived             bool   `json:"waived"`
+		ReviewerPattern    string `json:"reviewer_pattern"`
+		ReviewedPlanDigest string `json:"reviewed_plan_digest"`
+		RecordedAt         string `json:"recorded_at"`
 	}
 	if len(raw) == 0 || json.Unmarshal(raw, &review) != nil {
 		return false
@@ -108,7 +114,13 @@ func plannerDevilsAdvocateCleared(raw json.RawMessage) bool {
 		return false
 	}
 	verdict := strings.TrimSpace(review.Verdict)
-	return !((verdict == "stop" || verdict == "revise") && !review.Waived)
+	if (verdict == "stop" || verdict == "revise") && !review.Waived {
+		return false
+	}
+	if review.ReviewerPattern != "delegated-parent-review" && strings.TrimSpace(review.ReviewedPlanDigest) == "" {
+		return false
+	}
+	return true
 }
 
 func nonEmptyValues(values []string) []string {
