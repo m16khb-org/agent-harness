@@ -21,6 +21,10 @@ type fakeFinishGit struct {
 	// 전제). lsRemoteFail은 관측 불가를 흉내낸다.
 	remoteBranchOID string
 	lsRemoteFail    bool
+	// basePresent는 준비 base 브랜치가 origin에 남아 있는 상태다(#490).
+	// defaultRef가 비면 원격 HEAD 미설정을 흉내내 관측 실패가 된다.
+	basePresent     bool
+	defaultRef      string
 	failStep        string
 	removedWorktree bool
 	deletedBranch   bool
@@ -32,6 +36,20 @@ func (g *fakeFinishGit) run(dir string, args ...string) (int, string) {
 	case "ls-remote":
 		if g.lsRemoteFail {
 			return 128, "fatal: 'origin' does not appear to be a git repository"
+		}
+		if len(args) > 1 && args[1] == "--symref" {
+			if g.defaultRef == "" {
+				return 0, ""
+			}
+			return 0, "ref: " + g.defaultRef + "\tHEAD\nabc\tHEAD\n"
+		}
+		ref := args[len(args)-1]
+		if ref != "refs/heads/80-finish" {
+			// 준비 base 브랜치 관측: 부재는 exit 0 + 빈 출력이다(실측).
+			if g.basePresent {
+				return 0, "base123\t" + ref + "\n"
+			}
+			return 0, ""
 		}
 		if g.remoteBranchOID == "" {
 			return 0, ""
@@ -174,9 +192,68 @@ func TestCleanupFinishPreviewGatesRejectMissingEvidence(t *testing.T) {
 // done 전이는 draft PR 생성 직후에 일어나고 finish는 머지 이후에 실행되므로, 그
 // 사이 구간에서 draft PR의 base가 바뀔 수 있다. 준비된 base가 아닌 브랜치로
 // 머지된 결과를 파괴 전에 잡지 못하면 재검증 수단이 남지 않는다.
+// #490: 부모 브랜치가 머지·삭제되어 provider가 PR을 기본 브랜치로 재타깃한
+// 흐름은 drift가 아니다. 준비 base의 원격 부재와 기본 브랜치 일치라는 두
+// 관측으로만 통과시키고, 나머지는 그대로 거부한다.
+func TestClassifyMergedBaseRetarget(t *testing.T) {
+	cases := []struct {
+		name                              string
+		prepared, observed, defaultBranch string
+		preparedRemotePresent, observed_  bool
+		want                              []string
+	}{
+		{name: "same base passes", prepared: "main", observed: "main", defaultBranch: "main", observed_: true},
+		{name: "no prepared base is not judged", prepared: "", observed: "release", defaultBranch: "main", observed_: true},
+		{name: "retarget to default after parent merged", prepared: "484-parent", observed: "main", defaultBranch: "main", observed_: true},
+		{name: "parent branch still present is drift", prepared: "484-parent", observed: "main", defaultBranch: "main", preparedRemotePresent: true, observed_: true, want: []string{"base_branch_drifted"}},
+		{name: "merged into a non-default branch is drift", prepared: "484-parent", observed: "release", defaultBranch: "main", observed_: true, want: []string{"base_branch_drifted"}},
+		{name: "unobserved keeps the drift fact and names the missing observation", prepared: "484-parent", observed: "main", defaultBranch: "main", observed_: false, want: []string{"base_branch_drifted", "merged_base_remote_unobserved"}},
+		{name: "empty default branch fails closed", prepared: "484-parent", observed: "main", defaultBranch: "", observed_: true, want: []string{"base_branch_drifted", "merged_base_remote_unobserved"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := classifyMergedBase(tc.prepared, tc.observed, tc.defaultBranch, tc.preparedRemotePresent, tc.observed_)
+			if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+				t.Fatalf("classifyMergedBase = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCleanupFinishAllowsRetargetedBaseAfterParentMerged(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.BranchPrepare.BaseBranch = "484-parent"
+	})
+
+	t.Run("parent gone and default base passes", func(t *testing.T) {
+		git := &fakeFinishGit{branchOID: "abc123", defaultRef: "refs/heads/main"}
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
+		if err != nil || containsString(result.Missing, "base_branch_drifted") || containsString(result.Missing, "merged_base_remote_unobserved") {
+			t.Fatalf("retarget after the parent merged must pass: err=%v missing=%v", err, result.Missing)
+		}
+	})
+	t.Run("parent still present blocks", func(t *testing.T) {
+		git := &fakeFinishGit{branchOID: "abc123", defaultRef: "refs/heads/main", basePresent: true}
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
+		if err == nil || !containsString(result.Missing, "base_branch_drifted") {
+			t.Fatalf("a live prepared base must stay drift: err=%v missing=%v", err, result.Missing)
+		}
+	})
+	t.Run("remote HEAD unset fails closed", func(t *testing.T) {
+		git := &fakeFinishGit{branchOID: "abc123"}
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
+		if err == nil || !containsString(result.Missing, "merged_base_remote_unobserved") {
+			t.Fatalf("unobservable default branch must fail closed: err=%v missing=%v", err, result.Missing)
+		}
+	})
+}
+
 func TestCleanupFinishBlocksBaseBranchDrift(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)
-	git := &fakeFinishGit{branchOID: "abc123"}
+	// 준비 base(main)가 원격에 살아 있고 기본 브랜치도 관측되는 정상 환경이다.
+	// 이 상태에서 다른 브랜치로 머지된 것은 재타깃이 아니라 drift다(#490).
+	git := &fakeFinishGit{branchOID: "abc123", defaultRef: "refs/heads/main", basePresent: true}
 
 	t.Run("drifted", func(t *testing.T) {
 		req := finishRequest(record.ID, false, "")
@@ -192,6 +269,14 @@ func TestCleanupFinishBlocksBaseBranchDrift(t *testing.T) {
 		result, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(git))
 		if err == nil || !containsString(result.Missing, "merged_base_branch_unobserved") {
 			t.Fatalf("unobserved base must fail closed: err=%v missing=%v", err, result.Missing)
+		}
+	})
+	t.Run("drift with unobservable remote fails closed on the observation", func(t *testing.T) {
+		req := finishRequest(record.ID, false, "")
+		req.MergedBaseBranch = "release"
+		result, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(&fakeFinishGit{branchOID: "abc123", lsRemoteFail: true}))
+		if err == nil || !containsString(result.Missing, "merged_base_remote_unobserved") || !containsString(result.Missing, "base_branch_drifted") {
+			t.Fatalf("unobservable remote must keep the drift fact and name the missing observation: err=%v missing=%v", err, result.Missing)
 		}
 	})
 	t.Run("matching base still passes", func(t *testing.T) {

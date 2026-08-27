@@ -54,6 +54,18 @@ decision and a separate `issueops cleanup remote-branch` flow.
    terminal or worktree — never by killing processes by hand.
 6. The remote source branch must already be absent. If it remains, stop and
    report that this skill does not have authority to delete it.
+7. The merge must have landed on the base the cycle prepared. `cleanup finish`
+   compares the record's prepared base with the provider-observed merged base and
+   blocks on `base_branch_drifted`. One exemption is observed, not asserted: when
+   the prepared base branch is **gone from `origin`** (a stacked PR whose parent
+   merged and was deleted) **and** the observed base is the repository's default
+   branch, the provider's automatic retarget is accepted and the preview reports
+   `retargeted_base` with the prepared base, observed base, default branch, and
+   the absence it observed. If either observation fails, the preview blocks on
+   `merged_base_remote_unobserved` — there is no flag to assert a base by hand.
+   To check the exemption yourself use `git ls-remote --heads origin
+   refs/heads/<prepared-base>` (empty output means gone); do not reach for
+   `ls-remote --symref`, which the command policy rejects.
 
 Do not use `cleanup abandon`: it intentionally avoids remote issue mutation and
 is not the merged completion path requested by this skill.

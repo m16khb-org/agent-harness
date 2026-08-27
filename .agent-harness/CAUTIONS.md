@@ -15,6 +15,11 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
 - shell runner는 argv 우선, workspace root 밖 접근 기본 거부, secret redaction 적용.
 - 프로젝트 지식은 `.agent-harness/`, runtime state는 user state dir / ignored `.harness/`.
 - daemon/worker/socket은 local FS의 user state dir에만 둔다.
+- stacked PR을 부모 브랜치 머지 뒤 기본 브랜치로 재타깃하면 `cleanup finish`가
+  `base_branch_drifted`로, `cleanup abandon`이 `remote_artifact_unmerged`로 거부해
+  레코드가 dead-end에 빠졌다(#490, `io-71af6dd82f0d` 실측). 이제 준비 base가 원격에서
+  사라졌고 관측 base가 기본 브랜치일 때만 정상 재타깃으로 통과한다. 관측 실패는
+  `merged_base_remote_unobserved`로 fail-closed이며 손으로 base를 주장하는 플래그는 없다.
 - IssueOps 상태 전이·lease·publication은 durable `issueops` 명령이 소유하고 hook은
   fast deterministic 위반만 차단한다.
 - IssueOps worktree 밖 mutation은 hook guard + 절대경로 + status 재확인으로 막는다.

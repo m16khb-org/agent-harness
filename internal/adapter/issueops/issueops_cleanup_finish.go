@@ -243,8 +243,17 @@ func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req
 		// A verified replacement is a different artifact and may intentionally
 		// target the parent branch's base. Its provider-observed base must exist,
 		// but comparing it to the original child PR base is a category error.
-		case result.SupersededBy == "" && observedBase != preparedBase:
-			missing = append(missing, "base_branch_drifted")
+		case result.SupersededBy != "":
+		default:
+			defaultBranch, basePresent, observed := observeMergedBaseRefs(record, preparedBase, deps)
+			if slugs := classifyMergedBase(preparedBase, observedBase, defaultBranch, basePresent, observed); len(slugs) > 0 {
+				missing = append(missing, slugs...)
+			} else if observedBase != preparedBase {
+				result.RetargetedBase = &issueops.CleanupRetargetedBase{
+					PreparedBase: preparedBase, ObservedBase: observedBase,
+					DefaultBranch: defaultBranch, PreparedBaseRemoteAbsent: true,
+				}
+			}
 		}
 	}
 	for _, link := range record.IssueLinks {
@@ -331,6 +340,62 @@ func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req
 		}
 	}
 	return inventory, missing
+}
+
+// classifyMergedBase는 준비 base와 관측 base의 관계를 판정한다. 빈 문자열이면
+// 통과다.
+//
+// stacked PR의 부모 브랜치가 머지되어 삭제되면 provider는 자식 PR을 기본
+// 브랜치로 재타깃한다. 그 흐름은 drift가 아니지만, 삭제된 브랜치의 base는
+// 사후에 관측할 수 없다. 그래서 "준비 base가 원격에 없다 + 관측 base가 기본
+// 브랜치다"라는 두 관측으로만 정상 재타깃을 인정한다(#490). 준비 base가 아직
+// 살아 있거나 기본 브랜치가 아닌 곳으로 머지됐으면 그대로 drift이며, 관측
+// 자체가 실패하면 통과가 아니라 거부다 — 자기주장 승인 플래그는 두지 않는다.
+func classifyMergedBase(preparedBase, observedBase, defaultBranch string, preparedBaseRemotePresent, observed bool) []string {
+	if preparedBase == "" || observedBase == preparedBase {
+		return nil
+	}
+	// 관측 실패는 drift를 지우지 않는다. 준비 base와 다른 곳으로 머지된 것은
+	// provider readback이 이미 관측한 사실이고, 관측하지 못한 것은 면제 조건뿐
+	// 이므로 두 사실을 모두 보고한다.
+	if !observed || strings.TrimSpace(defaultBranch) == "" {
+		return []string{"base_branch_drifted", "merged_base_remote_unobserved"}
+	}
+	if !preparedBaseRemotePresent && observedBase == defaultBranch {
+		return nil
+	}
+	return []string{"base_branch_drifted"}
+}
+
+// observeMergedBaseRefs는 준비 base의 원격 존재 여부와 저장소 기본 브랜치를
+// 읽는다. remote_branch_absent와 같은 관측 표면(ls-remote)이며, 결과는
+// fingerprint 입력이 아니다. 어떤 단계든 실패하면 observed=false로 돌려
+// 판정을 fail-closed로 만든다.
+func observeMergedBaseRefs(record issueops.IssueOpsRecord, preparedBase string, deps CleanupFinishDeps) (defaultBranch string, preparedBaseRemotePresent, observed bool) {
+	if deps.Git == nil {
+		return "", false, false
+	}
+	code, out := deps.Git(record.Repo, "ls-remote", "--heads", "origin", "refs/heads/"+preparedBase)
+	if code != 0 {
+		return "", false, false
+	}
+	preparedBaseRemotePresent = len(strings.Fields(strings.TrimSpace(out))) > 0
+	code, out = deps.Git(record.Repo, "ls-remote", "--symref", "origin", "HEAD")
+	if code != 0 {
+		return "", preparedBaseRemotePresent, false
+	}
+	// `ref: refs/heads/<name>\tHEAD` 첫 줄만 유효하다. 원격 HEAD가 설정되지
+	// 않았거나 형식이 다르면 관측 실패다.
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		rest, found := strings.CutPrefix(strings.TrimSpace(line), "ref: refs/heads/")
+		if !found {
+			continue
+		}
+		if name := strings.TrimSpace(strings.SplitN(rest, "\t", 2)[0]); name != "" {
+			return name, preparedBaseRemotePresent, true
+		}
+	}
+	return "", preparedBaseRemotePresent, false
 }
 
 // preparedBaseBranch는 base drift 비교의 기준값이다. 비어 있으면 비교 대상이
