@@ -45,6 +45,10 @@ type CleanupAbandonDeps struct {
 	// 바인딩이 있는 레코드에서만 일어난다 — direct 사이클까지 어댑터를
 	// 요구하면 아무 관련 없는 정리가 막힌다.
 	OrcaOwner port.ExecutionOrcaOwnerInspector
+	// Processes와 OrcaTerminals는 finish와 같은 apply ①′(점유 프로세스·Orca
+	// 터미널 종료) 표면이다(#477).
+	Processes     CleanupProcessDeps
+	OrcaTerminals port.CleanupOrcaTerminals
 }
 
 // cleanupAbandonInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -66,6 +70,13 @@ type cleanupAbandonInventory struct {
 	Phase              string `json:"phase"`
 	LeaseStatus        string `json:"lease_status"`
 	PendingOperationID string `json:"pending_operation_id"`
+	// WorkspaceProcesses와 OrcaTerminals는 apply ①′가 종료할 집합이며 fingerprint
+	// 입력이다(#477).
+	WorkspaceProcesses []issueops.NativeProcessReceipt `json:"workspace_processes,omitempty"`
+	OrcaTerminals      []string                        `json:"orca_terminals,omitempty"`
+	// OrcaAppPID는 ①′가 시그널에서 제외할 Orca 앱 pid다(finish와 같은 계약).
+	OrcaAppPID       int  `json:"orca_app_pid,omitempty"`
+	OrcaRuntimeReady bool `json:"orca_runtime_ready,omitempty"`
 }
 
 // CleanupAbandon은 게이트를 평가하고, apply에서 원격을 건드리지 않은 채 로컬
@@ -121,6 +132,20 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	if err != nil {
 		result.OK = false
 		return result, err
+	}
+	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료(finish와 같은 계약). 재관측으로
+	// 점유 0을 증명하지 못하면 워크트리를 건드리지 않고 멈춘다(#477).
+	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0 || inventory.OrcaRuntimeReady) {
+		stopped, terminals, stopErr := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, inventory.OrcaRuntimeReady, inventory.OrcaAppPID, deps.Processes, deps.OrcaTerminals)
+		result.WorkspaceProcessesStopped = stopped
+		result.OrcaTerminalsStopped = terminals
+		if stopErr != nil {
+			result.OK = false
+			result.FailedStep = issueops.CleanupFailureStepWorkspaceProcessesStop
+			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, stopErr, fingerprint, inventory)
+			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+			return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon workspace stop failed (record and worktree preserved): %v", stopErr), receiptErr)
+		}
 	}
 	if inventory.WorktreePresent {
 		if code, out := deps.Git(record.Repo, "worktree", "remove", inventory.WorktreeRoot); code != 0 {
@@ -281,6 +306,16 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	result.PendingOperationID = inventory.PendingOperationID
 	if inventory.WorktreePresent {
 		inventory, missing = cleanupAbandonInspectWorktree(inventory, deps, missing)
+		// abandon에는 CWD 게이트가 없고 worktree_canonical은 소스 체크아웃 자체에도
+		// 통과하므로, 공유 게이트가 소스 체크아웃을 먼저 거부한다(#477).
+		observation, workspaceMissing := cleanupWorkspaceGatesForRecord(ctx, record, inventory.WorktreeRoot, deps.Processes, deps.OrcaTerminals)
+		missing = append(missing, workspaceMissing...)
+		inventory.WorkspaceProcesses = observation.Receipts
+		inventory.OrcaTerminals = observation.Terminals
+		inventory.OrcaAppPID = observation.AppPID
+		inventory.OrcaRuntimeReady = observation.RuntimeReady
+		result.WorkspaceProcesses = observation.Occupants
+		result.OrcaTerminals = observation.Terminals
 	}
 	result.WorktreeCanonical = inventory.WorktreeCanonical
 	result.WorktreeClean = inventory.WorktreeClean
@@ -352,8 +387,10 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		}
 	}
 	// ⑨ orca 자원 잔여. 게이트 ⑥은 로컬 디렉터리만 보므로 orca 레지스트리에
-	// 남은 task를 놓친다.
-	if err := cleanupAbandonOrcaResourcesAbsent(ctx, record, deps); err != nil {
+	// 남은 task를 놓친다. 살아 있는 터미널은 apply ①′가 실제로 닫을 수 있을 때만
+	// 통과한다(fagan #478 F4).
+	terminalsReachable := inventory.WorktreePresent && len(inventory.OrcaTerminals) > 0
+	if err := cleanupAbandonOrcaResourcesAbsent(ctx, record, deps, terminalsReachable); err != nil {
 		missing = append(missing, "orca_resources_absent")
 		result.OrcaResidueError = err.Error()
 	}
@@ -380,29 +417,39 @@ func cleanupAbandonFailureInventoryMatches(record issueops.IssueOpsRecord, inven
 		!samePath(failure.WorktreePath, inventory.WorktreeRoot) {
 		return false
 	}
-	originalAbsent := failure.WorktreeHead == "" && failure.BranchOID == ""
-	originalPaired := failure.WorktreePath != "" && failure.WorktreeHead != "" &&
-		failure.WorktreeHead == failure.BranchOID
-	if !originalAbsent && !originalPaired {
+	// receipt는 arm 시점의 자원 모양을 담는다: paired(둘 다), worktree-only,
+	// branch-only(#433 비대칭 잔여), absent. 둘 다 있었다면 같은 OID여야 한다.
+	origWorktree := failure.WorktreeHead != ""
+	origBranch := failure.BranchOID != ""
+	if origWorktree && origBranch && failure.WorktreeHead != failure.BranchOID {
 		return false
+	}
+	// 남아 있는 자원은 receipt의 OID와 같아야 하고, 사라진 자원은 원래 없었거나
+	// apply가 그 단계까지 갔을 때만 사라질 수 있다. 삭제 순서는 worktree → branch다.
+	worktreeMatches := func(mayBeRemoved bool) bool {
+		if inventory.WorktreePresent {
+			return origWorktree && inventory.WorktreeHead == failure.WorktreeHead
+		}
+		return !origWorktree || mayBeRemoved
+	}
+	branchMatches := func(mayBeRemoved bool) bool {
+		if branchPresent {
+			return origBranch && inventory.BranchOID == failure.BranchOID
+		}
+		return !origBranch || mayBeRemoved
 	}
 	switch failure.Step {
 	case "applying":
-		switch {
-		case inventory.WorktreePresent && branchPresent:
-			return originalPaired && inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
-		case !inventory.WorktreePresent && branchPresent:
-			return originalPaired && inventory.BranchOID == failure.BranchOID
-		case !inventory.WorktreePresent && !branchPresent:
-			return originalAbsent || originalPaired
-		}
-	case "worktree_remove":
-		return inventory.WorktreePresent && branchPresent && originalPaired &&
-			inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
+		branchRemoved := origBranch && !branchPresent
+		return worktreeMatches(true) && branchMatches(true) && !(branchRemoved && inventory.WorktreePresent)
+	case "workspace_processes_stop", "worktree_remove":
+		// ①′/③ 실패는 아직 아무것도 지우지 않은 상태다.
+		return origWorktree && inventory.WorktreePresent && worktreeMatches(false) && branchMatches(false)
 	case "branch_delete":
-		return !inventory.WorktreePresent && branchPresent && originalPaired && inventory.BranchOID == failure.BranchOID
+		// ④ 실패는 worktree 제거 뒤다. 다시 나타난 worktree는 외부 변경이므로 거부한다.
+		return origBranch && branchPresent && !inventory.WorktreePresent && branchMatches(false)
 	case "record_delete":
-		return !inventory.WorktreePresent && !branchPresent && (originalAbsent || originalPaired)
+		return !inventory.WorktreePresent && !branchPresent && worktreeMatches(true) && branchMatches(true)
 	}
 	return false
 }
@@ -523,7 +570,7 @@ func cleanupAbandonLeaseHoldsWriter(status issueops.LeaseStatus) bool {
 // 이미 정리된 사이클까지 차단해 중도 포기 경로가 사라진다.
 //
 // 조회할 수 없으면 통과가 아니라 거부다(#106 pending_intent_safe와 같은 계약).
-func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupAbandonDeps) error {
+func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupAbandonDeps, terminalsReachable bool) error {
 	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return nil
 	}
@@ -552,9 +599,13 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.Issu
 	if err != nil {
 		return fmt.Errorf("Orca owner inventory is ambiguous; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`: %w", err)
 	}
-	if inventory.TaskLive || inventory.TerminalLive {
-		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t); abandon leaves them without an owner, so use `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`",
-			inventory.TaskStatus, inventory.DispatchStatus, inventory.TerminalLive)
+	// 터미널 잔여는 apply ①′가 닫을 수 있을 때(워크트리 존재·런타임이 그 워크트리의
+	// 터미널을 나열)만 거부 사유가 아니다. 워크트리가 없거나 터미널이 나열되지 않으면
+	// ①′는 아무것도 닫지 못하므로 살아 있는 터미널은 소유자 없는 자원이 된다(fagan
+	// #478 F4). task/dispatch 잔여는 항상 거부한다(#477).
+	if inventory.TaskLive || (inventory.TerminalLive && !terminalsReachable) {
+		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t terminal_reachable_by_stop=%t); abandon leaves them without an owner, so use `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`",
+			inventory.TaskStatus, inventory.DispatchStatus, inventory.TerminalLive, terminalsReachable)
 	}
 	return nil
 }

@@ -51,7 +51,7 @@ RED:
 - merged base가 prepared base와 다르면 `base_branch_drifted`가 status에 보인다.
 - open issue는 `issue_closed`, `ok=true`, `ready=false`를 보고하고 cleanup 추천 choice를 만들지 않는다.
 - closed issue는 finish preview와 `Ready`/`Missing` 및 공개 field projection이 동일하다.
-- process holder는 `workspace_processes_quiescent`와 holder 문자열 warning으로 투영된다.
+- process holder는 차단 사유가 아니라 apply가 종료할 대상이다(#477). status는 `Ready`를 유지하되 `pid:command:started_at` 문자열과 "apply가 프로세스 N개와 Orca 터미널 M개를 종료합니다" warning으로 투영한다. 관측 실패(`workspace_processes_observable`)와 요청자 점유(`requester_occupies_worktree`)만 missing으로 남는다.
 - fake git/process dependency로 실제 repo/process를 건드리지 않는다.
 
 GREEN:

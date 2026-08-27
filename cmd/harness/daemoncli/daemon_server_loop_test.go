@@ -340,22 +340,25 @@ func TestRunDaemonAcceptLoopHealthProbeBypassesFullMCPAdmission(t *testing.T) {
 	})
 
 	clients := make([]net.Conn, 0, maxConnections)
-	for i := 0; i < maxConnections; i++ {
-		conn, err := net.Dial("unix", socket)
-		if err != nil {
-			t.Fatal(err)
-		}
-		clients = append(clients, conn)
-		if _, err := io.WriteString(conn, "{"); err != nil {
-			t.Fatal(err)
-		}
-	}
 	t.Cleanup(func() {
 		for _, conn := range clients {
 			_ = conn.Close()
 		}
 	})
+	// 커널의 unix 소켓 백로그(kern.ipc.somaxconn, macOS 기본 128)는
+	// maxConnections(256)보다 작다. 연결을 먼저 전부 열고 나서 시작을 확인하면
+	// accept 루프가 백로그를 비우기 전에 백로그가 넘쳐 connect가
+	// ECONNREFUSED로 거절된다(GOMAXPROCS=1에서 재현). 세션마다 시작을 확인한
+	// 뒤 다음 연결로 넘어가 대기 중인 연결을 한 개로 유지한다.
 	for i := 0; i < maxConnections; i++ {
+		conn, err := net.Dial("unix", socket)
+		if err != nil {
+			t.Fatalf("dial %d/%d: %v", i, maxConnections, err)
+		}
+		clients = append(clients, conn)
+		if _, err := io.WriteString(conn, "{"); err != nil {
+			t.Fatal(err)
+		}
 		select {
 		case <-started:
 		case <-time.After(2 * time.Second):

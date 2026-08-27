@@ -20,7 +20,7 @@ func wireCleanupForTests() {
 		CleanupFinish: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupFinishRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupFinishResult, error) {
 			return issueopscore.CleanupFinish(ctx, stateRoot, req, issueopscore.CleanupFinishDeps{
 				Git:                d.CleanupFinishGit,
-				InspectProcesses:   d.InspectCleanupProcesses,
+				Processes:          issueopscore.CleanupProcessDeps{Observe: d.InspectCleanupProcesses},
 				RemoveOrcaWorktree: d.RemoveOrcaWorktree,
 				ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
 					return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)

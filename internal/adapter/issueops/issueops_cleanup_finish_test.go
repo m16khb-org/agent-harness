@@ -111,8 +111,8 @@ func finishRequest(id string, apply bool, fingerprint string) CleanupFinishReque
 
 func finishDeps(git *fakeFinishGit) CleanupFinishDeps {
 	return CleanupFinishDeps{
-		Git:              git.run,
-		InspectProcesses: func(string) ([]string, error) { return nil, nil },
+		Git:       git.run,
+		Processes: quietCleanupProcesses(),
 	}
 }
 
@@ -148,12 +148,13 @@ func TestCleanupFinishPreviewGatesRejectMissingEvidence(t *testing.T) {
 			t.Fatalf("dirty worktree must block: %v %v", err, result.Missing)
 		}
 	})
-	t.Run("live process", func(t *testing.T) {
+	t.Run("live process is listed, not blocking", func(t *testing.T) {
 		deps := finishDeps(git)
-		deps.InspectProcesses = func(string) ([]string, error) { return []string{"1234:codex"}, nil }
+		deps.Processes = worldCleanupProcesses(occupiedWorld(t, codexOccupant()), nil)
+		deps.OrcaTerminals = readyOrca(t, worktree)
 		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
-		if err == nil || !containsString(result.Missing, "workspace_processes_quiescent") {
-			t.Fatalf("live process must block: %v %v", err, result.Missing)
+		if err != nil || containsString(result.Missing, "workspace_processes_quiescent") || len(result.WorkspaceProcesses) != 1 {
+			t.Fatalf("occupants are apply targets now, not a preview blocker: %v %+v", err, result)
 		}
 	})
 	t.Run("unclosed child", func(t *testing.T) {
@@ -295,7 +296,7 @@ func TestCleanupFinishResumableConvergesAndRecordDeleted(t *testing.T) {
 }
 
 func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
-	stateRoot, record, _ := finishTestRecord(t, true)
+	stateRoot, record, worktree := finishTestRecord(t, true)
 	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.Execution.Mode = issueops.ExecutionModeOrca
 		rec.Execution.Workspace.Driver = "orca"
@@ -303,6 +304,7 @@ func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
+	deps.OrcaTerminals = readyOrca(t, worktree)
 	calls := []string{}
 	deps.RemoveOrcaWorktree = func(_ context.Context, worktreeID string) error {
 		calls = append(calls, "orca:"+worktreeID)
@@ -339,6 +341,7 @@ func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
+	deps.OrcaTerminals = readyOrca(t, worktree)
 	deps.RemoveOrcaWorktree = func(_ context.Context, worktreeID string) error {
 		if worktreeID != "wt-1" {
 			t.Fatalf("unexpected worktree id: %s", worktreeID)

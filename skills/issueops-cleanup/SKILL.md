@@ -36,9 +36,22 @@ decision and a separate `issueops cleanup remote-branch` flow.
 3. The cycle must be `done`, its execution lease must be released, and its
    PR/MR must be verified merged by the provider.
 4. Linked child tasks must already have verified close evidence.
-5. The worktree must be clean and quiescent. A dirty worktree, live process,
-   active Orca resource, branch mismatch, unreadable provider state, or pending
-   external intent blocks cleanup.
+5. The worktree must be clean. A dirty worktree, active Orca task resource,
+   branch mismatch, unreadable provider state, or pending external intent
+   blocks cleanup. Processes occupying the worktree and Orca terminals bound to
+   it do NOT block: the preview lists them (`workspace_processes` with pid,
+   command, start time, descendant/collateral counts; `orca_terminals`) and the
+   typed apply stops them itself (fingerprinted handle별 `orca terminal close`, then
+   HUP+TERM, then KILL, then re-observation) before removing anything. If the
+   Orca terminal close receipt does not confirm the same handle and PTY death,
+   apply stops at `workspace_processes_stop` without
+   signalling any process. What still blocks is the requester itself: `requester_occupies_worktree` (this
+   session or one of its ancestor processes occupies the worktree),
+   `requester_terminal_outside_worktree` / `requester_terminal_unresolved`
+   (this session's Orca terminal is bound to the target worktree, or the
+   `ORCA_PANE_KEY`/`ORCA_TERMINAL_HANDLE` env cannot be matched), and
+   `worktree_is_source_checkout`. Resolve those by running from a different
+   terminal or worktree — never by killing processes by hand.
 6. The remote source branch must already be absent. If it remains, stop and
    report that this skill does not have authority to delete it.
 
@@ -92,6 +105,9 @@ From these results, state:
 - whether the merged artifact head OID matches the local branch OID, when the
   provider exposes that artifact OID;
 - that the remote branch will not be deleted;
+- every process and Orca terminal the apply will stop (`workspace_processes`
+  with pid/command/start time and descendant/collateral counts, and
+  `orca_terminals`), because unsaved work in those processes is lost;
 - every readiness blocker.
 
 If any target is missing or ambiguous, or any blocker beyond the permitted
@@ -106,8 +122,12 @@ writes. Obtain one explicit confirmation that names all three exact effects:
 ```text
 이슈 <URL>을 닫고, HEAD <WORKTREE_HEAD_OID>인 로컬 워크트리 <PATH>와
 OID <BRANCH_OID>인 로컬 브랜치 <BRANCH>를 삭제할까요?
+apply가 먼저 종료하는 것: 프로세스 <N>개(<pid:command …>), Orca 터미널 <M>개.
 원격 브랜치는 삭제하지 않습니다.
 ```
+
+When the preview lists no processes or terminals, state that nothing will be
+stopped instead of omitting the line.
 
 The latest user message must confirm the exact targets. A prior generic
 "cleanup" request authorizes preview only.
@@ -189,9 +209,14 @@ agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
 ```
 
 Do not replace it with raw `git worktree remove`, `git branch -d`, `git branch
--D`, or `git update-ref`. The harness binds deletion to the observed worktree
-and branch OID, removes Orca ownership first when present, and preserves the
-IssueOps record if a destructive step fails.
+-D`, or `git update-ref`, and never stop processes or Orca terminals by hand
+before apply. The harness binds deletion to the observed worktree, branch OID,
+occupant receipts, and terminal handles; stops the bound Orca terminals and
+occupying processes first (`workspace_processes_stop`); removes Orca ownership
+next when present; and preserves the IssueOps record if a destructive step
+fails. A `failed_step` of `workspace_processes_stop` means the Orca terminal
+stop failed or something still occupies the worktree after HUP/TERM/KILL —
+re-preview to see what remains.
 
 Never add `issueops cleanup remote-branch` to this flow.
 
@@ -200,7 +225,9 @@ Never add `issueops cleanup remote-branch` to this flow.
 After apply:
 
 1. Require `ok: true` and `record_deleted: true`.
-2. If the worktree was present, require `worktree_removed: true`.
+2. If the worktree was present, require `worktree_removed: true`, and report
+   `workspace_processes_stopped` and `orca_terminals_stopped` exactly as the
+   apply returned them.
 3. If the local branch was present, require `branch_deleted: true`.
 4. From the source repository, verify:
 

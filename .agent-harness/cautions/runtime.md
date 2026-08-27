@@ -46,6 +46,7 @@ persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오
 - macOS actual-socket QA는 Unix-domain socket 경로 길이 제한을 피하도록 `/tmp/ahd-*`처럼 짧은 임시 root를 사용한다. 기본 `t.TempDir()`의 긴 `/var/folders/...` 경로는 구현과 무관한 `bind: invalid argument`를 만들 수 있다.
 - QA launcher가 daemon child의 parent라면 `daemon stop`과 parent의 `Wait`를 동시에 진행해 SIGTERM 종료 자식을 즉시 reap한다. unreaped zombie는 `kill(pid, 0)`에 살아 있는 것으로 보여 fail-closed forced-stop 검증을 오탐할 수 있다. 모든 QA는 `defer`/`finally` 정리 후 임시 binary, state root, PID, socket이 0개인지 확인한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
+- accept 루프를 검증하려고 연결을 몰아서 여는 테스트는 대기 중인 연결이 커널 백로그 한도(`kern.ipc.somaxconn`, macOS 기본 128)를 넘지 않게 dial과 수용 확인을 번갈아 수행한다. `maxConnections`(256)만큼 먼저 dial하면 129번째 connect가 `ECONNREFUSED`로 거절되어 부하에 따라 흔들린다 ([2026-08-27 lesson](lessons/2026-08-27-daemon-accept-loop-burst-dial-backlog.md)).
 - **D2 (NFS caveat, accepted)**: daemon single-instance locking은 `daemonlock/lock.go`의 `O_EXCL` create + stale(30s)/PID-liveness 감지로 막는다. lock 파일은 startup handoff 후 child가 삭제하므로(transient) flock fallback은 부적합하다(flock은 inode에 묶여 삭제 시 깨짐). `O_EXCL`은 NFS/FUSE에서 원자성이 보장되지 않으니 **daemon state는 로컬 FS에 둔다**; 네트워크 마운트 home에서는 이론상 두 daemon이 뜰 수 있으나 두 번째는 동일 unix socket bind에서 실패한다.
 
 ## 20. /tmp/agent-harness-* build artifact cleanup
@@ -72,6 +73,13 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 - 정상 `done` 전이는 해당 사이클의 세션 바인딩을 제거한다. 비정상 종료로 남은 done/absent 바인딩만 `issueops cleanup stale --apply`로 정리하며, dry-run(`--apply` 없음)은 보고만 한다.
 - VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
 - `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.
+
+## 레코드 삭제는 related write span과 같은 게이트를 지날 것
+
+`sqlstore`의 직렬화 게이트(`spanGate`)는 `WithSpan`만 획득한다. `Apply`/`CompareAndApply`는 게이트 밖에서 커밋하므로, 게이트를 지나지 않는 삭제는 열려 있는 related-update span과 순서를 맺지 못하고 삭제 뒤 related row가 되살아난다. CAS는 대상 레코드의 drift만 막는다.
+
+- 레코드와 related bucket을 함께 지우는 경로는 `WithSpan` 안에서 실행한다 ([2026-08-27 lesson](lessons/2026-08-27-record-delete-bypassed-the-span-gate.md)).
+- 게이트를 `Apply` 계열 안으로 내리지 않는다. span 안에서 호출되는 write가 자기 자신과 교착한다.
 
 ## SQLite state root 최초 초기화도 cross-process 경합으로 취급할 것
 

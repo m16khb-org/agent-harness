@@ -86,7 +86,7 @@ func TestAbandonRejectsUninspectableOrcaOwner(t *testing.T) {
 	t.Run("missing inspector", func(t *testing.T) {
 		stateRoot, record := abandonSettledOrcaRecord(t, "dispatched")
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""),
-			CleanupAbandonDeps{Git: (&fakeAbandonGit{}).run})
+			CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: (&fakeAbandonGit{}).run})
 		if err == nil || !containsString(result.Missing, "orca_resources_absent") {
 			t.Fatalf("a missing inspector must block: %v %v", err, result.Missing)
 		}
@@ -117,7 +117,7 @@ func TestAbandonSkipsOrcaGateWithoutBinding(t *testing.T) {
 }
 
 func abandonOrcaDeps(git *fakeAbandonGit, inspector port.ExecutionOrcaOwnerInspector) CleanupAbandonDeps {
-	return CleanupAbandonDeps{Git: git.run, Orca: authoritativeZeroOrca(), OrcaOwner: inspector}
+	return CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git.run, Orca: authoritativeZeroOrca(), OrcaOwner: inspector}
 }
 
 // abandonSettledOrcaRecord는 prepare가 끝난 orca 사이클을 만든다. 워크트리

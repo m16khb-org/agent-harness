@@ -80,6 +80,9 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-26 | [Root GATES.md caused add/add conflicts across IssueOps worktrees](cautions/lessons/2026-08-26-gates-root-ledger-worktree-conflicts.md) |
 | 2026-08-26 | [GitLab work_items issue URL alias rejected by the provider parser and the create-issue live gate](cautions/lessons/2026-08-26-gitlab-work-items-url-provider-create-issue.md) |
 | 2026-08-27 | [Skill added without agents/openai.yaml broke the self-verify QA gate on main](cautions/lessons/2026-08-27-skill-without-openai-yaml-self-verify-qa-gate.md) |
+| 2026-08-27 | [cleanup finish blocked on one Orca terminal shell; cleanup now stops worktree processes and terminals itself](cautions/lessons/2026-08-27-cleanup-stops-worktree-processes.md) |
+| 2026-08-27 | [Daemon accept-loop burst dial exceeded the unix backlog](cautions/lessons/2026-08-27-daemon-accept-loop-burst-dial-backlog.md) |
+| 2026-08-27 | [Record delete bypassed the sqlstore span gate and orphaned related state](cautions/lessons/2026-08-27-record-delete-bypassed-the-span-gate.md) |
 
 ## Removed CLI modes (historical only)
 

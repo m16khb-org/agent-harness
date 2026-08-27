@@ -137,7 +137,8 @@ func knownChildValidationVerdict(verdict string) bool {
 
 func knownCleanupFinishFailureStep(step string) bool {
 	switch step {
-	case CleanupFailureStepOrcaRemove,
+	case CleanupFailureStepWorkspaceProcessesStop,
+		CleanupFailureStepOrcaRemove,
 		CleanupFailureStepWorktreeRemove,
 		CleanupFailureStepBranchDelete,
 		CleanupFailureStepRecordDelete:
@@ -150,6 +151,7 @@ func knownCleanupFinishFailureStep(step string) bool {
 func knownCleanupAbandonFailureStep(step string) bool {
 	switch step {
 	case CleanupFailureStepApplying,
+		CleanupFailureStepWorkspaceProcessesStop,
 		CleanupFailureStepWorktreeRemove,
 		CleanupFailureStepBranchDelete,
 		CleanupFailureStepRecordDelete:

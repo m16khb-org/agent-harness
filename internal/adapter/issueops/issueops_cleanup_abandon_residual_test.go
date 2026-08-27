@@ -21,7 +21,7 @@ func TestCleanupAbandonPreviewInventoriesRecordBackedWorktree(t *testing.T) {
 	}
 	head := strings.TrimSpace(preflight.GitOut(fixture.worktree, "rev-parse", "HEAD"))
 
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err != nil {
 		t.Fatalf("clean record-backed residue must be previewable: %v missing=%v", err, result.Missing)
 	}
@@ -68,7 +68,7 @@ func TestCleanupAbandonApplyRemovesLocalTargetsBeforeRecord(t *testing.T) {
 		}
 		return code, stdout
 	}
-	deps := CleanupAbandonDeps{Git: git}
+	deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git}
 	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 		}
 		return code, stdout
 	}
-	deps := CleanupAbandonDeps{Git: git}
+	deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git}
 
 	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
 	if err != nil {
@@ -141,7 +141,7 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 	mutateFinishRecord(t, stateRoot, fixture.record.ID, func(record *issueops.IssueOpsRecord) {
 		record.CleanupAbandonFailure.Fingerprint = strings.Repeat("b", 64)
 	})
-	forged, forgedErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	forged, forgedErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if forgedErr == nil || !containsString(forged.Missing, "cleanup_failure_inventory") {
 		t.Fatalf("a substituted receipt fingerprint must fail closed: err=%v result=%+v", forgedErr, forged)
 	}
@@ -155,7 +155,7 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 	// local_residue_pair로 보고됐지만, #433이 비대칭 자체를 허용하면서
 	// 이제 cleanup_failure_inventory가 잡는다 — receipt와 관측이 불일치한다는
 	// 더 정확한 진단이다. 막는다는 사실은 그대로다.
-	mismatch, mismatchErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	mismatch, mismatchErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if mismatchErr == nil || !containsString(mismatch.Missing, "cleanup_failure_inventory") {
 		t.Fatalf("branch-only retry must match the sealed OID: err=%v result=%+v", mismatchErr, mismatch)
 	}
@@ -163,7 +163,7 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 		record.CleanupAbandonFailure.BranchOID = head
 	})
 
-	retryPreview, retryErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	retryPreview, retryErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if retryErr != nil {
 		t.Fatalf("sealed branch-only partial state must be retryable: %v missing=%v", retryErr, retryPreview.Missing)
 	}
@@ -174,7 +174,7 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 	if strings.Join(retryPreview.RemovalPlan, "\n") != strings.Join(wantRetryPlan, "\n") {
 		t.Fatalf("partial retry plan mismatch: want=%q got=%q", wantRetryPlan, retryPreview.RemovalPlan)
 	}
-	retried, retryErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, retryPreview.Fingerprint), CleanupAbandonDeps{})
+	retried, retryErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, retryPreview.Fingerprint), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if retryErr != nil || !retried.BranchDeleted || !retried.RecordDeleted {
 		t.Fatalf("partial retry must finish branch and record cleanup: err=%v result=%+v", retryErr, retried)
 	}
@@ -204,7 +204,7 @@ func TestCleanupAbandonApplyingReceiptForOriginallyAbsentExecutionIsRetryable(t 
 		current.CleanupAbandonFailure.InventorySHA256 = cleanupAbandonFailureSeal(*current, current.CleanupAbandonFailure)
 	})
 
-	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err != nil {
 		t.Fatalf("an armed originally-absent execution must be retryable: %v missing=%v", err, preview.Missing)
 	}
@@ -266,7 +266,7 @@ func TestCleanupAbandonRecordDeletePartialStateIsRetryable(t *testing.T) {
 		}
 	})
 
-	invalid, invalidErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	invalid, invalidErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if invalidErr == nil || !containsString(invalid.Missing, "cleanup_failure_inventory") {
 		t.Fatalf("incomplete record-delete inventory must fail closed: err=%v result=%+v", invalidErr, invalid)
 	}
@@ -278,7 +278,7 @@ func TestCleanupAbandonRecordDeletePartialStateIsRetryable(t *testing.T) {
 		current.CleanupAbandonFailure.RecordSHA = originalRecordSHA
 		current.CleanupAbandonFailure.InventorySHA256 = cleanupAbandonFailureSeal(*current, current.CleanupAbandonFailure)
 	})
-	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err != nil {
 		t.Fatalf("both-absent record-delete partial state must be retryable: %v missing=%v", err, preview.Missing)
 	}
@@ -286,7 +286,7 @@ func TestCleanupAbandonRecordDeletePartialStateIsRetryable(t *testing.T) {
 	if strings.Join(preview.RemovalPlan, "\n") != strings.Join(wantPlan, "\n") {
 		t.Fatalf("record-only retry plan mismatch: want=%q got=%q", wantPlan, preview.RemovalPlan)
 	}
-	applied, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, preview.Fingerprint), CleanupAbandonDeps{})
+	applied, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, preview.Fingerprint), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err != nil || !applied.RecordDeleted || applied.WorktreeRemoved || applied.BranchDeleted {
 		t.Fatalf("record-only retry must finish without local Git deletion: err=%v result=%+v", err, applied)
 	}
@@ -325,7 +325,7 @@ func TestCleanupAbandonPersistsFenceBeforeGitMutation(t *testing.T) {
 		}
 		return code, stdout
 	}
-	deps := CleanupAbandonDeps{Git: git}
+	deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git}
 	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
 	if err != nil {
 		t.Fatal(err)
@@ -363,7 +363,7 @@ func TestCleanupAbandonAuthorityCASRunsBeforeGitMutation(t *testing.T) {
 		}
 		return code, stdout
 	}
-	deps := CleanupAbandonDeps{Git: git}
+	deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), Git: git}
 	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +398,7 @@ func TestCleanupAbandonRejectsBranchCheckedOutInAnotherWorktree(t *testing.T) {
 		t.Fatalf("check branch out elsewhere: %s", stderr)
 	}
 
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err == nil || !containsString(result.Missing, "branch_checked_out_elsewhere") {
 		t.Fatalf("another worktree owning the branch must fail closed: err=%v missing=%v", err, result.Missing)
 	}
@@ -414,7 +414,7 @@ func TestCleanupAbandonRejectsDirtyWorktree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err == nil || !containsString(result.Missing, "worktree_clean") || result.Fingerprint != "" {
 		t.Fatalf("dirty worktree must not receive an applicable fingerprint: err=%v result=%+v", err, result)
 	}
@@ -429,7 +429,7 @@ func TestCleanupAbandonApplyRejectsCleanHeadDrift(t *testing.T) {
 	if err := os.Remove(fixture.tokenPath); err != nil {
 		t.Fatal(err)
 	}
-	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
+	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +443,7 @@ func TestCleanupAbandonApplyRejectsCleanHeadDrift(t *testing.T) {
 		t.Fatalf("git commit drift: %s", stderr)
 	}
 
-	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, preview.Fingerprint), CleanupAbandonDeps{})
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, true, preview.Fingerprint), CleanupAbandonDeps{Processes: quietCleanupProcesses()})
 	if err == nil || !strings.Contains(err.Error(), "stale cleanup fingerprint") {
 		t.Fatalf("clean HEAD/OID drift must invalidate the preview: err=%v result=%+v", err, result)
 	}
@@ -473,7 +473,7 @@ func TestCleanupAbandonAcceptsRecordLinkedResidueWithoutExecution(t *testing.T) 
 		rec.WorktreePath = fixture.worktree
 	})
 	head := strings.TrimSpace(preflight.GitOut(fixture.worktree, "rev-parse", "HEAD"))
-	deps := CleanupAbandonDeps{}
+	deps := CleanupAbandonDeps{Processes: quietCleanupProcesses()}
 
 	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), deps)
 	if err != nil {

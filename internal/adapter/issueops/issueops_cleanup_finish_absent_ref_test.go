@@ -57,7 +57,7 @@ func (g *absentRefFinishGit) run(_ string, args ...string) (int, string) {
 func TestCleanupFinishConvergesWhenWorktreeRemovalAlreadyDroppedTheBranchRef(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)
 	git := &absentRefFinishGit{branchOID: "abc123"}
-	deps := CleanupFinishDeps{Git: git.run, InspectProcesses: func(string) ([]string, error) { return nil, nil }}
+	deps := CleanupFinishDeps{Git: git.run, Processes: quietCleanupProcesses()}
 
 	preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestCleanupFinishStillFailsOnRealBranchDeleteErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot, record, _ := finishTestRecord(t, true)
 			git := &realErrorFinishGit{branchOID: "abc123", updateRefOutput: tc.output}
-			deps := CleanupFinishDeps{Git: git.run, InspectProcesses: func(string) ([]string, error) { return nil, nil }}
+			deps := CleanupFinishDeps{Git: git.run, Processes: quietCleanupProcesses()}
 
 			preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
 			if err != nil {
@@ -176,8 +176,8 @@ func TestCleanupFinishAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
 	})
 	git := &realErrorFinishGit{branchOID: ""}
 	deps := CleanupFinishDeps{
-		Git:              git.run,
-		InspectProcesses: func(string) ([]string, error) { return nil, nil },
+		Git:       git.run,
+		Processes: quietCleanupProcesses(),
 		ObserveArtifact: func(url string) (issueopsdomain.ArtifactObservation, error) {
 			return issueopsdomain.ArtifactObservation{
 				URL: url, Provider: "github", Merged: true, State: "MERGED",
@@ -254,9 +254,9 @@ func TestCleanupFinishRejectsUnverifiableSupersedingArtifacts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot, record, _ := finishTestRecord(t, true)
 			deps := CleanupFinishDeps{
-				Git:              (&realErrorFinishGit{}).run,
-				InspectProcesses: func(string) ([]string, error) { return nil, nil },
-				ObserveArtifact:  tc.observe,
+				Git:             (&realErrorFinishGit{}).run,
+				Processes:       quietCleanupProcesses(),
+				ObserveArtifact: tc.observe,
 			}
 			req := finishRequest(record.ID, false, "")
 			req.Merged = false
@@ -281,8 +281,8 @@ func TestCleanupFinishRejectsUnverifiableSupersedingArtifacts(t *testing.T) {
 func TestCleanupFinishRequiresObservationForSupersedeEvidence(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)
 	deps := CleanupFinishDeps{
-		Git:              (&realErrorFinishGit{}).run,
-		InspectProcesses: func(string) ([]string, error) { return nil, nil },
+		Git:       (&realErrorFinishGit{}).run,
+		Processes: quietCleanupProcesses(),
 	}
 	req := finishRequest(record.ID, false, "")
 	req.Merged = false
