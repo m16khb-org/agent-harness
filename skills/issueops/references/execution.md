@@ -432,7 +432,8 @@ agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" --apply --confirm --fi
 - `reflect-completion`이 최종 head·PR URL·검증 요약·artifact 본문(plan/spec 접힌
   전문)을 이슈 본문의 completion 섹션에 보존한 뒤에만 finish가 통과한다.
 - finish apply는 워크트리 점유 프로세스·Orca 터미널 종료(`workspace_processes_stop`:
-  `orca terminal stop --worktree` → HUP+TERM → KILL → 재관측) → orca 워크스페이스
+  fingerprinted handle별 `orca terminal close`(same handle·`ptyKilled=true`) →
+  HUP+TERM → KILL → 최종 점유·터미널 재관측) → orca 워크스페이스
   회수(force=false) → git worktree 제거 → 로컬 브랜치 CAS 삭제 → 감사 라인 멱등
   반영 → **레코드 삭제** 순서로 진행하며, 각 단계는 멱등이고 실패 시 레코드를
   보존한 채 실패 지점을 기록한다. 재실행 전에는 `--preview`로 새 fingerprint를

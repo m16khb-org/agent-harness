@@ -41,9 +41,10 @@ decision and a separate `issueops cleanup remote-branch` flow.
    blocks cleanup. Processes occupying the worktree and Orca terminals bound to
    it do NOT block: the preview lists them (`workspace_processes` with pid,
    command, start time, descendant/collateral counts; `orca_terminals`) and the
-   typed apply stops them itself (`orca terminal stop --worktree`, then
+   typed apply stops them itself (fingerprinted handle별 `orca terminal close`, then
    HUP+TERM, then KILL, then re-observation) before removing anything. If the
-   Orca terminal stop fails, apply stops at `workspace_processes_stop` without
+   Orca terminal close receipt does not confirm the same handle and PTY death,
+   apply stops at `workspace_processes_stop` without
    signalling any process. What still blocks is the requester itself: `requester_occupies_worktree` (this
    session or one of its ancestor processes occupies the worktree),
    `requester_terminal_outside_worktree` / `requester_terminal_unresolved`

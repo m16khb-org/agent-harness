@@ -175,9 +175,10 @@ automatically redirect to /work_items/:iid")는 일반 이슈(`type=ISSUE`)의 `
 `cleanup finish/abandon`은 워크트리를 점유한 프로세스와 그 워크트리에 매인 Orca
 터미널을 차단 사유가 아니라 apply ①′의 종료 대상으로 다룬다(#477). preview가
 receipt(pid·시작 시각·실행 파일)·자손/부수 피해 수·터미널 handle을 싣고 fingerprint에
-결속하며, apply는 `orca terminal stop --worktree` → HUP+TERM → 최대 5초 → KILL →
-재관측(점유 0 증명) 순서로 닫는다. 대화형 zsh/bash는 SIGTERM을 무시하고 SIGHUP에
-종료된다(2026-08-27 실측). 터미널 stop이 실패하면 시그널 경로로 넘어가지 않고
+결속하며, apply는 handle별 `orca terminal close --terminal`(handle 일치·`ptyKilled=true`
+receipt 필수) → HUP+TERM → 최대 5초 → KILL → 재관측(점유·터미널 0 증명) 순서로
+닫는다. 대화형 zsh/bash는 SIGTERM을 무시하고 SIGHUP에 종료된다(2026-08-27 실측).
+터미널 close가 실패하면 시그널 경로로 넘어가지 않고
 `workspace_processes_stop`에서 멈춘다 — 터미널만 죽고 orca 회수는 실패하는 부분 apply를
 막기 위해서다(fagan #478 finding 2).
 
@@ -189,8 +190,9 @@ receipt(pid·시작 시각·실행 파일)·자손/부수 피해 수·터미널 
   `worktree_is_source_checkout`으로 막는다. 한쪽을 다른 쪽에 맞춰 "고치지" 말 것.
 - 요청자 터미널은 `ORCA_PANE_KEY`(tabId:leafId)·`ORCA_TERMINAL_HANDLE` env를 `orca terminal
   list --json` 전체 행과 join해서만 확정한다. 무선택자 `orca terminal show`는 호출자가 아니라
-  UI-active 터미널을 돌려준다(brooks 실측). `orca terminal stop --worktree`는 터미널 단위
-  선택자가 없어 요청자 터미널까지 닫는다 — cwd를 밖으로 옮긴 터미널도 종료된다.
+  UI-active 터미널을 돌려준다(brooks 실측). bulk `orca terminal stop --worktree`는
+  fingerprint에 없던 동시 생성 터미널까지 닫으므로 cleanup에서 쓰지 않는다. preview가
+  봉인한 exact handle만 닫고, 교체·신규 터미널은 최종 inventory에서 거부한다.
 - 신호는 apply 시점에 실제로 점유 중인 프로세스에게만 보낸다. 자손 관계는 preview 점유자가
   같은 receipt로 아직 점유 중일 때의 stale 허용 근거일 뿐, cwd만 워크트리인 공유 서버(tmux)의
   다른 세션까지 죽이는 종료 범위 확장이 아니다.

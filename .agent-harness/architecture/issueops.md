@@ -164,9 +164,12 @@ Post-merge cleanup ordering is a contract: `reflect-completion`(completion
 보호·head OID CAS·fingerprint) 뒤에만 파괴 단계를 수행하고 마지막에
 레코드를 삭제한다. 워크트리를 점유한 프로세스와 그 워크트리에 매인 Orca 터미널은
 차단 사유가 아니라 apply ①′의 종료 대상이다: preview가 receipt(pid·시작 시각·실행
-파일)와 터미널 handle을 fingerprint에 결속하고, apply가 `orca terminal stop
---worktree` → HUP+TERM → KILL → 재관측(점유 0 증명) 순서로 닫은 뒤 orca 회수로
-넘어간다. 터미널 stop 실패는 fail-closed다(`workspace_processes_stop`, 시그널 없음). 요청자 자신(pid 조상, `ORCA_PANE_KEY`/`ORCA_TERMINAL_HANDLE`로 확정한
+파일)와 터미널 handle을 fingerprint에 결속하고, apply가 fingerprint된 handle마다
+`orca terminal close --terminal`(same-handle·`ptyKilled=true` receipt 필수)를
+호출한 뒤 HUP+TERM → KILL → 최종 점유·터미널 재관측(둘 다 0 증명) 순서로 닫은
+뒤 orca 회수로 넘어간다. bulk `terminal stop --worktree`는 fingerprint 밖 동시
+생성 터미널까지 닫을 수 있어 쓰지 않는다. 터미널 close 실패는 fail-closed다
+(`workspace_processes_stop`, 시그널 없음). 요청자 자신(pid 조상, `ORCA_PANE_KEY`/`ORCA_TERMINAL_HANDLE`로 확정한
 요청자 터미널)과 소스 체크아웃은 종료·삭제 대상이 될 수 없어 preview가 거부한다
 (#477) — 결정적 ID(`sha256(repo+branch)`) 재사용과 충돌하지 않는
 유일한 수명 종료다. 각 파괴 단계는 멱등이며, 실패 시 레코드가 보존되고 재실행
