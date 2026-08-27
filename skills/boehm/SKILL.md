@@ -123,12 +123,20 @@ ground truth by copying OCR output.
 - Record removed header/footer counts and image-region warnings separately.
 - Label this channel `native`.
 
-### C. Render Every Page
+### Script paths
 
-Run `scripts/render_document_pages.py` at `BASE_DPI`:
+Every script below is addressed through `$BOEHM_SKILL_DIR`, the installed boehm skill directory (for example `~/.claude/skills/boehm`, `~/.codex/skills/boehm`). Resolve and export it once before the first script call. A repo-relative `scripts/...` path does not work: this skill runs against a target repository, which has no `scripts/` directory of its own, so the bare path fails with `can't open file '<cwd>/scripts/render_document_pages.py'` (verified 2026-08-27).
 
 ```bash
-python3 scripts/render_document_pages.py \
+BOEHM_SKILL_DIR="${BOEHM_SKILL_DIR:-$HOME/.claude/skills/boehm}"
+```
+
+### C. Render Every Page
+
+Run `$BOEHM_SKILL_DIR/scripts/render_document_pages.py` at `BASE_DPI`:
+
+```bash
+python3 "$BOEHM_SKILL_DIR/scripts/render_document_pages.py" \
   --input "$SOURCE_DOCUMENT" \
   --output-dir "$WORK_DIR/pages" \
   --manifest "$WORK_DIR/render-manifest.json" \
@@ -141,7 +149,7 @@ complete verdict.
 
 ### D. OCR an Image-Only PDF
 
-Run `scripts/build_image_only_pdf.py` over all rendered pages, then pass that
+Run `$BOEHM_SKILL_DIR/scripts/build_image_only_pdf.py` over all rendered pages, then pass that
 PDF to Kordoc `parse_document(ocr=true)`. Label this channel
 `full-page-ocr`; never conflate it with OCR on the original mixed PDF.
 
@@ -154,9 +162,9 @@ Prioritize screenshots, footer terms, table cells, before/after prices, toggles,
 checkboxes, disabled controls, errors, annotations, badges, emails, expiration,
 withdrawal, and refund conditions.
 
-Use `scripts/create_region_crops.py` with contextual margins. Analyze the whole
+Use `$BOEHM_SKILL_DIR/scripts/create_region_crops.py` with contextual margins. Analyze the whole
 table as well as row/column crops. Wrap crops with
-`scripts/build_image_only_pdf.py`, OCR them, and label results `region-ocr`.
+`$BOEHM_SKILL_DIR/scripts/build_image_only_pdf.py`, OCR them, and label results `region-ocr`.
 Do not repeatedly raise the whole-page DPI; start at 240 DPI and enlarge only
 targeted regions.
 
@@ -210,7 +218,7 @@ Produce:
 Run:
 
 ```bash
-python3 scripts/validate_analysis_report.py \
+python3 "$BOEHM_SKILL_DIR/scripts/validate_analysis_report.py" \
   --report "$WORK_DIR/report.md" \
   --evidence "$WORK_DIR/evidence.json" \
   --output "$WORK_DIR/validation.json"
