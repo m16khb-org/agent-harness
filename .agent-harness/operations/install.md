@@ -73,6 +73,7 @@ Default user-level install updates:
 - Omo skill symlinks: `~/.omo/skills/* -> <agent-harness>/skills/*`
 - Omo MCP config: `~/.omo/mcp.json`
 - Omo lifecycle extension: `~/.omo/extensions/agent-harness.js`
+- Declared upstream host plugins and skills that the host is missing, from `configs/upstream.json`. Entries the host already has are skipped, and upstream failures are reported as `upstream ...` messages without failing the install. See [hosts.md](hosts.md#upstream-plugins-and-skills).
 
 Default install does not create target-repo `.claude/skills`,
 `.claude/settings.json`, `.mcp.json`, `.omo/skills`, or `.omo/mcp.json`. Use

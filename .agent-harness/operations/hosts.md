@@ -81,6 +81,60 @@ Claude hooks live in `~/.claude/settings.json`. Default installation owns exactl
 
 Claude project-local hooks can be committed, so do not create `.claude/settings.json` in target repos without explicit opt-in.
 
+### Upstream plugins and skills
+
+`configs/upstream.json` declares third-party host plugins and skills that
+`agent-harness install` (and therefore `update`) provisions when the host does
+not already have them. Entries the host already has are skipped, never
+reinstalled or overwritten.
+
+```json
+{
+  "version": 1,
+  "plugins": [{ "name": "eli5", "marketplace": "claude-community", "source": "anthropics/claude-plugins-community" }],
+  "skills": [{ "name": "cua-driver", "repo": "https://github.com/trycua/cua", "path": "libs/cua-driver/rust/Skills/cua-driver", "ref": "main" }]
+}
+```
+
+- Plugins are provisioned through the Claude Code CLI: the marketplace `source`
+  is registered only when missing, then `claude plugin install <name>@<marketplace>
+  --scope user --yes` runs. A plugin counts as present when
+  `claude plugin list --json` already reports `<name>@<marketplace>`, in any scope.
+- Skills are fetched with a shallow sparse `git clone` into
+  `<state dir>/upstream/skills/<name>` and linked from `~/.claude/skills/<name>`,
+  the same link shape the harness uses for its own skills. A skill counts as
+  present when `~/.claude/skills/<name>` exists, whoever created it, so a
+  harness-owned or hand-made skill of the same name is left alone. A fetched
+  directory without `SKILL.md` is rejected and leaves no link behind.
+- Provisioning runs only after the native activation receipt is sealed, and it
+  never changes install success. A missing `claude` CLI, an unreachable remote,
+  or a failed plugin install is reported as an `upstream ...` message on the
+  install result while the harness install itself stays `ok`. This keeps the
+  harness install path independent of third-party tooling.
+- `agent-harness install --dry-run --json` reports the plan (`planned` /
+  `skipped`) without touching the host.
+- The cache lives outside `skills/`, so the stale-link prune that removes
+  deleted harness skills never touches upstream skill links.
+
+Choosing the entry kind. Declare an upstream as a `plugin` whenever the project
+publishes a `.claude-plugin/marketplace.json`, and as a `skill` only when no
+marketplace exists for it. Three reasons the plugin kind is preferred:
+
+- It is the upstream author's own documented install path, and it carries a
+  version the host can update.
+- A plugin's skills are namespaced `<plugin>:<skill>` in the host, so a plugin
+  whose skill shares a name with a harness skill coexists with it instead of
+  competing for `~/.claude/skills/<name>`.
+- The host materializes the whole plugin, so the upstream `LICENSE` comes with
+  it. A `skill` entry sparse-fetches one subdirectory, which usually leaves the
+  repository's root `LICENSE` behind — check the fetched directory carries its
+  own notice before declaring a skill entry for third-party code.
+
+A `skill` entry whose name matches a skill the harness itself ships can never
+install: the harness links its own `skills/<name>` first, so the presence check
+always skips the upstream. Declare such a project as a plugin, or accept that
+the entry is a provenance record only.
+
 ## Omo Native
 
 Omo stores runtime configuration in its branded roots and user skills in the
