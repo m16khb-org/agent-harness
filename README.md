@@ -36,7 +36,7 @@
 | 실행 안전 | workspace/cwd, write/network intent, timeout, redaction, executable fence 정책 |
 | 검증과 개선 | contract, quality, self-verify, self-augment, benchmark를 같은 evidence 모델로 제공 |
 | 공유 스킬 | `skills/` 하나를 Codex, Claude Code, Omo native의 사용자 경로에 연결 |
-| 브라우저 QA | 설치된 Aside CLI를 이용한 기능·UI/UX·통합 웹 QA 스킬 제공 |
+| 브라우저 QA | 기능·UI/UX·통합 웹 QA 스킬 제공, Aside는 선행 설치가 필요한 선택적 외부 도구 |
 
 ## 빠른 시작
 
@@ -77,6 +77,10 @@ ah inspect --json
 
 `agent-harness`가 정식 명령이며 `ah`는 설치기가 관리하는 짧은 심볼릭 링크입니다. 기존 `ah` 파일이나 다른 심볼릭 링크가 있으면 덮어쓰지 않고 설치에 실패합니다. `ah update`는 현재 체크아웃의 코드를 빌드하고 사용자 수준 통합을 갱신하지만 `git pull`은 실행하지 않습니다.
 
+`install`은 `--interactive`, `--project-local`, `--path-mode=auto|manual|skip`를 지원하고 `bootstrap`은 `--sync`를 추가로 지원합니다. `--project-local`은 `.claude/skills/*`, `.mcp.json`, `.omo/skills/*`, `.omo/mcp.json`을 명시적으로 생성합니다. Host hook과 Omo lifecycle extension 등록은 계속 사용자 수준에 둡니다. 검증된 기존 harness command file을 인수해야 할 때만 `--adopt-command-file`을 사용합니다.
+
+`install`과 `update`는 native activation 뒤 선택적 upstream provisioning도 수행합니다. [`configs/upstream.json`](configs/upstream.json)에 선언된 missing Claude plugin은 Claude CLI로 설치하고, Git skill은 harness state cache에 가져와 Claude 사용자 skill 경로에 연결합니다. 이미 있는 항목은 건너뜁니다. upstream/network 실패는 결과에 보고하되 native install을 실패시키지 않습니다. 현재 이 경로는 Claude Code만 대상으로 합니다.
+
 ## 기본 사용 흐름
 
 ### 저장소에 project docs 연결
@@ -115,8 +119,10 @@ agent-harness issueops start \
   --json
 ```
 
-IssueOps는 아래 상태 전이를 하나의 durable record와 generation-fenced
-`Execution`으로 관리합니다.
+IssueOps는 아래 사용자 관점 workflow를 하나의 durable record와
+generation-fenced `Execution`으로 관리합니다. `issue`는 remote artifact/linkage
+단계이고 `cleanup`은 `done` 뒤의 후처리입니다. Durable phase enum은
+`problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr|done`입니다.
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
@@ -132,11 +138,11 @@ problem → grill → issue → plan → compatibility-review → implement
 
 | 호스트 | 기본 사용자 수준 통합 |
 | --- | --- |
-| Codex | `~/.codex/skills/`, MCP config, lifecycle hooks |
-| Claude Code | `~/.claude/skills/`, user-scope MCP, lifecycle hooks |
+| Codex | `~/.codex/skills/`, MCP config, `SessionStart` hook |
+| Claude Code | `~/.claude/skills/`, user-scope MCP, `SessionStart` hook |
 | Omo native | `~/.omo/agent/skills/`, `~/.omo/mcp.json`, lifecycle extension |
 
-기본 설치는 대상 저장소에 호스트 설정을 만들지 않습니다. 저장소 로컬 스킬, hook, MCP 파일은 프로젝트 로컬 옵트인을 명시한 경우에만 생성합니다.
+기본 설치는 사용자/전역 범위만 변경합니다. `--project-local`을 명시하면 Claude/Omo project skill link와 project MCP 파일을 생성하지만 repo-local hook 등록은 만들지 않습니다.
 
 ## 아키텍처
 
@@ -174,6 +180,8 @@ flowchart LR
 | 상태와 실행 | `state`, `daemon`, `mcp`, `worker` | user state, MCP backend, 제한된 local job 관리 |
 | 개선과 조사 | `self-verify`, `self-augment`, `web-fetch` | 하네스 검증, 개선 후보 탐색, 실패에 대응하는 공개 웹 조회 |
 
+세부 runtime 표면에서 daemon은 `start|status|stop`을, worker는 `enqueue`, read-only `run`, `status`, `list`, `cleanup-stuck`, `cancel`을 지원합니다. `mcp cleanup`은 dry-run/apply 모드로 오래된 proxy process를 정리합니다.
+
 전체 명령과 MCP 도구 계약은 빌드된 바이너리에서 확인할 수 있습니다.
 
 현재 체크아웃의 response contract 스키마에는 최상위 CLI 명령 29개와 MCP 도구
@@ -197,10 +205,10 @@ quality projection입니다.
 | quality health | `needs_attention` |
 | quality gate | `report_only` |
 | open verification/augmentation candidates | 0 / 0 |
-| tracked quality candidates | 6 |
+| tracked quality candidates | 0 |
 | active audit P1/P2 | 0 |
 
-현재 `needs_attention`은 12개 low-coverage package와 branch complexity 부채를
+현재 `needs_attention`은 3개 low-coverage package와 branch complexity 부채를
 보고하지만 gate를 차단하지 않습니다. 수집 자체가 실패하면
 `collection_status=error`, `health_status=unknown`, `gate_status=block`으로
 fail-closed 처리합니다.
@@ -221,14 +229,14 @@ agent-harness issueops benchmark run \
 
 IssueOps는 대화 속 작업 맥락을 issue, plan, worktree, feedback, verification evidence로 기록해 세션이나 호스트가 바뀌어도 동일한 작업 계약을 유지합니다.
 
-정식 단계는 다음 순서입니다.
+사용자 관점 workflow는 다음 순서입니다. `issue`는 linkage 단계이고 `cleanup`은 `done` 뒤 후처리입니다.
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
         → ai-slop-clean → feedback → pr → cleanup
 ```
 
-`remote issue`, `branch/worktree`, `design review`, `Brooks devil's-advocate review`, `plan link`, `execution decision`은 각 단계에 필요한 durable evidence와 gate로 기록합니다. Hook은 누락된 경계를 알리거나 deterministic violation을 차단하지만 워크플로 동작을 대신 실행하지 않습니다.
+`remote issue`, `branch/worktree`, `design review`, `Brooks devil's-advocate review`, `plan link`, `execution decision`은 각 단계에 필요한 durable evidence와 gate로 기록합니다. Fail-closed 판정과 mutation fence는 IssueOps CLI/MCP가 담당하며, hook은 static project-doc context만 주입합니다.
 
 원격 issue 생성은 기본적으로 dry-run입니다. `--confirm` 경로는 provider 호출 전에 project authority, request digest, operation marker를 durable intent로 저장합니다. 호출 결과가 불확실하면 자동 재시도를 막고 `reconcile-issue`에서 같은 project의 단일 live candidate만 연결합니다.
 
@@ -238,6 +246,8 @@ problem → grill → issue → plan → compatibility-review → implement
 adapter일 뿐 IssueOps가 durable authority라는 점은 바뀌지 않습니다.
 
 `create-issue`는 `--confirm`이 없으면 preview만 출력하고 intent를 만들지 않습니다. `reconcile-issue`는 확인된 원격 호출의 결과가 불명확해 durable intent가 남은 경우에만 사용하며, candidate 연결은 별도의 `--confirm`이 필요합니다. 세부 명령과 provider별 제약은 [IssueOps provider 가이드](.agent-harness/operations/guides/issueops-providers.md)에 정의되어 있습니다.
+
+현재 cycle의 tracked plan/spec/gate와 ignored sealed artifact는 `.agent-harness/issues/<provider-issue-number>/` 아래에 함께 namespacing합니다. `cleanup finish`는 preview/fingerprint를 다시 확인하고 worktree process와 Orca terminal을 정지한 뒤 worktree·branch·record를 순서대로 정리합니다.
 
 cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md)와 [운영 문서](.agent-harness/OPERATIONS.md)에 정의되어 있습니다.
 
@@ -268,9 +278,8 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - MCP tool argument는 공개 schema에 대해 unknown field와 missing/wrong-type field를 거부합니다.
 - executable shell fence는 셸을 실행하지 않고 syntax, failure swallowing, destructive command, dynamic shell, symlink 우회를 검사합니다.
 - secret 원문은 문서, 상태 응답, audit log, test fixture에 남기지 않습니다.
-- 외부 도구는 native install, update, readiness, self-verification의 dependency가 아닙니다.
+- 외부 도구는 native install, readiness, self-verification의 의존성이 아닙니다. 선택적 Claude upstream catalog만 activation 뒤 non-fatal provisioning으로 처리합니다.
 - Orca supervised execution 같은 연동은 선택적 adapter이며 IssueOps가 계속 durable authority를 가집니다.
-- GitOps kubectl guard를 활성화하면 direct mutating cluster command를 차단하고 live access에 host별 명시적 승인을 요구합니다.
 
 ## 저장소 구조
 

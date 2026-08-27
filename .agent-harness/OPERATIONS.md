@@ -17,7 +17,7 @@ guide that matches the task.
 | Task | Read |
 |------|------|
 | Install, bootstrap, refresh, daily commands, release smoke | [install-and-update.md](operations/guides/install-and-update.md) |
-| CLI discovery, command policy, guard, state maintenance, contract conformance, kubectl approval, quick smoke | [cli-and-state.md](operations/guides/cli-and-state.md) |
+| CLI discovery, command policy, guard, state maintenance, contract conformance, quick smoke | [cli-and-state.md](operations/guides/cli-and-state.md) |
 | Native skills, host hook rules, hook kill-switch | [skills-and-hosts.md](operations/guides/skills-and-hosts.md) |
 | Health gate, diagnosis, one-time reconciliation | [troubleshooting.md](operations/guides/troubleshooting.md) |
 | IssueOps provider publication, branch linkage, issue snapshots | [issueops-providers.md](operations/guides/issueops-providers.md) |
@@ -46,17 +46,24 @@ instead of duplicating their content here or in a guide.
    specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared
    user-level `agent-harness daemon`.
-3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/loop/gates/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
+3. CLI: 29 top-level commands (`install/update/bootstrap/version`,
+   `inspect/preflight/status/doctor/docs`,
+   `policy/guard/quality/verify-work/trace/contract/api-doc`, `project/hook`,
+   `state/daemon/mcp/worker`, `issueops/loop/gates/channel`,
+   `self-verify/self-augment/web-fetch`); `agent-harness --help` is the
+   canonical list.
 4. Loop contracts: `agent-harness loop start/record-attempt/status/stop` records
    verify-until-done state and strict readiness gates without executing
    verification commands.
 5. Task gate ledgers: `agent-harness gates init/check/status/report/abandon`
-   evaluates canonical `.agent-harness/gates/*.md` and compatible
-   `GATES.md`/`gates/*.md` acceptance ledgers.
+   discovers per-issue `.agent-harness/issues/<n>/gates.md` first, then generic
+   `.agent-harness/gates/*.md` and compatible `GATES.md`/`gates/*.md` ledgers.
+   Generic `gates init` still defaults to `.agent-harness/gates/<scope-slug>.md`;
+   IssueOps owns `.agent-harness/issues/<provider-issue-number>/gates.md` and
+   judges only its own or anonymous ledgers for strict PR readiness.
    CHECK commands run through the command policy engine (never a raw shell),
-   evidence is recorded from the deciding output tail, and unmet gates in a
-   cycle worktree block strict PR readiness with `gates_incomplete:<file>`.
-   See [operations/cli-and-mcp.md](operations/cli-and-mcp.md).
+   and unmet gates add `gates_incomplete:<file>`. See
+   [operations/cli-and-mcp.md](operations/cli-and-mcp.md).
 6. Cross-session channels: `agent-harness channel send/recv` gives Codex,
    Claude Code, and Omo sessions a durable shared mailbox over harness state —
    the transport for front/server-style multi-session coordination.
@@ -77,9 +84,10 @@ instead of duplicating their content here or in a guide.
   side effects, sub-agent usage, or lease ownership.
   `issueops execution prepare/status/claim/release/replace/reconcile/complete`
   and MCP `issueops_execution` are the single execution contract.
-- Native install/update paths are standalone. External tools are neither
-  installed nor required by `agent-harness`; use their own setup paths when a
-  separate workflow needs them.
+- Native install/update, readiness, and self-verification remain standalone.
+  After native activation, the declarative `configs/upstream.json` catalog may
+  provision missing Claude plugins and Git skills; it is dry-run visible,
+  Claude-scoped, and non-fatal. Other companion tools keep their own setup paths.
 - Worker functionality remains policy-gated and state-first until
   write/network/background execution has explicit audit, timeout, cancellation,
   and redaction coverage.

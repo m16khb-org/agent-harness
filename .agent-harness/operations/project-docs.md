@@ -7,7 +7,7 @@ description: Project bootstrap, project-doc routing, MCP document updates, and s
 
 ## Project Bootstrap
 
-`agent-harness project bootstrap` analyzes a target repo and creates agent-facing operating documents plus user-state repo profile metadata. It writes missing files by default; use `--dry-run` for a plan only. Use `--sync` to refresh existing docs from current templates and repo evidence.
+`agent-harness project bootstrap` analyzes a target repo and creates agent-facing operating documents plus user-state repo profile metadata. By default, it writes missing files. Use `--dry-run` for a plan only and `--sync` to refresh existing docs from current templates and repo evidence.
 
 ```bash
 agent-harness project bootstrap --repo /path/to/repo --json
@@ -21,7 +21,7 @@ Bootstrap behavior:
 - `.agent-harness/*.md` frontmatter `description` uses canonical concise English metadata.
 - Runtime state is stored in user-state `projects/<repo-id>/project.json`, not target repo source.
 - Profile metadata records VCS provider/hosting, language, package manager, app classification, framework evidence, and lifecycle namespace data for hook context.
-- Static bootstrap is a baseline; agents should improve docs from repo evidence when needed.
+- Static bootstrap is a baseline; improve docs from repo evidence when needed.
 
 Generated project-doc set:
 
@@ -69,6 +69,6 @@ Dry-run/default-write rules:
 
 ## Standalone Docs Policy
 
-Project docs, docs routing, and draft-wiki staging must not require an external wiki, memory provider, graph index, or companion MCP server. Do not add external-tool-specific harness CLI commands, MCP tools, resources, or SessionStart hooks as a prerequisite for project documentation workflows.
+Project docs, docs routing, and draft-wiki staging must not depend on an external wiki, memory provider, graph index, or companion MCP server. Do not make external-tool-specific harness CLI commands, MCP tools, resources, or SessionStart hooks prerequisites for project documentation workflows.
 
-Repo-local draft wiki staging remains separate from source-of-truth `.agent-harness/*.md`: draft candidates live under `.agent-harness/draft-wiki/`, and `agent-harness docs`/MCP `docs_index` must not index draft candidates as canonical project docs. Hooks do not decide whether material is worth remembering and do not auto-queue draft-wiki work; the main agent must judge reuse value and explicitly queue material with `agent-harness project draft-wiki queue --stdin` or `--input`. Promotion exports approved drafts to the repo-local `exported/` area and does not perform external ingest, lint, index, or query-pack work.
+Repo-local draft-wiki staging is separate from source-of-truth `.agent-harness/*.md`. Candidates live under `.agent-harness/draft-wiki/`, and `agent-harness docs`/MCP `docs_index` must not index them as canonical project docs. Hooks never decide or queue this material. The public CLI does not currently have a working `project draft-wiki queue` surface. Use `project_docs_append` or SHA-guarded `project_docs_revise` for canonical updates; do not prescribe a nonexistent queue command.

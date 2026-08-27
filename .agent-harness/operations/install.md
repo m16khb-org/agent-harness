@@ -69,11 +69,11 @@ Default user-level install updates:
 - Codex MCP config: `~/.codex/config.toml` `[mcp_servers.agent_harness]`
 - Codex hooks: `~/.codex/hooks.json`
 - Claude hooks: `~/.claude/settings.json`
-- Claude user-scope MCP server: `claude mcp add-json -s user agent_harness ...`
-- Omo skill symlinks: `~/.omo/skills/* -> <agent-harness>/skills/*`
+- Claude user-scope MCP config: `~/.claude.json` key `mcpServers.agent_harness` (written directly by the installer)
+- Omo skill symlinks: `~/.omo/agent/skills/* -> <agent-harness>/skills/*`
 - Omo MCP config: `~/.omo/mcp.json`
 - Omo lifecycle extension: `~/.omo/extensions/agent-harness.js`
-- Declared upstream host plugins and skills that the host is missing, from `configs/upstream.json`. Entries the host already has are skipped, and upstream failures are reported as `upstream ...` messages without failing the install. See [hosts.md](hosts.md#upstream-plugins-and-skills).
+- Optional Claude Code plugins and Git skills declared in `configs/upstream.json` (currently Claude-scoped): entries already present are skipped, and upstream failures are reported as `upstream ...` messages without failing native installation. See [hosts.md](hosts.md#upstream-plugins-and-skills).
 
 Default install does not create target-repo `.claude/skills`,
 `.claude/settings.json`, `.mcp.json`, `.omo/skills`, or `.omo/mcp.json`. Use

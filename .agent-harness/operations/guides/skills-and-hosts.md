@@ -22,7 +22,9 @@ export HARNESS_DISABLE_HOOKS=1    # 셸 세션 전체에 적용
 ```
 
 - 값이 `1`, `true`, `yes`, `on` 중 하나면 활성이다 (`hookenv.Bool` 계약).
-- context hook(`session-start`, Omo용 `post-compact`)이 아무것도 출력하지 않고 exit 0으로 끝난다. hook은 원래 telemetry나 state를 남기지 않는다.
+- Codex와 Claude Code는 `SessionStart`만 등록하고 compact 뒤 다시 실행하므로 `PostCompact`를 등록하지 않는다.
+- Omo extension은 `session_start`를 `hook session-start`에, `session_compact`를 `hook post-compact`에 매핑한다.
+- `HARNESS_DISABLE_HOOKS`가 켜지면 두 context command 모두 조용히 exit 0으로 끝나며 telemetry나 state를 남기지 않는다.
 - 다른 hook subcommand는 없다(2026-08-27에 legacy enforcement/relay/telemetry hook 제거).
 
 ## Related references

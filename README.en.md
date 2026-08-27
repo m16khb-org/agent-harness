@@ -37,7 +37,7 @@ evidence outside the host so the same work contract survives session changes.
 | Execution safety | Workspace/cwd, write/network intent, timeout, redaction, and executable-fence policy |
 | Verification and improvement | Contract, quality, self-verify, self-augment, and benchmark evidence |
 | Shared skills | One `skills/` source linked into every first-party host |
-| Browser QA | Functional, UI/UX, and combined web QA skills driven by an installed Aside CLI |
+| Browser QA | Functional, UI/UX, and combined web QA skills; Aside is an optional external prerequisite |
 
 ## Quick start
 
@@ -75,6 +75,19 @@ ah inspect --json
 ```
 
 `agent-harness` is the canonical command; `ah` is the short symlink managed by the installer. Installation fails instead of overwriting an existing `ah` file or a different symlink. `ah update` rebuilds the current checkout and refreshes user-level integrations. It does not run `git pull`.
+
+`install` supports `--interactive`, `--project-local`, and
+`--path-mode=auto|manual|skip`; `bootstrap` also supports `--sync`.
+`--project-local` creates `.claude/skills/*`, `.mcp.json`, `.omo/skills/*`, and
+`.omo/mcp.json`. Use `--adopt-command-file` only for an existing file with a
+verified harness build identity.
+
+`install` and `update` run optional upstream provisioning after native activation.
+Missing Claude plugins declared in [`configs/upstream.json`](configs/upstream.json)
+are installed through the Claude CLI; declared Git skills are fetched into the
+harness state cache and linked into Claude's user skill directory. Existing
+entries are skipped, and upstream or network failures are reported without
+failing native installation. Provisioning currently targets Claude Code only.
 
 ## Basic workflow
 
@@ -116,8 +129,10 @@ agent-harness issueops start \
   --json
 ```
 
-IssueOps keeps the following transition in one durable record and one
-generation-fenced `Execution`:
+IssueOps keeps this workflow in one durable record and one generation-fenced
+`Execution`. `issue` is the remote artifact/linkage step; `cleanup` runs after
+`done`. The durable phase enum is
+`problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr|done`:
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
@@ -134,11 +149,13 @@ The default installer connects three first-party host adapters to the same execu
 
 | Host | Default user-level integration |
 | --- | --- |
-| Codex | `~/.codex/skills/`, MCP config, lifecycle hooks |
-| Claude Code | `~/.claude/skills/`, user-scope MCP, lifecycle hooks |
+| Codex | `~/.codex/skills/`, MCP config, `SessionStart` hook |
+| Claude Code | `~/.claude/skills/`, user-scope MCP, `SessionStart` hook |
 | Omo native | `~/.omo/agent/skills/`, `~/.omo/mcp.json`, lifecycle extension |
 
-The default install does not create host configuration in target repositories. Repo-local skills, hooks, and MCP files require explicit project-local opt-in.
+Installation is user/global by default. Project-local opt-in does not add
+repo-local hook registration; host hooks and the Omo lifecycle-extension
+registration remain user-level.
 
 ## Architecture
 
@@ -176,6 +193,10 @@ The following boundaries are deliberate:
 | State and runtime | `state`, `daemon`, `mcp`, `worker` | Manage user state, the MCP backend, and constrained local jobs |
 | Improvement and research | `self-verify`, `self-augment`, `web-fetch` | Verify the harness, record improvements, and fetch public web content resiliently |
 
+At runtime, the daemon supports `start|status|stop`; the worker supports
+`enqueue`, read-only `run`, `status`, `list`, `cleanup-stuck`, and `cancel`;
+`mcp cleanup` removes stale proxy processes in dry-run or apply mode.
+
 Read the complete CLI and MCP contracts from the running binary:
 
 The current checkout's response-contract schema pins 29 top-level CLI commands and 51 MCP tools.
@@ -198,11 +219,11 @@ They are not a separately maintained README score.
 | Quality health | `needs_attention` |
 | Quality gate | `report_only` |
 | Open verification/augmentation candidates | 0 / 0 |
-| Tracked quality candidates | 6 |
+| Tracked quality candidates | 0 |
 | Active audit P1/P2 findings | 0 |
 
-The current `needs_attention` status reports 12 low-coverage packages and
-branch-complexity debt without blocking the gate. A collection failure becomes
+`needs_attention` reports 3 low-coverage packages and branch-complexity debt but
+does not block the gate. On collection failure,
 `collection_status=error`, `health_status=unknown`, and `gate_status=block`.
 
 Recompute the current projection with:
@@ -221,14 +242,18 @@ agent-harness issueops benchmark run \
 
 IssueOps records conversational work context as issues, plans, worktrees, feedback, and verification evidence so the same work contract survives session and host changes.
 
-Its current formal phase order is:
+Its workflow order is below. `issue` is the linkage step, not a durable phase;
+`cleanup` runs after `done`:
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
         → ai-slop-clean → feedback → pr → cleanup
 ```
 
-Remote issues, branches and worktrees, design reviews, Brooks devil's-advocate reviews, plan links, and execution decisions are recorded as the durable evidence and gates required to pass each phase. Hooks can surface missing boundaries or block deterministic violations, but they do not execute workflow actions.
+IssueOps records remote issues, branches/worktrees, design reviews, Brooks
+devil's-advocate reviews, plan links, and execution decisions as durable evidence
+and gates for each phase. Its CLI/MCP owns fail-closed checks and mutation
+fences; hooks inject only static project-doc context.
 
 Remote issue creation is a dry run by default. The `--confirm` path stores project authority, request digest, and operation marker as a durable intent before invoking the provider. An ambiguous result blocks automatic retry; `reconcile-issue` adopts only one live candidate from the same project.
 
@@ -239,6 +264,11 @@ performs the confirmed transition. `direct` and `orca` are execution adapters,
 while IssueOps remains the durable authority.
 
 Without `--confirm`, `create-issue` prints a preview and does not create an intent. Use `reconcile-issue` only when a confirmed remote call has left a durable intent with an ambiguous result; adopting a candidate requires a separate `--confirm`. See the [IssueOps provider guide](.agent-harness/operations/guides/issueops-providers.md) for complete command and provider constraints.
+
+Each cycle's tracked plans/specs/gates and ignored sealed artifacts are
+namespaced under `.agent-harness/issues/<provider-issue-number>/`.
+`cleanup finish` rechecks its preview/fingerprint, stops worktree processes and
+Orca terminals, then removes the worktree, branch, and record in order.
 
 See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations map](.agent-harness/OPERATIONS.md) for the complete cycle and remote-artifact rules.
 
@@ -269,9 +299,10 @@ The 12 pioneer skills are evaluated across primary, boundary, and operational ca
 - MCP tool arguments reject unknown fields and missing or incorrectly typed fields against the published schema.
 - Executable shell fences are checked without execution for syntax, swallowed failures, destructive commands, dynamic shells, and symlink bypasses.
 - Raw secrets do not belong in documentation, state responses, audit logs, or test fixtures.
-- External tools are not dependencies of native install, update, readiness, or self-verification.
+- Native install, update, readiness, and self-verification do not depend on
+  external tools; optional Claude Code upstream provisioning runs after
+  activation and is non-fatal.
 - Integrations such as Orca supervised execution are optional adapters; IssueOps remains the durable authority.
-- When the GitOps kubectl guard is enabled, it blocks direct mutating cluster commands and requires host-specific explicit approval for live access.
 
 ## Repository map
 

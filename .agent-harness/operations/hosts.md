@@ -83,10 +83,12 @@ Claude project-local hooks can be committed, so do not create `.claude/settings.
 
 ### Upstream plugins and skills
 
-`configs/upstream.json` declares third-party host plugins and skills that
-`agent-harness install` (and therefore `update`) provisions when the host does
-not already have them. Entries the host already has are skipped, never
-reinstalled or overwritten.
+`configs/upstream.json` declares optional third-party plugins and Git skills
+that `agent-harness install` (and therefore `update`) provisions for Claude Code
+when missing. Codex and Omo receive only the first-party `skills/` links from
+this installer path. Existing upstream entries are skipped, never reinstalled
+or overwritten. The object below shows the schema; the complete catalog
+currently contains four plugins and one skill.
 
 ```json
 {
@@ -165,4 +167,4 @@ Omo through its official distribution path.
 
 ## IssueOps Host Rule
 
-Hooks inject static project-doc context and nothing else. They must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, clean up branches/worktrees, or block tool events. The main agent loop owns the `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state, and explicit `agent-harness issueops ...` commands own durable CAS, lease authority, remote writes, verification, and publication. No hook output is an enforcement path or ownership evidence.
+Hooks only inject static project-doc context. They do not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, clean up branches/worktrees, or block tool events. The main agent loop owns the user-visible `problem -> grill -> issue linkage -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> done -> post-done cleanup` workflow through `agent-harness issueops ...` CLI/MCP state. The durable phase enum has no artifact-linkage or cleanup labels; explicit IssueOps commands own CAS, lease authority, remote writes, verification, publication, and cleanup. Hook output is neither an enforcement path nor ownership evidence.
