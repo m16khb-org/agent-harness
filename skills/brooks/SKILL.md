@@ -84,7 +84,26 @@ If the plan survives all five gates, say so plainly and return `proceed` — a d
 
 ## IssueOps Integration
 
-When an IssueOps cycle records this independent review, use the implemented `agent-harness` `issueops devils-advocate review` CLI command with the cycle id, `pass|revise|stop` verdict, optional findings, and an explicit waiver only when a non-pass verdict is intentionally overridden. The equivalent MCP tool is `issueops_record_devils_advocate_review` with `id`, `verdict`, optional `findings`, and the explicit waiver fields. A `revise` or unwaived `stop` verdict remains recorded evidence for the cycle's regress-and-replan path; it is not permission to implement the reviewed plan.
+When an IssueOps cycle records this independent review, use the `agent-harness issueops devils-advocate review` CLI command (CLI only — the issueops MCP surface exposes no devil's-advocate action):
+
+```bash
+agent-harness issueops devils-advocate review --id "$ISSUEOPS_ID" \
+  --verdict pass|revise|stop --reviewer-context subagent|inline \
+  --finding "<what was attacked and what the evidence showed>" ... \
+  [--waive --waiver-rationale "<why the verdict is intentionally overridden>"] --json
+```
+
+The record is bound to the plan it reviewed and keeps its own history:
+
+- `reviewed_plan_digest` is the sha256 of the linked plan file (or the staged plan artifact when no file is linked) at record time. Implement entry and the first owner preparation reject a verdict whose digest no longer matches the plan (`devils_advocate_review_stale`). **If the plan changed after the review, the final plan needs a fresh recorded round** — that is the whole point: nobody else looks at the final plan otherwise. Plan edits during implementation are not gated.
+- `reviewer_context` (`subagent` | `inline`) is an audit field, required on every record. The harness cannot verify it; the sub-agent mandate above stays a skill rule, and an inline record is a visible violation, not a silent one.
+- Every `pass` needs at least one finding — what was attacked and why the attack failed. A pass with no findings is a rubber stamp and is rejected.
+- Earlier rounds of the same plan phase are kept under `history` (oldest first) instead of being overwritten.
+- `--waive` means "override this verdict on purpose", never "I addressed the findings". Addressed findings are proven by re-running the review on the revised plan and recording the new verdict.
+
+Round policy (measured 2026-08-28: rounds cost 2–21 min and 10k–70k output tokens each): rounds 1 and 2 review the whole plan; from round 3 on, run a **delta review** — "verify these N findings are resolved; report only new blocking defects" — instead of re-attacking the plan from scratch. Return the verdict as the sub-agent's final text (synchronous), not through a mailbox that can drop it. Review read-only: no live experiments, no state mutation. Record the verdict immediately after each round.
+
+A `revise` or unwaived `stop` verdict remains recorded evidence for the cycle's regress-and-replan path; it is not permission to implement the reviewed plan.
 
 ## Rationalizations Brooks Refuses (the author will offer these)
 
