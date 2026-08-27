@@ -42,8 +42,9 @@ decision and a separate `issueops cleanup remote-branch` flow.
    it do NOT block: the preview lists them (`workspace_processes` with pid,
    command, start time, descendant/collateral counts; `orca_terminals`) and the
    typed apply stops them itself (`orca terminal stop --worktree`, then
-   HUP+TERM, then KILL, then re-observation) before removing anything. What
-   still blocks is the requester itself: `requester_occupies_worktree` (this
+   HUP+TERM, then KILL, then re-observation) before removing anything. If the
+   Orca terminal stop fails, apply stops at `workspace_processes_stop` without
+   signalling any process. What still blocks is the requester itself: `requester_occupies_worktree` (this
    session or one of its ancestor processes occupies the worktree),
    `requester_terminal_outside_worktree` / `requester_terminal_unresolved`
    (this session's Orca terminal is bound to the target worktree, or the
@@ -212,8 +213,9 @@ before apply. The harness binds deletion to the observed worktree, branch OID,
 occupant receipts, and terminal handles; stops the bound Orca terminals and
 occupying processes first (`workspace_processes_stop`); removes Orca ownership
 next when present; and preserves the IssueOps record if a destructive step
-fails. A `failed_step` of `workspace_processes_stop` means something still
-occupies the worktree after HUP/TERM/KILL — re-preview to see what remains.
+fails. A `failed_step` of `workspace_processes_stop` means the Orca terminal
+stop failed or something still occupies the worktree after HUP/TERM/KILL —
+re-preview to see what remains.
 
 Never add `issueops cleanup remote-branch` to this flow.
 
