@@ -199,7 +199,7 @@
 
 **Files:**
 - Create: `.agent-harness/issueops/282-turing-report.md`
-- Modify: `.agent-harness/plans/282-native-hook-stable-runtime.md` checkbox state only as evidence is completed.
+- Modify: `.agent-harness/issues/282/plan.md` checkbox state only as evidence is completed.
 
 **Interfaces:**
 - Consumes: all prior tasks.

@@ -6,7 +6,7 @@
 2. 진짜 남은 작업과 slop을 구분해 **압축**한다
 3. 그 압축된 목록을 다 끝낸다
 
-선행 문서는 `.agent-harness/plans/issue-backlog-triage-2026-08-08.md`(첫 triage)이며, 이 문서가 최종 상태다.
+선행 문서는 `.agent-harness/issues/_unnumbered/issue-backlog-triage-2026-08-08.md`(첫 triage)이며, 이 문서가 최종 상태다.
 
 ## 결과
 

@@ -26,7 +26,7 @@
 - `cmd/harness/statecli/state_cli_maintain_test.go`: CLI result counts after loop becomes a fixed root.
 - `cmd/harness/mcpcli/mcp_state_maintain_test.go`: MCP result counts after loop becomes a fixed root.
 - `.agent-harness/ADR.md`: current maintenance topology decision.
-- `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md`: R16/T18 evidence and scope alignment.
+- `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md`: R16/T18 evidence and scope alignment.
 
 ### Task 1: Discover loop and project SQLite stores
 
@@ -313,7 +313,7 @@ Lore:
 
 **Files:**
 - Modify: `.agent-harness/ADR.md:585-604`
-- Modify: `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md:69,375-383`
+- Modify: `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md:69,375-383`
 
 **Interfaces:**
 - Consumes: the Task 1 fixed-root plus bounded-project discovery behavior.
@@ -338,7 +338,7 @@ Change R16 to state that loop and project-scoped stores were omitted from mainte
 Run:
 
 ```bash
-rg -n '4 known store roots|loop root가 maintenance에서 빠지고|loop root를 maintenance catalog' .agent-harness/ADR.md .agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md
+rg -n '4 known store roots|loop root가 maintenance에서 빠지고|loop root를 maintenance catalog' .agent-harness/ADR.md .agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md
 git diff --check
 go test ./internal/core/state ./cmd/harness/statecli ./cmd/harness/mcpcli -run 'Maintain|Discover' -count=1
 ```

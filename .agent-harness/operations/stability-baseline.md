@@ -1,6 +1,6 @@
 # Agent-Harness 운영 안정성 Baseline (시계열)
 
-품질향상 프로그램 **Q4** (`.agent-harness/plans/harness-quality-improvement-program.md`).
+품질향상 프로그램 **Q4** (`.agent-harness/issues/_unnumbered/harness-quality-improvement-program.md`).
 `e2e_stability_audit.py --json`의 핵심 지표를 시계열로 누적해, 이번 세션에서도 재현된 MCP 재접속 끊김처럼
 "빈도·조건 미기록이라 개선 불가"하던 안정성 신호에 측정면을 부여한다.
 

@@ -1,6 +1,6 @@
 # Harness Skill Quality Scorecard (비-pioneer 7종)
 
-품질 프로그램 Q1 (`.agent-harness/plans/harness-quality-improvement-program.md`).
+품질 프로그램 Q1 (`.agent-harness/issues/_unnumbered/harness-quality-improvement-program.md`).
 이 스코어카드는 `.agent-harness/operations/pioneer-skill-quality-rubric.md`를 **그대로 적용**한다
 (5 dimension, gate flag, evidence A–D, pre-score critical check, holdout/mutation 프로토콜, fresh-context
 서브에이전트 실행, calibration). rubric을 복제하지 않고 참조한다 — 단일 출처 원칙.

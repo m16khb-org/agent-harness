@@ -1,6 +1,6 @@
 # Agent-Harness 품질 대시보드 (단일 가시성 인덱스)
 
-품질향상 프로그램 **Q5** (`.agent-harness/plans/harness-quality-improvement-program.md`).
+품질향상 프로그램 **Q5** (`.agent-harness/issues/_unnumbered/harness-quality-improvement-program.md`).
 산재한 정량 지표를 한 페이지로 인덱스한다 — 각 지표군의 **최신값 · 측정일 · 다음 측정 예정 · 출처 문서**.
 자동화는 후순위, 우선 수동 갱신 규약(아래 §갱신 규약).
 

@@ -3,7 +3,7 @@
 ← [ADR index](../../ADR.md)
 
 - Kind: `adr`
-- Source: `.agent-harness/plans/cross-host-tool-contract-conformance.md`
+- Source: `.agent-harness/issues/_unnumbered/cross-host-tool-contract-conformance.md`
 - Summary: Codex, Claude Code, GJC의 tool-call drift는 capture-only benchmark로 먼저 측정하고 재현된 경우에만 하나의 production MCP argument contract를 강화한다.
 - Decision:
   - representative schema 3개와 preregistered 10-case deterministic baseline을 유지한다. Live P0는 host별 임시 config/plugin과 one-tool probe를 사용하며 production handler를 호출하지 않는다.

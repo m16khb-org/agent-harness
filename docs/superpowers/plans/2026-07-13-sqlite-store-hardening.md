@@ -57,7 +57,7 @@
 - `docs/superpowers/specs/2026-07-13-sqlite-store-hardening-design.md`: approved ordered cross-root correction.
 - `.agent-harness/ADR.md`: final span-chain and remote-create lock-order decision.
 - `.agent-harness/CAUTIONS.md`: root-chain and ordering guidance.
-- `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md`: T18 evidence.
+- `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md`: T18 evidence.
 
 ---
 
@@ -690,7 +690,7 @@ Expected: every repetition passes and no helper process survives.
 - Create: `internal/core/sqlstore/resource_test.go`
 - Modify: `.agent-harness/ADR.md`
 - Modify: `.agent-harness/CAUTIONS.md`
-- Modify: `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md`
+- Modify: `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md`
 
 **Interfaces:**
 - Consumes: `handles`, `DB.data`, `DB.span`, and final Tasks 2-8 behavior.
@@ -768,7 +768,7 @@ Expected: no legacy API; exactly eight production calls; no binary diff; no help
 - [ ] **Step 6: Commit evidence and docs**
 
 ```bash
-git add -- internal/core/sqlstore/resource_test.go .agent-harness/ADR.md .agent-harness/CAUTIONS.md .agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md
+git add -- internal/core/sqlstore/resource_test.go .agent-harness/ADR.md .agent-harness/CAUTIONS.md .agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md
 git diff --cached --check
 git commit -m "docs(sqlstore): record T18 hardening evidence" -m $'Lore:\n- Intent: Close T18 with measured resources and aligned lock-order guidance.\n- Why: Docs must match root-chain, permission, cancellation, and crash contracts.\n- Changes:\n  - Add deterministic handle and pool measurements with FD logging.\n  - Record verified evidence in ADR, cautions, and the hardening plan.\n- Verify: Focused, full, race, vet, build, hygiene, and API gates pass.\n- Risk: Test and docs only; eviction stays out of scope.'
 ```
