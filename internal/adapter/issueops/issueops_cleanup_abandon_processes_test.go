@@ -126,8 +126,8 @@ func TestCleanupAbandonOrcaTerminalsGates(t *testing.T) {
 		result, _ := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), deps)
 		return result.Missing
 	}
-	if missing := run(t, port.ExecutionOrcaOwnerInventory{TerminalLive: true, TerminalInventoryComplete: true}); containsString(missing, "orca_resources_absent") {
-		t.Fatalf("a live terminal alone is an apply target, not an abandon blocker: %v", missing)
+	if missing := run(t, port.ExecutionOrcaOwnerInventory{TerminalLive: true, TerminalInventoryComplete: true}); !containsString(missing, "orca_resources_absent") {
+		t.Fatalf("with the worktree absent, apply ①′ never runs, so a live terminal must still refuse (fagan #478 F4): %v", missing)
 	}
 	if missing := run(t, port.ExecutionOrcaOwnerInventory{TaskLive: true, TaskStatus: "dispatched"}); !containsString(missing, "orca_resources_absent") {
 		t.Fatalf("live task/dispatch residue must still refuse: %v", missing)
@@ -168,4 +168,42 @@ func TestCleanupAbandonStopFailureInWorktreeOnlyResidueIsRePreviewable(t *testin
 	if err != nil || containsString(again.Missing, "cleanup_failure_inventory") || again.Fingerprint == "" {
 		t.Fatalf("a worktree-only stop failure must be re-previewable: err=%v missing=%v", err, again.Missing)
 	}
+}
+
+// fagan #478 F4: ⑨는 TerminalLive를 ①′가 실제로 닫을 수 있을 때(워크트리 존재·
+// 터미널 나열)만 통과시킨다. 워크트리가 없거나 런타임이 터미널을 나열하지 못하면
+// 살아 있는 터미널은 소유자 없는 자원으로 남으므로 orca_resources_absent로 거부한다.
+func TestCleanupAbandonLiveTerminalPassesOnlyWhenStopReachesIt(t *testing.T) {
+	liveTerminal := &fakeOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{TerminalLive: true, TerminalInventoryComplete: true}}
+	binding := &issueops.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "task-1", DispatchID: "d"}
+	boundFixture := func(t *testing.T) (string, issueops.IssueOpsRecord, string) {
+		stateRoot := filepath.Join(t.TempDir(), "state")
+		fixture := newClaimableExecutionFixture(t, stateRoot, "477-f4-terminal")
+		if err := os.Remove(fixture.tokenPath); err != nil {
+			t.Fatal(err)
+		}
+		mutateFinishRecord(t, stateRoot, fixture.record.ID, func(rec *issueops.IssueOpsRecord) {
+			rec.Execution.Mode = issueops.ExecutionModeOrca
+			rec.Execution.Workspace.Driver = "orca"
+			rec.Execution.Orca = binding
+		})
+		return stateRoot, fixture.record, fixture.worktree
+	}
+	t.Run("present worktree with listed terminals passes", func(t *testing.T) {
+		stateRoot, record, worktree := boundFixture(t)
+		deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), OrcaTerminals: readyOrca(t, worktree, "term_live"), Orca: authoritativeZeroOrca(), OrcaOwner: liveTerminal}
+		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), deps)
+		if err != nil || containsString(result.Missing, "orca_resources_absent") || len(result.OrcaTerminals) != 1 {
+			t.Fatalf("a live terminal that apply ①′ will stop must not block: err=%v missing=%v terminals=%v", err, result.Missing, result.OrcaTerminals)
+		}
+	})
+	t.Run("present worktree without a ready runtime refuses", func(t *testing.T) {
+		stateRoot, record, _ := boundFixture(t)
+		stopped := &fakeCleanupOrca{t: t, status: port.OrcaStatus{RuntimeState: "stopped"}, byPath: map[string][]port.OrcaTerminal{}}
+		deps := CleanupAbandonDeps{Processes: quietCleanupProcesses(), OrcaTerminals: stopped, Orca: authoritativeZeroOrca(), OrcaOwner: liveTerminal}
+		result, _ := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), deps)
+		if !containsString(result.Missing, "orca_resources_absent") {
+			t.Fatalf("a live terminal that ①′ cannot list must refuse: missing=%v", result.Missing)
+		}
+	})
 }
