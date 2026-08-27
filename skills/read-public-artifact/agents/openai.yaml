@@ -1,0 +1,4 @@
+interface:
+  display_name: "Read Public Artifact"
+  short_description: "Read a public or shared artifact page through the installed Aside browser when the in-process readers cannot"
+  default_prompt: "Use $read-public-artifact to open this artifact link in the Aside browser, extract the richest frame, and save the observed text and HTML."

@@ -911,6 +911,13 @@
           "path": "$HARNESS_ROOT/skills/project-docs-update"
         },
         {
+          "description": "Use when a claude.ai/code/artifact link (or another iframe-rendered web page) must be read from an agent session and the in-process route fails or is unavailable — Artifact read / WebFetch return 'served to you as a public (non-member) reader', 'reading public artifacts that way is not enabled yet', a sign-in shell, an SPA shell, or a Cloudflare 403, and the user asks to read, summarize, or extract a shared or public artifact without claude-in-chrome. Triggers include 아티팩트 읽어줘, 공유 아티팩트, public artifact, artifact read failed, 이 링크 내용 확인, iframe page text.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "read-public-artifact",
+          "path": "$HARNESS_ROOT/skills/read-public-artifact"
+        },
+        {
           "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5180,6 +5187,7 @@
           "project-docs-bootstrap",
           "project-docs-optimize",
           "project-docs-update",
+          "read-public-artifact",
           "review-agent-feedback",
           "self-augment",
           "self-verify",
@@ -7185,6 +7193,13 @@
                 "path": "$HARNESS_ROOT/skills/project-docs-update"
               },
               {
+                "description": "Use when a claude.ai/code/artifact link (or another iframe-rendered web page) must be read from an agent session and the in-process route fails or is unavailable — Artifact read / WebFetch return 'served to you as a public (non-member) reader', 'reading public artifacts that way is not enabled yet', a sign-in shell, an SPA shell, or a Cloudflare 403, and the user asks to read, summarize, or extract a shared or public artifact without claude-in-chrome. Triggers include 아티팩트 읽어줘, 공유 아티팩트, public artifact, artifact read failed, 이 링크 내용 확인, iframe page text.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "read-public-artifact",
+                "path": "$HARNESS_ROOT/skills/read-public-artifact"
+              },
+              {
                 "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Fagan, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (fagan), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8265,6 +8280,7 @@
                 "project-docs-bootstrap",
                 "project-docs-optimize",
                 "project-docs-update",
+                "read-public-artifact",
                 "review-agent-feedback",
                 "self-augment",
                 "self-verify",

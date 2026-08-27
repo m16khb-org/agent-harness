@@ -244,14 +244,14 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 
 ## Skills
 
-[`skills/`](skills/) is the single source of truth for 31 shared skills. The installer links that directory into each host's user-level skill path.
+[`skills/`](skills/) is the single source of truth for 33 shared skills. The installer links that directory into each host's user-level skill path.
 
 - Planning and critique: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - Execution and verification: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - Research and collaboration: `berners-lee`, `engelbart`, `slack-delegate`
 - Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-cleanup`, `issue-branch-worktree`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
-- Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`
+- Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - Code review: `fagan`, `review-agent-feedback`
 - Operational improvement: `self-verify`, `self-augment`, `stability-audit`
 - Korean writing: `fluent-korean`
