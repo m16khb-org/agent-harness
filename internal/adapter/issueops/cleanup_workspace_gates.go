@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -98,9 +99,9 @@ func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cl
 		}
 		return missing
 	}
-	if !occupied && !requester.hosted() && !bound {
-		return missing
-	}
+	// 런타임이 ready면 점유·바인딩·호스팅과 무관하게 워크트리 터미널을 나열한다.
+	// cwd를 옮긴 셸은 점유자가 아니어도 Orca 레지스트리에는 워크트리 터미널로
+	// 남아 있고, apply ①′가 닫아야 한다(AC-01).
 	status, err := orca.Status(ctx)
 	ready := err == nil && status.RuntimeState == "ready"
 	observation.RuntimeReady = ready
@@ -183,23 +184,27 @@ func cleanupTerminalHandles(rows []port.OrcaTerminal) []string {
 	return handles
 }
 
-// cleanupStopWorkspace는 apply ①′다: 런타임이 ready이고 터미널이 있으면
+// cleanupStopWorkspace는 apply ①′다: preview가 나열한 Orca 터미널이 있으면
 // `orca terminal stop --worktree`를 먼저 부르고, 남은 점유자를 receipt 결속
-// 아래 HUP/TERM/KILL로 종료한다. 오류 판정은 재관측이 한다.
-func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops.CleanupWorkspaceProcess, terminals []string, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) ([]issueops.CleanupWorkspaceProcess, int, error) {
+// 아래 HUP/TERM/KILL로 종료한다. 터미널 stop 실패는 fail-closed다 — 시그널
+// 경로로 넘어가면 터미널은 죽고 Orca 회수는 실패하는 파괴적 부분 apply가 된다.
+// Orca 상태(ready, app pid)는 apply 직전 게이트 재평가가 fingerprint로 고정했으므로
+// 여기서 다시 묻지 않는다; 런타임이 사라졌다면 fingerprint가 이미 어긋난다.
+func cleanupStopWorkspace(ctx context.Context, root string, occupants []issueops.CleanupWorkspaceProcess, terminals []string, appPID int, processes CleanupProcessDeps, orca port.CleanupOrcaTerminals) ([]issueops.CleanupWorkspaceProcess, int, error) {
 	excluded := map[int]bool{}
+	if appPID > 0 {
+		excluded[appPID] = true
+	}
 	terminalsStopped := 0
-	if orca != nil {
-		if status, err := orca.Status(ctx); err == nil {
-			if status.AppPID > 0 {
-				excluded[status.AppPID] = true
-			}
-			if status.RuntimeState == "ready" && len(terminals) > 0 {
-				if stopped, stopErr := orca.StopWorktreeTerminals(ctx, root); stopErr == nil {
-					terminalsStopped = stopped
-				}
-			}
+	if len(terminals) > 0 {
+		if orca == nil {
+			return nil, 0, fmt.Errorf("orca terminals %v were previewed but no orca surface is wired", terminals)
 		}
+		stopped, err := orca.StopWorktreeTerminals(ctx, root)
+		if err != nil {
+			return nil, 0, fmt.Errorf("orca terminal stop --worktree %s: %w", root, err)
+		}
+		terminalsStopped = stopped
 	}
 	stopped, err := stopCleanupWorkspaceProcesses(root, occupants, excluded, processes)
 	return stopped, terminalsStopped, err

@@ -371,3 +371,83 @@ func TestCleanupFinishReportsStoppedProcessesAndAudit(t *testing.T) {
 		t.Fatalf("audit line must record the stop counts: %q", audit)
 	}
 }
+
+// fagan #478 finding 2: preview가 나열한 Orca 터미널을 apply가 닫지 못하면
+// 시그널 경로로 넘어가지 말고 workspace_processes_stop에서 멈춰야 한다. apply 직전
+// Orca 상태가 바뀐 경우는 fingerprint가 잡는다.
+func TestCleanupFinishApplyFailsClosedWhenOrcaTerminalStopFails(t *testing.T) {
+	newCase := func(t *testing.T) (string, issueops.IssueOpsRecord, *fakeFinishGit, *fakeCleanupProcessWorld, *fakeCleanupOrca, CleanupFinishDeps) {
+		stateRoot, record, worktree := finishTestRecord(t, true)
+		git := &fakeFinishGit{branchOID: "abc123"}
+		world := occupiedWorld(t, codexOccupant())
+		world.diesOn[4321] = syscall.SIGHUP
+		orca := readyOrca(t, worktree, "term_a")
+		deps := finishDeps(git)
+		deps.Processes = worldCleanupProcesses(world, nil)
+		deps.OrcaTerminals = orca
+		return stateRoot, record, git, world, orca, deps
+	}
+	t.Run("terminal stop error", func(t *testing.T) {
+		stateRoot, record, git, world, orca, deps := newCase(t)
+		preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+		if err != nil || len(preview.OrcaTerminals) != 1 {
+			t.Fatalf("preview must list the terminal: err=%v result=%+v", err, preview)
+		}
+		orca.stopErr = errors.New("orca terminal stop failed")
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+		if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop || result.OrcaTerminalsStopped != 0 {
+			t.Fatalf("a failed orca terminal stop must fail the stop step: err=%v result=%+v", err, result)
+		}
+		if len(world.signals) != 0 || git.removedWorktree || git.deletedBranch {
+			t.Fatalf("nothing may be signalled or removed after a failed terminal stop: signals=%v git=%+v", world.signals, git)
+		}
+		kept, err := ReadIssueOps(stateRoot, record.ID)
+		if err != nil || kept.CleanupFinishFailure == nil || kept.CleanupFinishFailure.Step != issueops.CleanupFailureStepWorkspaceProcessesStop {
+			t.Fatalf("failure receipt must name the stop step: err=%v failure=%+v", err, kept.CleanupFinishFailure)
+		}
+	})
+	t.Run("runtime lost after preview", func(t *testing.T) {
+		stateRoot, record, git, world, orca, deps := newCase(t)
+		preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		orca.statusErr = errors.New("orca status unavailable")
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+		if err == nil || !strings.Contains(err.Error(), "stale cleanup fingerprint") || result.OK {
+			t.Fatalf("a lost runtime must invalidate the preview instead of falling back to signals: err=%v result=%+v", err, result)
+		}
+		if len(world.signals) != 0 || git.removedWorktree {
+			t.Fatalf("stale apply must not signal or remove anything: signals=%v git=%+v", world.signals, git)
+		}
+	})
+}
+
+// fagan #478 finding 3 / AC-01: 런타임이 ready면 점유·바인딩·호스팅과 무관하게
+// 워크트리 터미널을 나열하고 apply가 닫는다. cwd를 옮긴 셸은 점유자가 아니지만
+// Orca 레지스트리에는 워크트리 터미널로 남아 있다.
+func TestCleanupFinishListsAndStopsOrcaTerminalsWithoutOccupants(t *testing.T) {
+	stateRoot, record, worktree := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution.Mode = issueops.ExecutionModeDirect
+		rec.Execution.Workspace.Driver = "git"
+		rec.Execution.Orca = nil
+	})
+	trace := []string{}
+	orca := readyOrca(t, worktree, "term_a")
+	orca.trace = &trace
+	deps := finishDeps(&fakeFinishGit{branchOID: "abc123"})
+	deps.Processes = quietCleanupProcesses()
+	deps.OrcaTerminals = orca
+	preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+	if err != nil || len(preview.OrcaTerminals) != 1 || preview.OrcaTerminals[0] != "term_a" {
+		t.Fatalf("ready runtime must list worktree terminals even without occupants: err=%v result=%+v", err, preview)
+	}
+	applied, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+	if err != nil || !applied.RecordDeleted || applied.OrcaTerminalsStopped != 1 {
+		t.Fatalf("apply must stop the listed terminal: err=%v result=%+v", err, applied)
+	}
+	if !containsString(trace, "orca:stop:"+worktree) {
+		t.Fatalf("apply must call orca terminal stop for the worktree: trace=%v", trace)
+	}
+}

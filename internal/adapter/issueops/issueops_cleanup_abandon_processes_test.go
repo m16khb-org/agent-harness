@@ -133,3 +133,39 @@ func TestCleanupAbandonOrcaTerminalsGates(t *testing.T) {
 		t.Fatalf("live task/dispatch residue must still refuse: %v", missing)
 	}
 }
+
+// fagan #478 finding 1: #433이 허용하는 worktree-only 잔여(branch 부재)에서 ①′가
+// 실패하면 receipt는 WorktreeHead만 갖는다. 그 receipt가 다음 preview를
+// cleanup_failure_inventory로 영구히 막으면 안 된다.
+func TestCleanupAbandonStopFailureInWorktreeOnlyResidueIsRePreviewable(t *testing.T) {
+	stateRoot, record := abandonTestRecord(t)
+	root := filepath.Join(t.TempDir(), "canonical-worktree")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
+		rec.WorktreePath = root
+	})
+	git := &asymmetricAbandonGit{root: root, branch: record.Branch, head: "abc123"}
+	deps := CleanupAbandonDeps{
+		Processes: worldCleanupProcesses(occupiedWorld(t, codexOccupant()), nil), // never dies
+		Git:       git.run, Orca: authoritativeZeroOrca(), OrcaTerminals: readyOrca(t, root),
+	}
+	preview, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, "branch ref was removed elsewhere"), deps)
+	if err != nil || !preview.WorktreePresent || preview.BranchPresent {
+		t.Fatalf("worktree-only residue must preview: err=%v result=%+v", err, preview)
+	}
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, true, preview.Fingerprint), deps)
+	if err == nil || result.FailedStep != issueops.CleanupFailureStepWorkspaceProcessesStop {
+		t.Fatalf("surviving occupants must fail the stop step: err=%v result=%+v", err, result)
+	}
+	kept, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil || kept.CleanupAbandonFailure == nil || kept.CleanupAbandonFailure.BranchOID != "" || kept.CleanupAbandonFailure.WorktreeHead == "" {
+		t.Fatalf("receipt must record the worktree-only shape: err=%v failure=%+v", err, kept.CleanupAbandonFailure)
+	}
+	again, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, "branch ref was removed elsewhere"), deps)
+	if err != nil || containsString(again.Missing, "cleanup_failure_inventory") || again.Fingerprint == "" {
+		t.Fatalf("a worktree-only stop failure must be re-previewable: err=%v missing=%v", err, again.Missing)
+	}
+}

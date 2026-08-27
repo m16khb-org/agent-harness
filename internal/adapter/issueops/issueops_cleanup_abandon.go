@@ -74,6 +74,8 @@ type cleanupAbandonInventory struct {
 	// 입력이다(#477).
 	WorkspaceProcesses []issueops.NativeProcessReceipt `json:"workspace_processes,omitempty"`
 	OrcaTerminals      []string                        `json:"orca_terminals,omitempty"`
+	// OrcaAppPID는 ①′가 시그널에서 제외할 Orca 앱 pid다(finish와 같은 계약).
+	OrcaAppPID int `json:"orca_app_pid,omitempty"`
 }
 
 // CleanupAbandon은 게이트를 평가하고, apply에서 원격을 건드리지 않은 채 로컬
@@ -133,7 +135,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료(finish와 같은 계약). 재관측으로
 	// 점유 0을 증명하지 못하면 워크트리를 건드리지 않고 멈춘다(#477).
 	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0) {
-		stopped, terminals, stopErr := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, deps.Processes, deps.OrcaTerminals)
+		stopped, terminals, stopErr := cleanupStopWorkspace(ctx, inventory.WorktreeRoot, result.WorkspaceProcesses, inventory.OrcaTerminals, inventory.OrcaAppPID, deps.Processes, deps.OrcaTerminals)
 		result.WorkspaceProcessesStopped = stopped
 		result.OrcaTerminalsStopped = terminals
 		if stopErr != nil {
@@ -309,6 +311,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		missing = append(missing, workspaceMissing...)
 		inventory.WorkspaceProcesses = observation.Receipts
 		inventory.OrcaTerminals = observation.Terminals
+		inventory.OrcaAppPID = observation.AppPID
 		result.WorkspaceProcesses = observation.Occupants
 		result.OrcaTerminals = observation.Terminals
 	}
@@ -410,31 +413,38 @@ func cleanupAbandonFailureInventoryMatches(record issueops.IssueOpsRecord, inven
 		!samePath(failure.WorktreePath, inventory.WorktreeRoot) {
 		return false
 	}
-	originalAbsent := failure.WorktreeHead == "" && failure.BranchOID == ""
-	originalPaired := failure.WorktreePath != "" && failure.WorktreeHead != "" &&
-		failure.WorktreeHead == failure.BranchOID
-	if !originalAbsent && !originalPaired {
+	// receipt는 arm 시점의 자원 모양을 담는다: paired(둘 다), worktree-only,
+	// branch-only(#433 비대칭 잔여), absent. 둘 다 있었다면 같은 OID여야 한다.
+	origWorktree := failure.WorktreeHead != ""
+	origBranch := failure.BranchOID != ""
+	if origWorktree && origBranch && failure.WorktreeHead != failure.BranchOID {
 		return false
+	}
+	// 남아 있는 자원은 receipt의 OID와 같아야 하고, 사라진 자원은 원래 없었거나
+	// apply가 그 단계까지 갔을 때만 사라질 수 있다. 삭제 순서는 worktree → branch다.
+	worktreeMatches := func(mayBeRemoved bool) bool {
+		if inventory.WorktreePresent {
+			return origWorktree && inventory.WorktreeHead == failure.WorktreeHead
+		}
+		return !origWorktree || mayBeRemoved
+	}
+	branchMatches := func(mayBeRemoved bool) bool {
+		if branchPresent {
+			return origBranch && inventory.BranchOID == failure.BranchOID
+		}
+		return !origBranch || mayBeRemoved
 	}
 	switch failure.Step {
 	case "applying":
-		switch {
-		case inventory.WorktreePresent && branchPresent:
-			return originalPaired && inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
-		case !inventory.WorktreePresent && branchPresent:
-			return originalPaired && inventory.BranchOID == failure.BranchOID
-		case !inventory.WorktreePresent && !branchPresent:
-			return originalAbsent || originalPaired
-		}
+		branchRemoved := origBranch && !branchPresent
+		return worktreeMatches(true) && branchMatches(true) && !(branchRemoved && inventory.WorktreePresent)
 	case "workspace_processes_stop", "worktree_remove":
-		// ①′ 실패는 아직 아무것도 지우지 않은 상태이므로 worktree_remove와 같은
-		// 인벤토리 조건이다.
-		return inventory.WorktreePresent && branchPresent && originalPaired &&
-			inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
+		// ①′/③ 실패는 아직 아무것도 지우지 않은 상태다.
+		return origWorktree && inventory.WorktreePresent && worktreeMatches(false) && branchMatches(false)
 	case "branch_delete":
-		return !inventory.WorktreePresent && branchPresent && originalPaired && inventory.BranchOID == failure.BranchOID
+		return origBranch && branchPresent && worktreeMatches(true) && branchMatches(false)
 	case "record_delete":
-		return !inventory.WorktreePresent && !branchPresent && (originalAbsent || originalPaired)
+		return !inventory.WorktreePresent && !branchPresent && worktreeMatches(true) && branchMatches(true)
 	}
 	return false
 }
