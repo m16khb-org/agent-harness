@@ -199,14 +199,13 @@ func projectActivatedCodexSmokeHooks(sourcePath, harnessBinary, observationPath 
 		return codexSmokeHookDocument{}, err
 	}
 	prefix := "/usr/bin/env HARNESS_CHILD_SMOKE_HOOKS=1 HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + shellSingleQuote(observationPath) + " "
-	projected := codexSmokeHookDocument{Hooks: make(map[string][]codexSmokeHookGroup, 2)}
+	projected := codexSmokeHookDocument{Hooks: make(map[string][]codexSmokeHookGroup, 1)}
 	for _, contract := range []struct {
 		event      string
 		subcommand string
 		expected   string
 	}{
 		{event: "SessionStart", subcommand: "session-start", expected: shellSingleQuote(harnessBinary) + " hook session-start --host codex"},
-		{event: "PostCompact", subcommand: "post-compact", expected: shellSingleQuote(harnessBinary) + " hook post-compact --host codex"},
 	} {
 		var candidates []codexSmokeHook
 		managedPrefix := shellSingleQuote(harnessBinary) + " hook " + contract.subcommand

@@ -107,7 +107,7 @@ func writeNativeIntegrationFixture(t *testing.T, root, home string) {
 		writeFileForWrapperTest(t, path, "ok\n")
 	}
 	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "config.toml"), "[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n")
-	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "hooks.json"), fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness")))
+	writeFileForWrapperTest(t, filepath.Join(home, ".codex", "hooks.json"), fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness")))
 	writeFileForWrapperTest(t, filepath.Join(home, ".omo", "mcp.json"), fmt.Sprintf(`{"mcpServers":{"agent_harness":{"command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}`, filepath.Join(root, "bin", "agent-harness"), root))
 	writeFileForWrapperTest(t, filepath.Join(home, ".omo", "extensions", "agent-harness.js"), nativeintegrationadapter.OmoLifecycleExtension(filepath.Join(root, "bin", "agent-harness")))
 }

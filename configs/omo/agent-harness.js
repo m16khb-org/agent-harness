@@ -12,11 +12,11 @@ async function injectProjectDocs(pi, subcommand, ctx) {
       return
     }
     const payload = JSON.parse(result.stdout)
-    if (!payload.ShouldInject || !payload.Compact) return
+    if (!payload.should_inject || !payload.compact) return
     pi.sendMessage(
       {
         customType: "agent-harness:project-docs",
-        content: payload.Compact,
+        content: payload.compact,
         display: false,
       },
       { triggerTurn: false },

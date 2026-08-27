@@ -48,7 +48,7 @@ func nativeIntegrationCodexConfigErrors(root, home string, deps nativeIntegratio
 		return errs
 	}
 	if b, err := deps.readFile(filepath.Join(home, ".codex", "hooks.json")); err != nil || !hasThinCodexContextHooks(string(b), expectedBinary) {
-		errs = append(errs, "Codex thin context hooks missing agent-harness SessionStart/PostCompact surface")
+		errs = append(errs, "Codex thin context hooks missing agent-harness SessionStart surface")
 	}
 	return errs
 }
@@ -79,7 +79,7 @@ func nativeIntegrationOmoConfigErrors(root, home string, deps nativeIntegrationV
 	if OmoLifecycleExtension == nil {
 		errs = append(errs, "Omo lifecycle extension renderer is unavailable")
 	} else if body, readErr := deps.readFile(extensionPath); readErr != nil || string(body) != OmoLifecycleExtension(expectedBinary) {
-		errs = append(errs, "Omo lifecycle extension missing canonical SessionStart/PostCompact surface")
+		errs = append(errs, "Omo lifecycle extension missing canonical session_start/session_compact surface")
 	}
 	return errs
 }

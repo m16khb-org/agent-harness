@@ -20,8 +20,8 @@
               "kind": "claude_hooks_template",
               "path": "$ROOT/configs/claude/hooks.settings.json",
               "written": true,
-              "content_sha256": "6d404669a5b7ff61b0da2ffc6663325de963d57df7a6b30449fe740228b08136",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-compact --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "c591c85c85abc0c27ec0b30917f95922be3a2b9e667c5186418dff5dc790bb26",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_config",
@@ -48,8 +48,8 @@
               "kind": "claude_user_settings",
               "path": "$HOME/.claude/settings.json",
               "written": true,
-              "content_sha256": "503e23c83cb58485ba6b4d58098588dc99573455f891e40534acb4b763be0691",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-compact --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "83e41b2d807ea0605ff012c3bad6ead81cf70541c0e119298a3589deadd1201b",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             }
           ],
           "links": [
@@ -103,8 +103,8 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "0ac0e1c008ad52a3ac6b460d4bc566269e61e87f7a378723c000067e203c72ea",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-compact --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "758acc516d1075d202e3a4806ad91d14da9ca9a1287ab3ff966a82016f211348",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
@@ -117,8 +117,8 @@
               "kind": "codex_user_hooks_config",
               "path": "$CODEX_HOME/hooks.json",
               "written": true,
-              "content_sha256": "f618aaae0f3fd6c9837813ce73c1077f460d3201028816aa37cba47050509b7e",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-compact --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "15d1e711f5592554ae877e649db23bb2eb0082f67eece5bb61943e2d2e61ef02",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_user_mcp_config",
@@ -161,7 +161,7 @@
               "kind": "omo_lifecycle_extension_template",
               "path": "$ROOT/configs/omo/agent-harness.js",
               "written": true,
-              "content_sha256": "9230bb879f01db38a97240e695f910ffcf9a288489fa41ca841eeba2deb382b4",
+              "content_sha256": "b447073f849b4c56003f474a1a6e59a18604ab1ed4de9759a8c26b6d6515e29c",
               "content": ""
             },
             {
@@ -182,7 +182,7 @@
               "kind": "omo_user_lifecycle_extension",
               "path": "$HOME/.omo/extensions/agent-harness.js",
               "written": true,
-              "content_sha256": "3ac41906d2dc54784a4f90683ecb4002097568e238e700b14d4cc742d70b6e83",
+              "content_sha256": "46ea3af4fc7bb0aa44902cc7e685cf7784e3a5a2a352ce6fe3c21b2173718a44",
               "content": ""
             },
             {
@@ -265,8 +265,8 @@
               "kind": "claude_hooks_template",
               "path": "$ROOT/configs/claude/hooks.settings.json",
               "written": true,
-              "content_sha256": "6d404669a5b7ff61b0da2ffc6663325de963d57df7a6b30449fe740228b08136",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-compact --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "c591c85c85abc0c27ec0b30917f95922be3a2b9e667c5186418dff5dc790bb26",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
@@ -286,8 +286,8 @@
               "kind": "claude_user_settings",
               "path": "$HOME/.claude/settings.json",
               "written": true,
-              "content_sha256": "503e23c83cb58485ba6b4d58098588dc99573455f891e40534acb4b763be0691",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-compact --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "83e41b2d807ea0605ff012c3bad6ead81cf70541c0e119298a3589deadd1201b",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             }
           ],
           "links": [
@@ -323,8 +323,8 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "0ac0e1c008ad52a3ac6b460d4bc566269e61e87f7a378723c000067e203c72ea",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-compact --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "758acc516d1075d202e3a4806ad91d14da9ca9a1287ab3ff966a82016f211348",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
@@ -337,8 +337,8 @@
               "kind": "codex_user_hooks_config",
               "path": "$CODEX_HOME/hooks.json",
               "written": true,
-              "content_sha256": "f618aaae0f3fd6c9837813ce73c1077f460d3201028816aa37cba47050509b7e",
-              "content": "{\n  \"hooks\": {\n    \"PostCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-compact --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "15d1e711f5592554ae877e649db23bb2eb0082f67eece5bb61943e2d2e61ef02",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_user_mcp_config",
@@ -381,7 +381,7 @@
               "kind": "omo_lifecycle_extension_template",
               "path": "$ROOT/configs/omo/agent-harness.js",
               "written": true,
-              "content_sha256": "9230bb879f01db38a97240e695f910ffcf9a288489fa41ca841eeba2deb382b4",
+              "content_sha256": "b447073f849b4c56003f474a1a6e59a18604ab1ed4de9759a8c26b6d6515e29c",
               "content": ""
             },
             {
@@ -395,7 +395,7 @@
               "kind": "omo_user_lifecycle_extension",
               "path": "$HOME/.omo/extensions/agent-harness.js",
               "written": true,
-              "content_sha256": "3ac41906d2dc54784a4f90683ecb4002097568e238e700b14d4cc742d70b6e83",
+              "content_sha256": "46ea3af4fc7bb0aa44902cc7e685cf7784e3a5a2a352ce6fe3c21b2173718a44",
               "content": ""
             },
             {

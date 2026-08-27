@@ -30,12 +30,12 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 		t.Fatalf("claude user skill link missing")
 	}
 	settings := readClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"))
-	for _, needle := range []string{"SessionStart", "PostCompact", "hook session-start --host claude", "hook post-compact --host claude", req.BinPath} {
+	for _, needle := range []string{"SessionStart", "hook session-start --host claude", req.BinPath} {
 		if !strings.Contains(settings, needle) {
 			t.Fatalf("claude settings missing %q:\n%s", needle, settings)
 		}
 	}
-	for _, forbidden := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "Stop", "hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+	for _, forbidden := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "PostCompact", "Stop", "hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
 		if strings.Contains(settings, forbidden) {
 			t.Fatalf("claude settings must not contain default hook %q:\n%s", forbidden, settings)
 		}
@@ -138,7 +138,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		t.Fatalf("existing setting was not preserved: %+v", settings)
 	}
 	hooks := settings["hooks"].(map[string]any)
-	for _, event := range []string{"SessionStart", "PostCompact"} {
+	for _, event := range []string{"SessionStart"} {
 		groups := hooks[event].([]any)
 		count := 0
 		for _, group := range groups {
@@ -161,7 +161,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if command != "echo keep" {
 		t.Fatalf("unexpected UserPromptSubmit group after managed-hook cleanup: %q", command)
 	}
-	for _, removed := range []string{"PreToolUse", "PostToolUse", "PreCompact", "Stop"} {
+	for _, removed := range []string{"PreToolUse", "PostToolUse", "PreCompact", "PostCompact", "Stop"} {
 		if _, ok := hooks[removed]; ok {
 			t.Fatalf("legacy managed event %s must be removed: %+v", removed, hooks)
 		}

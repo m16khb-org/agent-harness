@@ -175,27 +175,27 @@ func TestRunHookSessionStartCodexOmitsSystemMessage(t *testing.T) {
 	}
 }
 
-func TestRunHookSessionStartSkipsOnCompactSource(t *testing.T) {
+func TestRunHookSessionStartInjectsCatalogOnCompactSource(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"compact"}`, func() error { return runHookSessionStart(nil) })
-	if _, ok := obj["systemMessage"]; ok {
-		t.Fatalf("compact-source SessionStart should not inject (PostCompact owns it): %+v", obj)
+	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "project docs (read what's relevant):") {
+		t.Fatalf("compact-source SessionStart must re-establish the catalog (hosts re-run SessionStart after compaction): %+v", obj)
 	}
-	if ctx := hookAdditionalContext(obj); ctx != "" {
-		t.Fatalf("compact-source SessionStart should emit no additionalContext: %q", ctx)
+	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") {
+		t.Fatalf("compact-source SessionStart should show the readable catalog via systemMessage: %+v", obj)
 	}
 }
 
-func TestRunHookPostCompactInjectsCatalog(t *testing.T) {
+func TestRunHookPostCompactCarriesOnlyUserFacingCatalog(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	obj := runHookCapture(t, `{"cwd":"`+repo+`"}`, func() error { return runHookPostCompact(nil) })
-	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "project docs (read what's relevant):") {
-		t.Fatalf("PostCompact should re-inject the catalog after compaction: %q", ctx)
+	if _, ok := obj["hookSpecificOutput"]; ok {
+		t.Fatalf("PostCompact must not emit hookSpecificOutput (Claude only displays it): %+v", obj)
 	}
 	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") {
-		t.Fatalf("PostCompact (claude) should show the pretty catalog via systemMessage: %v", obj["systemMessage"])
+		t.Fatalf("PostCompact should carry the readable catalog via systemMessage: %v", obj["systemMessage"])
 	}
 }
 

@@ -28,10 +28,10 @@ type HookUserPromptResult struct {
 }
 
 type ProjectDocCatalogContext struct {
-	ShouldInject bool
-	ProjectDocs  []projectdoc.ProjectDocCatalogEntry
-	Compact      string
-	UserView     string
+	ShouldInject bool                                `json:"should_inject"`
+	ProjectDocs  []projectdoc.ProjectDocCatalogEntry `json:"project_docs,omitempty"`
+	Compact      string                              `json:"compact,omitempty"`
+	UserView     string                              `json:"user_view,omitempty"`
 }
 
 type Hint struct {

@@ -43,7 +43,7 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 			case "config.toml":
 				return []byte("[mcp_servers.agent_harness]\ncommand = \"agent-harness\"\n"), nil
 			case "hooks.json":
-				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"))), nil
+				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"))), nil
 			default:
 				return nil, errors.New("unexpected read")
 			}
@@ -92,9 +92,9 @@ func TestValidateNativeIntegrationWithDepsCoversSkillConfigAndWarningFailures(t 
 	for _, want := range []string{
 		"list native skills: skill list failed",
 		"Codex MCP config missing agent_harness",
-		"Codex thin context hooks missing agent-harness SessionStart/PostCompact surface",
+		"Codex thin context hooks missing agent-harness SessionStart surface",
 		"Omo MCP config missing canonical agent_harness server",
-		"Omo lifecycle extension missing canonical SessionStart/PostCompact surface",
+		"Omo lifecycle extension missing canonical session_start/session_compact surface",
 		"Claude duplicate MCP warning fixture was not classified",
 	} {
 		if !strings.Contains(step.Error, want) {
@@ -123,7 +123,7 @@ func TestValidateNativeIntegrationReportsStableRootResolutionError(t *testing.T)
 			case "config.toml":
 				return []byte("[mcp_servers.agent_harness]\n"), nil
 			case "hooks.json":
-				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}],"PostCompact":[{"hooks":[{"command":"'%s' hook post-compact --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"))), nil
+				return []byte(fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":"'%s' hook session-start --host codex","timeout":5,"type":"command"}]}]}}`, filepath.Join(root, "bin", "agent-harness"))), nil
 			default:
 				return nil, errors.New("unexpected read")
 			}
@@ -144,7 +144,6 @@ func TestHasThinCodexContextHooksPermitsThirdPartyLifecycleEvents(t *testing.T) 
 				{"hooks": [{"type": "command", "command": "'/Users/example/.orca/agent-hooks/codex-hook.sh' observe", "timeout": 10}]},
 				{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}
 			],
-			"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
 			"PreToolUse": [{"hooks": [{"type": "command", "command": "'/Users/example/.orca/agent-hooks/codex-hook.sh' observe", "timeout": 10}]}],
 			"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "codegraph observe", "timeout": 10}]}],
 			"SubagentStop": [{"hooks": [{"type": "command", "command": "third-party stop", "timeout": 10}]}],
@@ -152,7 +151,7 @@ func TestHasThinCodexContextHooksPermitsThirdPartyLifecycleEvents(t *testing.T) 
 		}
 	}`
 	if !hasThinCodexContextHooks(config, "/source/bin/agent-harness") {
-		t.Fatal("third-party lifecycle hooks must not invalidate the two managed context hooks")
+		t.Fatal("third-party lifecycle hooks must not invalidate the managed context hook")
 	}
 }
 
@@ -160,7 +159,6 @@ func TestHasThinCodexContextHooksRejectsLegacyManagedEvent(t *testing.T) {
 	config := `{
 		"hooks": {
 			"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
-			"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
 			"PreToolUse": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook pre-tool-use --host codex --enforce-worktree", "timeout": 5}]}]
 		}
 	}`
@@ -173,14 +171,12 @@ func TestHasThinCodexContextHooksUsesCanonicalGroupsForManagedCommands(t *testin
 	for name, config := range map[string]string{
 		"quoted canonical path with spaces": `{
 			"hooks": {
-				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source with spaces/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
-				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source with spaces/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source with spaces/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}]
 			}
 		}`,
 		"legacy no-host event": `{
 			"hooks": {
 				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
-				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}],
 				"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook user-prompt", "timeout": 5}]}]
 			}
 		}`,
@@ -189,23 +185,20 @@ func TestHasThinCodexContextHooksUsesCanonicalGroupsForManagedCommands(t *testin
 				"SessionStart": [
 					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]},
 					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host claude", "timeout": 5}]}
-				],
-				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+				]
 			}
 		}`,
 		"extra argument alongside required hooks": `{
 			"hooks": {
-				"SessionStart": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
-				"PostCompact": [
-					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]},
-					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex --legacy", "timeout": 5}]}
+				"SessionStart": [
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex", "timeout": 5}]},
+					{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook session-start --host codex --legacy", "timeout": 5}]}
 				]
 			}
 		}`,
 		"wrong binary path": `{
 			"hooks": {
-				"SessionStart": [{"hooks": [{"type": "command", "command": "'/other/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}],
-				"PostCompact": [{"hooks": [{"type": "command", "command": "'/source/bin/agent-harness' hook post-compact --host codex", "timeout": 5}]}]
+				"SessionStart": [{"hooks": [{"type": "command", "command": "'/other/bin/agent-harness' hook session-start --host codex", "timeout": 5}]}]
 			}
 		}`,
 		"malformed JSON": `{"hooks":`,

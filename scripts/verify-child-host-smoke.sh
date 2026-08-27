@@ -426,11 +426,9 @@ def event_commands(document, event):
 contracts = (
     (codex_hooks, {
         "SessionStart": f"'{binary}' hook session-start --host codex",
-        "PostCompact": f"'{binary}' hook post-compact --host codex",
     }),
     (claude_hooks, {
         "SessionStart": f"'{binary}' hook session-start --host claude",
-        "PostCompact": f"'{binary}' hook post-compact --host claude",
     }),
 )
 for document, expected_by_event in contracts:
@@ -444,7 +442,7 @@ for document, expected_by_event in contracts:
     if managed_events != set(expected_by_event):
         raise SystemExit(1)
     for event, expected in expected_by_event.items():
-        subcommand = "session-start" if event == "SessionStart" else "post-compact"
+        subcommand = "session-start"
         managed_prefix = f"'{binary}' hook {subcommand}"
         managed = []
         for hook in event_commands(document, event):

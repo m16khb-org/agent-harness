@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook post-compact --host claude",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [

@@ -51,12 +51,12 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook session-start --host codex", "hook post-compact --host codex"} {
+	for _, subcommand := range []string{"hook session-start --host codex"} {
 		if !strings.Contains(string(hooks), subcommand) || !strings.Contains(string(hooks), req.BinPath) {
 			t.Fatalf("codex hooks missing context-only command %q:\n%s", subcommand, string(hooks))
 		}
 	}
-	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
 		if strings.Contains(string(hooks), forbidden) {
 			t.Fatalf("codex default hooks must not contain %q:\n%s", forbidden, string(hooks))
 		}
@@ -89,12 +89,12 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook session-start --host codex", "hook post-compact --host codex"} {
+	for _, subcommand := range []string{"hook session-start --host codex"} {
 		if count := strings.Count(string(hooks), subcommand); count != 1 {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}
 	}
-	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
+	for _, forbidden := range []string{"hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop", "--enforce-", "--relay-next-action-judgement"} {
 		if strings.Contains(string(hooks), forbidden) {
 			t.Fatalf("Codex installer must remove default hook %q:\n%s", forbidden, string(hooks))
 		}
@@ -119,7 +119,7 @@ func TestMergeHookConfigPreservesCoResidentHookPositions(t *testing.T) {
 	if command != "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh" {
 		t.Fatalf("legacy agent-harness group must be removed while third-party group is preserved: %q", command)
 	}
-	for _, event := range []string{"SessionStart", "PostCompact"} {
+	for _, event := range []string{"SessionStart"} {
 		if len(merged["hooks"].(map[string]any)[event].([]any)) != 1 {
 			t.Fatalf("%s must contain one replacement context hook: %#v", event, merged)
 		}

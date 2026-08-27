@@ -79,9 +79,11 @@ type claudeLifecycleHookSpec struct {
 }
 
 func claudeLifecycleHookSpecs(binPath string) []claudeLifecycleHookSpec {
+	// SessionStart alone carries the catalog: Claude re-runs it with
+	// source "compact" after compaction, while PostCompact output is only a
+	// user display string there (verified against Claude Code 2.1.247).
 	return []claudeLifecycleHookSpec{
 		{BinPath: binPath, Event: "SessionStart", Subcommand: "session-start", Timeout: 5},
-		{BinPath: binPath, Event: "PostCompact", Subcommand: "post-compact", Timeout: 5},
 	}
 }
 

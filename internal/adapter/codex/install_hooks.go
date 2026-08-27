@@ -72,9 +72,11 @@ type codexLifecycleHookSpec struct {
 }
 
 func codexLifecycleHookSpecs(binPath string) []codexLifecycleHookSpec {
+	// SessionStart alone carries the catalog: Codex re-runs it with
+	// source "compact" after compaction, and its post-compact.command.output
+	// schema has no hookSpecificOutput (verified against codex-cli 0.150.1).
 	return []codexLifecycleHookSpec{
 		{BinPath: binPath, Event: "SessionStart", Subcommand: "session-start", Timeout: 5},
-		{BinPath: binPath, Event: "PostCompact", Subcommand: "post-compact", Timeout: 5},
 	}
 }
 

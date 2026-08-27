@@ -700,7 +700,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	claudeSettings := readFile(t, filepath.Join(req.Home, ".claude", "settings.json"))
-	for _, needle := range []string{"SessionStart", "PostCompact", req.BinPath, "hook session-start --host claude", "hook post-compact --host claude"} {
+	for _, needle := range []string{"SessionStart", req.BinPath, "hook session-start --host claude"} {
 		if !strings.Contains(claudeSettings, needle) {
 			t.Fatalf("Claude settings missing lifecycle hook %q:\n%s", needle, claudeSettings)
 		}
@@ -717,7 +717,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	codexHooks := readFile(t, filepath.Join(req.CodexHome, "hooks.json"))
-	for _, needle := range []string{"SessionStart", "PostCompact", "hook session-start --host codex", "hook post-compact --host codex"} {
+	for _, needle := range []string{"SessionStart", "hook session-start --host codex"} {
 		if !strings.Contains(codexHooks, needle) {
 			t.Fatalf("Codex hooks missing lifecycle hook %q:\n%s", needle, codexHooks)
 		}

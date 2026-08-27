@@ -128,7 +128,6 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 			{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}},
 			{Hooks: []codexSmokeHook{{Type: "command", Command: "touch " + coResidentSentinel, Timeout: 5}}},
 		},
-		"PostCompact": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PostCompact"), Timeout: 5}}}},
 	}}
 	sourceHookBytes, err := json.Marshal(sourceHooks)
 	if err != nil {
@@ -225,10 +224,10 @@ func assertProjectedCodexSmokeHooks(t *testing.T, path, observationPath, harness
 	if err := decoder.Decode(&document); err != nil {
 		t.Fatal(err)
 	}
-	if len(document.Hooks) != 2 {
+	if len(document.Hooks) != 1 {
 		t.Fatalf("projected hook events=%v", document.Hooks)
 	}
-	for _, event := range []string{"SessionStart", "PostCompact"} {
+	for _, event := range []string{"SessionStart"} {
 		groups := document.Hooks[event]
 		if len(groups) != 1 || len(groups[0].Hooks) != 1 {
 			t.Fatalf("%s groups=%+v", event, groups)
@@ -251,8 +250,7 @@ func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T
 	}
 	harnessBinary := filepath.Join(root, "bin", "agent-harness")
 	document := codexSmokeHookDocument{Hooks: map[string][]codexSmokeHookGroup{
-		"SessionStart": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}}},
-		"PostCompact":  {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PostCompact") + " && printf drift", Timeout: 5}}}},
+		"SessionStart": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart") + " && printf drift", Timeout: 5}}}},
 	}}
 	data, err := json.Marshal(document)
 	if err != nil {
@@ -272,16 +270,15 @@ func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T
 		t.Fatal(err)
 	}
 	if _, err := prepareCodexSmokeHome(episodeRoot, harnessBinary, filepath.Join(root, "observation.json"), deps); err == nil {
-		t.Fatal("drifted activated Codex PostCompact command was projected")
+		t.Fatal("drifted activated Codex SessionStart command was projected")
 	}
 }
 
 func testCodexManagedHookCommand(harnessBinary, event string) string {
-	base := shellSingleQuote(harnessBinary) + " hook "
-	if event == "SessionStart" {
-		return base + "session-start --host codex"
+	if event != "SessionStart" {
+		panic("only SessionStart is a managed Codex context hook")
 	}
-	return base + "post-compact --host codex"
+	return shellSingleQuote(harnessBinary) + " hook session-start --host codex"
 }
 
 func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
@@ -715,12 +712,12 @@ func writeManagedSurfaceFixture(t *testing.T, home, codexHome, root string) {
 	binary := filepath.Join(root, "bin", "agent-harness")
 	files := map[string]string{
 		filepath.Join(codexHome, "config.toml"): fmt.Sprintf("[mcp_servers.agent_harness]\ncommand = %q\nargs = [\"mcp\"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = %q\n", binary, root),
-		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PostCompact":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
-`, "'"+binary+"' hook session-start --host codex", "'"+binary+"' hook post-compact --host codex"),
+		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start --host codex"),
 		filepath.Join(home, ".claude.json"): fmt.Sprintf(`{"mcpServers":{"agent_harness":{"type":"stdio","command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}
 `, binary, root),
-		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PostCompact":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
-`, "'"+binary+"' hook session-start --host claude", "'"+binary+"' hook post-compact --host claude"),
+		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start --host claude"),
 	}
 	for path, content := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -768,7 +765,6 @@ with open(os.path.join(codex_home, "config.toml"), "w", encoding="utf-8") as han
     handle.write(f'[mcp_servers.agent_harness]\ncommand = "{binary}"\nargs = ["mcp"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = "{root}"\n')
 hooks = {"hooks": {
     "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host codex", "timeout": 5}]}],
-    "PostCompact": [{"hooks": [{"type": "command", "command": f"'{binary}' hook post-compact --host codex", "timeout": 5}]}],
 }}
 with open(os.path.join(codex_home, "hooks.json"), "w", encoding="utf-8") as handle:
     json.dump(hooks, handle, separators=(",", ":"))
@@ -778,7 +774,6 @@ with open(os.path.join(home, ".claude.json"), "w", encoding="utf-8") as handle:
     handle.write("\n")
 claude_hooks = {"hooks": {
     "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host claude", "timeout": 5}]}],
-    "PostCompact": [{"hooks": [{"type": "command", "command": f"'{binary}' hook post-compact --host claude", "timeout": 5}]}],
 }}
 with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8") as handle:
     json.dump(claude_hooks, handle, separators=(",", ":"))
@@ -792,7 +787,7 @@ import sys
 path = sys.argv[1]
 with open(path, encoding="utf-8") as handle:
     document = json.load(handle)
-document["hooks"]["PostCompact"][0]["hooks"][0]["command"] += " && printf drift"
+document["hooks"]["SessionStart"][0]["hooks"][0]["command"] += " && printf drift"
 with open(path, "w", encoding="utf-8") as handle:
     json.dump(document, handle, separators=(",", ":"))
     handle.write("\n")
