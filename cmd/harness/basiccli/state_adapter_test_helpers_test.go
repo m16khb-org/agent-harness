@@ -4,8 +4,6 @@ import (
 	doctorstatepkg "agent-harness/internal/adapter/doctor"
 	issueopsstatepkg "agent-harness/internal/adapter/issueops"
 	lifecyclestatepkg "agent-harness/internal/adapter/lifecycle"
-	compactstatepkg "agent-harness/internal/adapter/lifecycle/compact"
-	docupkeepstatepkg "agent-harness/internal/adapter/lifecycle/docupkeep"
 	looprunstatepkg "agent-harness/internal/adapter/looprun"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	tracestatepkg "agent-harness/internal/adapter/trace"
@@ -19,8 +17,6 @@ func init() {
 	issueopsstatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.WithKeyLock = statestore.WithKeyLock
-	compactstatepkg.WithKeyLock = statestore.WithKeyLock
-	docupkeepstatepkg.WithKeyLock = statestore.WithKeyLock
 	looprunstatepkg.StateDir = statestore.StateDir
 	tracestatepkg.StateRead = statestore.StateRead
 }

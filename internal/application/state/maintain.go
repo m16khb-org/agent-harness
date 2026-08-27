@@ -1,19 +1,13 @@
 package state
 
 import (
-	"time"
-
 	statecontract "agent-harness/internal/contract/state"
 )
 
 type MaintenanceDependencies struct {
-	KnownRoots       func() []string
-	AllRoots         func() ([]string, error)
-	StoreExists      func(root string) bool
-	MaintainStore    func(root string) (statecontract.StoreMaintainResult, error)
-	SentinelModified func() (time.Time, bool)
-	TouchSentinel    func(time.Time)
-	Now              func() time.Time
+	AllRoots      func() ([]string, error)
+	StoreExists   func(root string) bool
+	MaintainStore func(root string) (statecontract.StoreMaintainResult, error)
 }
 
 type MaintenanceService struct {
@@ -43,25 +37,4 @@ func (service *MaintenanceService) Maintain() (statecontract.StateMaintainResult
 	}
 	result.OK = true
 	return result, nil
-}
-
-func (service *MaintenanceService) MaybeMaintain(minInterval time.Duration) (statecontract.StateMaintainResult, bool, error) {
-	now := service.now()
-	if modified, ok := service.dependencies.SentinelModified(); ok && now.Sub(modified) < minInterval {
-		return statecontract.StateMaintainResult{
-			OK:      true,
-			Roots:   []statecontract.StoreMaintainResult{},
-			Skipped: service.dependencies.KnownRoots(),
-		}, false, nil
-	}
-	result, err := service.Maintain()
-	service.dependencies.TouchSentinel(service.now())
-	return result, true, err
-}
-
-func (service *MaintenanceService) now() time.Time {
-	if service.dependencies.Now != nil {
-		return service.dependencies.Now()
-	}
-	return time.Now()
 }

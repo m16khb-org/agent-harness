@@ -1,8 +1,14 @@
 package hookprompt
 
-import hookpromptcontract "agent-harness/internal/contract/hookprompt"
+import (
+	"strings"
 
-import "strings"
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
+	projectdoc "agent-harness/internal/domain/projectdoc"
+)
+
+// ProjectDocCatalogEntry is the domain catalog entry the hook renders.
+type ProjectDocCatalogEntry = projectdoc.ProjectDocCatalogEntry
 
 func BuildProjectDocCatalogContext(repo string) hookpromptcontract.ProjectDocCatalogContext {
 	docs := DiscoverProjectDocs(repo)
@@ -37,12 +43,4 @@ func renderProjectDocCatalogUserView(docs []ProjectDocCatalogEntry) string {
 		}
 	}
 	return b.String()
-}
-
-func RenderUserPromptUserView(result hookpromptcontract.HookUserPromptResult) string {
-	return renderProjectDocCatalogUserView(result.ProjectDocs)
-}
-
-func RenderUserPromptCodexContext(result hookpromptcontract.HookUserPromptResult) string {
-	return RenderUserPromptUserView(result)
 }

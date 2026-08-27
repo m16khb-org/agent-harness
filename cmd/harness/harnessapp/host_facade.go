@@ -2,11 +2,7 @@ package harnessapp
 
 import (
 	"agent-harness/cmd/harness/hookcli"
-	hookfailurecli "agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/cmd/harness/updatecli"
-	hookfailureadapter "agent-harness/internal/adapter/hookfailure"
-	"agent-harness/internal/adapter/hookmetrics"
-	"agent-harness/internal/adapter/worker"
 )
 
 type daemonProcess = updatecli.DaemonProcess
@@ -27,78 +23,11 @@ func wireHostCLIDeps() {
 
 func configureHookCLI() {
 	hookcli.ResolveTarget = resolveTarget
-	hookcli.RecordHookMetricEvent = hookmetrics.RecordHookMetricEvent
-	hookcli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
-	hookcli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
-	hookcli.MaybeDetectStuckWorkerJobs = worker.MaybeDetectStuckWorkerJobs
-	hookfailurecli.RecordHookFailureEvent = hookfailureadapter.RecordHookFailureEvent
-	hookfailurecli.ListHookFailureEvents = hookfailureadapter.ListHookFailureEvents
-	hookfailurecli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
-	hookfailurecli.SummarizeHookFailureLog = hookfailureadapter.SummarizeHookFailureLog
-	hookfailurecli.SummarizeHookMetricsLog = hookmetrics.SummarizeHookMetricsLog
-	hookfailurecli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
-	hookfailurecli.MetricsRate = hookmetrics.Rate
 }
 
 func runHook(args []string) error {
 	configureHookCLI()
 	return hookcli.RunHook(args)
-}
-
-func hookArgValue(args []string, flagName string) string {
-	return hookcli.HookArgValue(args, flagName)
-}
-
-func repoFromHookInput(input []byte) string {
-	return hookcli.RepoFromHookInput(input)
-}
-
-func sourceFromHookInput(input []byte) string {
-	return hookcli.SourceFromHookInput(input)
-}
-
-func pathsFromHookInput(input []byte) []string {
-	return hookcli.PathsFromHookInput(input)
-}
-
-func promptFromHookInput(input []byte) string {
-	return hookcli.PromptFromHookInput(input)
-}
-
-func isStopHookContinuationPrompt(prompt string) bool {
-	return hookcli.IsStopHookContinuationPrompt(prompt)
-}
-
-func lastAssistantMessageFromHookInput(input []byte) string {
-	return hookcli.LastAssistantMessageFromHookInput(input)
-}
-
-func transcriptPathFromHookInput(input []byte) string {
-	return hookcli.TranscriptPathFromHookInput(input)
-}
-
-func readLastAssistantMessageFromTranscript(path string) string {
-	return hookcli.ReadLastAssistantMessageFromTranscript(path)
-}
-
-func toolNameFromHookInput(input []byte) string {
-	return hookcli.ToolNameFromHookInput(input)
-}
-
-func commandFromHookInput(input []byte) string {
-	return hookcli.CommandFromHookInput(input)
-}
-
-func projectPathFromHookInput(input []byte) string {
-	return hookcli.ProjectPathFromHookInput(input)
-}
-
-func envBool(name string) bool {
-	return hookcli.EnvBool(name)
-}
-
-func envFloat(name string) float64 {
-	return hookcli.EnvFloat(name)
 }
 
 func resetUpdateFacadeDeps() {

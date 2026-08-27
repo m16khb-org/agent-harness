@@ -39,16 +39,6 @@ func (g NativeBuildGeneration) String() string {
 	return revision
 }
 
-// SameGeneration은 두 세대가 같은 바이너리를 가리키는지 보고한다. 한쪽이라도
-// 관측되지 않았으면 판단하지 않고 true를 돌려준다 — 관측 실패를 불일치로
-// 승격하면 사용자는 고칠 수 없는 경고를 계속 본다.
-func SameGeneration(left, right NativeBuildGeneration) bool {
-	if !left.Observed() || !right.Observed() {
-		return true
-	}
-	return left.Revision == right.Revision && left.Modified == right.Modified
-}
-
 // RunningBuildGeneration은 지금 실행 중인 프로세스의 빌드 세대를 돌려준다.
 func RunningBuildGeneration() NativeBuildGeneration {
 	info, ok := debug.ReadBuildInfo()

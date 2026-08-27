@@ -103,17 +103,6 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("internal", "adapter", "outbound", "state", "state_test.go"), "TestStateWriteWaitsForKeyLock")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			// kubectl 판정은 도메인으로, staged check는 디스크를 읽으므로 core에
-			// 남았다. 커버리지 신호도 두 위치를 각각 확인한다.
-			kubectlTest := filepath.Join("internal", "domain", "commandguard", "lifecycle_command_kubectl_test.go")
-			stagedTest := filepath.Join("internal", "adapter", "commandguard", "lifecycle_command_staged_checks_test.go")
-			signals.HasCommandguardBoundaryCoverage = fileContainsTerm(root, kubectlTest, "TestGitOpsKubectlDecisionBlocksMutatingCommands") &&
-				fileContainsTerm(root, kubectlTest, "TestGitOpsKubectlDecisionHandlesBoundaryTokens") &&
-				fileContainsTerm(root, kubectlTest, "separate dry-run flag allows apply") &&
-				fileContainsTerm(root, kubectlTest, "shell separator stops rollout subverb") &&
-				fileContainsTerm(root, stagedTest, "non-app/lib directories should not count as broad repo dirs")
-		}},
-		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasWorkerStuckRunningDetection = fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "store.go"), "func DetectStuckWorkerJobs") &&
 				fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "store.go"), "WorkerStatusFailed") &&
 				fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsMarksDeadPIDAsFailed") &&

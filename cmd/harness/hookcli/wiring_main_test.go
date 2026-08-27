@@ -1,67 +1,22 @@
 package hookcli
 
 import (
-	"agent-harness/cmd/harness/hookcli/hookenv"
-	"agent-harness/internal/adapter/doctor"
-	"agent-harness/internal/adapter/hookprompt"
-	issueopscore "agent-harness/internal/adapter/issueops"
-	lifecycle "agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectbootstrap"
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"os"
 	"testing"
+
+	"agent-harness/cmd/harness/hookcli/hookcatalog"
+	"agent-harness/cmd/harness/hookcli/hookenv"
+	hookpromptadapter "agent-harness/internal/adapter/hookprompt"
+	projectdocadapter "agent-harness/internal/adapter/projectdoc"
 )
 
-// 프로덕션에서는 harnessapp이 주입한다. 훅 계약 테스트는 실제 lifecycle 동작을
-// 검증하므로 같은 배선을 여기서 재현한다.
+// 프로덕션에서는 harnessapp이 주입한다. 상속된 운영자 스위치(HARNESS_DISABLE_HOOKS)
+// 는 먼저 지운다 — dogfood 셸의 값이 새어 들어오면 context hook이 아무것도
+// 내보내지 않아 테스트 결론이 바뀐다(#395).
 func TestMain(m *testing.M) {
-	// 상속된 운영자 스위치를 먼저 지운다. 이 패키지의 테스트는 hook enforcement가
-	// 켜져 있음을 전제하는데, dogfood 셸의 HARNESS_DISABLE_HOOKS=1이 그대로 새어
-	// 들어오면 4개 테스트가 항상 실패한다(#395).
 	hookenv.ClearInheritedOperatorSwitches()
-	ConfigureLifecycle(LifecycleDeps{
-		RecordLifecycleToolUse:           lifecycle.RecordLifecycleToolUse,
-		SourceCheckoutMisdirectWarning:   lifecycle.SourceCheckoutMisdirectWarning,
-		BuildLifecyclePreCompactCapsule:  lifecycle.BuildLifecyclePreCompactCapsule,
-		BuildLifecycleStopReminder:       lifecycle.BuildLifecycleStopReminder,
-		BuildLifecyclePreToolUseDecision: lifecycle.BuildLifecyclePreToolUseDecision,
-		RecordStopNextActionRelay:        lifecycle.RecordStopNextActionRelay,
-		ClearStopNextActionRelay:         lifecycle.ClearStopNextActionRelay,
-	})
-	projectbootstrap.ConfigureLifecycle(lifecycle.InitProjectLifecycleState)
-	hookprompt.ConfigureLifecycle(hookprompt.LifecycleDeps{
-		ResolveProjectLifecycleState: lifecycle.ResolveProjectLifecycleState,
-		ReadPendingDocUpkeepEvents:   lifecycle.ReadPendingDocUpkeepEvents,
-		ReadStopNextActionRelay:      lifecycle.ReadStopNextActionRelay,
-		ApproveCodexKubectlLiveAccess: func(repo, host, sessionID, prompt string) (bool, string) {
-			result := lifecycle.ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt)
-			return result.Handled, result.AdditionalContext
-		},
-		ActiveIssueOpsLinkedWorktreeCyclesForRepo: func(repo string) []issueopscontract.IssueOpsRecord {
-			return lifecycle.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
-		},
-		IssueOpsPhaseExpectsWorktree: lifecycle.IssueOpsPhaseExpectsWorktree,
-	})
-	doctor.ConfigureLifecycle(lifecycle.ValidateProjectLifecycleState)
-	lifecycle.ConfigureIssueOps(lifecycle.IssueOpsDeps{
-		ActiveIssueOpsCycleForBranch:              issueopscore.ActiveIssueOpsCycleForBranch,
-		ActiveIssueOpsLinkedWorktreeCyclesForRepo: issueopscore.ActiveIssueOpsLinkedWorktreeCyclesForRepo,
-		AdvanceIssueOpsPhase:                      issueopscore.AdvanceIssueOpsPhase,
-		IssueOpsPhaseExpectsWorktree:              issueopscore.IssueOpsPhaseExpectsWorktree,
-		IssueOpsStateRoot:                         issueopscore.IssueOpsStateRoot,
-		LinkIssueOpsIssue:                         issueopscore.LinkIssueOpsIssue,
-		LinkIssueOpsPlan:                          issueopscore.LinkIssueOpsPlan,
-		LinkIssueOpsWorktree:                      issueopscore.LinkIssueOpsWorktree,
-		ListIssueOpsIDs:                           issueopscore.ListIssueOpsIDs,
-		ScanIssueOps:                              issueopscore.ScanIssueOps,
-		NewIssueOpsID:                             issueopscore.NewIssueOpsID,
-		PrepareIssueOpsBranch:                     issueopscore.PrepareIssueOpsBranch,
-		ReadIssueOps:                              issueopscore.ReadIssueOps,
-		RecordIssueOpsDesignReview:                issueopscore.RecordIssueOpsDesignReview,
-		RecordIssueOpsIntent:                      issueopscore.RecordIssueOpsIntent,
-		SealedOwnerContextPacketPath:              issueopscore.SealedOwnerContextPacketPath,
-		StartIssueOps:                             issueopscore.StartIssueOps,
-		WriteIssueOps:                             issueopscore.WriteIssueOps,
-	})
+	hookcatalog.BuildProjectDocCatalogContext = hookpromptadapter.BuildProjectDocCatalogContext
+	hookpromptadapter.DiscoverProjectDocs = projectdocadapter.DiscoverProjectDocs
+	hookpromptadapter.FormatProjectDocCatalog = projectdocadapter.FormatProjectDocCatalog
 	os.Exit(m.Run())
 }

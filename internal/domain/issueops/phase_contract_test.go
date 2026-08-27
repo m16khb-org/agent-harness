@@ -27,14 +27,6 @@ func TestIssueOpsPhaseOrderingAndClassification(t *testing.T) {
 		issueopsdomain.IssueOpsPhaseRank(issueopscontract.IssueOpsPhaseCompatibilityReview) >= issueopsdomain.IssueOpsPhaseRank(issueopscontract.IssueOpsPhaseImplement) {
 		t.Fatalf("compatibility-review should sit between plan and implement, got rank %d", issueopsdomain.IssueOpsPhaseRank(issueopscontract.IssueOpsPhaseCompatibilityReview))
 	}
-	for _, phase := range []issueopscontract.IssueOpsPhase{issueopscontract.IssueOpsPhaseImplement, issueopscontract.IssueOpsPhaseAISlopClean, issueopscontract.IssueOpsPhaseFeedback, issueopscontract.IssueOpsPhasePR} {
-		if !issueopsdomain.IssueOpsPhaseExpectsWorktree(phase) {
-			t.Fatalf("%s should expect a worktree", phase)
-		}
-	}
-	if issueopsdomain.IssueOpsPhaseExpectsWorktree(issueopscontract.IssueOpsPhasePlan) {
-		t.Fatal("plan phase should not expect a worktree")
-	}
 	for _, phase := range []issueopscontract.IssueOpsPhase{issueopscontract.IssueOpsPhaseImplement, issueopscontract.IssueOpsPhaseAISlopClean, issueopscontract.IssueOpsPhaseFeedback} {
 		if !issueopsdomain.IssueOpsPhaseResettableOnStaleWorktree(phase) {
 			t.Fatalf("%s should be resettable on stale worktree", phase)

@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	stateapplication "agent-harness/internal/application/state"
 	statecontract "agent-harness/internal/contract/state"
 )
-
-const storeMaintainSentinel = ".last-store-maintain"
 
 func knownStoreRoots() []string {
 	base := StateDir()
@@ -75,43 +72,14 @@ func maintainStore(root string) (statecontract.StoreMaintainResult, error) {
 	return database.Maintain()
 }
 
-func sentinelModified() (time.Time, bool) {
-	info, err := os.Stat(filepath.Join(StateDir(), storeMaintainSentinel))
-	if err != nil {
-		return time.Time{}, false
-	}
-	return info.ModTime(), true
-}
-
-func touchSentinel(now time.Time) {
-	dir := StateDir()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return
-	}
-	path := filepath.Join(dir, storeMaintainSentinel)
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return
-	}
-	_ = file.Close()
-	_ = os.Chtimes(path, now, now)
-}
-
 func maintenanceService() *stateapplication.MaintenanceService {
 	return stateapplication.NewMaintenanceService(stateapplication.MaintenanceDependencies{
-		KnownRoots:       knownStoreRoots,
-		AllRoots:         allStoreRoots,
-		StoreExists:      storeExists,
-		MaintainStore:    maintainStore,
-		SentinelModified: sentinelModified,
-		TouchSentinel:    touchSentinel,
+		AllRoots:      allStoreRoots,
+		StoreExists:   storeExists,
+		MaintainStore: maintainStore,
 	})
 }
 
 func StateMaintain() (statecontract.StateMaintainResult, error) {
 	return maintenanceService().Maintain()
-}
-
-func MaybeMaintainStateStores(minInterval time.Duration) (statecontract.StateMaintainResult, bool, error) {
-	return maintenanceService().MaybeMaintain(minInterval)
 }

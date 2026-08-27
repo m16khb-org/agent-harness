@@ -3,8 +3,6 @@ package rerun
 import (
 	"strings"
 	"testing"
-
-	"agent-harness/internal/domain/commandparse"
 )
 
 func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
@@ -50,20 +48,6 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 				t.Fatalf("SelfVerifyStepRerunCommand(%q) uses retired self-verify flags: %q", label, got)
 			}
 		})
-	}
-}
-
-func TestEmittedSelfVerifyRerunCommandsPassLifecycleGuard(t *testing.T) {
-	commands := SelfVerifyRerunCommands("unknown", 100, 95)
-	parallel, ok := SelfVerifyStepRerunCommand("parallel isolation")
-	if !ok {
-		t.Fatal("parallel isolation rerun command missing")
-	}
-	commands = append(commands, parallel)
-	for _, command := range commands {
-		if !commandparse.ExactSelfVerifyVerification(command) {
-			t.Errorf("emitted self-verify command is rejected by lifecycle guard: %q", command)
-		}
 	}
 }
 

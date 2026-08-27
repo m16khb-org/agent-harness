@@ -198,7 +198,7 @@
           "name": "api-doc"
         },
         {
-          "description": "run prompt-routing hooks",
+          "description": "run host lifecycle context hooks",
           "name": "hook"
         },
         {
@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "6b0f1397ba1a609419d79a4fcf5643cc67c6b995ae0ad7d4f0cca70f6f1e6c71",
+      "hash": "6e1e5a060610a2c2951c9da23b2e82aaa66c4839bc040eaee3cb67d64bed7f98",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -4321,31 +4321,6 @@
         {
           "category": "coverage",
           "expected_gain": [
-            "workspace boundary regressions are caught earlier"
-          ],
-          "feasibility": 84,
-          "id": "coverage-commandguard",
-          "impact": 82,
-          "novelty": 52,
-          "risk": 14,
-          "satisfaction_evidence": [
-            "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths"
-          ],
-          "score": 0,
-          "status": "already_satisfied",
-          "title": "Raise commandguard coverage for boundary and denial paths",
-          "verify_with": [
-            "go test ./internal/domain/commandguard -count=1",
-            "go test -cover ./internal/domain/commandguard"
-          ],
-          "why_now": [
-            "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
-            "Already satisfied; do not select in the next self-augmentation cycle"
-          ]
-        },
-        {
-          "category": "coverage",
-          "expected_gain": [
             "malformed JSON and bounded error output paths stay deterministic"
           ],
           "feasibility": 78,
@@ -5130,7 +5105,6 @@
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
         "has_command_audit_log": true,
-        "has_commandguard_boundary_coverage": true,
         "has_compatibility_contract": true,
         "has_cross_platform_build_matrix": true,
         "has_daemon_connection_limit": true,
@@ -6459,7 +6433,7 @@
                 "name": "api-doc"
               },
               {
-                "description": "run prompt-routing hooks",
+                "description": "run host lifecycle context hooks",
                 "name": "hook"
               },
               {
@@ -6519,7 +6493,7 @@
                 "name": "version"
               }
             ],
-            "hash": "6b0f1397ba1a609419d79a4fcf5643cc67c6b995ae0ad7d4f0cca70f6f1e6c71",
+            "hash": "6e1e5a060610a2c2951c9da23b2e82aaa66c4839bc040eaee3cb67d64bed7f98",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7414,31 +7388,6 @@
               {
                 "category": "coverage",
                 "expected_gain": [
-                  "workspace boundary regressions are caught earlier"
-                ],
-                "feasibility": 84,
-                "id": "coverage-commandguard",
-                "impact": 82,
-                "novelty": 52,
-                "risk": 14,
-                "satisfaction_evidence": [
-                  "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths"
-                ],
-                "score": 0,
-                "status": "already_satisfied",
-                "title": "Raise commandguard coverage for boundary and denial paths",
-                "verify_with": [
-                  "go test ./internal/domain/commandguard -count=1",
-                  "go test -cover ./internal/domain/commandguard"
-                ],
-                "why_now": [
-                  "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
-                  "Already satisfied; do not select in the next self-augmentation cycle"
-                ]
-              },
-              {
-                "category": "coverage",
-                "expected_gain": [
                   "malformed JSON and bounded error output paths stay deterministic"
                 ],
                 "feasibility": 78,
@@ -8223,7 +8172,6 @@
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
               "has_command_audit_log": true,
-              "has_commandguard_boundary_coverage": true,
               "has_compatibility_contract": true,
               "has_cross_platform_build_matrix": true,
               "has_daemon_connection_limit": true,

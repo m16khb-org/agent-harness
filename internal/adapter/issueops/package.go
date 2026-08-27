@@ -73,25 +73,6 @@ func issueOpsArtifactStore() artifactverify.Store {
 	}
 }
 
-func ActiveIssueOpsCycleForBranch(repo, branch string) (issueops.IssueOpsRecord, bool) {
-	return active.CycleForBranch(issueOpsActiveStore(), repo, branch)
-}
-
-func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (issueops.IssueOpsRecord, bool) {
-	return active.LinkedWorktreeCycleForRepo(issueOpsActiveStore(), repo)
-}
-
-func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueops.IssueOpsRecord {
-	return active.LinkedWorktreeCyclesForRepo(issueOpsActiveStore(), repo)
-}
-
-// IssueOpsCycleWorktreeMissing reports whether a record is a worktree-phase
-// cycle whose linked worktree directory has been deleted (a stale cycle that
-// must not retain guard authority over the source checkout).
-func IssueOpsCycleWorktreeMissing(record issueops.IssueOpsRecord) bool {
-	return active.WorktreePhaseHasMissingWorktree(record)
-}
-
 func issueOpsActiveStore() active.Store {
 	return active.Store{
 		StateRoot: IssueOpsStateRoot,

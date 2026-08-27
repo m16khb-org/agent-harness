@@ -129,37 +129,6 @@ func TestStateWriteWaitsForKeyLock() {}
 	}
 }
 
-func TestCommandguardCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
-	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
-
-func TestGitOpsKubectlDecisionBlocksMutatingCommands() {}
-func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
-	_ = "separate dry-run flag allows apply"
-	_ = "shell separator stops rollout subverb"
-	_ = "rollout undo is blocked"
-}
-`)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "commandguard", "lifecycle_command_staged_checks_test.go"), `package commandguard
-
-func TestStagedCheckDecisionWarnsForBroadBiomeCommands() {}
-func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
-	_ = "non-app/lib directories should not count as broad repo dirs"
-}
-`)
-
-	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
-	if !signals.HasCommandguardBoundaryCoverage {
-		t.Fatalf("commandguard boundary coverage signal was not detected: %+v", signals)
-	}
-
-	candidate := SelfAugmentCandidate{ID: "coverage-commandguard", Status: SelfAugmentCandidateStatusOpen, Score: 77.08}
-	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
-	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
-		t.Fatalf("commandguard coverage candidate was not marked satisfied: %+v", candidate)
-	}
-}
-
 func TestWorkerStuckRunningDetectionIsSatisfiedByCoreAndCLI(t *testing.T) {
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "worker", "store.go"), `package worker

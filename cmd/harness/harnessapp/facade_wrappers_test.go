@@ -171,24 +171,6 @@ func TestHostAndPathFacadeWrappers(t *testing.T) {
 		t.Fatal("stateDoctorHasIssueCode failed")
 	}
 
-	input := []byte(`{"repo":"repo","source":"codex","paths":["a"],"prompt":"continue","last_assistant_message":"done","transcript_path":"transcript.jsonl","tool_name":"Shell","command":"go test","project_path":"/tmp/project"}`)
-	_ = hookArgValue([]string{"--input", "file"}, "input")
-	_ = repoFromHookInput(input)
-	_ = sourceFromHookInput(input)
-	_ = pathsFromHookInput(input)
-	_ = promptFromHookInput(input)
-	_ = lastAssistantMessageFromHookInput(input)
-	_ = transcriptPathFromHookInput(input)
-	_ = toolNameFromHookInput(input)
-	_ = commandFromHookInput(input)
-	_ = projectPathFromHookInput(input)
-	if !envBool("HARNESSAPP_BOOL") || envFloat("HARNESSAPP_FLOAT") != 1.5 {
-		t.Fatal("env wrappers failed")
-	}
-	_ = isStopHookContinuationPrompt("<hook_prompt>다음 행동 판단 지점</hook_prompt>")
-	if got := readLastAssistantMessageFromTranscript(filepath.Join(root, "missing.jsonl")); got != "" {
-		t.Fatalf("missing transcript = %q", got)
-	}
 }
 
 func TestUpdateAndAPIDocFacadeWrappers(t *testing.T) {

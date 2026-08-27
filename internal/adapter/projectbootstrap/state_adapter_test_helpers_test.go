@@ -3,8 +3,6 @@ package projectbootstrap
 import (
 	issueopsstatepkg "agent-harness/internal/adapter/issueops"
 	lifecyclestatepkg "agent-harness/internal/adapter/lifecycle"
-	compactstatepkg "agent-harness/internal/adapter/lifecycle/compact"
-	docupkeepstatepkg "agent-harness/internal/adapter/lifecycle/docupkeep"
 	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
@@ -14,6 +12,4 @@ func init() {
 	issueopsstatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.WithKeyLock = statestore.WithKeyLock
-	compactstatepkg.WithKeyLock = statestore.WithKeyLock
-	docupkeepstatepkg.WithKeyLock = statestore.WithKeyLock
 }

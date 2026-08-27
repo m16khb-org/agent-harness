@@ -27,7 +27,7 @@ func Commands() []Command {
 		{Name: "state", Description: "read and write small agent state checkpoints"},
 		{Name: "issueops", Description: "track issue-driven IssueOps work cycles"},
 		{Name: "api-doc", Description: "run API documentation static and agent review gates"},
-		{Name: "hook", Description: "run prompt-routing hooks"},
+		{Name: "hook", Description: "run host lifecycle context hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
 		{Name: "install", Description: "install shared native skills and MCP config"},
 		{Name: "update", Description: "rebuild and refresh user-level integrations"},
@@ -77,7 +77,7 @@ Usage:
   agent-harness state doctor [--json]
 %s
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
-  agent-harness hook user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|session-start|stop [--json]
+  agent-harness hook session-start|post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]
   agent-harness project docs [--repo PATH] [--json]
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]

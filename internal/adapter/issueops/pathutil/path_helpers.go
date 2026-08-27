@@ -37,15 +37,6 @@ func PathWithin(path, root string) bool {
 	return rel != "." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".."
 }
 
-func IsInsideWorktreesPath(target string) bool {
-	for _, segment := range strings.Split(filepath.ToSlash(target), "/") {
-		if strings.HasSuffix(segment, ".worktrees") {
-			return true
-		}
-	}
-	return false
-}
-
 func GitBranchFromHead(repo string) string {
 	root := CleanAbsPath(repo)
 	if root == "" {

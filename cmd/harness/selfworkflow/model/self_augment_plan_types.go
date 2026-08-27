@@ -93,7 +93,6 @@ type SelfAugmentRepoSignals struct {
 	HasHostJudgementCoverage            bool     `json:"has_host_judgement_coverage"`
 	HasIssueOpsLinkingBoundaryCoverage  bool     `json:"has_issueops_linking_boundary_coverage"`
 	HasStateWriteLocking                bool     `json:"has_state_write_locking"`
-	HasCommandguardBoundaryCoverage     bool     `json:"has_commandguard_boundary_coverage"`
 	HasWorkerStuckRunningDetection      bool     `json:"has_worker_stuck_running_detection"`
 	HasDaemonConnectionLimit            bool     `json:"has_daemon_connection_limit"`
 	HasIssueOpsInboundAdapterCoverage   bool     `json:"has_issue_ops_inbound_adapter_coverage"`

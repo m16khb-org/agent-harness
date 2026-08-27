@@ -21,10 +21,6 @@ func issueOpsPhaseRank(phase issueops.IssueOpsPhase) int {
 	return issueopsdomain.IssueOpsPhaseRank(phase)
 }
 
-func IssueOpsPhaseExpectsWorktree(phase issueops.IssueOpsPhase) bool {
-	return issueopsdomain.IssueOpsPhaseExpectsWorktree(phase)
-}
-
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueops.IssueOpsRecord, error) {
 	return advanceIssueOpsPhaseWithActor(stateRoot, id, to, nil)
 }

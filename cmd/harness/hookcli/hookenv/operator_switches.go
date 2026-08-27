@@ -7,7 +7,6 @@ import "os"
 // 버려서, 같은 코드가 CI(변수 없음)와 dogfood 셸(변수 있음)에서 다른 결론을 낸다.
 var OperatorSwitches = []string{
 	"HARNESS_DISABLE_HOOKS",
-	"HARNESS_NEXT_ACTION_AUTO_PROCEED",
 	"HARNESS_SELF_VERIFY_LLM_EVAL",
 }
 

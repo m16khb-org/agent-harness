@@ -196,36 +196,6 @@ func DetectStuckWorkerJobs() (workercontract.WorkerListResult, error) {
 	return result, nil
 }
 
-const stuckScanSentinel = ".last-stuck-scan"
-
-// MaybeDetectStuckWorkerJobs runs DetectStuckWorkerJobs at most once per
-// minInterval, gated by a stat-only sentinel file's mtime (A2/W1). The detector
-// is an unbounded full scan (row list + per-job read) and the worker store has
-// no TTL/GC, so calling it unconditionally on every session start would grow
-// the session-start hot path without bound; amortizing keeps it cheap. Returns
-// ran=false when the scan was skipped this interval. Best-effort: the sentinel
-// is touched even on detector error so a transient failure cannot make every
-// session re-run the scan.
-func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (workercontract.WorkerListResult, bool, error) {
-	dir, err := workerDir()
-	if err != nil {
-		return workercontract.WorkerListResult{OK: false}, false, err
-	}
-	sentinel := filepath.Join(dir, stuckScanSentinel)
-	if info, statErr := os.Stat(sentinel); statErr == nil && time.Since(info.ModTime()) < minInterval {
-		return workercontract.WorkerListResult{OK: true, WorkerDir: dir, Jobs: []workercontract.WorkerJob{}}, false, nil
-	}
-	result, detErr := DetectStuckWorkerJobs()
-	if mkErr := os.MkdirAll(dir, 0o700); mkErr == nil {
-		if f, oErr := os.OpenFile(sentinel, os.O_CREATE|os.O_WRONLY, 0o600); oErr == nil {
-			_ = f.Close()
-		}
-		now := time.Now()
-		_ = os.Chtimes(sentinel, now, now)
-	}
-	return result, true, detErr
-}
-
 func makeWorkerJobID(kind, payload string, t time.Time) string {
 	sum := sha256.Sum256([]byte(kind + "\x00" + payload + "\x00" + t.Format(time.RFC3339Nano)))
 	return "job-" + t.Format("20060102T150405Z") + "-" + hex.EncodeToString(sum[:])[:12]

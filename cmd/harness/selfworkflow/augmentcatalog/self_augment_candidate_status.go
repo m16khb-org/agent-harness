@@ -81,9 +81,6 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"state-write-locking", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage")
 		}},
-		{"coverage-commandguard", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasCommandguardBoundaryCoverage, "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths")
-		}},
 		{"worker-stuck-running-detection", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasWorkerStuckRunningDetection, "worker cleanup-stuck detects running jobs with dead PIDs and marks them failed through CLI/core coverage")
 		}},

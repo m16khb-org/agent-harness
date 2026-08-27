@@ -4,7 +4,6 @@ import (
 	workercontract "agent-harness/internal/contract/worker"
 	"fmt"
 	"testing"
-	"time"
 )
 
 // A2/G6: ListWorkerJobs reports a status histogram with Depth = queued+running
@@ -42,46 +41,5 @@ func TestListWorkerJobsReportsQueueDepth(t *testing.T) {
 	}
 	if q.Depth != 3 { // queued(2) + running(1)
 		t.Fatalf("depth want 3 (queued+running), got %d", q.Depth)
-	}
-}
-
-// A2/W1: MaybeDetectStuckWorkerJobs runs the detector once, then skips within
-// the interval (stat-only sentinel), amortizing the unbounded scan off the
-// session-start hot path while still self-healing crashed jobs.
-func TestMaybeDetectStuckWorkerJobsSentinelGates(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
-
-	job, err := EnqueueWorkerJob("stuck", "p")
-	if err != nil {
-		t.Fatal(err)
-	}
-	job.Status = workercontract.WorkerStatusRunning
-	job.PID = 99999999 // far beyond max pid_t; kill(2) returns ESRCH
-	job.UpdatedAt = "2020-01-01T00:00:00Z"
-	if err := writeWorkerJob(job); err != nil {
-		t.Fatal(err)
-	}
-
-	// First run: not gated; detects + fixes the stuck job.
-	result, ran, err := MaybeDetectStuckWorkerJobs(time.Hour)
-	if err != nil || !ran {
-		t.Fatalf("first run should execute: ran=%v err=%v", ran, err)
-	}
-	if len(result.Jobs) != 1 {
-		t.Fatalf("expected 1 stuck job fixed, got %+v", result)
-	}
-	if stored, _ := ReadWorkerJob(job.ID); stored.Status != workercontract.WorkerStatusFailed {
-		t.Fatalf("stuck job should be marked failed, got %s", stored.Status)
-	}
-
-	// Second run within the interval: gated, skipped.
-	if _, ran2, err := MaybeDetectStuckWorkerJobs(time.Hour); err != nil || ran2 {
-		t.Fatalf("second run within interval should be skipped: ran=%v err=%v", ran2, err)
-	}
-
-	// Zero interval always runs (sentinel age is always >= 0).
-	if _, ran3, err := MaybeDetectStuckWorkerJobs(0); err != nil || !ran3 {
-		t.Fatalf("zero interval should always run: ran=%v err=%v", ran3, err)
 	}
 }

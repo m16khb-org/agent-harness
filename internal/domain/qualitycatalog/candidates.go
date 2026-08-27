@@ -13,10 +13,9 @@ var resolvedCandidateIDs = map[string]bool{
 	"state-write-locking":            true,
 	// Resolved wave: signal rules in augmentcatalog confirm satisfaction and the
 	// measured coverage backs it (mcpcli/resources 91.7%, domain/judgement 90.6%,
-	// commandguard/linking suites exist under their current package paths).
+	// linking suites exist under their current package paths).
 	"quality-signal-harvester":  true,
 	"self-augment-signal-table": true,
-	"coverage-commandguard":     true,
 	"coverage-mcp-resources":    true,
 	"coverage-host-judgement":   true,
 	"coverage-issueops-linking": true,
@@ -154,14 +153,6 @@ func CandidateSpecs() []CandidateSpec {
 			ExpectedGain: []string{"signal additions become table rows", "branch count drops below the planned threshold"},
 			VerifyWith:   []string{"go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"},
 			Evidence:     []string{"CollectSelfAugmentRepoSignals table-driven refactor"},
-		},
-		{
-			ID: "coverage-commandguard", Title: "Raise commandguard coverage for boundary and denial paths", Category: "coverage",
-			Impact: 82, Feasibility: 84, Novelty: 52, Risk: 14,
-			WhyNow:       []string{"command policy surfaces are safety-critical and low-coverage packages should be first candidates"},
-			ExpectedGain: []string{"workspace boundary regressions are caught earlier"},
-			VerifyWith:   []string{"go test ./internal/domain/commandguard -count=1", "go test -cover ./internal/domain/commandguard"},
-			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{
 			ID: "coverage-mcp-resources", Title: "Cover MCP resource catalog edge cases", Category: "coverage",

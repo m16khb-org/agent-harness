@@ -1,9 +1,15 @@
+// Package hookinput reads the few host hook stdin fields the context hooks
+// need. Hosts send the current working directory as cwd; explicit repo,
+// workspace, and project_dir aliases plus a nested hook_input envelope are
+// accepted so the same reader serves Codex, Claude Code, and direct CLI use.
 package hookinput
 
 import (
 	"encoding/json"
 	"strings"
 )
+
+var repoKeys = []string{"repo", "cwd", "workspace", "workspace_root", "project_dir"}
 
 func RepoFromHookInput(input []byte) string {
 	if len(strings.TrimSpace(string(input))) == 0 {
@@ -13,85 +19,20 @@ func RepoFromHookInput(input []byte) string {
 	if err := json.Unmarshal(input, &obj); err != nil {
 		return ""
 	}
-	for _, key := range []string{"repo", "cwd", "workspace", "workspace_root", "project_dir"} {
-		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
+	if repo := firstRepoKey(obj); repo != "" {
+		return repo
 	}
 	if nested, ok := obj["hook_input"].(map[string]any); ok {
-		for _, key := range []string{"repo", "cwd", "workspace", "workspace_root", "project_dir"} {
-			if value, ok := nested[key].(string); ok && strings.TrimSpace(value) != "" {
-				return strings.TrimSpace(value)
-			}
-		}
+		return firstRepoKey(nested)
 	}
 	return ""
 }
 
-func SourceFromHookInput(input []byte) string {
-	obj := hookInputObject(input)
-	if value, ok := obj["source"].(string); ok {
-		return strings.ToLower(strings.TrimSpace(value))
-	}
-	return ""
-}
-
-func CWDFromHookInput(input []byte) string {
-	return EffectiveCWDFromHookInput(input, false)
-}
-
-func EffectiveCWDFromHookInput(input []byte, allowToolWorkdir bool) string {
-	if !allowToolWorkdir {
-		return hookString(input, "cwd")
-	}
-	if toolInput, ok := hookInputObject(input)["tool_input"].(map[string]any); ok {
-		if workdir, ok := toolInput["workdir"].(string); ok && strings.TrimSpace(workdir) != "" {
-			return strings.TrimSpace(workdir)
-		}
-	}
-	return hookString(input, "cwd")
-}
-
-func SessionIDFromHookInput(input []byte) string {
-	return hookString(input, "session_id", "sessionId")
-}
-
-func AgentIDFromHookInput(input []byte) string {
-	return hookString(input, "agent_id", "agentId", "agent_type", "agentType")
-}
-
-func HostFromHookInput(input []byte) string {
-	return strings.ToLower(hookString(input, "host"))
-}
-
-func hookString(input []byte, keys ...string) string {
-	obj := hookInputObject(input)
-	for _, key := range keys {
+func firstRepoKey(obj map[string]any) string {
+	for _, key := range repoKeys {
 		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
 			return strings.TrimSpace(value)
 		}
 	}
 	return ""
-}
-
-func Bool(input []byte, key string) bool {
-	if v, ok := hookInputObject(input)[key].(bool); ok {
-		return v
-	}
-	return false
-}
-
-func hookInputObject(input []byte) map[string]any {
-	var obj map[string]any
-	if err := json.Unmarshal(input, &obj); err != nil {
-		return map[string]any{}
-	}
-	if nested, ok := obj["hook_input"].(map[string]any); ok {
-		for k, v := range nested {
-			if _, exists := obj[k]; !exists {
-				obj[k] = v
-			}
-		}
-	}
-	return obj
 }

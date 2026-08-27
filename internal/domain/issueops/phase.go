@@ -15,15 +15,6 @@ func IssueOpsPhaseRank(phase issueopscontract.IssueOpsPhase) int {
 	return 0
 }
 
-func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
-	switch phase {
-	case issueopscontract.IssueOpsPhaseImplement, issueopscontract.IssueOpsPhaseAISlopClean, issueopscontract.IssueOpsPhaseFeedback, issueopscontract.IssueOpsPhasePR:
-		return true
-	default:
-		return false
-	}
-}
-
 // IssueOpsPhaseResettableOnStaleWorktree intentionally excludes the PR phase:
 // its durable work product lives remotely and must be resumed, not reset.
 func IssueOpsPhaseResettableOnStaleWorktree(phase issueopscontract.IssueOpsPhase) bool {

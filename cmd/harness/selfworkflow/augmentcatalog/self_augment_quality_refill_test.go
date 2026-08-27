@@ -6,7 +6,6 @@ func TestQualityRefillCandidatesStayOpenWithScoresAndVerification(t *testing.T) 
 	wantIDs := []string{
 		"quality-signal-harvester",
 		"self-augment-signal-table",
-		"coverage-commandguard",
 		"coverage-mcp-resources",
 		"coverage-host-judgement",
 		"coverage-issueops-linking",

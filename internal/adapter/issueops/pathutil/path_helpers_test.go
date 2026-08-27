@@ -49,24 +49,6 @@ func TestPathWithin(t *testing.T) {
 	}
 }
 
-func TestIsInsideWorktreesPath(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected bool
-	}{
-		{"/tmp/project.worktrees/feat", true},
-		{"/tmp/.worktrees/a", true},
-		{"/tmp/normal", false},
-		{"", false},
-	}
-	for _, tt := range tests {
-		got := IsInsideWorktreesPath(tt.path)
-		if got != tt.expected {
-			t.Errorf("IsInsideWorktreesPath(%q) = %v, want %v", tt.path, got, tt.expected)
-		}
-	}
-}
-
 func TestGitBranchFromHead(t *testing.T) {
 	t.Run("no git dir returns empty", func(t *testing.T) {
 		dir := t.TempDir()

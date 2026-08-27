@@ -1,168 +1,45 @@
 package hookcli
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookcatalog"
 	"agent-harness/cmd/harness/hookcli/hookenv"
-	"agent-harness/cmd/harness/hookcli/hookfailure"
-	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 )
 
 // hookDisabled reports whether HARNESS_DISABLE_HOOKS turns this invocation into
 // a no-op. The switch exists so a single host-level hook registration can stay
 // installed while the agent works in repositories the harness does not own.
-// failures/metrics are operator queries rather than hook events, so they remain
-// available: the switch turns off enforcement, not observability.
-func hookDisabled(args []string) bool {
-	if !hookenv.Bool("HARNESS_DISABLE_HOOKS") {
-		return false
-	}
-	if len(args) > 0 && (args[0] == "failures" || args[0] == "metrics") {
-		return false
-	}
-	return true
+func hookDisabled() bool {
+	return hookenv.Bool("HARNESS_DISABLE_HOOKS")
 }
 
+// runHook dispatches the host lifecycle context hooks. Only SessionStart and
+// PostCompact exist: both read the static project-doc catalog and emit a
+// host-compatible context payload. They never touch durable harness state,
+// telemetry, or IssueOps authority (ADR 2026-08-10, 2026-08-27).
 func runHook(args []string) error {
-	if hookDisabled(args) {
+	if hookDisabled() {
 		return nil
 	}
-	if isContextHook(args) {
-		return runHookDispatch(args)
-	}
-	stdin, restoreStdin, stdinErr := captureReplayableHookStdin()
-	if restoreStdin != nil {
-		defer restoreStdin()
-	}
-	if stdinErr != nil {
-		return stdinErr
-	}
-	// 신호로 끝나면 아래 완료 경로가 실행되지 않아 어떤 기록도 남지 않는다.
-	// 어느 hook이 어떤 신호로 끝났는지는 죽는 쪽만 알 수 있으므로 여기서
-	// 관측한다(#268). SIGKILL은 handler를 설치할 수 없어 upstream 영역이다.
-	stopTerminationDiagnostics := hookfailure.InstallTerminationDiagnostics(args, stdin)
-	defer stopTerminationDiagnostics()
-	started := time.Now()
-	var err error
-	if len(args) > 0 {
-		err = recordChildSmokeHookEvent(args[0])
-	}
-	if err == nil {
-		err = runHookDispatch(args)
-	}
-	if err != nil {
-		hookfailure.Record(args, stdin, err)
-	}
-	// Best-effort latency telemetry for real hook events (quality program
-	// Q2 phase 2); meta subcommands (failures/metrics) are not hook events.
-	// 도움말 요청(ErrHelp)도 hook 이벤트가 아니다 — failures의 Record가
-	// 이미 스킵하는 것과 같은 기준으로 metric 노이즈("--help"가 hook 이름으로
-	// 집계되는 실측 회귀)를 막는다.
-	isHelpRequest := err != nil && errors.Is(err, flag.ErrHelp)
-	if len(args) > 0 && args[0] != "failures" && args[0] != "metrics" && !isHelpRequest {
-		_, _ = RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{
-			Hook:       args[0],
-			Host:       hookfailure.ArgValue(args, "--host"),
-			DurationMS: time.Since(started).Milliseconds(),
-			Decision:   hookMetricDecision,
-		})
-	}
-	hookMetricDecision = ""
-	return err
-}
-
-func isContextHook(args []string) bool {
-	return len(args) > 0 && (args[0] == "session-start" || args[0] == "post-compact")
-}
-
-// hookMetricDecision is set by enforcement gates when they block. The hook
-// CLI handles exactly one event per process, so a package-level marker is
-// race-free and lets the single dispatcher metric line carry the decision.
-var hookMetricDecision string
-
-func markHookMetricBlocked() { hookMetricDecision = "block" }
-
-// markHookMetricAsked records an "ask" enforcement decision so gate_hit_rate
-// counts it as a real intervention (A2/G4); previously "ask" returned before
-// any decision was recorded, making ask-gating invisible to the metric.
-func markHookMetricAsked() { hookMetricDecision = "ask" }
-
-func captureReplayableHookStdin() ([]byte, func(), error) {
-	stat, err := os.Stdin.Stat()
-	if err != nil || stat.Mode()&os.ModeCharDevice != 0 {
-		return nil, nil, nil
-	}
-	stdin, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read hook stdin: %w", err)
-	}
-	oldStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	os.Stdin = r
-	go func() {
-		_, _ = w.Write(stdin)
-		_ = w.Close()
-	}()
-	return stdin, func() {
-		os.Stdin = oldStdin
-		_ = r.Close()
-	}, nil
-}
-
-func runHookDispatch(args []string) error {
 	if len(args) == 0 {
 		hookUsage()
 		return fmt.Errorf("missing hook subcommand")
 	}
-	// 최상위 도움말 진입은 실패가 아니다 — usage를 인쇄하고 ErrHelp를
-	// 반환해 failures/metric의 ErrHelp 스킵과 같은 기준으로 처리한다.
-	if args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+	switch args[0] {
+	case "--help", "-h", "help":
 		hookUsage()
 		return flag.ErrHelp
-	}
-	switch args[0] {
-	case "user-prompt":
-		return runHookUserPrompt(args[1:])
-	case "pre-tool-use":
-		return runHookPreToolUse(args[1:])
-	case "post-tool-use":
-		return runHookPostToolUse(args[1:])
-	case "pre-compact":
-		return runHookPreCompact(args[1:])
-	case "post-compact":
-		return runHookPostCompact(args[1:])
 	case "session-start":
-		return runHookSessionStart(args[1:])
-	case "stop":
-		return runHookStop(args[1:])
-	case "failures":
-		return hookfailure.Run(args[1:])
-	case "metrics":
-		if len(args) > 1 && args[1] == "prune" {
-			return hookfailure.RunMetricsPrune(args[2:])
-		}
-		return hookfailure.RunMetrics(args[1:])
+		return hookcatalog.RunSessionStart(args[1:], hookCatalogConfig())
+	case "post-compact":
+		return hookcatalog.RunPostCompact(args[1:], hookCatalogConfig())
 	default:
 		hookUsage()
 		return fmt.Errorf("unknown hook subcommand %q", args[0])
 	}
-}
-
-func runHookPostCompact(args []string) error {
-	return hookcatalog.RunPostCompact(args, hookCatalogConfig())
-}
-
-func runHookSessionStart(args []string) error {
-	return hookcatalog.RunSessionStart(args, hookCatalogConfig())
 }
 
 func hookCatalogConfig() hookcatalog.Config {
@@ -171,18 +48,12 @@ func hookCatalogConfig() hookcatalog.Config {
 
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-llm-hints] [--json]
-  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-worktree] [--enforce-staged-checks] [--enforce-gitops-kubectl] [--json]
-  agent-harness hook post-tool-use [--repo PATH] [--json]
-  agent-harness hook pre-compact [--repo PATH] [--json]
-  agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
-  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--enforce-engelbart-canvas-sections] [--relay-next-action-judgement] [--json]
-  agent-harness hook failures [--limit N] [--json]
-  agent-harness hook failures --prune DURATION [--json]
-  agent-harness hook failures prune --max-age DURATION [--json]
-  agent-harness hook failures stats [--json]
-  agent-harness hook metrics [--json]
-  agent-harness hook metrics prune --max-age DURATION [--json]
+  agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
+
+session-start renders the static project-doc catalog for every SessionStart
+source, including the post-compaction re-run. post-compact keeps the same
+catalog reachable for hosts without a SessionStart re-run (Omo) and for
+diagnosis. HARNESS_DISABLE_HOOKS=1 turns both into a no-op.
 `)
 }

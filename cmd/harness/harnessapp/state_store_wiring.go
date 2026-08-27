@@ -1,7 +1,6 @@
 package harnessapp
 
 import (
-	hookcatalog "agent-harness/cmd/harness/hookcli/hookcatalog"
 	benchmarkcmd "agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	mcpcli "agent-harness/cmd/harness/mcpcli"
 	augmentlesson "agent-harness/cmd/harness/selfworkflow/augmentlesson"
@@ -32,7 +31,6 @@ func configureStateStores() {
 	historycompare.StateDir = statestore.StateDir
 	historycompare.StateList = statestore.StateList
 	historycompare.StateRead = statestore.StateRead
-	hookcatalog.MaybeMaintainStateStores = statestore.MaybeMaintainStateStores
 	mcpcli.StateDoctor = statestore.StateDoctor
 	mcpcli.StateList = statestore.StateList
 	mcpcli.StateMaintain = statestore.StateMaintain

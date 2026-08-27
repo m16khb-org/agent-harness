@@ -32,7 +32,6 @@ func TestMain(m *testing.M) {
 	wireCleanupForTests()
 	wireRemoteForTests()
 	wireOrphanAndLoopGateForTests()
-	wireLifecycleIssueOpsForTests()
 	wireExecutionRunnersForTests()
 	wireIssueOpsRuntimeForTests()
 	os.Exit(m.Run())
