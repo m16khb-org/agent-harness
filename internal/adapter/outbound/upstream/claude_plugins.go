@@ -51,7 +51,7 @@ func (h ClaudePluginHost) AddMarketplace(ctx context.Context, source string) err
 }
 
 func (h ClaudePluginHost) InstallPlugin(ctx context.Context, id string) error {
-	_, err := h.run(ctx, "plugin", "install", id, "--scope", "user", "--yes")
+	_, err := h.run(ctx, "plugin", "install", id, "--scope", "user")
 	return err
 }
 
