@@ -74,6 +74,13 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 - VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
 - `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.
 
+## 레코드 삭제는 related write span과 같은 게이트를 지날 것
+
+`sqlstore`의 직렬화 게이트(`spanGate`)는 `WithSpan`만 획득한다. `Apply`/`CompareAndApply`는 게이트 밖에서 커밋하므로, 게이트를 지나지 않는 삭제는 열려 있는 related-update span과 순서를 맺지 못하고 삭제 뒤 related row가 되살아난다. CAS는 대상 레코드의 drift만 막는다.
+
+- 레코드와 related bucket을 함께 지우는 경로는 `WithSpan` 안에서 실행한다 ([2026-08-27 lesson](lessons/2026-08-27-record-delete-bypassed-the-span-gate.md)).
+- 게이트를 `Apply` 계열 안으로 내리지 않는다. span 안에서 호출되는 write가 자기 자신과 교착한다.
+
 ## SQLite state root 최초 초기화도 cross-process 경합으로 취급할 것
 
 같은 state root를 두 process가 처음 열 때 process-local handle mutex는 data/span DB 파일 생성과 schema pragma를 직렬화하지 못한다. transaction lock만 재시도해도 open/schema 단계의 `SQLITE_BUSY`는 그대로 노출된다.

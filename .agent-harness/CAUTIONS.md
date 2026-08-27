@@ -82,6 +82,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 | 2026-08-27 | [Skill added without agents/openai.yaml broke the self-verify QA gate on main](cautions/lessons/2026-08-27-skill-without-openai-yaml-self-verify-qa-gate.md) |
 | 2026-08-27 | [cleanup finish blocked on one Orca terminal shell; cleanup now stops worktree processes and terminals itself](cautions/lessons/2026-08-27-cleanup-stops-worktree-processes.md) |
 | 2026-08-27 | [Daemon accept-loop burst dial exceeded the unix backlog](cautions/lessons/2026-08-27-daemon-accept-loop-burst-dial-backlog.md) |
+| 2026-08-27 | [Record delete bypassed the sqlstore span gate and orphaned related state](cautions/lessons/2026-08-27-record-delete-bypassed-the-span-gate.md) |
 
 ## Removed CLI modes (historical only)
 
