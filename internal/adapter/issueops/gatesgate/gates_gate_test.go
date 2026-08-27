@@ -205,3 +205,84 @@ func hasWarning(warnings []string, gateID string) bool {
 	}
 	return false
 }
+
+func writeGatesLedgerAt(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGatesGateGit(t, root, "git", "add", rel)
+	runGatesGateGit(t, root, "git", "commit", "-m", "add "+rel)
+	runGatesGateGit(t, root, "git", "push", "origin", "main")
+}
+
+const metLedger = "# Gates: cycle\n\n- [x] G1: done\n  EVIDENCE: verified by test\n"
+
+func TestStrictPRReadinessReadsIssueFolderLedger(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", "# Gates: cycle\n\n- [ ] G1: open\n  EVIDENCE: pending\n")
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/21/gates.md") {
+		t.Fatalf("issue folder ledger must gate readiness: %+v", ready.Missing)
+	}
+}
+
+func TestStrictPRReadinessDuplicateIssueArtifactFailsClosed(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t) // linked issue 21
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/issue-21.md", metLedger)
+	// 다른 이슈의 중복은 이 사이클을 막지 않는다.
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/248-other.md", metLedger)
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if ready.Ready || !containsMissing(ready.Missing, "duplicate_issue_artifact:21") {
+		t.Fatalf("same issue in both ledger paths must fail closed: %+v", ready)
+	}
+	if containsMissing(ready.Missing, "duplicate_issue_artifact:248") {
+		t.Fatalf("other issues' duplicates must not block this cycle: %+v", ready.Missing)
+	}
+}
+
+func TestStrictPRReadinessDuplicateIssueArtifactLegacyNumberPrefix(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/21-cleanup.md", metLedger)
+	// 210-*는 21이 아니다.
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/210-other.md", metLedger)
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !containsMissing(ready.Missing, "duplicate_issue_artifact:21") {
+		t.Fatalf("<n>-slug legacy name must count as duplicate: %+v", ready.Missing)
+	}
+}
+
+func TestStrictPRReadinessDuplicateSkippedWithoutIssueNumber(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	record.IssueURL = ""
+	record.BranchPrepare.IssueURL = ""
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/issue-21.md", metLedger)
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	for _, m := range ready.Missing {
+		if strings.HasPrefix(m, "duplicate_issue_artifact:") {
+			t.Fatalf("no linked issue number must skip the duplicate check: %+v", ready.Missing)
+		}
+	}
+}
+
+func TestStrictPRReadinessSingleIssueFolderLedgerIsNotDuplicate(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !ready.Ready {
+		t.Fatalf("one met ledger at the canonical path must stay ready: %+v %+v", ready.Missing, ready.Warnings)
+	}
+}

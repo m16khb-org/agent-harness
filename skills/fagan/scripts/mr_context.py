@@ -9,7 +9,9 @@ Usage:
 Provider is auto-detected from the `origin` remote host (github.com → `gh`,
 anything else → `glab`). Both CLIs must already be authenticated.
 
-Outputs (inside --out, default: <repo>/.agent-harness/tmp/fagan/mr-<n>/):
+Outputs (inside --out, default: <repo>/.agent-harness/issues/<issue>/review/<provider>-<n>/ when the
+MR/PR names its issue (branch prefix `<issue>-…` or `#<issue>` in title/description), otherwise
+<repo>/.agent-harness/tmp/fagan/mr-<n>/ — both paths are gitignored working areas):
   context.json   machine-readable pack (meta, diff_refs, files+hunks, rule pack,
                  existing threads, prior review lessons, verification hints, worktree)
   diff.patch     cumulative diff (base...head), unified
@@ -304,6 +306,25 @@ def make_provider(kind: str | None, hostname: str, project: str, repo_dir: str):
 ISSUE_REF_RE = re.compile(r"(?:(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|relate[sd]? to|issue)\s+)?#(\d+)", re.I)
 
 
+def issue_number_hint(meta: dict, this_n: int) -> int | None:
+    """Issue number the MR/PR names locally (branch prefix first, then #N refs) — no network."""
+    bm = re.search(r"(?:^|/)(\d{2,7})-", meta.get("source_branch") or "")
+    if bm:
+        return int(bm.group(1))
+    for m in ISSUE_REF_RE.finditer((meta.get("description") or "") + "\n" + (meta.get("title") or "")):
+        if int(m.group(1)) != this_n:
+            return int(m.group(1))
+    return None
+
+
+def default_out_dir(repo_dir: str, provider: str, meta: dict, n: int) -> Path:
+    """Per-issue artifact folder (#480) when the issue is known; legacy tmp path otherwise."""
+    issue = issue_number_hint(meta, n)
+    if issue is not None:
+        return Path(repo_dir) / ".agent-harness" / "issues" / str(issue) / "review" / f"{provider}-{n}"
+    return Path(repo_dir) / ".agent-harness" / "tmp" / "fagan" / f"mr-{n}"
+
+
 def linked_issues(p, meta: dict, this_n: int, limit: int = 3) -> list[dict]:
     """Issues referenced by the description/title (Closes #N, #N) and the branch prefix (`2795-...`, `fix/2795-...`)."""
     nums: list[int] = []
@@ -458,7 +479,7 @@ def main() -> None:
     refs = meta["diff_refs"]
     head_sha = refs["head_sha"]
 
-    out_dir = Path(a.out) if a.out else Path(repo_dir) / ".agent-harness" / "tmp" / "fagan" / f"mr-{n}"
+    out_dir = Path(a.out) if a.out else default_out_dir(repo_dir, p.name, meta, n)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if not a.no_fetch:

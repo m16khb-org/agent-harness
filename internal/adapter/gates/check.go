@@ -212,19 +212,72 @@ func runGateCheck(root, cwd string, req gatescontract.CheckRequest, gate *gatesd
 	return outcome
 }
 
-// DiscoverGateFiles는 canonical .agent-harness/gates/*.md를 먼저 찾고,
-// 기존 unlazy의 root GATES.md와 gates/*.md도 읽기 호환 경로로 반환한다.
+// IssueFolderDir은 이슈 번호별 산출물 폴더의 상대 경로다(#480). 게이트
+// 원장은 그 안의 gates.md 하나다.
+const IssueFolderDir = ".agent-harness/issues"
+
+// DiscoverGateFiles는 canonical .agent-harness/issues/<n>/gates.md를 먼저
+// 찾고(번호 오름차순, 그다음 비숫자 폴더), 기존 root GATES.md,
+// .agent-harness/gates/*.md, gates/*.md도 읽기 호환 경로로 반환한다.
 func DiscoverGateFiles(root string) ([]string, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, nil
 	}
-	files := []string{}
+	files := appendIssueFolderGateFiles([]string{}, filepath.Join(root, filepath.FromSlash(IssueFolderDir)))
 	if info, err := os.Stat(filepath.Join(root, "GATES.md")); err == nil && !info.IsDir() {
 		files = append(files, filepath.Join(root, "GATES.md"))
 	}
 	files = appendMarkdownGateFiles(files, filepath.Join(root, ".agent-harness", "gates"))
 	files = appendMarkdownGateFiles(files, filepath.Join(root, "gates"))
 	return files, nil
+}
+
+// appendIssueFolderGateFiles는 issues/<name>/gates.md만 후보로 넣는다. 같은
+// 폴더의 plan.md/spec.md는 원장이 아니다.
+func appendIssueFolderGateFiles(files []string, dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return files
+	}
+	names := []string{}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(dir, entry.Name(), "gates.md")); err == nil && !info.IsDir() {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		ni, oki := issueFolderNumber(names[i])
+		nj, okj := issueFolderNumber(names[j])
+		switch {
+		case oki && okj:
+			return ni < nj
+		case oki != okj:
+			return oki
+		default:
+			return names[i] < names[j]
+		}
+	})
+	for _, name := range names {
+		files = append(files, filepath.Join(dir, name, "gates.md"))
+	}
+	return files
+}
+
+func issueFolderNumber(name string) (int, bool) {
+	if name == "" {
+		return 0, false
+	}
+	n := 0
+	for _, r := range name {
+		if r < '0' || r > '9' {
+			return 0, false
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n, true
 }
 
 func appendMarkdownGateFiles(files []string, dir string) []string {

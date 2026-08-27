@@ -31,12 +31,13 @@ this directory.
 ### 1. List
 
 ```bash
-out=<repo>/.agent-harness/tmp/review-agent-feedback/<number>; mkdir -p "$out"
+out=<repo>/.agent-harness/issues/<issue-number>/review/<provider>-<number>; mkdir -p "$out"   # no linked issue: <repo>/.agent-harness/tmp/review-agent-feedback/<number>
 python3 <skill>/scripts/review_threads.py list --pr <number|!n|#n|URL> --repo-dir <repo> > "$out/threads.json"
 ```
 
-`threads.json`, `plan.json`, and the ledger live under that `$out` (same layout as
-`fagan`'s `.agent-harness/tmp/fagan/mr-<n>/`); they are working files, not commits.
+`threads.json`, `plan.json`, and the ledger live under that `$out` — the per-issue
+artifact folder's ignored `review/` area (same rule as `fagan`); they are working files,
+not commits. The issue number comes from the PR/MR body's issue link or the IssueOps record.
 
 Read `threads.json`. It contains only bot-authored threads (`--all` adds humans);
 each has `reviewer`, `mention`, `resolvable`, `resolved`, `path`, `line`,
