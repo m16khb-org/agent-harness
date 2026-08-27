@@ -286,3 +286,83 @@ func TestStrictPRReadinessSingleIssueFolderLedgerIsNotDuplicate(t *testing.T) {
 		t.Fatalf("one met ledger at the canonical path must stay ready: %+v %+v", ready.Missing, ready.Warnings)
 	}
 }
+
+func TestScopeLedgersJudgesOwnAndAnonymousOnly(t *testing.T) {
+	root := "/repo"
+	files := []string{
+		"/repo/.agent-harness/issues/21/gates.md",
+		"/repo/.agent-harness/issues/021/gates.md",
+		"/repo/.agent-harness/issues/210/gates.md",
+		"/repo/.agent-harness/issues/_unnumbered/gates.md",
+		"/repo/GATES.md",
+		"/repo/.agent-harness/gates/issue-21.md",
+		"/repo/.agent-harness/gates/21-cleanup.md",
+		"/repo/.agent-harness/gates/248-other.md",
+		"/repo/.agent-harness/gates/notes.md",
+		"/repo/gates/legacy.md",
+	}
+	judged, skipped := scopeLedgers(root, files, "21")
+	wantJudged := []string{
+		"/repo/.agent-harness/issues/21/gates.md",
+		"/repo/.agent-harness/issues/_unnumbered/gates.md",
+		"/repo/GATES.md",
+		"/repo/.agent-harness/gates/issue-21.md",
+		"/repo/.agent-harness/gates/21-cleanup.md",
+		"/repo/.agent-harness/gates/notes.md",
+		"/repo/gates/legacy.md",
+	}
+	wantSkipped := []string{
+		"/repo/.agent-harness/issues/021/gates.md",
+		"/repo/.agent-harness/issues/210/gates.md",
+		"/repo/.agent-harness/gates/248-other.md",
+	}
+	if strings.Join(judged, ",") != strings.Join(wantJudged, ",") {
+		t.Fatalf("judged = %v, want %v", judged, wantJudged)
+	}
+	if strings.Join(skipped, ",") != strings.Join(wantSkipped, ",") {
+		t.Fatalf("skipped = %v, want %v", skipped, wantSkipped)
+	}
+	allJudged, none := scopeLedgers(root, files, "")
+	if len(allJudged) != len(files) || len(none) != 0 {
+		t.Fatalf("no issue number must judge every ledger: %v / %v", allJudged, none)
+	}
+}
+
+func TestStrictPRReadinessSkipsOtherIssuesLedgers(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t) // linked issue 21
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/250-other.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !ready.Ready {
+		t.Fatalf("other issues' unmet ledgers must not block this cycle: %+v", ready)
+	}
+	joined := strings.Join(ready.Warnings, "\n")
+	if !strings.Contains(joined, "gates_skipped:2 (") || !strings.Contains(joined, ".agent-harness/issues/248/gates.md") || !strings.Contains(joined, ".agent-harness/gates/250-other.md") || strings.Count(joined, "gates_skipped:") != 1 {
+		t.Fatalf("skipped ledgers must be aggregated into one warning: %+v", ready.Warnings)
+	}
+}
+
+func TestStrictPRReadinessStillJudgesOwnAndAnonymousLedgers(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", "# Gates: mine\n\n- [ ] G1: open here\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/_unnumbered/gates.md", "# Gates: anon\n\n- [ ] G1: open anon\n  EVIDENCE: pending\n")
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/21/gates.md") || !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/_unnumbered/gates.md") {
+		t.Fatalf("own and anonymous ledgers must still gate: %+v", ready.Missing)
+	}
+}
+
+func TestStrictPRReadinessWithoutIssueNumberJudgesEverything(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyGatesGateRecord(t)
+	record.IssueURL = ""
+	record.BranchPrepare.IssueURL = ""
+	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
+	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/248/gates.md") {
+		t.Fatalf("no linked issue number must keep judging every ledger: %+v", ready.Missing)
+	}
+}
