@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagram Design"
+  short_description: "Pick the best diagram form and medium, render it, and verify renderability"
+  default_prompt: "Use $diagram-design to choose the right diagram form and medium for this content, render it, and verify it before delivering."
