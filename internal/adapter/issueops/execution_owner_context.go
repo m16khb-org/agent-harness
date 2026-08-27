@@ -356,7 +356,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		}
 		verifyBranchLink += " --link-verified " + shortActor + " --json"
 	}
-	planPath := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	planPath := sealedArtifactPath(record, record.Execution.Workspace.Root, "plan")
 	linkPlan := "none"
 	if strings.TrimSpace(record.PlanPath) == "" {
 		linkPlan = "agent-harness issueops link-plan --id " + quoteExecutionOwnerArg(record.ID) +

@@ -222,11 +222,13 @@ func renderExecutionOwnerReportContract(record issueops.IssueOpsRecord, req Exec
 	return strings.Join(lines, "\n")
 }
 
-func workspaceFromReceipt(receipt port.ExecutionWorkspaceReceipt, linkedAt string) issueops.Workspace {
+// workspaceFromReceipt는 receipt를 Workspace로 옮기고, 이 레코드의 봉인
+// 디렉터리(artifact_dir)를 linked issue 번호로 한 번 결정해 함께 기록한다(#482).
+func workspaceFromReceipt(record issueops.IssueOpsRecord, receipt port.ExecutionWorkspaceReceipt, linkedAt string) issueops.Workspace {
 	return issueops.Workspace{
 		SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
 		BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree,
-		Driver: receipt.Driver, LinkedAt: linkedAt,
+		Driver: receipt.Driver, LinkedAt: linkedAt, ArtifactDir: issueArtifactDirFor(record),
 	}
 }
 

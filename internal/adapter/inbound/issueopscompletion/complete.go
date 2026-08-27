@@ -59,7 +59,7 @@ func coreExecution(execution leasecontract.Execution) issueopscontract.Execution
 		Mode: issueopscontract.ExecutionMode(execution.Mode),
 		Workspace: issueopscontract.Workspace{
 			SourceRoot: execution.Workspace.SourceRoot, Root: execution.Workspace.Root, Branch: execution.Workspace.Branch,
-			BaseHead: execution.Workspace.BaseHead, ParentWorktree: execution.Workspace.ParentWorktree, Driver: execution.Workspace.Driver, LinkedAt: execution.Workspace.LinkedAt,
+			BaseHead: execution.Workspace.BaseHead, ParentWorktree: execution.Workspace.ParentWorktree, Driver: execution.Workspace.Driver, LinkedAt: execution.Workspace.LinkedAt, ArtifactDir: execution.Workspace.ArtifactDir,
 		},
 		Lease: coreLease(execution.Lease),
 	}

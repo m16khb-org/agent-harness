@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,8 +17,6 @@ import (
 // completionArtifactNames는 워크트리 artifact 디렉토리에서 보존 대상으로
 // 수집하는 파일 목록이다(설계 v5 WS2/WS4).
 var completionArtifactNames = []string{"plan", "spec", "turing-loop"}
-
-const completionArtifactDir = ".agent-harness/artifact"
 
 // completionTuringSummaryLimit bounds the turing summary excerpt; full texts of
 // plan/spec travel as collapsible blocks with their own provider-side limit.
@@ -154,8 +151,12 @@ func gatherCompletionSection(record issueops.IssueOpsRecord) port.IssueProviderC
 		return completion
 	}
 	for _, name := range completionArtifactNames {
-		body, ok := readCompletionArtifact(filepath.Join(root, completionArtifactDir, name+".md"))
+		body, ok := readCompletionArtifact(sealedArtifactPath(record, root, name))
 		if !ok {
+			// plan은 봉인 필수 아티팩트다. 부재는 조용히 넘기지 않고 섹션에 남긴다(#482).
+			if name == "plan" {
+				completion.MissingArtifacts = append(completion.MissingArtifacts, name)
+			}
 			continue
 		}
 		digest := sha256.Sum256([]byte(body))

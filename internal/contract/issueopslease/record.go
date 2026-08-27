@@ -103,6 +103,7 @@ type Workspace struct {
 	ParentWorktree string `json:"parent_worktree,omitempty"`
 	Driver         string `json:"driver"`
 	LinkedAt       string `json:"linked_at"`
+	ArtifactDir    string `json:"artifact_dir,omitempty"`
 }
 type Lease struct {
 	Generation        uint64 `json:"generation"`

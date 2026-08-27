@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -143,7 +142,7 @@ func validateExecutionResumePacket(record issueops.IssueOpsRecord, issueDigest, 
 	if !ok || !validExecutionOwnerDigest(planDigest) {
 		return newPlanResumeArtifactRequiredError(record)
 	}
-	sealedPlanPath := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	sealedPlanPath := sealedArtifactPath(record, record.Execution.Workspace.Root, "plan")
 	sealedPlan, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, sealedPlanPath)
 	if err != nil || digestExecutionOwnerBytes(sealedPlan) != planDigest {
 		return newPlanResumeArtifactRequiredError(record)
@@ -156,7 +155,7 @@ func validateExecutionResumePacket(record issueops.IssueOpsRecord, issueDigest, 
 		if name == "plan" {
 			continue
 		}
-		path := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), name+".md")
+		path := sealedArtifactPath(record, record.Execution.Workspace.Root, name)
 		artifact, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, path)
 		if err != nil {
 			return fmt.Errorf("read sealed artifact %s: %w", name, err)

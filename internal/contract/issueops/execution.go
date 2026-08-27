@@ -68,6 +68,10 @@ type Workspace struct {
 	ParentWorktree string `json:"parent_worktree,omitempty"`
 	Driver         string `json:"driver"`
 	LinkedAt       string `json:"linked_at"`
+	// ArtifactDir은 봉인 아티팩트(plan/spec/turing-loop)를 materialize·재검증·
+	// 게시할 워크트리 상대 디렉터리다(slash 구분, #482). 비어 있으면 legacy
+	// `.agent-harness/artifact`를 뜻한다.
+	ArtifactDir string `json:"artifact_dir,omitempty"`
 }
 
 type WriteLease struct {
