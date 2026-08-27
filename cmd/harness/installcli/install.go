@@ -101,6 +101,7 @@ func executeInstall(req port.NativeInstallRequest, candidatePath, pathMode, acti
 		result.Files = append(preflight.Files, result.Files...)
 		result.Messages = append(preflight.Messages, result.Messages...)
 		result.CommandPath = preflight.CommandPath
+		appendUpstreamMessages(&result, req.Root, true)
 		return outputInstallResult(result, installErr, jsonOut)
 	}
 	hostPlanReq := req
@@ -211,6 +212,9 @@ func applyAndSealInstall(req port.NativeInstallRequest, pathMode, activationStep
 	}
 	result.Committed = true
 	result.Messages = append(result.Messages, "native activation receipt sealed after strict Codex/Claude/Omo MCP and lifecycle readback")
+	// Upstream provisioning runs only after the harness install is committed, so
+	// a third-party plugin CLI can never take part in the activation transaction.
+	appendUpstreamMessages(&result, req.Root, false)
 	if finalizeErr := pathTransaction.finalize(&result); finalizeErr != nil {
 		result.Messages = append(result.Messages, "native activation is committed; command backup cleanup requires manual recovery: "+finalizeErr.Error())
 		if result.CommandPath != nil {

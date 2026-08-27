@@ -30,6 +30,7 @@ func installDependencies() installcli.Deps {
 		ActivationReadback: func(req port.NativeInstallRequest) activationport.ReadbackVerifier {
 			return hostActivationReadback{request: req}
 		},
+		SyncUpstream: syncUpstream,
 	}
 }
 

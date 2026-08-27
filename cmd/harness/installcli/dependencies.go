@@ -1,9 +1,11 @@
 package installcli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
+	upstreamcontract "agent-harness/internal/contract/upstream"
 	"agent-harness/internal/port"
 	activationport "agent-harness/internal/port/nativeactivation"
 )
@@ -27,6 +29,10 @@ type Deps struct {
 	// ActivationReadback은 host별 활성화 증적을 모으는 verifier를 만든다.
 	// 어떤 host adapter를 조립할지는 composition root가 정한다.
 	ActivationReadback func(port.NativeInstallRequest) activationport.ReadbackVerifier
+
+	// SyncUpstream은 선언된 upstream plugin/skill 중 host에 없는 것만 설치한다.
+	// 미주입이면 install은 upstream을 건드리지 않고 그대로 진행한다.
+	SyncUpstream func(ctx context.Context, root string, dryRun bool) (upstreamcontract.Report, error)
 }
 
 var deps = defaultDeps()
