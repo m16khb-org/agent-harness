@@ -21,7 +21,8 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
 - 게이트 원장 `CHECK:`는 argv 한 줄이다. 따옴표 밖 `&& || ; |`는 셸이 아니라 첫 명령의
   인자가 되어 거짓 met을 만들었고(#484), 이제 `gates init`이 거부하고 `gates check`는
   unchecked로 둔다. 복합 검사는 스크립트나 `python3 -c` 하나로 감싼다. 리터럴 `EXPECT:`는
-  출력 줄 전체 또는 줄 앞 토큰과만 일치한다.
+  출력 줄 전체 또는 줄 앞 토큰과만 일치하며, EXPECT가 있어도 CHECK는 exit 0이어야 met이다
+  (#486; 비영 종료가 정상인 도구는 `python3 -c`로 감싸 0으로 끝낸다).
 - IssueOps gate ledger는 root `GATES.md`가 아니라 이슈 폴더
   `.agent-harness/issues/<provider-issue-number>/gates.md`로 namespacing한다(#480;
   옛 `.agent-harness/gates/*.md`는 읽기 호환)

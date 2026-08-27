@@ -192,29 +192,23 @@ func runGateCheck(root, cwd string, req gatescontract.CheckRequest, gate *gatesd
 		output += strings.TrimRight(run.Stderr, "\n")
 	}
 	evidence := gatesdomain.EvidenceTail(output, 200)
-	if strings.TrimSpace(gate.Expect) != "" {
-		if gatesdomain.ExpectMatches(gate.Expect, output) {
-			outcome.passed = true
-			outcome.evidence = evidence
-			return outcome
-		}
-		if run.TimedOut {
-			outcome.checkError = "check timed out: " + evidence
-		} else {
-			outcome.checkError = "expect not matched: " + evidence
-		}
-		return outcome
-	}
+	// met = exit 0 ∧ (EXPECT가 있으면 출력 줄 앵커). EXPECT가 있어도 종료코드를
+	// 먼저 본다 — `go test ./...`가 실패해도 다른 줄의 `ok  \tpkg`로 met이 되던
+	// 결함(#486)을 막는다. 비영 종료가 정상인 도구는 CHECK를 python3 -c로 감싼다.
 	if run.TimedOut {
 		outcome.checkError = "check timed out: " + evidence
 		return outcome
 	}
-	if run.ExitCode == 0 && run.Executed {
-		outcome.passed = true
-		outcome.evidence = evidence
+	if run.ExitCode != 0 {
+		outcome.checkError = fmt.Sprintf("exit code %d: %s", run.ExitCode, evidence)
 		return outcome
 	}
-	outcome.checkError = fmt.Sprintf("exit code %d: %s", run.ExitCode, evidence)
+	if strings.TrimSpace(gate.Expect) != "" && !gatesdomain.ExpectMatches(gate.Expect, output) {
+		outcome.checkError = "expect not matched: " + evidence
+		return outcome
+	}
+	outcome.passed = true
+	outcome.evidence = evidence
 	return outcome
 }
 

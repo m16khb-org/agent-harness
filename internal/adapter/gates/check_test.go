@@ -3,6 +3,7 @@ package gates
 import (
 	gatescontract "agent-harness/internal/contract/gates"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -240,6 +241,22 @@ func TestCheckAllowsQuotedShellCharacters(t *testing.T) {
 	}
 	if gate := result.Files[0].Gates[0]; gate.State != "met" {
 		t.Fatalf("shell characters inside quotes are plain argv text and must run: %+v", gate)
+	}
+}
+
+func TestCheckRequiresExitZeroEvenWhenExpectMatches(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available")
+	}
+	dir := t.TempDir()
+	path := writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: output matches but the command failed\n  CHECK: python3 -c \"print('ok'); raise SystemExit(1)\"\n  EXPECT: ok\n  EVIDENCE: pending\n")
+	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, Files: []string{path}, WriteAllowed: true, EnvAllowlist: []string{"PATH", "HOME"}})
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	gate := result.Files[0].Gates[0]
+	if gate.State == "met" || !strings.Contains(gate.CheckError, "exit code 1") {
+		t.Fatalf("non-zero exit must fail the gate even when EXPECT matches (#486): %+v", gate)
 	}
 }
 
