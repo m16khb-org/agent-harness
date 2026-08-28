@@ -401,7 +401,7 @@ case "$*" in
     exit 0
     ;;
   *workItemCreate*)
-    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"sample"}]}}}}}'
+    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","widgets":[{"type":"ASSIGNEES","assignees":{"nodes":[{"username":"sample"}]}},{"type":"DESCRIPTION"},{"type":"HIERARCHY"},{"type":"LABELS","labels":{"nodes":[{"title":"bug"}]}},{"type":"NOTES"}]}}}}'
     exit 0
     ;;
   *parentIid*)
@@ -417,7 +417,7 @@ case "$*" in
     exit 0
     ;;
   *childVerify*)
-    printf '{"data":{"workItem":{"iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"sample"}]}}}}'
+    printf '{"data":{"workItem":{"iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","widgets":[{"type":"ASSIGNEES","assignees":{"nodes":[{"username":"sample"}]}},{"type":"DESCRIPTION"},{"type":"HIERARCHY"},{"type":"LABELS","labels":{"nodes":[{"title":"bug"}]}},{"type":"NOTES"}]}}}'
     exit 0
     ;;
 esac
@@ -477,7 +477,7 @@ case "$*" in
     exit 0
     ;;
   *workItemCreate*)
-    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"sample"}]}}}}}'
+    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","widgets":[{"type":"ASSIGNEES","assignees":{"nodes":[{"username":"sample"}]}},{"type":"DESCRIPTION"},{"type":"HIERARCHY"},{"type":"LABELS","labels":{"nodes":[{"title":"bug"}]}},{"type":"NOTES"}]}}}}'
     exit 0
     ;;
 esac
@@ -827,10 +827,38 @@ exit 0
 func writeFakeGlab(t *testing.T, binDir, script string) {
 	t.Helper()
 	path := filepath.Join(binDir, "glab")
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+	if err := os.WriteFile(path, []byte(injectWorkItemSchemaGuard(script)), 0o755); err != nil {
 		t.Fatal(err)
 	}
 }
+
+// injectWorkItemSchemaGuard makes the fake glab reject the selection sets a real
+// GitLab rejects. A WorkItem exposes labels and assignees only through widgets
+// (WorkItemWidgetLabels / WorkItemWidgetAssignees), never as direct fields, so a
+// query that selects them directly must fail here exactly as it does on GitLab.
+func injectWorkItemSchemaGuard(script string) string {
+	shebang, rest, found := strings.Cut(script, "\n")
+	if !found {
+		return script
+	}
+	return shebang + "\n" + workItemSchemaGuardScript + rest
+}
+
+const workItemSchemaGuardScript = `case "$*" in
+  *"on WorkItemWidgetLabels { labels {"*) ;;
+  *"labels {"*)
+    echo "GraphQL: Field 'labels' doesn't exist on type 'WorkItem'" >&2
+    exit 2
+    ;;
+esac
+case "$*" in
+  *"on WorkItemWidgetAssignees { assignees {"*) ;;
+  *"assignees {"*)
+    echo "GraphQL: Field 'assignees' doesn't exist on type 'WorkItem'" >&2
+    exit 2
+    ;;
+esac
+`
 
 func TestParseGitLabIssueURLAcceptsSelfHostedCustomDomain(t *testing.T) {
 	cases := []struct {

@@ -420,8 +420,8 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	}
 	verifiedChild := verify.Data.WorkItem
 	childURL = providerutil.FirstNonEmpty(verifiedChild.WebURL, childURL)
-	labels := gitlabLabelTitles(verifiedChild.Labels.Nodes)
-	assignees := gitlabAssigneeUsernames(verifiedChild.Assignees.Nodes)
+	labels := gitlabWorkItemLabelTitles(verifiedChild.Widgets)
+	assignees := gitlabWorkItemAssigneeUsernames(verifiedChild.Widgets)
 	if missing := providerutil.MissingStrings(req.Labels, labels); len(missing) > 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "gitlab"}, gitlabCreatedChildError(childURL, fmt.Errorf("gitlab child work item missing labels: %s", strings.Join(missing, ", ")))
 	}
@@ -523,12 +523,11 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 }
 
 type gitlabWorkItem struct {
-	ID        string              `json:"id"`
-	IID       string              `json:"iid"`
-	WebURL    string              `json:"webUrl"`
-	State     string              `json:"state"`
-	Labels    gitlabLabelNodes    `json:"labels"`
-	Assignees gitlabAssigneeNodes `json:"assignees"`
+	ID      string                 `json:"id"`
+	IID     string                 `json:"iid"`
+	WebURL  string                 `json:"webUrl"`
+	State   string                 `json:"state"`
+	Widgets []gitlabWorkItemWidget `json:"widgets"`
 }
 
 type gitlabLabelNodes struct {
@@ -619,11 +618,16 @@ type gitlabHierarchyChildrenResponse struct {
 	} `json:"data"`
 }
 
+// gitlabWorkItemWidget carries the widget selections this provider reads.
+// GitLab keeps hierarchy, labels, and assignees on separate widget types, so a
+// single struct with empty siblings is how one selection set decodes.
 type gitlabWorkItemWidget struct {
 	Type     string `json:"type"`
 	Children struct {
 		Nodes []gitlabWorkItem `json:"nodes"`
 	} `json:"children"`
+	Labels    gitlabLabelNodes    `json:"labels"`
+	Assignees gitlabAssigneeNodes `json:"assignees"`
 }
 
 type gitlabChildVerifyResponse struct {
@@ -653,7 +657,7 @@ const gitlabUserLookupQuery = `query userLookup($username: String!) { user(usern
 const gitlabParentIssueQuery = `query parentIid($projectPath: ID!, $parentIid: String!) { project(fullPath: $projectPath) { issue(iid: $parentIid) { id } } }`
 const gitlabHierarchyAddQuery = `mutation workItemHierarchyAddChildrenItems($parentId: WorkItemID!, $childId: WorkItemID!) { workItemHierarchyAddChildrenItems(input: { id: $parentId, childrenIds: [$childId] }) { workItem { id } errors } }`
 const gitlabHierarchyChildrenQuery = `query children($parentId: WorkItemID!) { workItem(id: $parentId) { widgets { type ... on WorkItemWidgetHierarchy { children { nodes { id iid webUrl state } } } } } }`
-const gitlabChildVerifyQuery = `query childVerify($childId: WorkItemID!) { workItem(id: $childId) { iid webUrl labels { nodes { title } } assignees { nodes { username } } } }`
+const gitlabChildVerifyQuery = `query childVerify($childId: WorkItemID!) { workItem(id: $childId) { iid webUrl widgets { type ... on WorkItemWidgetLabels { labels { nodes { title } } } ... on WorkItemWidgetAssignees { assignees { nodes { username } } } } } }`
 const gitlabWorkItemCloseMutation = `mutation workItemUpdate($childId: WorkItemID!) { workItemUpdate(input: { id: $childId, stateEvent: CLOSE }) { workItem { id iid webUrl state } errors } }`
 const gitlabChildCloseVerifyQuery = `query childCloseVerify($childId: WorkItemID!) { workItem(id: $childId) { id iid webUrl state } }`
 
@@ -787,7 +791,7 @@ func resolveGitLabAssigneeIDs(repo, hostname string, assignees []string) ([]stri
 
 func buildGitLabWorkItemCreateQuery(projectPath, title, description, taskTypeID string, labelIDs, assigneeIDs []string) string {
 	return fmt.Sprintf(
-		`mutation workItemCreate { workItemCreate(input: { namespacePath: %s, title: %s, workItemTypeId: %s, descriptionWidget: { description: %s }, labelsWidget: { labelIds: %s }, assigneesWidget: { assigneeIds: %s } }) { workItem { id iid webUrl labels { nodes { title } } assignees { nodes { username } } } errors } }`,
+		`mutation workItemCreate { workItemCreate(input: { namespacePath: %s, title: %s, workItemTypeId: %s, descriptionWidget: { description: %s }, labelsWidget: { labelIds: %s }, assigneesWidget: { assigneeIds: %s } }) { workItem { id iid webUrl widgets { type ... on WorkItemWidgetLabels { labels { nodes { title } } } ... on WorkItemWidgetAssignees { assignees { nodes { username } } } } } errors } }`,
 		graphqlString(projectPath),
 		graphqlString(title),
 		graphqlString(taskTypeID),
@@ -970,6 +974,22 @@ func gitlabChildByIID(widgets []gitlabWorkItemWidget, iid string) gitlabWorkItem
 		}
 	}
 	return gitlabWorkItem{}
+}
+
+func gitlabWorkItemLabelTitles(widgets []gitlabWorkItemWidget) []string {
+	out := make([]string, 0)
+	for _, widget := range widgets {
+		out = append(out, gitlabLabelTitles(widget.Labels.Nodes)...)
+	}
+	return out
+}
+
+func gitlabWorkItemAssigneeUsernames(widgets []gitlabWorkItemWidget) []string {
+	out := make([]string, 0)
+	for _, widget := range widgets {
+		out = append(out, gitlabAssigneeUsernames(widget.Assignees.Nodes)...)
+	}
+	return out
 }
 
 func gitlabLabelTitles(labels []gitlabLabel) []string {
