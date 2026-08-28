@@ -107,6 +107,10 @@ func EvaluateCommandPolicy(req policycontract.CommandPolicyRequest) policycontra
 		if !req.WriteAllowed && !catalog.readOnlyAllowed(argv) {
 			addDeny("command_not_in_read_only_allowlist")
 		}
+		if reason, expected := pullRequestTargetDeny(root, cwd, argv); reason != "" {
+			addDeny(reason)
+			addWarn("pr_target_branch_expected=" + expected)
+		}
 	}
 	result.DenyReasons = uniqSorted(result.DenyReasons)
 	result.Warnings = uniqSorted(result.Warnings)

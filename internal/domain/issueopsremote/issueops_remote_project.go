@@ -104,31 +104,6 @@ func ProjectKeyFromGitRemoteURL(rawURL, provider string) (string, error) {
 	return host + "/" + strings.Join(parts, "/"), nil
 }
 
-func ValidateGitRemoteMatchesIssue(issueURL, remoteURL, provider string) error {
-	issueKey := ProjectKey(issueURL, provider, "issue")
-	if issueKey == "" {
-		return fmt.Errorf("linked issue project authority is missing or malformed")
-	}
-	remoteKey, err := ProjectKeyFromGitRemoteURL(remoteURL, provider)
-	if err != nil {
-		return err
-	}
-	if provider == "gitlab" && gitRemoteUsesSSHTransport(remoteURL) {
-		parsedIssue, parseErr := url.Parse(issueURL)
-		if parseErr != nil {
-			return fmt.Errorf("linked issue project authority is malformed")
-		}
-		port := parsedIssue.Port()
-		if port != "" && port != "443" && port != "80" {
-			return fmt.Errorf("GitLab SSH remote proves host and project but not nondefault web port %q; configure a trusted host profile mapping", port)
-		}
-	}
-	if remoteKey != issueKey {
-		return fmt.Errorf("git push target must match linked issue project authority")
-	}
-	return nil
-}
-
 func normalizedWebHost(parsed *url.URL) string {
 	host := strings.ToLower(parsed.Hostname())
 	port := parsed.Port()
@@ -145,11 +120,6 @@ func normalizedWebHost(parsed *url.URL) string {
 		return "[" + host + "]"
 	}
 	return host
-}
-
-func gitRemoteUsesSSHTransport(rawURL string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(rawURL))
-	return err == nil && parsed.Scheme == "ssh" || (err != nil || parsed.Scheme == "") && scpRemotePattern.MatchString(strings.TrimSpace(rawURL))
 }
 
 func ProviderFromURL(issueURL string) string {

@@ -25,6 +25,7 @@ import (
 // 결정이고, 소비자는 요청과 결과 형식만 안다.
 func configurePolicyAndGitObservers() {
 	auditdeps.EvaluateCommandPolicy = policyadapter.EvaluateCommandPolicy
+	policyadapter.PreparedBaseBranchLookup = issueopsdeps.PreparedBaseBranchForWorkspace
 	cleanupstatusdeps.GitCmd = preflightadapter.GitCmd
 	cleanupstatusdeps.GitOut = preflightadapter.GitOut
 	gatesdeps.EvaluateCommandPolicy = policyadapter.EvaluateCommandPolicy
