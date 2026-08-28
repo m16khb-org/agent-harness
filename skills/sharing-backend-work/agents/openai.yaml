@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sharing Backend Work"
+  short_description: "Write backend Slack posts shaped for their audience"
+  default_prompt: "Use $sharing-backend-work to draft a Slack post that shares this backend work with the right audience and channel."
