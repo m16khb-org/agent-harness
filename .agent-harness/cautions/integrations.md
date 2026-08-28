@@ -65,6 +65,8 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 - 외부 도구가 없거나 깨졌다는 이유로 core contract를 약화하거나 readiness gate를 통과시켜서는 안 된다.
 - 외부 plugin cache를 하네스가 수정하는 shim을 추가하지 않는다. 문제는 해당 도구의 설치/문서/사용 경로에서 해결한다.
 - 외부 도구의 vault, memory store, graph index, query-pack, lifecycle hook 의미를 agent-harness core에 복제하지 않는다.
+- **외부 CLI를 통한 관찰은 쓰기다.** dry-run·preview·readiness 경로는 외부 프로세스를 spawn하지 않는다(`exec.LookPath` 수준의 존재 확인만 허용). 외부 CLI는 기동만으로 자기 상태 파일을 만들 수 있어(`claude`는 `$HOME/.claude`·`$HOME/.claude.json`), inventory를 읽는 호출도 부작용을 남긴다([2026-08-28 lesson](lessons/2026-08-28-install-dry-run-spawned-the-claude-cli.md)).
+- 선택적 외부 바이너리에 의존하는 게이트는 그 바이너리가 없는 CI에서 항상 통과한다. CI 초록을 그 게이트의 증거로 삼지 말고 도구가 설치된 환경에서 재현한다.
 
 draft-wiki는 별도 staging/export area다. `.agent-harness/draft-wiki/**`에는 사용자가 검토할 후보 Markdown만 둔다. `agent-harness project draft-wiki promote --confirm`은 승인된 draft를 repo-local `exported/` 디렉토리로 이동하고 `export.log`를 append할 뿐, 외부 wiki ingest/lint/index/query-pack을 완료한 것으로 보고하지 않는다.
 
