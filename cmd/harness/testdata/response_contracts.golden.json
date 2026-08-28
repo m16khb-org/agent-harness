@@ -946,6 +946,13 @@
           "path": "$HARNESS_ROOT/skills/shannon"
         },
         {
+          "description": "Use when writing a Slack post that shares backend work with the wider dev team, backend peers, or the backend lead — an API contract change, endpoint or parameter addition, error/response change, deploy, environment notice, investigation result, MR merge approval request, incident, or a report to the backend lead — and the channel and message shape must fit that audience.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "sharing-backend-work",
+          "path": "$HARNESS_ROOT/skills/sharing-backend-work"
+        },
+        {
           "description": "Use when Slack information or actions are needed through Claude Code or Codex, including messages, channels, users, reactions, files, reminders, conversations, and canvases.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5168,6 +5175,7 @@
           "self-augment",
           "self-verify",
           "shannon",
+          "sharing-backend-work",
           "slack-delegate",
           "stability-audit",
           "torvalds",
@@ -7204,6 +7212,13 @@
                 "path": "$HARNESS_ROOT/skills/shannon"
               },
               {
+                "description": "Use when writing a Slack post that shares backend work with the wider dev team, backend peers, or the backend lead — an API contract change, endpoint or parameter addition, error/response change, deploy, environment notice, investigation result, MR merge approval request, incident, or a report to the backend lead — and the channel and message shape must fit that audience.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "sharing-backend-work",
+                "path": "$HARNESS_ROOT/skills/sharing-backend-work"
+              },
+              {
                 "description": "Use when Slack information or actions are needed through Claude Code or Codex, including messages, channels, users, reactions, files, reminders, conversations, and canvases.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8235,6 +8250,7 @@
                 "self-augment",
                 "self-verify",
                 "shannon",
+                "sharing-backend-work",
                 "slack-delegate",
                 "stability-audit",
                 "torvalds",
