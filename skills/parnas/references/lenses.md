@@ -20,24 +20,33 @@ column (tags come from `context.json` → `files[].tags`).
 
 `mr_context.py` selects the applicable lenses from file tags and diff keywords and writes
 them, with this table's `lens` text, to `<out_dir>/workflow_args.json`. Prior-review
-history is handled by the `scoper` skeptic, not a finder lens.
+history is handled by the deterministic prescreen and the `tracer` skeptic, not a finder lens.
 
 ## Finder prompt
 
 The finder and skeptic prompts live in `references/workflow.js` (`finderPrompt`,
 `skepticPrompt`) — that file is the single source of truth. On a host without the
 `Workflow` tool, dispatch one sub-agent per lens with the `finderPrompt` string filled in
-by hand (replace `${...}` with values from `workflow_args.json`), then three skeptics per
-candidate with `skepticPrompt`, and apply the verdict rule from `verification.md`.
-Give each finder the SAME context and a DIFFERENT lens; never share findings between finders.
-Each finder returns at most `perLensCap` (6) candidates.
+by hand (replace `${...}` with values from `workflow_args.json`), apply the prescreen from
+`verification.md` in your head, then a tracer per surviving candidate and a reproducer only
+where the tracer did not refute, and apply the verdict rule from `verification.md`.
+Give each finder ONE pack and its bundle's lenses; never share findings between finders.
+Each finder is one **unit** (lens bundle × shard): it reads exactly one pack file
+(`pack/<unit>.md`) as its first message, whole, then applies each lens of its bundle
+separately and tags every candidate with `lens`. It has 10 assistant messages in total and
+must batch follow-up reads into message 2. It returns at most `perLensCap` candidates per
+lens (`max(3, ceil(maxCandidates / lenses) + 1)` — the cap used to be 6 and half of what
+finders produced was discarded unread). `mr_context.py → LENS_BUNDLES` defines the bundles,
+`files_for_lens` decides which files a lens sees (mirrors the `applies` column) and
+`shard_files` bin-packs the bundle's union under ~150 KB of diff.
 
 Reference copy of the finder contract (keep in sync with workflow.js):
 
 ```
 You are one inspector in a formal design inspection. Lens: <lens id> — <lens text>.
 Repository checkout at head: <worktree or repo_dir> (read-only; never edit, never checkout, never post).
-Context pack: <out_dir>/summary.md (read first), <out_dir>/diff.patch (the cumulative diff).
+Pack file (read first, whole, one call): <out_dir>/pack/<unit>.md — the slice's diff, defs, rules, threads, lessons.
+Budget: at most 10 assistant messages; batch independent reads in one message.
 Rule pack files are listed in summary.md; read the ones whose globs match the files you inspect.
 <if codegraph: `codegraph explore "<symbol>"` prints definitions + call paths — use it before grep.>
 
@@ -57,11 +66,11 @@ Return JSON only:
    "category":"bug|security|performance|business-logic|data|api-contract|test|rule|scope",
    "title":"<Korean, one sentence>","what":"<Korean>","why":"<Korean failure scenario>","how":"<Korean fix>",
    "evidence":["path:line — what it proves", ...],"upstream":"<what you saw>","downstream":"<what you saw>",
-   "suggestion":"<replacement code or null>","rule":"<rule file or null>","confidence":0-100}],
+   "suggestion":"<replacement code or null>","rule":"<rule file or null>","confidence":0-100,"newly_reachable":false}],
  "verified_ok":[{"concern":"<우려, 한 구절>","why_ok":"<왜 괜찮은지 한 문장, 근거 file:line 포함>","loc":"file:line","thread":"<contradicted existing thread id or null>"}]}
 ```
 
-Rules baked into the prompt: at most `perLensCap` candidates and 6 `verified_ok` per lens;
+Rules baked into the prompt: at most `perLensCap` candidates and 3 `verified_ok` per lens;
 `suggestion` is required for `api-contract` and any one-line decorator/description/config
 fix; a hop you cannot find caps confidence at 50 and is stated, never guessed.
 

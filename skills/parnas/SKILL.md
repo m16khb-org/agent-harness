@@ -24,9 +24,9 @@ or GitHub (`gh`). `agents/openai.yaml` exposes it as `$parnas` on Codex.
 ## Pipeline
 
 ```
-0 Preflight  scripts/mr_context.py  → summary.md, context.json, workflow_args.json, worktree
+0 Preflight  scripts/mr_context.py  → summary.md, defs.md, pack/, hunks/, context.json, workflow_args.json, worktree
 1 Gate       scripts/quality_gate.py → gate.md / gate.json (deterministic; ~30s)
-2 Find+Verify references/workflow.js → confirmed findings, refuted, verified_ok
+2 Find+Verify references/workflow.js → confirmed findings, refuted, verified_ok, refuted_for_history
 3 Merge      you → findings.json
 4 Post       scripts/post_review.py → dry run, then --post, then read-back table
 ```
@@ -42,8 +42,17 @@ review by this skill already exists for this head) unless the user explicitly as
 anyway. When `large=true` (> 40 files or > 2000 added lines), tell the user the scale and
 ask whether to narrow (directories or lenses) before spending agents.
 
-`workflow_args.json` already contains the applicable lenses, their text, the checkout path
-and the candidate cap — never hand-build it.
+`workflow_args.json` already contains the finder units, the checkout path, the candidate caps,
+the hunk ranges and prior lessons for the prescreen — never hand-build it. A **unit** is one
+lens bundle × one shard of the changed files (bundles: behavior = logic/boundary/data/async,
+contract = security/contract/rules, intent = tests/scope/intent); each unit has one
+self-contained pack (`pack/<unit>.md`: that slice's cumulative diff, the definitions and
+one-hop neighbours of the symbols it defines, matching rules, threads and prior lessons). One
+finder applies every lens of its bundle over one pack read — measured 2026-08-28, re-reading the
+same pack per lens cost more than lens independence bought. Shards keep a pack under ~150 KB
+of diff so a finder can read it whole in one call; `defs.md` and `hunks/<file>.patch` serve
+the skeptics. The number of units is printed in `summary.md` — a `large` MR yields ~9; ask the
+user whether to narrow before spending them.
 
 ### 1. Gate
 
@@ -62,10 +71,21 @@ from the gate; never estimate them.
 
 Claude Code: `Workflow({scriptPath: "<skill>/references/workflow.js", args: <contents of
 workflow_args.json>})`. Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
-from that file with the host's sub-agent tool, in parallel, and apply the verdict rule in
-`references/verification.md`. Budget: `lenses × 1 + candidates × 3` agents (default cap 24
-candidates → ≤ 83; `large` MRs cap 12). Save the result to `<out_dir>/workflow-result.json`
-before reading it — the `refuted` list with verdicts is large.
+from that file with the host's sub-agent tool and apply the prescreen and verdict rule in
+`references/verification.md`. Budget: `units × 1 + candidates × (1..2)` agents — a
+deterministic prescreen drops off-hunk and already-refuted candidates, the tracer runs first,
+and the reproducer only where the tracer failed to refute. Every agent has a hard message
+budget (finder 10, skeptic 8) and is told to batch reads, because an agent's cost is
+Σ(context length per turn), not its output. Every role runs on the session model (opus) unless `args.models = {finder, tracer, reproducer}`
+says otherwise — measured 2026-08-28 on !5617, cheaper models did not use fewer tokens (sonnet
+finders took as many turns as opus) and a haiku critic burned 14M tokens for zero surviving
+candidates, so the cost levers are structural: one pack per unit, a message budget, the
+prescreen, and incremental re-review. The tracer is **blind** to the finder's
+evidence/upstream/downstream (information asymmetry, OpenCodeReview) — it must find its own
+hops; the reproducer sees everything. The result's `cost` block reports agents per role,
+prescreen kills and carried findings — quote it in the chat deliverable. The result's `cost` block reports agents,
+prescreened, reproducers skipped and output tokens — quote it in the chat deliverable. Save the result to
+`<out_dir>/workflow-result.json` before reading it — the `refuted` list with verdicts is large.
 
 ### 3. Merge (you are the moderator)
 
@@ -99,7 +119,7 @@ python3 <skill>/scripts/post_review.py ... --post                               
 ```
 
 Inline bar is severity-weighted: critical/high ≥ 50, medium ≥ 65, low ≥ 80, and any
-finding all three skeptics failed to refute (`skeptics_passed`) qualifies at ≥ 50. At most 8
+finding both skeptics failed to refute (`skeptics_passed`) qualifies at ≥ 50. At most 8
 inline, agent findings first; deterministic gate findings get one inline slot (the worst by
 complexity) and the rest a table. Medium+ findings under the bar are shown in "저자 확인
 요청" with their `what`, never folded away. Pre-existing and minor (≤ 10 LOC over, complexity
@@ -114,6 +134,25 @@ When the user did not ask to post, the deliverable in chat is: verdict, the "지
 refuted candidate (title + winning skeptic reason). Do not paste the inline bodies. The
 summary's first paragraph must name only defects that appear in the tables or in "저자 확인
 요청" — never mention a finding the reader cannot find below.
+
+### 4b. Remember refutations (team memory)
+
+```bash
+python3 <skill>/scripts/record_refuted.py --result <out_dir>/workflow-result.json --context <out_dir>/context.json
+```
+
+Appends evidence-backed refutations (skeptic confidence ≥ 80) to `<repo>/.agent-harness/parnas/refuted.jsonl`
+— commit it with the repo. The next run's prescreen drops a same-file candidate whose title/what overlap
+≥ 0.5 with a recorded refutation; `security`/`data` candidates are never suppressed. Prescreen kills are
+not recorded (they carry no evidence).
+
+### 4c. Re-review of a moved head
+
+Run preflight with `--incremental`: when `<out_dir>` already holds `workflow-result.json` and
+`context.prev.json` from the previous head, only units whose files changed since that head are
+re-inspected and findings on untouched files are carried (`carried_from`). Findings on changed
+files are dropped and re-found or not. `post_review.py` still validates every line against the
+new diff.
 
 ### 5. Clean up
 
@@ -139,7 +178,8 @@ summary's first paragraph must name only defects that appear in the tables or in
 | Rationalisation | Reality |
 |---|---|
 | "The diff makes it obvious, no need to open the callee" | !5581: the "obvious" empty-string bug was blocked by `@MinLength(1)` upstream and filtered downstream. Open it. |
-| "Three skeptics per candidate is expensive" | One false positive costs the author a reply and the next real finding its credibility. Cut candidates (`maxCandidates`), not skeptics. |
+| "Two skeptics per candidate is expensive" | One false positive costs the author a reply and the next real finding its credibility. Cut candidates (`maxCandidates`), not skeptics — the 2026-08-28 measurement showed finders exploring by hand (105 turns each) were the cost, not the skeptics. |
+| "The finder needs to grep around to be sure" | The pack already holds its diff slice, definitions and one-hop neighbours; 10 messages is the budget. Before packs, finders spent 30 turns grepping and never managed to read the 462 KB diff at all. |
 | "It's in CLAUDE.md so I'll flag it" | Only if the rule text names it, the glob matches, and it's on a changed line. |
 | "Post now, verify after" | The read-back table is the deliverable. |
 | "No findings feels weak" | An approve with a traced `verified_ok` list is the strongest review there is. |
