@@ -45,7 +45,7 @@ Orca는 `exec.CommandContext`로 설치된 CLI를 호출하는 선택적 IssueOp
 
 ## 2.2 Project skills
 
-`skills/`에는 현재 **33개** shared skill이 있다. 현재 inventory는 `agent-harness inspect --json`의 `skills` 배열과 각 `skills/<name>/SKILL.md`로 확인할 수 있으며, 분해 합계는 **pioneer-namesake 12 + operational 21 = 33**이다.
+`skills/`에는 현재 **34개** shared skill이 있다. 현재 inventory는 `agent-harness inspect --json`의 `skills` 배열과 각 `skills/<name>/SKILL.md`로 확인할 수 있으며, 분해 합계는 **pioneer-namesake 12 + operational 22 = 34**이다.
 
 **Pioneer-namesake (12)** — 컴퓨터 과학 선구자의 이름을 딴 language/tech agnostic 스킬:
 
@@ -64,11 +64,11 @@ Orca는 `exec.CommandContext`로 설치된 CLI를 호출하는 선택적 IssueOp
 | `turing` | Evidence-Bound Execution — 증거 기반 목표 실행 |
 | `von-neumann` | Strategic Planning — decision-complete 계획 수립 |
 
-**Operational (21)** — host·workflow·문서·QA 운영 스킬:
+**Operational (22)** — host·workflow·문서·QA 운영 스킬:
 
 | 범주 | 스킬 |
 |------|------|
-| 협업 | `slack-delegate` |
+| 협업 | `slack-delegate`, `sharing-backend-work` |
 | Git / IssueOps | `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-branch-worktree`, `issueops-cleanup` |
 | Project docs | `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize` |
 | Browser QA | `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact` |
@@ -76,7 +76,7 @@ Orca는 `exec.CommandContext`로 설치된 CLI를 호출하는 선택적 IssueOp
 | 운영 개선 | `self-verify`, `self-augment`, `stability-audit` |
 | 작성·시각화 | `fluent-korean`, `diagram-design` |
 
-기본 설치는 같은 `skills/` 원본을 `~/.codex/skills/`, `~/.claude/skills/`, `~/.omo/agent/skills/`에 연결한다. repo-local skill link는 `--project-local`에서만 생성하고, upstream catalog에서 받은 외부 skill cache는 이 33개 원본과 분리한다. trigger와 사용 계약은 각 `SKILL.md`가 정의한다.
+기본 설치는 같은 `skills/` 원본을 `~/.codex/skills/`, `~/.claude/skills/`, `~/.omo/agent/skills/`에 연결한다. repo-local skill link는 `--project-local`에서만 생성하고, upstream catalog에서 받은 외부 skill cache는 이 34개 원본과 분리한다. trigger와 사용 계약은 각 `SKILL.md`가 정의한다.
 
 ---
 
