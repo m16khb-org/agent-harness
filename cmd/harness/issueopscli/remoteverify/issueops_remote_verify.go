@@ -104,6 +104,17 @@ func ObserveRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArt
 	return live.Merged, nil
 }
 
+// ObserveRemoteArtifactTargetLive는 artifact의 현재 target(base) 브랜치만
+// 관측한다. 머지 여부와 무관하게 provider가 지금 보여주는 값이며, branch
+// retarget이 요청된 base를 대조하는 유일한 근거다.
+func ObserveRemoteArtifactTargetLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (string, error) {
+	live, err := fetchRemoteArtifactLive(artifact)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(live.BaseRefName), nil
+}
+
 func fetchRemoteArtifactLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (liveRemoteArtifact, error) {
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))

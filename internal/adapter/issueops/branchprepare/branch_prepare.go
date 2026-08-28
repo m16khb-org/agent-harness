@@ -24,6 +24,11 @@ type Store struct {
 	// nil이거나 부모를 찾지 못하면 검증을 건너뛴다. 자식이 아니거나 우산이 이미
 	// 정리된 경우이며, 근거를 잃은 검증이 일상 사이클을 막아서는 안 된다.
 	UmbrellaForChildIssue func(repo, childIssueURL string) (model.IssueOpsRecord, bool)
+	// ObserveArtifactTargetBranch reads the PR/MR's current target branch from
+	// the provider. Retarget only accepts a base the provider shows.
+	ObserveArtifactTargetBranch func(artifact model.IssueOpsRemoteArtifactVerification) (string, error)
+	// RemoteBranchPresent reports whether origin currently has the branch.
+	RemoteBranchPresent func(repo, branch string) (bool, error)
 }
 
 func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareRequest) (model.IssueOpsRecord, error) {

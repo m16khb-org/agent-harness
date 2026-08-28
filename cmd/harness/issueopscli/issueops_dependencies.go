@@ -37,6 +37,7 @@ type IssueOpsCLIDeps struct {
 	ListIssueOpsCycles                          func(stateRoot, repo string) (issueopsinventorycontract.ListResult, error)
 	ObserveNativeProcessAncestry                func(pid int) ([]issueopscontract.NativeProcessReceipt, error)
 	PrepareIssueOpsBranchWithActor              func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
+	RetargetIssueOpsBranchWithActor             func(stateRoot, id string, req issueopscontract.IssueOpsBranchRetargetRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	AwaitIssueOpsBranchLink                     func(ctx context.Context, stateRoot string, req issueopscontract.AwaitBranchLinkRequest) (issueopscontract.AwaitBranchLinkResult, error)
 	PruneIssueOps                               func(stateRoot string, maxAge time.Duration, confirm bool) (issueopsretentioncontract.Result, error)
 	ReadIssueOps                                func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error)
@@ -108,6 +109,9 @@ func ConfigureIssueOpsRuntime2(deps IssueOpsCLIDeps) {
 	}
 	if deps.PrepareIssueOpsBranchWithActor != nil {
 		issueOpsCLIDeps.PrepareIssueOpsBranchWithActor = deps.PrepareIssueOpsBranchWithActor
+	}
+	if deps.RetargetIssueOpsBranchWithActor != nil {
+		issueOpsCLIDeps.RetargetIssueOpsBranchWithActor = deps.RetargetIssueOpsBranchWithActor
 	}
 	if deps.PruneIssueOps != nil {
 		issueOpsCLIDeps.PruneIssueOps = deps.PruneIssueOps
@@ -215,6 +219,9 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 			return nil, errIssueOpsCLINotConfigured
 		},
 		PrepareIssueOpsBranchWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
+			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		},
+		RetargetIssueOpsBranchWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsBranchRetargetRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
 		PruneIssueOps: func(stateRoot string, maxAge time.Duration, confirm bool) (issueopsretentioncontract.Result, error) {

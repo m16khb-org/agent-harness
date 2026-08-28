@@ -590,3 +590,21 @@ func mutateFinishRecord(t *testing.T, stateRoot, id string, mutate func(*issueop
 		t.Fatal(err)
 	}
 }
+
+// 재타깃이 branch retarget으로 레코드에 기록되면 finish는 준비 base와 관측 base가
+// 같으므로 drift를 보고하지 않는다. 옛 base(release/stg)가 원격에 살아 있어도
+// 마찬가지다 — 면제가 아니라 기록된 결정이기 때문이다.
+func TestCleanupFinishAcceptsRecordedRetarget(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.BranchPrepare.Retargets = []issueops.IssueOpsBranchRetarget{{FromBase: "main", ToBase: "2803-umbrella", Reason: "child of the umbrella"}}
+		rec.BranchPrepare.BaseBranch = "2803-umbrella"
+	})
+	git := &fakeFinishGit{branchOID: "abc123", defaultRef: "refs/heads/main", basePresent: true}
+	req := finishRequest(record.ID, false, "")
+	req.MergedBaseBranch = "2803-umbrella"
+	result, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(git))
+	if err != nil || containsString(result.Missing, "base_branch_drifted") || result.RetargetedBase != nil {
+		t.Fatalf("a recorded retarget is the prepared base, not drift: err=%v missing=%v retargeted=%+v", err, result.Missing, result.RetargetedBase)
+	}
+}

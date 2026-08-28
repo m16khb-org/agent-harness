@@ -20,6 +20,11 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
   레코드가 dead-end에 빠졌다(#490, `io-71af6dd82f0d` 실측). 이제 준비 base가 원격에서
   사라졌고 관측 base가 기본 브랜치일 때만 정상 재타깃으로 통과한다. 관측 실패는
   `merged_base_remote_unobserved`로 fail-closed이며 손으로 base를 주장하는 플래그는 없다.
+- 준비 base가 살아 있는 채로 MR을 다른 브랜치(예: 우산 이슈 브랜치)로 옮겨 머지하면
+  finish는 설계대로 drift로 거부한다(#2819 `io-6ae54b1c4f0f` 실측). 판정을 완화하지 말고
+  `issueops branch retarget --base-branch REF --reason TEXT`로 finish 전에 결정을 기록한다.
+  provider가 보여주는 target과 origin 존재를 모두 관측해야 받아들이며 이력은
+  `branch_prepare.retargets[]`에 남는다(2026-08-28).
 - IssueOps 상태 전이·lease·publication은 durable `issueops` 명령이 소유한다. hook은
   `SessionStart` project-doc catalog 주입뿐이며 아무것도 차단하지 않는다(2026-08-27).
 - IssueOps worktree 밖 mutation은 절대경로 + `issueops execution status` 재확인으로 막는다.

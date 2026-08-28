@@ -151,6 +151,38 @@ func prepareIssueOpsBranch(stateRoot, id string, req issueops.IssueOpsBranchPrep
 	return rec, err
 }
 
+// BranchRetargetDeps는 branch retarget의 외부 관측 주입점이다. artifact target
+// readback은 provider CLI 표면(cmd 계층)에 있으므로 여기서 주입받는다.
+type BranchRetargetDeps struct {
+	ObserveArtifactTargetBranch func(artifact issueops.IssueOpsRemoteArtifactVerification) (string, error)
+}
+
+func RetargetIssueOpsBranchWithActor(stateRoot, id string, req issueops.IssueOpsBranchRetargetRequest, actor IssueOpsActor, deps BranchRetargetDeps) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateRetargetMutation(record, &actor); actorErr != nil {
+			return actorErr
+		}
+		store := issueOpsBranchPrepareStore()
+		store.ObserveArtifactTargetBranch = deps.ObserveArtifactTargetBranch
+		store.RemoteBranchPresent = func(repo, branch string) (bool, error) {
+			code, stdout, stderr := GitCmd(repo, "ls-remote", "--heads", "origin", "refs/heads/"+strings.TrimSpace(branch))
+			if code != 0 {
+				return false, fmt.Errorf("git ls-remote failed: %s", strings.TrimSpace(stderr))
+			}
+			return len(strings.Fields(strings.TrimSpace(stdout))) > 0, nil
+		}
+		var e error
+		rec, e = branchprepare.Retarget(store, stateRoot, id, req)
+		return e
+	})
+	return rec, err
+}
+
 func ValidateIssueOpsIssueBranch(branch string) error {
 	return validateIssueOpsIssueBranch(branch)
 }

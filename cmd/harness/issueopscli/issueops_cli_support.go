@@ -28,7 +28,7 @@ func issueOpsUsageText() string {
 		cliadapter.IssueOpsActorFlagLegend + "\n"
 }
 
-const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]\n       agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]"
+const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]\n       agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]\n       agent-harness issueops branch retarget --id ID --base-branch REF --reason TEXT [--json]"
 
 // issueOpsChildUsageText는 canonical catalog에서 child 하위 명령만 골라 렌더한다.
 // usage 문장을 다시 적지 않아 parser/help 계약의 별도 drift를 막는다(#207).
@@ -53,6 +53,9 @@ func runIssueOpsBranch(args []string) error {
 	}
 	if args[0] == "await-link" {
 		return runIssueOpsBranchAwaitLink(args[1:])
+	}
+	if args[0] == "retarget" {
+		return runIssueOpsBranchRetarget(args[1:])
 	}
 	if args[0] != "prepare" {
 		return fmt.Errorf("unknown issueops branch subcommand")
@@ -126,6 +129,24 @@ func printIssueOpsErrorJSON(err error) error {
 // 시작하므로, 그 시작 창을 terminal 실패로 다루지 않으려면 owner가 기다릴
 // 수단이 필요하다. 대기를 프롬프트 지시가 아니라 명령으로 두어야 간격과
 // 상한이 값으로 고정된다.
+// runIssueOpsBranchRetarget은 provider가 실제로 보여주는 PR/MR target으로 준비
+// base를 옮긴다. cleanup finish의 base_branch_drifted는 레코드에 없는 base 변경을
+// 거부하므로, 정당한 재타깃은 finish 전에 이 명령으로 기록한다.
+func runIssueOpsBranchRetarget(args []string) error {
+	fs := flag.NewFlagSet("issueops branch retarget", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
+	baseBranch := fs.String("base-branch", "", "new base branch; must equal the PR/MR target the provider shows")
+	reason := fs.String("reason", "", "why the base changed")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := issueOpsCLIDeps.RetargetIssueOpsBranchWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id,
+		issueopscontract.IssueOpsBranchRetargetRequest{BaseBranch: *baseBranch, Reason: *reason}, actor.actor())
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
 func runIssueOpsBranchAwaitLink(args []string) error {
 	fs := flag.NewFlagSet("issueops branch await-link", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")

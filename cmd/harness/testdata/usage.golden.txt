@@ -35,6 +35,7 @@ Usage:
   agent-harness issueops child drop --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]
+  agent-harness issueops branch retarget --id ID --base-branch REF --reason TEXT RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops link-worktree --id ID --worktree-path PATH RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]

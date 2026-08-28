@@ -47,6 +47,24 @@ type IssueOpsBranchPrepare struct {
 	LinkVerified    bool                        `json:"link_verified"`
 	Steps           []IssueOpsBranchPrepareStep `json:"steps"`
 	CreatedAt       string                      `json:"created_at"`
+	// Retargets records every provider-observed base change after prepare, oldest
+	// first. BaseBranch always equals the last entry's ToBase.
+	Retargets []IssueOpsBranchRetarget `json:"retargets,omitempty"`
+}
+
+// IssueOpsBranchRetarget is one accepted base change. ToBase was read back from
+// the remote artifact and observed on origin at ObservedAt; it is never asserted.
+type IssueOpsBranchRetarget struct {
+	FromBase    string `json:"from_base"`
+	ToBase      string `json:"to_base"`
+	Reason      string `json:"reason"`
+	ArtifactURL string `json:"artifact_url"`
+	ObservedAt  string `json:"observed_at"`
+}
+
+type IssueOpsBranchRetargetRequest struct {
+	BaseBranch string
+	Reason     string
 }
 
 type IssueOpsBranchPrepareRequest struct {

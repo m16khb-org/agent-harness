@@ -111,6 +111,14 @@ type stableV1BranchPrepare struct {
 	LinkVerified    bool                        `json:"link_verified"`
 	Steps           []stableV1BranchPrepareStep `json:"steps"`
 	CreatedAt       string                      `json:"created_at"`
+	Retargets       []stableV1BranchRetarget    `json:"retargets,omitempty"`
+}
+type stableV1BranchRetarget struct {
+	FromBase    string `json:"from_base"`
+	ToBase      string `json:"to_base"`
+	Reason      string `json:"reason"`
+	ArtifactURL string `json:"artifact_url"`
+	ObservedAt  string `json:"observed_at"`
 }
 type stableV1RemoteArtifact struct {
 	Provider     string   `json:"provider"`
