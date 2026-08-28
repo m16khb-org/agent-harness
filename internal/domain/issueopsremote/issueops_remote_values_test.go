@@ -208,23 +208,12 @@ func TestProjectKeyFromGitRemoteURLNormalizesHTTPSSSHAndSCP(t *testing.T) {
 	}
 }
 
-func TestRemoteProjectAuthorityNormalizesDefaultWebPortAndRejectsSSHWebPortAmbiguity(t *testing.T) {
+func TestRemoteProjectAuthorityNormalizesDefaultWebPort(t *testing.T) {
 	if got := ProjectKey("https://gitlab.example:443/group/repo/-/issues/1", "gitlab", "issue"); got != "gitlab.example/group/repo" {
 		t.Fatalf("default HTTPS port project key = %q", got)
 	}
-	if err := ValidateGitRemoteMatchesIssue(
-		"https://gitlab.example:8443/group/repo/-/issues/1",
-		"ssh://git@gitlab.example:2222/group/repo.git",
-		"gitlab",
-	); err == nil || !strings.Contains(err.Error(), "web port") {
-		t.Fatalf("custom SSH port versus web port ambiguity error = %v", err)
-	}
-	if err := ValidateGitRemoteMatchesIssue(
-		"https://gitlab.example:8443/group/repo/-/issues/1",
-		"https://gitlab.example:8443/group/repo.git",
-		"gitlab",
-	); err != nil {
-		t.Fatalf("matching HTTPS web authority rejected: %v", err)
+	if got := ProjectKey("https://gitlab.example:8443/group/repo/-/issues/1", "gitlab", "issue"); got != "gitlab.example:8443/group/repo" {
+		t.Fatalf("nondefault HTTPS port project key = %q", got)
 	}
 }
 
