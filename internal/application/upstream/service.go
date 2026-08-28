@@ -20,11 +20,19 @@ type Service struct {
 }
 
 // Sync provisions everything the host is missing and reports every declared
-// entry. With dryRun the host is only observed, never written to.
+// entry.
+//
+// With dryRun nothing is provisioned and the plugin host CLI is not executed at
+// all — not even to read its inventory. Executing it is itself a write: the
+// Claude CLI creates $HOME/.claude and $HOME/.claude.json on startup, which made
+// `install --dry-run` mutate the very home directory it was only describing. A
+// dry-run therefore reports declared plugins as planned instead of checking
+// which are already installed. Skills stay observed because that is a directory
+// read with no side effects.
 func (s Service) Sync(ctx context.Context, cfg upstreamcontract.Config, dryRun bool) (upstreamcontract.Report, error) {
 	report := upstreamcontract.Report{DryRun: dryRun, Items: []upstreamcontract.ItemResult{}}
 	pluginHostAvailable := s.Plugins != nil && s.Plugins.Available()
-	observed := s.observe(ctx, pluginHostAvailable)
+	observed := s.observe(ctx, pluginHostAvailable && !dryRun)
 
 	items := upstreamdomain.PlanWithoutPluginHost(cfg, observed)
 	if pluginHostAvailable {
@@ -39,9 +47,12 @@ func (s Service) Sync(ctx context.Context, cfg upstreamcontract.Config, dryRun b
 // observe reads what the host already has. A host that cannot be read is
 // treated as empty: the planner then proposes installs, and the install step
 // itself reports the real failure, which is more actionable than a silent skip.
-func (s Service) observe(ctx context.Context, pluginHostAvailable bool) upstreamcontract.Observed {
+// queryPluginHost is false whenever the plugin CLI must not be executed — it is
+// absent, or this is a dry-run, where spawning it would write to the home
+// directory.
+func (s Service) observe(ctx context.Context, queryPluginHost bool) upstreamcontract.Observed {
 	observed := upstreamcontract.Observed{}
-	if pluginHostAvailable {
+	if queryPluginHost {
 		if plugins, err := s.Plugins.InstalledPlugins(ctx); err == nil {
 			observed.Plugins = plugins
 		}

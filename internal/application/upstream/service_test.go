@@ -223,3 +223,31 @@ func TestSyncReportsAMissingSkillStoreInsteadOfPanicking(t *testing.T) {
 		t.Fatalf("a missing skill store must surface a structured error")
 	}
 }
+
+// TestSyncDryRunNeverExecutesThePluginHostCLI fixes the rule the previous
+// dry-run test only half-checked: it asserted that no write method ran, while
+// the observation still executed the third-party plugin CLI. Executing that CLI
+// is itself a write — `claude` creates $HOME/.claude and $HOME/.claude.json on
+// startup — which made `install --dry-run` mutate the home directory it was
+// only supposed to describe.
+func TestSyncDryRunNeverExecutesThePluginHostCLI(t *testing.T) {
+	plugins := &fakePluginHost{available: true, installed: []string{"eli5@claude-community"}, markets: []string{"claude-community"}}
+	skills := &fakeSkillStore{installed: []string{"diagram-design"}}
+	service := Service{Plugins: plugins, Skills: skills}
+
+	report, err := service.Sync(context.Background(), testConfig(), true)
+	if err != nil {
+		t.Fatalf("Sync error: %v", err)
+	}
+	if plugins.listCalls != 0 {
+		t.Fatalf("dry-run queried the plugin host CLI %d times; running it writes to the home directory", plugins.listCalls)
+	}
+	// Skills are observed through a plain directory read, which has no side
+	// effects, so an already-present skill is still reported as skipped.
+	assertStatuses(t, report, map[string]string{
+		"eli5@claude-community":             upstreamcontract.StatusPlanned,
+		"open-code-review@open-code-review": upstreamcontract.StatusPlanned,
+		"cua-driver":                        upstreamcontract.StatusPlanned,
+		"diagram-design":                    upstreamcontract.StatusSkipped,
+	})
+}
