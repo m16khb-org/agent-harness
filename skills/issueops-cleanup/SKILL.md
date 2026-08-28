@@ -63,6 +63,12 @@ decision and a separate `issueops cleanup remote-branch` flow.
    `retargeted_base` with the prepared base, observed base, default branch, and
    the absence it observed. If either observation fails, the preview blocks on
    `merged_base_remote_unobserved` — there is no flag to assert a base by hand.
+   A deliberate retarget (for example a child MR moved onto its umbrella branch
+   while the original base is still alive) is recorded **before** finish with
+   `issueops branch retarget --id ID --base-branch REF --reason TEXT`: it accepts
+   only a base the provider currently shows as the PR/MR target and that exists on
+   `origin`, then appends `branch_prepare.retargets[]` and moves the prepared base,
+   so finish compares against the recorded decision instead of blocking.
    To check the exemption yourself use `git ls-remote --heads origin
    refs/heads/<prepared-base>` (empty output means gone); do not reach for
    `ls-remote --symref`, which the command policy rejects.

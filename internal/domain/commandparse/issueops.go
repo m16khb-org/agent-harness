@@ -82,7 +82,7 @@ func ExactIssueOpsOwnerMutation(command ExactIssueOpsCommand) (map[string][]stri
 	switch command.Path {
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
+		"implementation-review record", "branch prepare", "branch retarget", "intent record", "domain-review record", "design review", "regress",
 		"plan-prep record",
 		"link-child", "link-related", "feedback add",
 		"child start", "child status", "child accept", "child reject", "child drop",
@@ -340,6 +340,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	// 있어야 하므로 가드가 이 형태 하나를 명시적으로 허용한다(#319).
 	case "branch await-link":
 		return v("--id", "--timeout", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "branch retarget":
+		return v("--id", "--base-branch", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "cleanup status":
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--json"), r, true
 	case "cleanup close-children":

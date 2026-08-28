@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/issueopscli"
+	"agent-harness/cmd/harness/issueopscli/remoteverify"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
@@ -32,6 +33,11 @@ func configureIssueOpsCLIRuntime() {
 		ListIssueOpsCycles:             issueOpsInventoryListHandler(observer),
 		ObserveNativeProcessAncestry:   issueopscore.ObserveNativeProcessAncestry,
 		PrepareIssueOpsBranchWithActor: issueopscore.PrepareIssueOpsBranchWithActor,
+		RetargetIssueOpsBranchWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsBranchRetargetRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
+			return issueopscore.RetargetIssueOpsBranchWithActor(stateRoot, id, req, actor, issueopscore.BranchRetargetDeps{
+				ObserveArtifactTargetBranch: remoteverify.ObserveRemoteArtifactTargetLive,
+			})
+		},
 		AwaitIssueOpsBranchLink: func(ctx context.Context, stateRoot string, req issueopscontract.AwaitBranchLinkRequest) (issueopscontract.AwaitBranchLinkResult, error) {
 			return issueopscore.AwaitBranchLink(ctx, stateRoot, req, issueopscore.AwaitBranchLinkDeps{
 				ObserveLinkedBranches: issueopscore.ObserveGitHubLinkedBranches(issueopscore.LiveProviderCLI),
