@@ -39,6 +39,21 @@ type ExecutionReplaceDependencies struct {
 	// ReadIssue는 finalize와 reseed의 재봉인이 현재 이슈 본문을 다시 읽는
 	// 경로다. orca 사이클에서 누락되면 재봉인이 fail-closed로 거부된다.
 	ReadIssue ExecutionIssueSnapshotReadFunc
+	// inspectWorkspace는 quiescence 판정의 워크스페이스 점유 관측이다. 기본
+	// 구현은 시스템 전역 lsof라 호스트 상태와 그 3초 상한에 묶이므로, lease
+	// 상태 기계를 검증하는 테스트는 결정적 관측자를 주입한다. 비공개 필드라
+	// 프로덕션 경로는 항상 기본 구현을 쓴다.
+	inspectWorkspace executionWorkspaceProcessInspector
+}
+
+// executionWorkspaceProcessInspector는 워크트리를 점유한 프로세스를 관측한다.
+type executionWorkspaceProcessInspector func(root string, excluded map[int]bool) ([]workspaceProcess, error)
+
+func (deps ExecutionReplaceDependencies) workspaceInspector() executionWorkspaceProcessInspector {
+	if deps.inspectWorkspace != nil {
+		return deps.inspectWorkspace
+	}
+	return inspectWorkspaceProcesses
 }
 
 func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
@@ -608,7 +623,7 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 			excluded[ancestor] = true
 		}
 	}
-	workspaceProcesses, err := inspectWorkspaceProcesses(record.Execution.Workspace.Root, excluded)
+	workspaceProcesses, err := deps.workspaceInspector()(record.Execution.Workspace.Root, excluded)
 	if err != nil {
 		return "", err
 	}

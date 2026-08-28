@@ -436,3 +436,13 @@ func issueOpsWeakApprovedDesignReviewForTest() *issueops.IssueOpsDesignReview {
 		ReviewedAt:     "2026-06-05T00:00:00Z",
 	}
 }
+
+// quiescentWorkspaceInspector는 "워크트리를 점유한 프로세스가 없다"는 결정적
+// 관측이다. 기본 구현은 시스템 전역 lsof라 호스트의 열린 파일 목록과 3초
+// 프로브 상한에 묶이고, 전체 스위트가 패키지를 병렬로 돌리면 그 상한을 넘겨
+// lease 테스트가 깨진다. lease 상태 기계만 검증하는 테스트는 이 관측자를 쓴다.
+func quiescentWorkspaceInspector() executionWorkspaceProcessInspector {
+	return func(string, map[int]bool) ([]workspaceProcess, error) {
+		return nil, nil
+	}
+}

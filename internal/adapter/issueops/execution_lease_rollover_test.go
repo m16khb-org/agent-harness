@@ -40,6 +40,7 @@ func TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover(t *testin
 				State: "open", Source: "test",
 			}, nil
 		},
+		inspectWorkspace: quiescentWorkspaceInspector(),
 	}
 
 	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
@@ -233,4 +234,53 @@ func rolloverExecutionFixture(t *testing.T) (string, contractissueops.IssueOpsRe
 		t.Fatal(err)
 	}
 	return stateRoot, written
+}
+
+// 워크스페이스 quiescence 관측은 시스템 전역 lsof다. lease 상태 기계를 검증하는
+// 테스트가 호스트의 열린 파일 목록과 그 프로브 상한에 묶이면 부하에서 깨지므로,
+// finalize 경로는 주입된 관측자를 써야 한다.
+func TestExecutionFinalizePreviewUsesInjectedWorkspaceInspector(t *testing.T) {
+	stateRoot, record := rolloverExecutionFixture(t)
+	requester := executionActor("codex", "replacement-owner")
+	inspector := &rolloverOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{
+		RuntimeID: "runtime-current", TaskLive: true,
+		TaskStatus: "dispatched", DispatchStatus: "dispatched",
+	}}
+	observed := 0
+	dependencies := ExecutionReplaceDependencies{
+		OrcaOwner: inspector,
+		inspectWorkspace: func(string, map[int]bool) ([]workspaceProcess, error) {
+			observed++
+			return []workspaceProcess{{
+				PID: 999998, Command: "vim", FD: "cwd", Access: "r",
+				Path: record.Execution.Workspace.Root,
+			}}, nil
+		},
+	}
+
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1,
+		Actor: requester, CWD: record.Execution.Workspace.Root,
+	}, dependencies)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if _, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceRevoke, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "injected inspector",
+		Actor: requester, CWD: record.Execution.Workspace.Root, Confirm: true,
+	}, dependencies); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceFinalizePreview, ExpectedGeneration: 2,
+		Actor: requester, CWD: record.Execution.Workspace.Root,
+	}, dependencies)
+	if err == nil || !strings.Contains(err.Error(), "workspace process is not quiescent: pid=999998") {
+		t.Fatalf("injected workspace occupancy did not block finalization: %v", err)
+	}
+	if observed == 0 {
+		t.Fatal("finalize preview did not use the injected workspace inspector")
+	}
 }

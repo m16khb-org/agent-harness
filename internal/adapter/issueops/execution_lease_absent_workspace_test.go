@@ -141,7 +141,7 @@ func TestFinalizeReleasesInsteadOfClaimableWhenTheWorkspaceIsGone(t *testing.T) 
 	stateRoot, record := rolloverExecutionFixture(t)
 	requester := executionActor("codex", "replacement-owner")
 	inspector := &rolloverOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{RuntimeID: "runtime-sealed"}}
-	deps := ExecutionReplaceDependencies{OrcaOwner: inspector}
+	deps := ExecutionReplaceDependencies{OrcaOwner: inspector, inspectWorkspace: quiescentWorkspaceInspector()}
 	source := record.Execution.Workspace.SourceRoot
 
 	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
