@@ -70,7 +70,13 @@ from the gate; never estimate them.
 ### 2. Find + Verify
 
 Claude Code: `Workflow({scriptPath: "<skill>/references/workflow.js", args: <contents of
-workflow_args.json>})`. Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
+workflow_args.json>})`. Omo: `python3 <skill>/scripts/omo_driver.py --args
+<out_dir>/workflow_args.json` runs the whole find+verify stage as concurrent `omo -p` agents
+(default `--profile omo-flash`: zai/glm-5.3-flash, finder 24 turns, skeptic 18, candidate cap
+floored at 40, 10-way concurrency, thinking high on every role — cheap tokens buy wider
+search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
+Workflow budgets).
+Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
 from that file with the host's sub-agent tool and apply the prescreen and verdict rule in
 `references/verification.md`. Budget: `units × 1 + candidates × (1..2)` agents — a
 deterministic prescreen drops off-hunk and already-refuted candidates, the tracer runs first,
@@ -82,9 +88,8 @@ finders took as many turns as opus) and a haiku critic burned 14M tokens for zer
 candidates, so the cost levers are structural: one pack per unit, a message budget, the
 prescreen, and incremental re-review. The tracer is **blind** to the finder's
 evidence/upstream/downstream (information asymmetry, OpenCodeReview) — it must find its own
-hops; the reproducer sees everything. The result's `cost` block reports agents per role,
-prescreen kills and carried findings — quote it in the chat deliverable. The result's `cost` block reports agents,
-prescreened, reproducers skipped and output tokens — quote it in the chat deliverable. Save the result to
+hops; the reproducer sees everything. The result's `cost` block reports agents, prescreened,
+reproducers skipped and output tokens — quote it in the chat deliverable. Save the result to
 `<out_dir>/workflow-result.json` before reading it — the `refuted` list with verdicts is large.
 
 ### 3. Merge (you are the moderator)
