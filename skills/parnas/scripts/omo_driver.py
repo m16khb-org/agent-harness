@@ -43,15 +43,16 @@ ORDER = ["low", "medium", "high", "critical"]
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
-                 "workers": {"finder": 4, "tracer": 4, "reproducer": 4},
+                 "workers": {"finder": 6, "tracer": 6, "reproducer": 4},
                  "thinking": {"finder": "high", "tracer": "medium", "reproducer": "medium"}},
     # Cheap-token host profile: wider search + deeper traces to close the gap to the
     # Claude Code (opus) run. Verdict thresholds are NOT relaxed — recall grows, the
-    # tracer/reproducer rule and the inline bars still own precision.
-    # Workers capped at 4: z.ai rejects higher concurrency with 429 (measured 2026-08-29:
-    # ×10 skeptic fan-out killed 7/9 agents; every ≤4-concurrent run held).
+    # tracer/reproducer rule and the inline bars still own precision. Concurrency stays
+    # high: transient 429s come from shared-account bursts, and the per-agent backoff
+    # retry absorbs them (measured 2026-08-29: mass agent death was zai 429 + fallback
+    # onto a weekly-dead opencode plan, not an inherent provider cap).
     "omo-flash": {"finder_turns": 24, "skeptic_turns": 18, "candidate_floor": 40,
-                  "workers": {"finder": 4, "tracer": 4, "reproducer": 4},
+                  "workers": {"finder": 10, "tracer": 10, "reproducer": 8},
                   "thinking": {"finder": "high", "tracer": "high", "reproducer": "high"}},
 }
 USAGE_KEYS = ("input", "output", "cacheRead", "cacheWrite", "reasoning", "totalTokens", "cost_total")
