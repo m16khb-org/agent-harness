@@ -118,6 +118,21 @@ hops; the reproducer sees everything. The result's `cost` block reports agents, 
 reproducers skipped and output tokens — quote it in the chat deliverable. Save the result to
 `<out_dir>/workflow-result.json` before reading it — the `refuted` list with verdicts is large.
 
+`--phase verify` refuses a `find-stage.json` with a missing finder or incomplete/duplicate
+`reviewed_files` receipt. Recover only those units before spending skeptic agents:
+
+```bash
+python3 <skill>/scripts/omo_driver.py --args <out_dir>/workflow_args.json \
+  --phase verify --retry-failed-units
+```
+
+The driver replaces results and diagnostics only for failed units, rebuilds candidate dedup,
+prescreen, and coverage over the whole stage, persists the repaired `find-stage.json`, and
+starts verification only when coverage is complete. A failed retry exits non-zero without
+running tracers. Run this recovery separately from `--retry-degraded-from`; the driver rejects
+combining finder recovery with skeptic-abstention retry so newly found candidates cannot be
+filtered against an older workflow result.
+
 To rerun only candidates that were kept as `skeptics unavailable (abstain)` in a degraded run:
 
 ```bash

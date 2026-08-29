@@ -21,10 +21,15 @@ Usage:
       [--thinking-finder high] [--thinking-tracer high] [--thinking-reproducer medium]
   python3 scripts/omo_driver.py --args <out_dir>/workflow_args.json --phase verify
       --retry-degraded-from <out_dir>/workflow-result.json
+  python3 scripts/omo_driver.py --args <out_dir>/workflow_args.json --phase verify
+      --retry-failed-units
 
 Outputs <out_dir>/workflow-result.json (or workflow-retry-result.json for a degraded-only
 retry) and prints a per-agent token/cost line read from the Omo session logs
 (sessions/*<sid>.jsonl).
+Verification refuses an incomplete find-stage. --retry-failed-units reruns only missing,
+failed, or duplicate-coverage finder units, rewrites find-stage.json, and proceeds only when
+the rebuilt stage is complete.
 The provider and model are pinned; non-pinned values are rejected before any agent starts.
 """
 from __future__ import annotations
@@ -799,53 +804,15 @@ def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
 
 # ---------------------------------------------------------------- phases
 
-def phase_find(a: dict, runner: OmoRunner) -> dict:
-    units, cwd = a["units"], canonical_path(a["checkout"])
-    usage_all = {k: 0 for k in USAGE_KEYS}
-    finders: list[dict] = []
+def finish_find_stage(a: dict, units: list[dict], finders: list[dict],
+                      usage_all: dict, agent_diagnostics: list[dict]) -> dict:
     failure_counts = empty_failure_counts()
-    agent_diagnostics = []
-
-    def acc(u: dict):
-        nonlocal usage_all
-        usage_all = add_usage(usage_all, u)
-
-    if not units:
-        print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
-        coverage = coverage_report([], [])
-        return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all,
-                "agent_failures": [], "failure_counts": failure_counts, "agent_diagnostics": [],
-                "coverage": coverage, "degraded": False}
-    print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
-    t0 = [units[0]]
-    r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
-                             "permission_preset": "read-only", "payload_kind": "finder",
-                             "allowed_tools": READ_ONLY_TOOLS,
-                             "max_turns": a["finder_turns"],
-                             "label": f"find:{u['id']}"} for u in t0], 1)[0]
-    acc(r0["usage"])
-    agent_diagnostics.append(agent_diagnostic(r0))
-    agent_failures = [r0["label"]] if r0["parsed"] is None else []
-    if r0["parsed"] is None:
-        failure_counts[r0["diagnostics"]["failure_kind"] or "parse_failure"] += 1
-    if isinstance(r0["parsed"], dict):
-        finders.append({**r0["parsed"], "unit": units[0]["id"], "lenses": units[0]["lenses"]})
-    rest = units[1:]
-    if rest:
-        rest_results = run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
-                                           "permission_preset": "read-only", "payload_kind": "finder",
-                                           "allowed_tools": READ_ONLY_TOOLS,
-                                           "max_turns": a["finder_turns"],
-                                           "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"])
-        for r, u in zip(rest_results, rest):
-            acc(r["usage"])
-            agent_diagnostics.append(agent_diagnostic(r))
-            if r["parsed"] is None:
-                agent_failures.append(r["label"])
-                failure_counts[r["diagnostics"]["failure_kind"] or "parse_failure"] += 1
-            if isinstance(r["parsed"], dict):
-                finders.append({**r["parsed"], "unit": u["id"], "lenses": u["lenses"]})
-
+    agent_failures = []
+    for diagnostic in agent_diagnostics:
+        kind = diagnostic.get("failure_kind")
+        if kind:
+            agent_failures.append(diagnostic["label"])
+            failure_counts[kind if kind in failure_counts else "process_failure"] += 1
     seen = dedup_candidates(finders)
     candidates = sorted(seen, key=lambda c: -c.get("confidence", 0))
     prescreened, kept = [], []
@@ -853,9 +820,10 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
         why = prescreen(a, c)
         (prescreened if why else kept).append(
             {**c, **({"verdicts": [{"skeptic": "prescreen", "refuted": True, "confidence": 90, "reason": why, "evidence": [], "severity_adjust": "keep"}]} if why else {})})
-    if len(kept) > a["max_candidates"]:
-        print(f"[driver] dropping {len(kept) - a['max_candidates']} lowest-confidence candidates (cap {a['max_candidates']})")
-        kept = kept[: a["max_candidates"]]
+    max_candidates = a.get("max_candidates", len(kept))
+    if len(kept) > max_candidates:
+        print(f"[driver] dropping {len(kept) - max_candidates} lowest-confidence candidates (cap {max_candidates})")
+        kept = kept[:max_candidates]
     coverage = coverage_report(units, finders)
     failure_counts["coverage_gap"] = sum(len(gap["missing_files"]) for gap in coverage["gaps"]) + sum(
         len(item["files"]) for item in coverage["duplicates"]
@@ -870,7 +838,97 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
             "degraded": bool(agent_failures) or not coverage["complete"]}
 
 
+def phase_find(a: dict, runner: OmoRunner) -> dict:
+    units, cwd = a["units"], canonical_path(a["checkout"])
+    usage_all = {k: 0 for k in USAGE_KEYS}
+    finders: list[dict] = []
+    agent_diagnostics = []
+
+    def accept(result: dict, unit: dict) -> None:
+        nonlocal usage_all
+        usage_all = add_usage(usage_all, result["usage"])
+        agent_diagnostics.append(agent_diagnostic(result))
+        if isinstance(result["parsed"], dict):
+            finders.append({**result["parsed"], "unit": unit["id"], "lenses": unit["lenses"]})
+
+    if not units:
+        print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
+        return finish_find_stage(a, [], [], usage_all, [])
+    print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
+    first = units[0]
+    first_result = run_batch(runner, [{
+        "prompt": finder_prompt(a, first), "cwd": cwd, "thinking": a["thinking"]["finder"],
+        "permission_preset": "read-only", "payload_kind": "finder",
+        "allowed_tools": READ_ONLY_TOOLS, "max_turns": a["finder_turns"],
+        "label": f"find:{first['id']}",
+    }], 1)[0]
+    accept(first_result, first)
+    rest = units[1:]
+    if rest:
+        rest_results = run_batch(runner, [{
+            "prompt": finder_prompt(a, unit), "cwd": cwd, "thinking": a["thinking"]["finder"],
+            "permission_preset": "read-only", "payload_kind": "finder",
+            "allowed_tools": READ_ONLY_TOOLS, "max_turns": a["finder_turns"],
+            "label": f"find:{unit['id']}",
+        } for unit in rest], a["workers"]["finder"])
+        for result, unit in zip(rest_results, rest):
+            accept(result, unit)
+    return finish_find_stage(a, units, finders, usage_all, agent_diagnostics)
+
+
+def failed_find_unit_ids(a: dict, found: dict) -> list[str]:
+    """Return incomplete finder units in deterministic workflow order."""
+    units = a.get("units") or []
+    finders = found.get("finders") or []
+    counts: dict[str, int] = {}
+    for finder in finders:
+        unit_id = finder.get("unit")
+        if unit_id:
+            counts[unit_id] = counts.get(unit_id, 0) + 1
+    coverage = coverage_report(units, finders)
+    failed = {unit.get("id") for unit in units if counts.get(unit.get("id"), 0) != 1}
+    failed.update(row.get("unit") for row in coverage["gaps"])
+    failed.update(row.get("unit") for row in coverage["duplicates"])
+    return [unit["id"] for unit in units if unit.get("id") in failed]
+
+
+def retry_failed_find_units(a: dict, runner: OmoRunner, found: dict) -> dict:
+    """Rerun only incomplete finder units and rebuild the full find stage."""
+    failed_ids = failed_find_unit_ids(a, found)
+    if not failed_ids:
+        return finish_find_stage(
+            a, a.get("units") or [], found.get("finders") or [],
+            found.get("usage_find") or {k: 0 for k in USAGE_KEYS},
+            found.get("agent_diagnostics") or [],
+        )
+    failed = set(failed_ids)
+    retry_units = [unit for unit in a["units"] if unit["id"] in failed]
+    print(f"[driver] retrying {len(retry_units)} failed finder unit(s): {', '.join(failed_ids)}", flush=True)
+    retried = phase_find({**a, "units": retry_units}, runner)
+    finders = [finder for finder in (found.get("finders") or []) if finder.get("unit") not in failed]
+    finders.extend(retried["finders"])
+    retry_labels = {f"find:{unit_id}" for unit_id in failed_ids}
+    diagnostics = [
+        diagnostic for diagnostic in (found.get("agent_diagnostics") or [])
+        if diagnostic.get("label") not in retry_labels
+    ]
+    diagnostics.extend(retried["agent_diagnostics"])
+    usage = add_usage(
+        found.get("usage_find") or {k: 0 for k in USAGE_KEYS},
+        retried["usage_find"],
+    )
+    merged = finish_find_stage(a, a["units"], finders, usage, diagnostics)
+    merged["retried_units"] = failed_ids
+    return merged
+
+
 def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
+    incomplete = failed_find_unit_ids(a, found)
+    if incomplete:
+        raise ValueError(
+            "incomplete find-stage; rerun failed units with --phase verify --retry-failed-units: "
+            + ", ".join(incomplete)
+        )
     cwd, candidates = canonical_path(a["checkout"]), found["candidates"]
     usage_all = found["usage_find"]
     agent_failures = list(found.get("agent_failures") or [])
@@ -995,8 +1053,20 @@ def main() -> int:
     ap.add_argument("--model", default=PINNED_MODEL, help=f"pinned to {PINNED_MODEL_REF}")
     ap.add_argument("--retry-degraded-from",
                     help="with --phase verify, rerun only prior skeptics-unavailable findings")
+    ap.add_argument("--retry-failed-units", action="store_true",
+                    help="with --phase verify, rerun only incomplete finder units before verification")
     ap.add_argument("--thinking-finder"), ap.add_argument("--thinking-tracer"), ap.add_argument("--thinking-reproducer")
     ns = ap.parse_args()
+    if ns.retry_failed_units and ns.retry_degraded_from:
+        print("[driver] ERROR: --retry-failed-units and --retry-degraded-from cannot be combined",
+              file=sys.stderr)
+        return 2
+    if ns.retry_failed_units and ns.phase != "verify":
+        print("[driver] ERROR: --retry-failed-units requires --phase verify", file=sys.stderr)
+        return 2
+    if ns.retry_degraded_from and ns.phase != "verify":
+        print("[driver] ERROR: --retry-degraded-from requires --phase verify", file=sys.stderr)
+        return 2
 
     try:
         provider, model = normalize_pinned_model(ns.provider, ns.model)
@@ -1029,14 +1099,25 @@ def main() -> int:
                 raise SystemExit(f"find-stage.json not found at {find_stage} — run --phase find first")
             found = json.loads(find_stage.read_text())
             print(f"[driver] loaded find stage from {find_stage}", flush=True)
+            incomplete = failed_find_unit_ids(a, found)
+            if incomplete and not ns.retry_failed_units:
+                print("[driver] ERROR: incomplete find-stage; rerun with --phase verify "
+                      f"--retry-failed-units ({', '.join(incomplete)})", file=sys.stderr, flush=True)
+                return 2
+            if ns.retry_failed_units:
+                found = retry_failed_find_units(a, runner, found)
+                find_stage.write_text(json.dumps(found, ensure_ascii=False, indent=1))
+                incomplete = failed_find_unit_ids(a, found)
+                if incomplete:
+                    print("[driver] ERROR: finder units still incomplete after retry: "
+                          + ", ".join(incomplete), file=sys.stderr, flush=True)
+                    return 2
             if ns.retry_degraded_from:
                 previous_path = Path(ns.retry_degraded_from)
                 previous_result = json.loads(previous_path.read_text())
                 found["candidates"] = select_retry_candidates(found["candidates"], previous_result)
                 print(f"[driver] selected {len(found['candidates'])} degraded candidates from "
                       f"{previous_path}", flush=True)
-        elif ns.retry_degraded_from:
-            raise SystemExit("--retry-degraded-from requires --phase verify")
         else:
             found = phase_find(a, runner)
             # Persist before verify so a crash in verify does not lose the find spend.

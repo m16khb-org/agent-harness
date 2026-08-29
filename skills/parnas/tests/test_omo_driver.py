@@ -584,6 +584,82 @@ class SelfReviewFixTest(unittest.TestCase):
             {"unit": "logic@all", "missing_files": ["src/b.go"]},
         ])
 
+    def test_phase_verify_rejects_incomplete_find_stage(self) -> None:
+        a = {
+            "units": [{"id": "logic@all", "files": ["src/a.go", "src/b.go"]}],
+            "checkout": "/tmp", "workers": {"tracer": 1, "reproducer": 1},
+            "thinking": {"tracer": "high", "reproducer": "high"},
+            "profile": "omo-flash", "provider": "zai", "model": "glm-5.3-flash",
+            "carried": [],
+        }
+        found = {
+            "finders": [{"unit": "logic@all", "lenses": ["logic"],
+                         "reviewed_files": ["src/a.go"], "inspected": ["src/a.go"]}],
+            "candidates": [], "prescreened": [], "verified_ok": [],
+            "usage_find": {k: 0 for k in omo_driver.USAGE_KEYS},
+        }
+
+        with self.assertRaisesRegex(ValueError, "--retry-failed-units"):
+            omo_driver.phase_verify(a, None, found)
+
+    def test_retry_failed_find_units_reruns_only_incomplete_units(self) -> None:
+        class FakeRunner:
+            calls = 0
+
+            def run(self, *args, **kwargs):
+                self.calls += 1
+                return (
+                    {"lenses": ["logic"], "reviewed_files": ["src/b.go", "src/c.go"],
+                     "inspected": ["src/b.go", "src/c.go"], "verified_ok": [], "candidates": []},
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "",
+                )
+
+        units = [
+            {"id": "logic@ok", "lenses": ["logic"], "pack": "ok.md", "files": ["src/a.go"]},
+            {"id": "logic@failed", "lenses": ["logic"], "pack": "failed.md",
+             "files": ["src/b.go", "src/c.go"]},
+        ]
+        a = {
+            "units": units, "checkout": "/tmp", "outDir": "/tmp",
+            "lensText": {"logic": "logic"}, "thinking": {"finder": "high"},
+            "finder_turns": 24, "per_lens_cap": 3, "workers": {"finder": 1},
+            "max_candidates": 24, "hunkRanges": {}, "refutedHistory": [],
+        }
+        found = {
+            "finders": [
+                {"unit": "logic@ok", "lenses": ["logic"], "reviewed_files": ["src/a.go"],
+                 "inspected": ["src/a.go"], "verified_ok": [], "candidates": []},
+                {"unit": "logic@failed", "lenses": ["logic"], "reviewed_files": ["src/b.go"],
+                 "inspected": ["src/b.go"], "verified_ok": [], "candidates": []},
+            ],
+            "usage_find": {k: 0 for k in omo_driver.USAGE_KEYS},
+            "agent_diagnostics": [],
+        }
+        runner = FakeRunner()
+
+        retried = omo_driver.retry_failed_find_units(a, runner, found)
+
+        self.assertEqual(runner.calls, 1)
+        self.assertEqual([finder["unit"] for finder in retried["finders"]],
+                         ["logic@ok", "logic@failed"])
+        self.assertTrue(retried["coverage"]["complete"])
+        self.assertFalse(retried["degraded"])
+
+    def test_duplicate_finder_results_require_unit_retry(self) -> None:
+        a = {"units": [{"id": "logic@all", "files": ["src/a.go"]}]}
+        finder = {"unit": "logic@all", "reviewed_files": ["src/a.go"]}
+        found = {"finders": [finder, dict(finder)]}
+
+        self.assertEqual(omo_driver.failed_find_unit_ids(a, found), ["logic@all"])
+
+    def test_main_rejects_combined_retry_modes(self) -> None:
+        with patch.object(omo_driver.sys, "argv", [
+            "omo_driver.py", "--args", "/does/not/exist", "--phase", "verify",
+            "--retry-failed-units", "--retry-degraded-from", "/does/not/exist",
+        ]):
+            self.assertEqual(omo_driver.main(), 2)
+
     def test_phase_verify_preserves_carried_findings(self) -> None:
         carried = [{"path": "src/a.go", "new_line": 10, "title": "carried"}]
         a = {
