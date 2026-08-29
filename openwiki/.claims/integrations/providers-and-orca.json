@@ -1,0 +1,510 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9587ab213668074602a5046e39e22d3003367ce8228b7178f6ad48cee6202f59",
+  "claims": [
+    {
+      "id": "claim_c578c058962f4692b3671f666baa9755",
+      "statement": "Provider selection is centralized in internal/adapter/provider/resolve.go: Resolve(name) dispatches \"github\" and \"gitlab\" to the concrete adapters and rejects any other name with an error naming the supported list, and the package lives in the adapter layer so internal/core never imports concrete provider implementations — core depends only on the port.IssueProvider abstraction.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/resolve.go#L1-L27",
+          "version": "repo-lines-v1:sha256:dfc378cb507ed78b5001d197e1c0fb5f162433081805076e0a780fbff76817c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNjMwYmVhMTNmZGIyOWEwMGVhNGI2ZDI0MmFmNDAzNTU3YTg4OGUyNjJlODBlNGYyZmU5MDkwOWNkZDMxYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3NWRlNmE3YTI3NDNlOTk5ZDVmYmNkOWRkZjY5NzdiNWVhYTNmYTNiZGRkYzA0OTNkNWZlN2IxNjdhMDhkMTUifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L36-L45",
+          "version": "repo-lines-v1:sha256:46f4ccfe5d70d554981e95516b0779f5f32318b1cfb96a4344bfdff0687bd118:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwMTViMDA1YWU0ZjhhZTRmNjY1MmU3ODJkYzQ1ZGEwYTUxYmI2YTMwZDEyNzAzMGI2OGFjZjQ4YjVjNGU5OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYzA2YzNiODMzYTQ1NDgwZDAyZTc3OTQzYjdiMzM1Y2YxOGU3Mjc2NzlkYjNmMGUwNzU3NTM5NDM1NGY5OWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3NzE3NDcxOWQ2MTVjYzE0M2QyOTIyMTc4MGRiNzM1ZDliOTI5MTFhYzljYTFiZDYyYTQ4ZDQ0YjJlZDg4ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MmRhMmU4N2Q3YTljMzM4ZDljNDA0YmVhM2UzYTQyMDNhOTA4Yjc2OTdjZWVlNGVhMTg0MTRmMjMwNzBiNWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b540534283b341c781f12f17b5bbd4ab",
+      "statement": "ReadExecutionIssueSnapshot resolves a provider by name and type-asserts the narrower port.ExecutionIssueSnapshotReader capability, failing closed with distinct errors for unknown provider versus missing reader, and a cancelled context fails before any remote call.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/resolve.go#L29-L39",
+          "version": "repo-lines-v1:sha256:87905d9cda51baa06d2610ef2033a17fb3bb3102995e26716d7574b4f0638119:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2NWU2OWNhZmVlNjYzM2VlZWVmZmNhODI2MjIxMjI3MWQwNTJiYzQ5ZmUxZmNlNDEwMDE0ZmRkNzRkNjhmOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/resolve_dispatch_test.go#L25-L40",
+          "version": "repo-lines-v1:sha256:7d8125e8f1482d8bfa6779dc949006462517c08a0b06630c2911313db11a1a27:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MTgyZmM3M2JiZjhlNDU4ODMyZTc1NjYxOTlhNWViMTNkOTIyMjk4Zjk3ZmY2OWM1NmE0MDAwZTVjMDg0MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_085c335630874c659c03565b527ee4a6",
+      "statement": "The port.IssueProvider interface normalizes issue, PR/MR, child, body-section, and close operations across gh and glab; every mutating operation requires Confirm=true, and with Confirm=false the adapters return only a redacted dry-run preview without any I/O.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L61-L66",
+          "version": "repo-lines-v1:sha256:1c6e17966fe8c974d9328103dc5ed124d6c1ad949fae460d7e745d01b17fea06:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjBjN2FjMWUxODJjY2Q1NWZjMDBlZGI1M2FlOTNiYjNiMTdlOWU2ZGYwMmY1ZTIyNjY2N2UyMTI3NzAxN2EyMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ2ZWZlYzc2MTgxNTkyMDEyN2RhYTUzNTEyN2E1NDVkOWZmMjdjYjU2NGRjM2EzMDMwNGNkZTYwOTkzNDdhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjFkN2I5NTk1OTVkMzk5ZDM0M2NjZWEzZTQ5Y2I4M2Q2MjY2NjhkZTA0YjYxNDEzMDM4YjIxYTY5Mzc4YzNkZCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/providerutil/bounded_command.go#L37-L44",
+          "version": "repo-lines-v1:sha256:57c9fe1ab819f9454d895d4076b0a94e768271b369917c31aad3e085077ec27f:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTU2OWM0MDYyZWJmOTc3ZGJiZTJmMDk3MGE0NGNkMzAzY2FkZGQ2YWMzMDY3ZWQyODJlZTE3OGYzZDE4ZGExNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWUyYjEyMjY3NGQ4Nzk1NzgwMjc3MjJiZmJhZGRjYmJmMjAyMTIxMjJmYzFlZGJhZjVmZmIyOTYzMmE1MjJiOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmNmMTk5ZDk3MWUyYmE0MGY3NjI1NDNmZGE0NjhkYTI0OTViNzNiZGZmNTVkMTJlOWMyYzc5MTVlM2ZmYTc1MyJ9"
+        },
+        {
+          "resource": "repo://internal/port/provider.go#L247-L258",
+          "version": "repo-lines-v1:sha256:8f4dc62ac6d7b49f041050b89f13a0c6327fcb954a91918f8095ddac0cbcb5b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwODJiMmI3MTM1YTZjN2UzMzIxOWJhNjFjZDJlMDQ5OTM1NDVmY2NiMWMxOWIxOGQ1MmI0ODAzNjA3ZDdiOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkYmM4YjAyOGY5ZDg5NzkyZDkzY2ZkYzFiNWI3ZDRlOWUyOTY0M2IwZWQzNGY4NDJiNWQ2NGYzOTM3NDNjYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f5daf7abb5b640059f4b05be7ef94e58",
+      "statement": "Reconciliation reads providers through read-only candidate search (FindIssueCreateCandidates, ReconcilePullRequest); ReconcilePullRequest results carry AuthoritativeZero so a provably-empty provider inventory is distinguishable from observation failure.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L282-L288",
+          "version": "repo-lines-v1:sha256:5c8279fe4dcc4119288995f1f0a1c40fbc3de4b717dc060390f5b393abe7e48a:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTlhNjBhYTYwOGMwNTMzZjE5NWM1M2E5NjNiMjIxNjA1ZDQ4MWY4MjRlMjlmZjJkYzg2Y2EwNGRlOThkNGNjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGEzZGI0NmE3ZGVkMzc3MmNlMjAxZjI3MjY5Mzg4NjFmNDQ1MTM2OWZhNGNhOWEzYTA4ZWEzNjdjMWFmZTM3MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWY3MDRmNGM0ODE0MTc0MzdlNGZlMzJlMmU2OGE0ZmRiMjVjMDJkODlkZDQwMDVjOTFiYjgxMjhmZjk5OTBlNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYxOGRhZTg0YzRjOTcxMmMwYjVjYzBkNTM1ZmE3YjgyYjYyZWZlM2YzOWYxOWU0Mzg2YzE4NTcxY2M1ZTBhNCJ9"
+        },
+        {
+          "resource": "repo://internal/port/provider.go#L84-L122",
+          "version": "repo-lines-v1:sha256:c311c28fa00b0daa161224be8a3e7b910ea9ee8d673208c25126cb667b0d8df2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwNDFhNmVlZWMwZGRkMjRhMGMwMmZjZGEyNjdiZmZjYjc3YTQ2NjZkZDJiOGM4ZjM4ZDZlYWYwMmM1NTdiZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5YmExN2RlYTEzNjBlZjY3YTM5MjFiZWM5MjVkNzRmYjE0MzZjY2Q3NDI4YWY0NDE5OTYzN2I5ZGMxNTVjOTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlZWM5YWY0MjcwNjg1NDkzZjQ5ZGE3MmU0YmI1OTAzNjk0YmVkOGVjN2Q3ZGJmYTIzZTQ1OWJjZWRjOGRmZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_583b0e16e3ad477aa408727e636905e3",
+      "statement": "All provider subprocess I/O is bounded by providerutil: 15 s readback timeout, 60 s mutation timeout, 256 KiB output limit, 4096-byte redacted diagnostics, and DryRunPreview redacts argv before rendering a preview.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/providerutil/bounded_command.go#L13-L44",
+          "version": "repo-lines-v1:sha256:270d3fbcfbb437a0b58015443a9a4cd4c09f8bd3b58e7ba94fcfc21ff525efe9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkYjNmYmM2NzAwODg1YTY2OWY5ODhmZWIzMGY2OTBmZjUyMWRlZDllOTkzMmI3MGM5NmNjMDhiYWQxZDdhODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjZjE5OWQ5NzFlMmJhNDBmNzYyNTQzZmRhNDY4ZGEyNDk1YjczYmRmZjU1ZDEyZTljMmM3OTE1ZTNmZmE3NTMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/providerutil/bounded_command.go#L50-L76",
+          "version": "repo-lines-v1:sha256:87a5c09e799955f909723e8ed36fb1943e96d5e8ec1d4bdc36f3d9c42c9ae474:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2MmE0YWRhNDE1MzU4MTUzZDQzMTk3ZTI0YTViNjVlZTRlYjdkNzg0ZTQ4MDhkYmFlZmY3YTZjMTdmZmMxY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwY2Q5YTdjMmI2MGJkYWMzZTZhZTE1NGYxODQwNjIzNzg0OGMyNzg1OWM5MDE1ZjcyMDA5Y2U4MWI5MTcyYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1Yjg4MmIxMmJjNGE5MzY1M2VkZGE5MTJlM2M4OWFlNGU1Y2ZiYjI5YjUwNzY5ODM4ZmVkZjNmY2RhM2ExNWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1795ab64a2964affb201443b501e5f32",
+      "statement": "Created PRs/MRs are verified by readback before the adapter reports success — GitHub and GitLab re-read the created artifact and compare identity, title, body, branches, draft flag, labels, assignees, head SHA, and canonical project; GitLab custom web authorities (explicit port or non-443) additionally require proven glab >= 1.82.0 capability before any mutation.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/github/provider.go#L153-L174",
+          "version": "repo-lines-v1:sha256:452fd203686604a7a8087a5c76295f57241d0c6214474648ec886f15f8cb1468:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwYzdhYzFlMTgyY2NkNTVmYzAwZWRiNTNhZTkzYmIzYjE3ZTllNmRmMDJmNWUyMjY2NjdlMjEyNzcwMTdhMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwMzVlMTkxMjEwY2EzYWZkM2E5MTBlOTUwZmJjMWY2OTBiZGY3OTA2NzU2ZDgyOTExNjliYTk0NTAyZDdjMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2YzFmNjYwNjY4OGM1N2YwZmJhZjcyOWZmMzFhOTUxMzQ5MzZiMGIyNmM2MjllNWE4MWQ5YjUzM2Y4OTdmOGUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L146-L163",
+          "version": "repo-lines-v1:sha256:f57ac43e0caaed12a7b972c47d870321771e4add62b2fe811bf4af25e58965f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlMTczNDc0Y2VjY2Q3ZWJjYzE3MjlmM2JlMGI4OTVjNTA2ODRmYTAzNWQzMTFkMmY0NzVlNWE5Yzc1NGRlYTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxMzc3ZTExMjIwNmI2OTVhM2QxMjU2NTQ4ZjVmNDY1MzUyNDliNmJhZmQyYzE4MGI3NmNiYWQ5Y2VkODA3OTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQyM2M4ZTRiMTZhNTJmYTA3ZjkzMTIyNWRjYmI0ZGM1YmVkY2M5MDg4OWUyZTc2ZmJkMGM2ZTAwZjhkNDIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L211-L256",
+          "version": "repo-lines-v1:sha256:fb3524852963ea22b79c07ff6754281f12bd2d7e08eb4e7173f5ecd1e16d87e9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMzQ4NjEyMjNjMDFkNzlhNTc1OTNkZWFjZWJmZWUzYTVmM2QzMjFiNzg2YjdiYTllYjZlOTgzOWNmYzQ5OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViMWNiNDQyNjU3MTExOTNiN2I1YTJjZWFlNzJmYWY0NzFhNGNjYWYwOGEzN2IyZGI5MmYwMmViYTg5MDRhODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzYmEzYWI4MDViYmM3ZmRiOTJlOGQ2OTc1MzgxNjJmNjIzZTRkMDY1YmUwNjdjMGQwZjU4MTkzNjFlZTI5YjUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L318-L331",
+          "version": "repo-lines-v1:sha256:dc00b06f0a4425fb89bbbc2af8488633143aab6bc477c0f52b1158340c49141e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhZGU4OGRlMDc2YmNiOWY2ZGJkZmRhZmMyZmFjYzVjMTBhY2Y5MzQ2MjMyOTA0OTY4MDU3ZDhkYzZkNDhkZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3MTI2OGY1NDQwMjhkN2M2ZWUzYzFkNWI0YjY5NjQ3OWE2OTQwNThlM2U4NzNjMWE5MjM2ZmNmZTY3ZmFkZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NzY0YzFhMDBlZDZkMWFjOTQ0NDRiZjQ5ZWE4NjJiYTQ2MzIzMWNjN2FjMDgxZjU2YWUyYjQ0ODAwMzZlZmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d59a9e41ace442aa9440cf7ff889a8a3",
+      "statement": "Per-provider flag-level command details (issue-create recipes, GitHub+Orca linked-branch ordering, GitLab VCS.md snapshot preparation steps) are owned by the operations guide .agent-harness/operations/guides/issueops-providers.md rather than duplicated in code or wiki pages.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-providers.md#L1-L12",
+          "version": "repo-lines-v1:sha256:28565ac2ca7dc4410631bb0d33cfc4d244d8c519510436692b228ee69b48a467:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1MmQ3MTExMDNkNTBhNDM3ODMwYzZmYmNkMDRmYjRiYWI0OWEwZjgyZjZkMjZkMWM3OTFjNmU4NDg4ZGQwOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZjkxZmE1YzEzZDE3Y2QyYzZiMTU2NzNhMzM4ZDI2M2FlMTgzN2QwZjliNzVmYTcxY2U0MmVkZjE1MjA0Y2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MTlmOTY1NTI3Njc1MDhjYmJhNGUwZDczYTgxM2Q1ZmViMTI4YjEzMWQ1N2ZjYmYxYmQ0ZjNkY2RmMWRhNjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_21f8b253d03d4832b2ce2fc69308434b",
+      "statement": "GitLab-linked Orca preparation can seal an issue body from a host-observed MCP snapshot: the host agent finds a trusted tool exposing the semantic leaf capability glab_api with a compatible schema (the MCP server namespace and personal wrapper identity are not the capability identity), reads projects/<URL-escaped-project>/issues/<iid>, and supplies exactly provider=gitlab, source=glab_mcp, web_url, body, state via the MCP issueops_execution issue_snapshot input or a 0600 file passed with --issue-snapshot-file.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L53-L67",
+          "version": "repo-lines-v1:sha256:772413766a863693c9838be21d092b9d43f9f132dc61d954e872b976d6f34917:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NTQ5YTc0MmI5Njc3YTFjMzYwNDA5YTk4MTNiMTlhZjZhNWFlMTYxYWUzM2YzZTEwNzk1NWM1MWU5ODY3MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4Yjc1ZDRhMGZmODFlZTI4NTcwZDVlNzcxNDVhZmYwZTM4Y2Y1YjM3OWIxYjY1NmJmMDI5NjM0OTEzYWYyODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYWM3MDJjZDliYTk0ODRjYzQxOTE2NGQ4YTgyZDhkZmIzNDZkNWYzMDFiNDNkOTRjMTBkOTZhODkzZTcxMjcifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-providers.md#L126-L141",
+          "version": "repo-lines-v1:sha256:1b1535df348f30062ab967e2d3d981f6d34f735f2e1c68de7cf7af0950c342b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNTQzM2Y5ODYxNGRkODU5NDI1MWY2ZDA4OTY4ZWE3NmVhNDRlNDYxMjMwZmJkYjJlNTNjNmM1MzBiOTE2NTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NDkzNTczNTNjYzE0OGUyYmIxZjRlZWJhYTg1ZmUwYzYxMjk1ZjQzZDgyNWViYTNkODJkNmJkZGY0NWJkNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhYjI5YTlmNDFiOWU3OTRlZmFkM2FiMzY0Y2U3M2ZiMmJlOTJlNjE4YzE4ZTVjOTM3Yzk4NTk1Y2QzYzM2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3ZWZhOGY1YmRlMzA5MTVlN2ZhYWVkNmI0N2UwZmJjNmQ3ZGE0NTNjOWVhMmM2NGMzNzMxY2E3N2E4YTViMjYifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-providers.md#L72-L79",
+          "version": "repo-lines-v1:sha256:d97061a4163f448e3c5a7447a3cefa76d73288fddb9386b39252e5fa36fe5e69:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDIxZTRiYmRhYmQ5MDEzNjJlNjY0Njk0ODY2NWMxZGYzZTNhZTMzYzdkOWRhNGFlOTQxZTI5Njc2Nzk2ZGI2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2ZkOTYyMmI3ZTYxZmVhY2NkZjhjZDk4MjU5OTY5MzAyOTE4OTM0NTBmYzM3MzYwNmRiNzA1ZjBhMzljM2Y0YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDVkMWExNTRlMmVkOTYzMDM0ZjY0YWJjNWNmYmJjZWQ0NWQ3NDZiM2NiYWM5ZjczZTIyY2Y2YjJlNjBhZmJhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWNkN2MwZmYxNGE4MzQ3ZWFiMDcyMDVkOTVlNmNhNmJiZTRmYzgyYjI2NmM0NWJlOGQyOTlmMGQ4YmQzOTUzMCJ9"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/issueops_catalog.go#L49-L60",
+          "version": "repo-lines-v1:sha256:0397472ae4162c0f9adc33b465eb001c277d62f2c0212fc0abf53819feb18e41:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyODg1OTExYmE5ZGY4NTEwNzc5NjhhY2FkOTNmOTY5YzRmNGIyMjNlN2FlNTYxMjdiYmI3NGM4MmY0OGZmOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMjk2YTNjMDQ3OGYxMTMxZDFjMzQ1ODI0YjA5ZDhjMTMwZDg3NmFkM2Q5Nzc2NjY4ZDIyNjE1YzkzNWIwMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4ZDczZDIyZTJlYzljM2ViYTI1NmE2MjMzN2ZjZDRiZDNkNTYyN2QzMTE0MzBmNTkwOTE3MDQ5N2U4YmRkMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlM2IwM2I0NTY2MjBkOWNiMzk1ZDBmMjI4OWE0MTdhNWU0YWJjZDdiNjkzOTJjNDFjMjliMmIyNGMzNmUyMjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_67644f1c6476471caca5424a2113d005",
+      "statement": "When no MCP snapshot evidence is supplied, gitlab.Provider.ReadIssueSnapshot reads the same fields through the generic glab api adapter (bounded readback of projects/<escaped>/issues/<iid> --hostname <host>), verifies the returned web_url against the linked issue, and tags the snapshot source=glab_cli; GitHub reads snapshots via gh issue view --json url,body,state with an exact URL match.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/provider/github/issue_snapshot.go#L13-L37",
+          "version": "repo-lines-v1:sha256:0fc7d06cd4aca861789ebedd42c605f8967f924b40388c416dce77b8d8175c0f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3ZjY2NDgyYmE5ZDEyM2FjYjllYWYwMWY3ZDU0OGExODAwZTY4M2VjZjU2NDNmYjVlYmQxZWM5Mjc3OWZjNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0NTg0NTBkNDY0YWY4NmE5NTUyNDUxNTZjZDU0MWVjZDM5YzNmNzVhZGVmZTFjZjI5YWFiZTYyYWZiMTRkOGQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/issue_snapshot.go#L14-L54",
+          "version": "repo-lines-v1:sha256:44feaec7b04a0bf6ad51b7fd28cd0ea246cc45d357dc27e19d563875579f118c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3ZjY2NDgyYmE5ZDEyM2FjYjllYWYwMWY3ZDU0OGExODAwZTY4M2VjZjU2NDNmYjVlYmQxZWM5Mjc3OWZjNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4NjExN2E3YjAyNjhhMTlkMWZhYzI0YWQzMGVmZGFmOWFiOWRhMTAxNWY3ZmRmMzhkNThjYmZhMjk5MTQ2NWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_57ed6db9db334a609f6c5bc6c264ba18",
+      "statement": "The execution adapter injects the snapshot reader per action: executionIssueSnapshotReaderForAction wraps the MCP-evidence reader or the generic fallback, records the resulting source (glab_mcp/glab_cli) into the result, and the MCP-evidence reader re-validates provider, repo, URL, and linked GitLab identity on every call.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/execution_api.go#L15-L26",
+          "version": "repo-lines-v1:sha256:14388b0bab606d6ff4fc877b380bdbac17e4e5804328689442e7f2a530cdf202:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZTg3NTIzNTc2ZGJmYzUyYjBmYjk3MDkwMmNlNjA5NTI1YmFiYTIzZWQyNDg5ZWYxZWRjMThlMDgwNTUyMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2NmE3YTY1YTM1MDBlZTNkMWU5YTI5MDNjM2NlZTNlMjRlMjJlZGUwOWY5ZThiOWM5ZDQ3ZjQyYjdjNzJiNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmZTM0YjUxZGE5ZjFjZmZiYmViNDc5NDQxZTA3NzcwZjk2NDE2ZmFhOTJmM2VhYWVmNzcxM2VjOWIxMTFhNzgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_issue_snapshot.go#L23-L72",
+          "version": "repo-lines-v1:sha256:3ca5e5b3aee212e8192732172d841369da758591bf091d57e33d3c2116ba2e8d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjNjFmN2Y1YjcxNWQ3MzBmYTdjYzI4YmZlNGRlN2FhOTYzZWUxOTc3MzQ1MzZkMWJlOWE4NmU4NzVkYjkwNjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxMjViODkwMWJkYTgyYzE0MDhiODcyOTZkOGY3MzJmZGUyZjcyNTRjODdiNzhkODE1ZDMxMzRlODI4ZjBjYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4YjAwMTA2YjQyZjE4MGU0ZTdmNjhjMGZiYjMwNGNhMzdkYzlhMTNhYjlmOTQyY2YzMTgyZWE2MzRhNDRkMTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8ac98f7b9bc445549541e80cc4006e5f",
+      "statement": "GitLab issue snapshot identity is exact and structural — canonical HTTPS authority (lowercased host) plus project path plus positive canonical IID — and /-/issues/:iid and /-/work_items/:iid are the same identity only when all three match; the sealed body must be non-empty and at most 512 KiB and state must be opened or closed.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/execution_issue_snapshot.go#L134-L193",
+          "version": "repo-lines-v1:sha256:2787c391efe86b36fbc1f1c2a35e169767c14cca28bf8b1cebe01cc945154912:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZmJkZWUzMjNjNGJmYzMxYWVhYzc5OTg4OTkzYTdmZTZjNGQ2MGFhMzIyODBkY2M0N2FhMDY0NmY5ODcyN2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzMmUyNWM4MjZjZjBkMTUxYWIyZDVkNjFkMGUyYjBkOTY5NzAzY2NlOGI2YTNhZTI3ZGUzMzVhMzAzMmVhMjQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/issue_snapshot_test.go#L47-L63",
+          "version": "repo-lines-v1:sha256:ad8f7a565be646daf366b141b2ac1af4eeb22a5d32c15fd6f9710eaed8b55fa4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzYzc2ZmYxYWRlZGYzMzk5NjZkZTQzZjg0MWMzNjQzZmQyMWZjOGIwNjNiNGJjNDgxOTM5ZDgxMzgyODAxYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/gitlab/provider.go#L870-L918",
+          "version": "repo-lines-v1:sha256:a0ec5e79989644ad2adc99f0b342848e39f652a366011efc952791c87feb79db:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3MGJmZTYzZmIzODUxZmIzYjY2MTZhOWUwYTRiZjU1OTU3ZTFjOGVhYWM0Mzc5MTkxNDhkMWRkMDYxNmFjNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4YWFhMTE5YWEzNDI4OTllNDYwZTQ3ZGQwYzdjOWYzYjE2MDFlN2QxMjVlMWJjNzUwNTUyNWRmZmJjMGFkNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMDE2ODViY2I1OTU2Yzg4OGIzNmY1MGRiMGY4OGIxNTI1OTZiZmY4M2EyZGIxMTYwMGMwOTJlZmU0NjYyOTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5e946813c7ee4d06b83949e9fb22b942",
+      "statement": "Supplied issue_snapshot evidence must declare source=glab_mcp; invalid or already-supplied evidence is never re-read via the CLI — preparation fails closed — and the generic glab api adapter is used only when no successful exact-identity MCP evidence existed.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-providers.md#L138-L141",
+          "version": "repo-lines-v1:sha256:d9d7973bf318e82aa65090c411ea4c1829e9e548011510122acb04606164139c:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGMxZmEyMTk1ZDI4YTZiNDZlYWJhNWMzZTNlZTRhNWMxMzBkMTYyNTljM2RkNTYzNTk1ODMxYzc0ZTQ2ODNkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjc0OTM1NzM1M2NjMTQ4ZTJiYjFmNGVlYmFhODVmZTBjNjEyOTVmNDNkODI1ZWJhM2Q4MmQ2YmRkZjQ1YmQ2NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzc3YWU4YTQyMWQ2MzAyZjRmMjJlOTYxODdmZDlmNDgzMDljNjk3N2UwMmVjODY2MmI5ZDAwYTI1YWY5NjhmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjdlZmE4ZjViZGUzMDkxNWU3ZmFhZWQ2YjQ3ZTBmYmM2ZDdkYTQ1M2M5ZWEyYzY0YzM3MzFjYTc3YThhNWIyNiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_issue_snapshot.go#L47-L53",
+          "version": "repo-lines-v1:sha256:a85654e716a9c590c2043af184c989d0f89ef2281082f8dd4b71ac914d92d8b1:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ5YmQxMjY3NWIxN2NhNGUyNmEyMTIzYjRlYzA2NTYzMThhOTBlZGQ0NzE2ODQyYzk0MGZhOTgwMjZjMDA0YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzFjNGY5NDNjMDM4YjAzNjEzNTBmNDVjYThhMjFlNjFiYjk5MmE2ZWQxNTIwYTNkMDI0M2JjOWU1YTUzZTlkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmU5MTI4YWEyOTI3MjA4MGY2Mjc1ZTM3ZmNmMDFmN2NlODRhYjY1MTUxYzA5YTcxZDc2ZTQzYmNmY2NmMWRlMCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_issue_snapshot.go#L93-L102",
+          "version": "repo-lines-v1:sha256:4fecb98eca3b305b8950d5abd1599563c62c42c55d4dfc487288878eda88cf28:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczZjE5NDI4N2NiMDY4M2NkODcwYmJmYzQzOGZjNGM2N2YxOWIzNGQ4ZmU1OWY1M2ZiODgwNTU2YjZlNGUzNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3YjE4ZmRlMDJmOTg2NzBjMzIzZjU5YTU3N2NjMjRlZTVjM2ZiZGI0MDI0ZGVjNzA5ZjZmMzFiNzU1YjYwYWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExMjY5ZGNkN2RmNjc2NDM4Yjc3YjMwMzQyZDQzYjU3NWRiMjE2M2E2MGM2MDQxYjZmNjViMWYyNGU2YTZiYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVkYWUxMDU4ZDA4NjAzMzBiMGUyOTMzMWNkZmUxZjkyMjRhYjc4Y2Q2NTExY2Q5OTIyZGZmNjQ0ZTM3NGE5MzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3db5c05d41b4429986859fcac02e939e",
+      "statement": "Parent issue and PR/MR creation is intent-first: the core persists a sealed pending intent before the provider call, IssueProviderCreateError.Invoked distinguishes not-started (the only retryable case, by rerunning the exact sealed request) from started, and after invocation a timeout, error, malformed output, failed live verification, or unprojectable canonical number returns a needs-reconciliation, not-retried error instead of success.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L100-L108",
+          "version": "repo-lines-v1:sha256:cef916793d8b4247e7003f4406e03901ed7c482973a5abe36e82166fd05a9537:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE4MjkwZWY3ZmY1ZmU3NTQ4ZTgwNmQyYzJjNzAwMDU2NjFjYjg1YzFhY2NmMzVlOTMxNTE2Mzk2YzA2ZWE3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJmYTEzZmM2OTBlNjE0Y2I2MWRiNjEyYmMwODQyODg2ZThlMzE2MDRkYjhiMDc3ZDY1Yzc4YzA5YTk0ZDI3YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWMyNzViYzA3MmVkMjI0ZmI0OTJlZTRkYTlkNWEyNTA3OWE5MDRiNjcyYWRlMDM4ZDdlOTZlMGE1N2FmOTEwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGI5NDY5YTYwMWFmMDZlNjc1MmJjN2Y1MDNhZGJjMTk5NTJjNDA3ZmZmZjcwNjg3ZjQ3Zjg1YmFiYTc2Yzc2NCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/github/provider.go#L63-L83",
+          "version": "repo-lines-v1:sha256:3584c9c1931f86d3f3d56f2e64ae95a7ab9d525cb513e5e4bb6f60b5ab1e5d88:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZmJhNWU5MzFmYjU4YWY2YmU2ZDYxZDJjNzU5YzJjMWQwNzI4NGY3ZjNlYjc0YThlOGYwYWEyY2Q3NTc1NjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljOWJiNmZmNmJjMGE2MDlkMmUzYzFmMDg2ZDMxYmFlZTNjYjAwNGVlZGZkNjA3NmFmOGI2MzY5NzBhY2Q2ZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5MDFmMmU1NGUzZGZmOGFiMjMxMWVlOWEwZmE1NDQwNWEyYTQ2NTdkZDNlNDlkOWZhMThlMDBjZmNiNDExYTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwN2Q1ODk3NTUxNDYwOGZlMmI0ZjQwNzhmYWI3ZGIyNjlhOGMwY2NmYjRkMDE1Y2MyNGJlMDg3NTZkODZiODcifQ"
+        },
+        {
+          "resource": "repo://internal/port/provider.go#L8-L41",
+          "version": "repo-lines-v1:sha256:72bb0818f9cc43c777dd5ecc90520292ffecf463c9498d48caed84de31f8c472:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZjU1MDY4NjczZjc2NmRmMzdhNzE5OTk0MWFhNTk4ODY1Yzk3MGYzNTFmNDdlNTU0YmM2ZmJmZTAzNjRlNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxZDEwZDNmNjlkZGU2N2Q1OTRiOWQ4NWQ0YzM4MzY3YmMwYTlmMmVhY2ExYmI1M2U1MzEzNGNhZGRhNDA3ODUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzIzYjM2YTM3MDM3MGQxYWYxYWFkMTJmYzZhYmRkNTAwZjQ4ZGUzZTFhYmQwNjBkNTE1NGU4MDYxMjUzYWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b977a19b0d44cdc98e3a464183687e5",
+      "statement": "Ambiguous provider outcomes are resolved only by the reconcile path: marker-based candidate search must yield exactly one candidate whose title/body digest and live labels/assignees verify before adoption in one CAS; zero or multiple candidates stay blocked, and AuthoritativeZero clears the intent as record cleanup rather than a retry.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L32-L38",
+          "version": "repo-lines-v1:sha256:70c6358b01c01102f2df91235cabbce9d8fd182f35fbe3b7687c242f9eb4368b:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhjZmQ2YTAzNmQ1OWEzNTIwYmRjN2ExMDFlNmRkODJmMmMwODQxOTAwM2JhYTU0NWE2NWI1ODE1OTA4MmZmZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTYwZTU0MjViMmZiODZjZWMwNjM0NmY4MWZiZTcwMDI5NjZjYzkyYjVjNDg2NTUwMWU5NzIwZmYzZTM0ZGUyYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDcwYzBiYmNiMzMwYjhiNTE3MTUxZWVmZTZlYTVhOWYxZjY3ZTY5MDU3MjE3NjlhNTdjOWYwOGIzZGZkNDFhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2JkMzZkMDUwZDlkMjQ5OTNiNTczYzgxN2IzZmVhZjMwN2FhNDczNjc5Zjk1NjE3NmVlOGM0OTA4NWU5NGVmMyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-providers.md#L30-L44",
+          "version": "repo-lines-v1:sha256:06fcd7c795dcfdcbf67c6471e0d5ca6d5753e9fcec2f3a1b37c7f13f3ad45a50:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyN2RlYWE2MDE0NmVkM2QzZjQ0Y2ZmMmFjNWRhYWJlODE4NGIyZjBkMTYzN2MxZmJlMGM3NWE5MmEzNTliOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4MGU4Yjk0NTc0YzkyNDE0ZTBhOTA5MzZmNWJlNTlhNjE5ZWFkZGE1NzhkYzAxMjQ5YmQxZTEyZTljODFiZDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5N2M4OTc4NjZlNWM3MGRiNWUyNjA0NzU1MTY0MzA2YWZlMzk3NGQzZGFmY2U4YzA0NWM5YWExY2IyMGE1ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzMmRlOTMxMmIzMDhkYzE2NDg4NGE5MWZjMmQ1ZjQ5OTkxNWVjMGRiNDQ0MGQ2NmNkZmNjMzY0ZDRmOWFlZWMifQ"
+        },
+        {
+          "resource": "repo://internal/port/provider.go#L17-L36",
+          "version": "repo-lines-v1:sha256:7e8d9cc4e0ce8fc41457918e7dc8aa155994964171c04567bddbb277402518fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1OGRmMWU0OGMxYmY2YTBmNWU2ZTU1MTA0MjM5MzBlM2I4YWU3OGQ4YTc2MDI3ZTMzMTlhMDJkYjZlODM4ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkM2U1ZWZjNzcyZjBhY2NkYTkzYzViNWRjYjJkNGZjMzM1NmNmN2RlNWNlMWZjNzEyOTllZDMyODEwYmQ1ZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjNDkzMWRlYTYyMzY3NDRlYzk2ZTUyOWExYjAwNmM2OWEzODU0ZDE0MzAzOGQwMzcxNjc1M2VlYzI2MTI2MzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a11bb41a0915420fbecdc5c8922731e1",
+      "statement": "Orca is an optional execution adapter — never a native-install dependency and never a second scheduler: native install and self-verify do not require it, and issueops execution prepare --mode auto probes readiness at the pre-mutation boundary resolving to direct whenever Orca is absent or unready; after any possible Orca mutation the durable pending intent and explicit reconcile path are authoritative.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L53-L67",
+          "version": "repo-lines-v1:sha256:772413766a863693c9838be21d092b9d43f9f132dc61d954e872b976d6f34917:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NTQ5YTc0MmI5Njc3YTFjMzYwNDA5YTk4MTNiMTlhZjZhNWFlMTYxYWUzM2YzZTEwNzk1NWM1MWU5ODY3MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4Yjc1ZDRhMGZmODFlZTI4NTcwZDVlNzcxNDVhZmYwZTM4Y2Y1YjM3OWIxYjY1NmJmMDI5NjM0OTEzYWYyODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYWM3MDJjZDliYTk0ODRjYzQxOTE2NGQ4YTgyZDhkZmIzNDZkNWYzMDFiNDNkOTRjMTBkOTZhODkzZTcxMjcifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/guides/issueops-execution.md#L27-L33",
+          "version": "repo-lines-v1:sha256:cc905552a762a8311c8b40d34ef74a1b57ebc4fb62d0455fcadbd27b636b4345:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDllYmNlZTdhZGJkZWJkNTI5MjQ0MmUzMTJlMDczODYzYzdjN2FmODEyM2M0Y2ZjNjJiMGJmODVmY2M0ZDkyYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2YwMjM4MzQ2MTFiMGQzNmM0YjU3ZTc3NGYwNTZiNzllMjFlNTJhMWFlMjZkYmMzMGZjZmI1MzQ4MjJhZjNiNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzhlZmJmY2Q0Mzk5YjNjYWJhY2Y4NmRiZjE5NTMxYWU2NWJjYzhlNGM0NzBmYTM5YTQ3NjUyZjgxNmEwZjkxMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_8d9f50a88bc94ffe90fd6bccd794aa1d",
+      "statement": "Core — not the Orca adapter — owns the generation-fenced lease, native actor receipt, and canonical CWD fences; the adapter receives the full sealed identity in port.ExecutionOrcaIntentRequest and must treat TerminalHandle as transient observation only, re-resolving it from the persisted worktree ID plus PTY ID because the core never persists it.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L148-L160",
+          "version": "repo-lines-v1:sha256:48fa1cfd6f78d4f45ad9d9e6a7d2654cbb16d624acdfad19df12f57cea1efb60:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MmFjZmUyMGI3YzEyOGViOTE4ZWQzN2UxOWJmNTBkZDZkYzEyZmNiYTljYjczMzc4MjM0MjhlODM3MjQwYzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlZjk2MTNiYTI3NGY4OTYzYjQ5YWI5NzM3ZTAxNjM4NjJmMDRjODM1ZDA1MTAyYmRmYTczNzMwMjc0MDZjMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1MzE2ZGRlNGNmMDk5ZTE3YzExYWMwOWM4NjRkMmYxMjA0MjY4Zjc4MjJlNWIyNTBlYzVlMGU2ZmIzYzU1ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjc0MDcyNDRkMDBhOWE5ZTBmYzQwYWQ3ZjZkOWFmN2MzNmQxYmQ5M2FlZDZkNmFlZjgwYjEwYTBkNGU4NDkifQ"
+        },
+        {
+          "resource": "repo://internal/port/execution_workspace.go#L99-L137",
+          "version": "repo-lines-v1:sha256:0113bd8121e70bfbf6da8e42d984e1dd2095be6a85128d716e556b96aec73b50:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1Y2FkMWExZGNiMTkxZDlhMWZjOTc5Nzg2ZjczMTM5NGE1MTFhNmUwMTYwODA3MmY4ZGRiNWQzN2NiNjA0YzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxZmUwODVmNWIxNWQ5NTg5ZDRkZDM1ZmU5NmNiZjQ3ZGQ5YjQ3NDdkOWEzNDQ1MWI4NTFhNjAzN2U1Y2YzOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4MDc4Y2I5NDhlZTFmYTA2YjUzMTZmY2YwMGQ1MDIxMGFkYTUwMjZmY2FkYzA2NGIzYWIwNTEyYzNmYmE3Y2IifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2af5766117694f319f0191befd88fee4",
+      "statement": "internal/adapter/orca is a bounded argv/timeout/envelope projection of the installed orca CLI: fixed argv with path:/id: selectors and single-quoted host commands for codex/claude/omo only, 10 s read / 2 min create / 15 s terminal-close timeouts, 2 MiB envelope and stream limits, and typed port.OrcaError codes with redacted bounded diagnostics that preserve the Invoked flag; the adapter must not duplicate IssueOps state or recovery policy or install Orca.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L75-L75",
+          "version": "repo-lines-v1:sha256:0d71ce0bf656f83156d54d81ecdc7307bd8fb36389701bc69c798821ca906ecf:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGQ3MWNlMGJmNjU2ZjgzMTU2ZDU0ZDgxZWNkYzczMDdiZDhmYjM2Mzg5NzAxYmM2OWM3OTg4MjFjYTkwNmVjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGQ3MWNlMGJmNjU2ZjgzMTU2ZDU0ZDgxZWNkYzczMDdiZDhmYjM2Mzg5NzAxYmM2OWM3OTg4MjFjYTkwNmVjZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzUyODIwODBjZDQ1YTU5MTZlOWMwYzM5MWE3NGM4NTFmZGEwOGMxMDZiNzk3YzYzZmU4MjM5YmU0MzE4ODY1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmFlNTc4Zjk0ZTIyODA3MWZjM2RmNGVkN2M2NWVjMDEzODA0NjdiYWRiYjRjN2JmMWJjNGRmZDQ2YzVkODA0OSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L1555-L1610",
+          "version": "repo-lines-v1:sha256:d36b34af8e5aa9cfea2d9ff904a6d40218041174643c664be795b6e62d976859:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkNDY0ODYxZmI4YjE2ZjZjZWNlMGU2NDlmMTA2NTAxZWJkNzU5NDM5ZTA1N2NjYmMxYTFjNzExNmJjZTg1ODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOGQ5MDVlZGZjZTUzZTFkNDA1NmQ3YzU0YjI0YzM3N2FjMjA3YTk4MWM5MzhjMGI3YWRiNTc2NmQwMjAwN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5M2Y1MDBlYzgyMTkxYzM1NTkyMGViZTMzZWIzZDNiNmU0MTE2MGI1MTkyMWVlMGUwNWFiY2E2Zjk5YWRlN2QifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L20-L28",
+          "version": "repo-lines-v1:sha256:357a44cfddb84d21252e4ff1004dab2f3ea08197ee5c7bb7bdb88a79cab22a68:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjMxMzQzNDAwMTY4NjA1MWRlNzgzYmIxZWRhOWFkMTNhMDU0MWNmOTY5NDRjNWU0MjJkNTUxZjllNzg3YTY5YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjZlNTIyOThkNWM1NmI0MDJjNzQ2ODU0NGY3YWUyNDE3NmY3ZTQ5OWEyOTEyZjYwOTFkNGE2OWM4ZTBhYWFmOCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/decode.go#L11-L49",
+          "version": "repo-lines-v1:sha256:f93940234f0234e7210add01d44ccb626ae7512ddb984d167a0d46183b035441:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3NDQ2NTI2MDIzZjIyNWYzNjg5ZDYzZjBhZjA1ODE2OWY3OWMyODEwOWUxNzg2NDYyMDk2NTQwMTk2ZmZmOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/runner.go#L59-L103",
+          "version": "repo-lines-v1:sha256:686cd77578f1b4203ac4e8966094e802b44c6d8d5807879af485ee0ba5f5a0e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlNzEwOTM0MjllNmQ1YjE2ZmJjMWIzYTEwNjgzNjMyMGFkMWE5MTY0NGMyNGM1OTYxZTU4NGVmMGMyMDRkZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMjhjZDZjMzk4ZjM2MTA0MDFmYzI5MjFhYjUxZTEwZDFlMjRkZjYyODU0YzgxN2ExOTEyMzM0MGQ1NjM2MzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0ZGE4ZjYyNmNjNGU3M2I5NWMzZmMxOTM4ODM5YTIxMTQ2YWRiYzE2NzNlZjRiZDRlMjE2NTIyYTQ0NDJmODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ba28ec99669a4d9b804dd54f96301934",
+      "statement": "A non-zero Orca exit that left a well-formed ok:false envelope restores the Orca error code instead of collapsing to command_failed, preserving consumers' not_found idempotent normalization; envelope absence, oversized output, or an ok:true contradiction keep the original failure signal.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L1357-L1375",
+          "version": "repo-lines-v1:sha256:36e435fcee0fa58a49c514135291b92b472558ce0c8bcf8d7e304ecc96f3823e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MTZkMzczMzkxMmFlYWY1NWYzYTg4ODQwYzM5ZTVmZjUwMWFhMzQ4ZjBkZjI0M2ZjZmI0ZmY5ZjUyMDQxZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2NDBjZTg5ODdhYWY4OWNkMGUyOTY5ZDI5YzhiYzc1YmE2ZGJlNzljMDQ0MDNkZTQ1NmIxZjJjYjU3MTYzYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwOTg4ODE3ZTM1MjUzYTlkOWY4ZTI3YTMwOGQzZmUyMmE5YWFiZjk1YTVkNDZkMzU4MTJiNWVkN2U4YTQ5ZWQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/decode.go#L25-L49",
+          "version": "repo-lines-v1:sha256:68405080169b270824244eda5ccacb2bdeb59af6a29acbd1aba0e79d60c7389e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MDRjMjhlNzU4Y2E0NjkwN2NhMmUzOWUxMzUzODY2YzFiYmNhYmJkMmM4N2QyNGQ4NDQyOTg3MmJlMzE2N2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0YmUzYTlhMDZkNzA2NmE3MzA1ZTc1NDBhMjhlZTI0NTg4ZTY0Y2VjMTQ2NDI2MjRhM2QyMWFjNThkODI2MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a011668d013e40888f260a455e5c11ed",
+      "statement": "The Orca runner retries exactly once without inherited relay environment variables (ORCA_RELAY_DIR, ORCA_RELAY_SOCKET_PATH, ORCA_RELAY_CREDENTIAL_FILE) when the \"No owning Orca client is connected to the relay\" diagnostic appears, keeping relay identity outside the harness.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/runner.go#L105-L144",
+          "version": "repo-lines-v1:sha256:a62a7a7c030c5f209d826813982426b6b6f223b5cf4bee300ebab3a9eb319230:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0ZWRlODg4MGNkZTJmNGZlNGQ1NzI1ZTVmOWI1YjQ4YTc2ZGNjYzczYzY5OTE0MzhmOTg3M2RkZGJiZWI2ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxMjc5YTRiYTQ3ZTgxYTdhMTBhZTZiMDRiOTkxMDQ1MzdiYmE2YzZkZjdhZTM2YmRmNGUyYjYwMTZmNWE4ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2MWQ5YTI5ZWY1NWUwMmNiYmU1OTA4ODlkMjRhNGRjNWEwZWNhYWJjZTYxNGVmMDY5ZTIwYTU2Mjk0YzIyZTMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/runner.go#L59-L71",
+          "version": "repo-lines-v1:sha256:14ca0db6c0a769c78e98e3f49e06fcdbc824a6d277a759b14de2a4e12c3d410a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlNzEwOTM0MjllNmQ1YjE2ZmJjMWIzYTEwNjgzNjMyMGFkMWE5MTY0NGMyNGM1OTYxZTU4NGVmMGMyMDRkZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMjhjZDZjMzk4ZjM2MTA0MDFmYzI5MjFhYjUxZTEwZDFlMjRkZjYyODU0YzgxN2ExOTEyMzM0MGQ1NjM2MzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0YmZhODFhYzc1YzFmYWQxMDkxNmZkNTQ5YjBkNDMwY2FhNTYzMDQwMTBkYzNjMmI5YWYyZGY1YWNkYzgwNGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b16902e2960488f916be16d41ca58cb",
+      "statement": "Orca readiness probing gates every mutation: it checks the orca binary, runtime/graph ready state, runtime ID resolution, exact repo identity (ID, path match, remote name, worktree base equal to the repo's <repo>.worktrees sibling), per-subcommand help-flag capability checks including provider-specific worktree create flags, host agent model-selection flags (plus codex --dangerously-bypass-hook-trust), and orchestration inventory runtime consistency, returning typed codes rather than partial readiness.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L71-L223",
+          "version": "repo-lines-v1:sha256:f146cbdb8830b714b60052e27b050313cf2114eb54b9451f5fe7d2df738b95fc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI5MzNiNDg3ZTI1MDlmZDE4Y2I4NzYyNTQ2NTVmOGNkMzkyOTljYWFkMTlhZGEwZmFjZDQ4MTRlOTY1ZDUwN2I3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4ZGUyZjgxMzNjNDlmM2U4OWJiNzhjMmE0N2JhMzA5Njc0OWM2MDE1NzY1YTdjOTRkZDExOGZkYjNlM2M1MGRjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkY2VhM2IwYzIyY2JmZmFmM2I2NmI2NTZiYTdjNGEzNmUzMWM3MGJkZTc0MjJkZjM2NzMzYTVmOTQ4MDEwYjg2In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_96bbd261211d46f79e427f504d94b0a1",
+      "statement": "Orca preparation decomposes into six sequential intent stages (worktree_create, terminal_create, run_create, run_bind, task_create, dispatch) persisted by the core before InvokeIntent may run, with strict per-stage receipt monotonicity validated in the adapter; InspectIntent re-reads authoritative Orca inventory per stage and emits candidate inventories with AuthoritativeZero for the reconcile planner.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L786-L791",
+          "version": "repo-lines-v1:sha256:70f9b5ee0b192f83fee616f13455a7ce03a84efcc6b8be3d024d1c30472a91bf:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzY3NmQ0ZDRhNWFlY2NhODY5ZTcwZDBkZmM2N2U4YmYwYTBmZTlkMmRmZGE5ZGQwZmU3OTM2ZjJlMDZlNzMzNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTQyMWI3MmUxMGMyZDlkMTVhZGRmMDUzZjQzOGJlODlmNGNjMzgzM2FmY2Y1MjAyNzhkYzc0MzYyMDg2OTYxYiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L806-L844",
+          "version": "repo-lines-v1:sha256:a1a8e4b8b2570076fe4ee84a2ce441c94c06a60b26f5daae9bc632126c0b7a25:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzNTZkOTM0YTIzMjkxYTRiNWM5ZGIyNjRjNDgzNzcyMzliZDY3YWVjZWVlMjczZjE2ZjEyODAzZTllMzk5NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0ZjdlNDZiOGM2ODhmNDljYWJiYmU3MTRjZGIzY2I5NTMzYTdiMGRkNjRkNzQyOGIwMmNkY2JjNGY1ZDgxZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5ZGM3MmNlODU0MzA1ZmQ3OTczYTcwZGNhYTlkOWQ1MTIwZWM3MzQ2Y2NiMzcwNjgwNGUxODBiMDg3ZDY1NDgifQ"
+        },
+        {
+          "resource": "repo://internal/port/execution_workspace.go#L88-L137",
+          "version": "repo-lines-v1:sha256:eb30f067e27c66acc79c96b7df83e0fba05ebfebb43d321d7af7be0dbdd9951d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZWZiNmNhYTM1Y2M4M2YzODU3MzFjZDRhNzE4NmM0ZDJhYWJjZWQ2OThmNGYwODNhOWNjMDVhZjYwNjBlYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiNDAxODg0YTNjMzVjOWFiMzFhYjc1OWZlM2JkOTAxNzZkNWZhNTZjMDAyYzczNjIwNGYxMjM5NmJkNTMyN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4MDc4Y2I5NDhlZTFmYTA2YjUzMTZmY2YwMGQ1MDIxMGFkYTUwMjZmY2FkYzA2NGIzYWIwNTEyYzNmYmE3Y2IifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e007eec5c29146848e93efc310fcbc75",
+      "statement": "Orca worktree receipts must match the sealed workspace identity exactly (absolute path, requested branch, sealed base SHA as HEAD, comment marker); GitHub requires a positive linked issue passed as --issue and verifies the receipt's linked issue, while GitLab — whose public Orca CLI has no IID write flag — seals the exact comment marker and cross-checks the native linked-issue field only when observed.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L288-L338",
+          "version": "repo-lines-v1:sha256:0c2281cd2b204352523e933a0d828f51165cc4a0451aa6aca30dabbe6ffca258:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3MWUwMzNhMTk3NDdiZmM3ODkyNWUzNmVkNWVmMjg4N2VkZjkzMDA4NjQ1ZmMwNmQyMTczYzQ0MDhiYjc1YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODcyNGMyMTk2YzkwZjMwMTdlZWU1M2MwYmQyYjc2YTkwYzA0NTIzY2Q3MjZiNmQxOWI4YWE0ZWQ4ZWU3MWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwYTVhZjNiOTQ0YzNkM2Q5ZmUwN2M2NWIwNDA1YmExZmZlZjljZjk2M2FmNWM2NzkxYjU4NTAwMjY5YzgxMTMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L1068-L1085",
+          "version": "repo-lines-v1:sha256:d5a455c7704716a9e7facc7df9936344ab1af1168d914b2c48c9fbc21c8d0ef4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmYTJmMzYwNjI5ZGRjYmE4MzIxMjAyZjJjZDNmNTQxNTU5OGUyYjg1MTFkMmFkZmJmMmY5NmIzODcxNTIzZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmZjJiOTQ4ZTRkMDY5MDI0NjdkYTExODZjMmQ5ODMwZTk1ZmIyMmY2MTNjYmQ0ODc3YmYyMGNjOTYwYjkwYTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_768246f389ac4e78a479f5673655724c",
+      "statement": "When Orca returns a created branch of exactly <namespace>/<requested>, the adapter renames it with git branch -m and restores the upstream: with a sealed base that is an exact 40/64-hex Git object ID and refs/remotes/origin/<branch> provably resolving to that SHA, the upstream re-attaches to that remote ref (GitLab numeric branch suffixes tolerated only under that proof); otherwise a plain base branch name becomes the upstream — and execution-level tests pin that creation stays pinned to the sealed base without an absent upstream.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L288-L338",
+          "version": "repo-lines-v1:sha256:0c2281cd2b204352523e933a0d828f51165cc4a0451aa6aca30dabbe6ffca258:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3MWUwMzNhMTk3NDdiZmM3ODkyNWUzNmVkNWVmMjg4N2VkZjkzMDA4NjQ1ZmMwNmQyMTczYzQ0MDhiYjc1YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODcyNGMyMTk2YzkwZjMwMTdlZWU1M2MwYmQyYjc2YTkwYzA0NTIzY2Q3MjZiNmQxOWI4YWE0ZWQ4ZWU3MWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwYTVhZjNiOTQ0YzNkM2Q5ZmUwN2M2NWIwNDA1YmExZmZlZjljZjk2M2FmNWM2NzkxYjU4NTAwMjY5YzgxMTMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L340-L383",
+          "version": "repo-lines-v1:sha256:9ba54ad8533d66c5be43706997de724bc23c424740c8cb2c5f2517c47dcb6d7a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0ODg0MTc3OTFmMGQ4NmJlZTgwMzRjMDVjODc2YTk4NGU2NzQxNDlhYjU5MTBmYjQyOWRjYTFiMWM5NjljZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjOGQ3OGVjZWU5NGEyNzFhMDVlMGEyNDA1ZjI1NTc5MWU4NzNiNWZiYjFkYzlhYWE3ODlmM2NkZDExYzYxMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliYzdhZDE4N2M4MzMxODhhNjgzY2EwYWI5ZDA4YzcwNWI4ZGE3ZWViYmU4NDY2ZDA4YTMzNTFhN2UzNjE0MmMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution_worktree_upstream_test.go#L10-L51",
+          "version": "repo-lines-v1:sha256:261db1a320a27a978a32155cf4bf1e9bbedee8707d00a328de8294ef0edb09cd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwYjJmNjg2NjYwNGM2NDJmNTg2ZDM0ODE1NDY4ZGI2ZDVmMGE1NzEyNmY2ZTI2YmZlMjZmMTMxOGM4MTU4ZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a1380b756b6147d0b5c9f22c982d059d",
+      "statement": "Umbrella child cycles seal a canonical parent worktree path and the adapter must prove explicit lineage: lineageConfidence=explicit, lineageSource of explicit-cli-flag (create's --parent-worktree) or manual-action, and an exact repoID::parentPath match; independent cycles create with --no-parent so the Orca UI layer matches IssueOps provider-native parentage.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L68-L73",
+          "version": "repo-lines-v1:sha256:8bb5531d746ea53975cd9f2f2b7b0022495fd5522e17d3540c7d42e6c0901032:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmNlYmQ4M2RjOWJlNTQ0ZGY1NzMzZThhMTEwNTI1ZGE4ZjZkNTMyNGEyZjViMWNkMjY4NTI1ZmEyYjgwYzkwMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQyMTc5ZjBiNjU3MDViNzg3YWFmZDliNGIzYjg3MDJjYWM0OGYzMzE2YTA5NmFiYTA5NGE2YzRhZmFkYWI5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWU3YWUzOTI5ODBlNDRiMmYzZmE3NjAzN2VkY2QwNWI5OTI1YzY5YjcwY2IwYWI0MmFkMmJkZGY4NzU1OTUxZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjAxYzEzMmFhNDk1MTU1NjZlODlmN2UzNDcyODVkZWNhMWIyMTNiNDBiMjE4Nzg3ZjVkNWEwOWExMzcwMzI1NCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L1061-L1102",
+          "version": "repo-lines-v1:sha256:a26c3ff8de235f10b11dde77a3785107fe188fb40e8671757973bf756b25927e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NDZkY2JhODA0NzU2NWM1YTNlYjliNTYzYjYyY2YxZTYzOTgyMGNmZTg3MDJiMWMxYjBhODM2NmM0OWZmMDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkNjkwNTMyMTc4OTI1ODA0NzI1MjY4Yzg2YjliMmY1ZWM0ZjQ1ZDgwNjBkZDljYTM4NjZlZDBjNzljNWQyZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkY2Y2ZTk2M2M2OTE2YTcyMzk4OThiYjFmMmQ2ODgyMmE2NDg4YTdjNDc5ZWZhNTgzOGZjOWM2Y2I1NWE4MzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd137308ce5c41fdbc6282bb3c3834a8",
+      "statement": "LaunchOwner chains terminal, Run, bind, task, and dispatch with receipt validation at each hop and dispatches codex/claude with --inject; Omo is deliberately not injected — the adapter validates the dispatch preamble and delivers it as one bracketed-paste terminal send --enter, and reconcile rejects Omo dispatch inspection because prompt delivery is unproven after dispatch.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L621-L642",
+          "version": "repo-lines-v1:sha256:66560d5cd634f135e7b0917138f2c31600d49e2d24ea6453566ae69e4322ef0c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZWFmZDhkY2I0OGZlZjJiMzU4N2Q3ZDEwMzJhZTNlOTQzMzAwNTNiNjkzMmRiZWEzMWVjOTUyNDBmZTkzMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3MmU2NTdhYTM3YmNjYzE1MDZjZTNkZmFlMDFlODRmNTRkMDE2YWQ5NzY1YjViMDE2MTQ0MGI2MGIyNmIxYmIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L219-L241",
+          "version": "repo-lines-v1:sha256:b687fb129920f421950bddee5c63cd4226e2eab6e65048420fd67a45db35a231:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiNWQ4OWQzZTlhOGY0NTg4NWUxODllMDdmODcwMWU2OWIxOGEzOTYxOGVmYmViNGY0ZmEwYzc0N2ZhMDA5ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzNzQxYmJkZmE0ZjRhMmQyNTFjMjQ1Mzk0OTU0MjJkNGEzODVlMDJlOTM2YWNkNDA0MDhiMTRkMjYxY2E2MDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4YzMxMzU4NGI1N2Q0N2M4YjY2ZGIxNzIzOTgzYmEyZmJhMzI0ZDUxNmU2YjI0ZTI1MWJiNDcxZmMyYTI3YTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmYjM1MjE0OGFlMDRiM2QyNTNmYjhlYjdkMzNiNWI1NDZjN2Q0MWQwYWY3NmEzNjk5MTE5MTc4Mjk0YzMxMzgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/orca/execution.go#L374-L426",
+          "version": "repo-lines-v1:sha256:290e65ee6229e7813ce201cfcad28548ed57ae07d0b9e928d6969a45bda676e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0YjUxNTllNTdlZGFkNmM4NmIyNjE2N2ExMzFhMzA0Y2IxMmJiYzIxNGJiZWRiNzEyMDg0NGRiMGM4ZDc5MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlNGU0MmY3MDQwMTdiZmYxMWViODYxODQ1ZDMyYTA0MjRhNjc4OGJhMWU3NDQyOGFiMTI2MDJjOGEzZmEyZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkN2M5MjEzYzlmNWQ0M2E2YzM2ZDEzMmQwMDFhZTc0NjRhNmVmNGFhYzlkYTg0NmVhZDdjMmMzMzUyNjE3ODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f909e56054d4520af8816152ba0e75b",
+      "statement": "SendWorkerDone and UpdateTask/SettleTask exist in the Orca adapter but are intentionally not wired into IssueOps completion: execution complete records only a durable lifecycle receipt, and the Orca dispatch's terminal transition belongs to the dispatched owner holding the sealed capability — wiring both would create two competing completion authorities; SettleTask documents the one-shot consumer_fenced recovery via UseRun.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L1127-L1171",
+          "version": "repo-lines-v1:sha256:368e4a065f122787d696b6fc40e8e1797de3b5976d1189cc67e6fd7329a6232f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5OTRhMDZhNDBhZjlkZjczMTQ5NzBjMjhmNzcwNTc4Njk5MzQ4MTQ2Y2IxOTJkZWY5NDMzODZhZTA2MDBhM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBlZTc5MDNlZGZmNGQxMzA1MTcyZDQxNGNhNjQ2ODhmNDZiM2Q3YjRlMGMyZWQ2ODFjMzA2OTliY2Q5Zjk3MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5ZmY1ZTgzOTJmZGE5YWI2MDUzZDYxZDcxZmQxZTIzNzNiM2NkYzYzMTMxODRjMmIzOGVmZTJjZmJhODI2OGYifQ"
+        },
+        {
+          "resource": "repo://internal/port/orca.go#L287-L305",
+          "version": "repo-lines-v1:sha256:5e230c7a145011140648639273b369e632ec4271370fb8101d267f32266162d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzYTZmMzQwNTQyZjNkZGQ2ZmZhYzdlODFjNjZmODAxYjE0NGM1ZWVkN2YwMDdlOTY0YWQzZDgzZjY1ZjkwM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmNmE5ZGJiODE2NjVlNWU1NGVjNGVmZWQwMzhjZGMzZjQ2ZTI0OWE0YWY3ZjQ0MzVlZWQ0MGM0YWM2N2RiNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjZDI2ZGQ3YmU3NTQwYWNlZTIyMjJmZWEyNzI2NTYyMThiODZhNDE4ZWYzZDZhNjJlNGY3ZWM2ZWYwODQ1NDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71d0a424f453472386fbe17c30d7fce5",
+      "statement": "Only normalized DTOs cross internal/port: the issue-snapshot DTO is owned by internal/contract/executionissue and merely re-exported by the port package so the contract layer never imports port, and Orca port DTOs carry runtime IDs and bounded identities but no environment or credential state.",
+      "evidence": [
+        {
+          "resource": "repo://internal/contract/executionissue/types.go#L1-L35",
+          "version": "repo-lines-v1:sha256:342390a6c6123e873f2b08e3e38f6d7c5ff8d591c4b7a8b4a05b600257871bae:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxYTMxNjgxM2M1N2QyNGYyZmUzZmU1Y2UyOTFhYWZmMzg2MWJhNTM1Y2RiZjg3Mzg2MzBhZTJlY2U2ZjM0OGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhODUyYWI2ODhkZmEyMTJhODVlZTFlOGQ4NTc3NTE2YWIzMWUwZTllMzM3NGQ1NmZmMzA3NzA4YmFjOTQ0YjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0OWJjMWFhZWY1ZjM3MDY2MWVkNzc1MTIzMTJjNDVlMjU1MmRmYjRhMjM2MzcxYWE4M2VmOWFlZDliNmU2MTkifQ"
+        },
+        {
+          "resource": "repo://internal/port/execution_issue_contract_alias.go#L1-L14",
+          "version": "repo-lines-v1:sha256:dfe0cef16fa892f7d654307233caef4b61969577af3a417222ac97b9f6587a9e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4OGFkODM3NDg2YWMzZWJkMjQ0MjgzMjAyMWJhMzEwMDJmMjA4YTMyMjM2ZWQxMmExMmZiNDZkODI3ODNkODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_10d0553b0d734433bc92098e1d8969a7",
+      "statement": "MCP server namespaces and wrapper identity, credential profiles and tokens, Orca relay environment, claim-token file contents (which never enter state, prompts, or logs), and terminal handles as authority all stay outside core — only the normalized provider/source/URL/body/state DTO crosses the port.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L59-L67",
+          "version": "repo-lines-v1:sha256:87955f23a6284336cc740f2923daa3c0007239819b1cac6ad1a23fd857deba97:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZDZlZTYyNDBlOTMyNzhkNDk0NzhlNzA0NGY4MzBlZTg1MGQyMmNlZjM2NGI0ODk4NTlhMjc1MDU1MTQ5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODU1NDlhNzQyYjk2NzdhMWMzNjA0MDlhOTgxM2IxOWFmNmE1YWUxNjFhZTMzZjNlMTA3OTU1YzUxZTk4NjcxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmRlZTQ5NDgwZjEzMjk0ZDEyODE0ZmRmM2E4M2I2NjM4MjIyYzZmMWI5OTMwYmMzMWFmY2QyNWYzODg4ZmM4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGRhYzcwMmNkOWJhOTQ4NGNjNDE5MTY0ZDhhODJkOGRmYjM0NmQ1ZjMwMWI0M2Q5NGMxMGQ5NmE4OTNlNzEyNyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L92-L98",
+          "version": "repo-lines-v1:sha256:9994f412ce78cf5dbf9f9f496a26021640295b5fa8449160f18d0f3025ee63ae:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZmMxZDMzMTYxYmEwNWEzOTQ0ZDRiMGI3NDA5MDcyNDE2YmFkN2UwZTUwYjhiZjIzNjljYzRlYTY0MmEwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzcwNDM3OGRkZjlkMjhiNWQzNTk2ZDg2M2NiYzBkZjFiMjhlYTAxMTFkZDM1YTA1NDMxNzg4ZGMzYzFiOGJjOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTgyNjg3Y2U5NjFjOGE1ZjNhNTkyNDMwMTljZDQzMTRlNTA4NmViMWY0YWJiNmU5MzM4OTdjZDY5M2Q3NDZmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGM1NDViYzJjMWM5MDU0ZGMwMjdhM2M4OGU3OWQ3OGIwMGRhYWY5MGMxYmUzOWRhZTY2OTEwYzk0MTIzZTNhZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_eff399e59e724d15abd8561729d0adcc",
+      "statement": "Cleanup uses the narrow CleanupOrcaTerminals surface (Status, ListAllTerminals, ListWorktreeTerminalsByPath, CloseTerminal) that closes only the fingerprint-approved exact handle and succeeds only with a PTY-killed receipt, normalizes selector_not_found to \"no terminals\", and keeps cleanup's terminal needs off the main OrcaClient interface.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/orca/client.go#L433-L498",
+          "version": "repo-lines-v1:sha256:c0f83c6f47bfd76cfc4faa6f3b2ef1decdb5e2c11766edac2678e805590e7ae2:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5MmUzMjRkODY0MDY4MGQ4MDNhYzRlOTgxZGZmYmQ0MTVhMTcwMmNjNzA3NmMyMzM4Nzg5ZWFkODFhYzRkMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2OTczNjQyODc5YWI0OThiNGQ1NTExZDQ5ZTNjNTUwZDI3ODA1YjdkMzNjNzNkMDliNjMzMjQ2ZGZjYmMyMzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzZmNhNWIzN2IxMGI5NjYwODc2NzM1MzU4ZGNkMzI3NDZkNTAxODRiODhhYzE5Y2IxNWU2ZmU5MGNjMTdjMjkifQ"
+        },
+        {
+          "resource": "repo://internal/port/orca.go#L103-L117",
+          "version": "repo-lines-v1:sha256:75afec963400020e785130078ab98e45c9685e6dc0cb018cc1434fa26f0dd687:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODQ1ZTQ1NmZjMDUxMDg0YmEwNjA0NDkzYTA1ZTdkMDA0MmE4NGU1Mjg3YWIyMDIxZGFjYTUwZWRjYTgxZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjNTNmODk4NDY4MTJlZTM0NmM5ZDA1NWZmNDJmZGIxMTY0OWIxYzZhMDNlNGM2YzQ4MmM5YzNhNGJlOTU0OTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NjQxZmEyNWQwNzNjMzE1MWQxMjRkYWUyMzZiOTA0MDIxYzk5Njk0YzMyOWM1NjA0YmI2MWRhMDVkNGQ5NmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_90dd6a0eeb57488ba25ddf8248cc5e16",
+      "statement": "cmd/harness/harnessapp is the only place concrete adapters are constructed: productionIssueOpsExecutionDependencies wires orca.NewExecution() as both provisioner and owner inspector and provider.ReadExecutionIssueSnapshot as the snapshot reader, while the execution CLI and MCP facades receive injected handlers and never resolve adapters themselves.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/issueops_execution_wiring2.go#L11-L25",
+          "version": "repo-lines-v1:sha256:685ab0bc1d1ea3ce02fd1a484afacd3019f928c83ad342bcd1857bb4c4f50a9d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiYTcwYTFiNWExODhhM2NhYjVhMTJiM2MzYzQwYTMzNzVmOTkyZDQxODkyM2RhYTZhNmIzM2Y4MDc0YTY2MGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YTliNWU5MDE5YzhkYjg3ODNlYzljM2ZlYmIwYTJjOTg2MmY2MWEwNWMzMDhmZTg5NWU0YTliZWQwM2VkYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViZmM5NzlhNTNiYTNhYzRhNTk2NzBmOGI5ODY1NWQyMDhhMjNjMWNiODVhNDVmNzcyYzUwMjZhNjRkNGIyYTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/issueops_preparation_wiring.go#L37-L47",
+          "version": "repo-lines-v1:sha256:d17847ad737819ebd7dda43a3b82e6a84ada5b2e9816556be798f82232133915:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyMmQ4NjZiNDA1NWM4ZmUzYjgxMzA4ZDc5NWM1ODg4MjA1ZGM2MjQ0NjgyOTIzNmYxM2ZjZDU0NjJkNGRhODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwYTYyMDUyNzM2M2Q3MTA2MTU3NDAwYmIyZDQ5ZWQyMTM0YWI5N2UyMDU0MGMzY2YzOTVjMGIxMGE4ZmQ2OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyMzFlZWJiM2JlYWY1NGMxZDVjODA3ZTAyOTFjMDU2ODcyMDY0MmM0NDQzZjNlYjI5MDExMTQwNmNmZDU3ZmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_98fcae14b96748c485d7d75cd1405803",
+      "statement": "internal/architecture/dependency_test.go enforces the boundary edges: internal/core/issueops must not import internal/adapter/provider, the application layer must not import adapters, and concrete construction (provider.Resolve, orca.NewExecution) outside composition-root preparation wiring is flagged as a violation.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L161-L174",
+          "version": "repo-lines-v1:sha256:faef93352afb3b31d552060bd2b3b65ebbb3ea874b5de7e9538cc2a6117187bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhYTI4MmZiZDM4OTAzYTkyMGM2OGFhOGJmZWY1ZjZmYTAwNmU3MDllMDE3NjJlODJhYmJhZjI0MGMzM2I1OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlY2IyNzVkOTQxNDlkODlmNWNhNTlkMTU1NzFiNTZjMTAxYzcyOGRiZmRiMTQwYzRhNGY3YTkyNTkzZGE5MWUifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L36-L45",
+          "version": "repo-lines-v1:sha256:46f4ccfe5d70d554981e95516b0779f5f32318b1cfb96a4344bfdff0687bd118:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwMTViMDA1YWU0ZjhhZTRmNjY1MmU3ODJkYzQ1ZGEwYTUxYmI2YTMwZDEyNzAzMGI2OGFjZjQ4YjVjNGU5OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYzA2YzNiODMzYTQ1NDgwZDAyZTc3OTQzYjdiMzM1Y2YxOGU3Mjc2NzlkYjNmMGUwNzU3NTM5NDM1NGY5OWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3NzE3NDcxOWQ2MTVjYzE0M2QyOTIyMTc4MGRiNzM1ZDliOTI5MTFhYzljYTFiZDYyYTQ4ZDQ0YjJlZDg4ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MmRhMmU4N2Q3YTljMzM4ZDljNDA0YmVhM2UzYTQyMDNhOTA4Yjc2OTdjZWVlNGVhMTg0MTRmMjMwNzBiNWEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L390-L406",
+          "version": "repo-lines-v1:sha256:e0359d6ad0c1adc083f5fa333229e4ace3fe2d5a319db5988034be5728ac17bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0ZDk3MTFhOWM4NDhlNDhhNWY3M2U2Yzk3NWZmMTQxZGFkYzY5ZDJjNjFmOGYyYmIyYWUxYjM5OWI5ZWQ1MTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1Njg5YmU0ZDE3ZTg5Mzg3NzFhZTVhODViZTMyYTljZWZiMmYyZTMyY2E1YzM1ZGIzNTBkZGUyMDYyZTE3M2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c58df4158e2f420cb12d51a1ca6af368",
+      "statement": "The Orca port owns per-host implementer/planner model defaults applied by execution prepare when --owner-model/--owner-effort are omitted (codex gpt-5.6-terra/xhigh, claude claude-sonnet-5/high, omo openai-codex/gpt-5.6-sol/max; planner-grade codex gpt-5.6-sol/xhigh and claude claude-opus-5/high), returning ok=false for unsupported hosts so callers fail closed.",
+      "evidence": [
+        {
+          "resource": "repo://internal/port/orca.go#L8-L57",
+          "version": "repo-lines-v1:sha256:b91c223ba33a060c8b52f207924a7360592e9d8fd8e3d2bf2188bd518d9f7dc8:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1NzFiNjhjNWIzNTJmZTVlYjJiZTJlNmI5ZWJjMzRhODNiZmU1ODZiZTEyMmNiMGEyZTdiNWNhZTkyNjM2N2IifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

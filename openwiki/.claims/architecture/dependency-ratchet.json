@@ -1,0 +1,400 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4674edb508194445e640ced82e9b83ddb47b0185b5b635b035cee8f1cc032aec",
+  "claims": [
+    {
+      "id": "claim_9165f7df8573438c9ada0605d568858c",
+      "statement": "`internal/architecture` is a test-only fitness boundary that collects only direct production import edges via `go list -json ./...` for module packages (`agent-harness/` prefix, trimmed by `normalizeImport`), deliberately excluding test imports and transitive dependencies so diagnostics stay precise `importer -> imported` pairs; the edge inventory is loaded twice and must be byte-stable (`reflect.DeepEqual`).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-27-architecture-dependency-fitness-ratchet.md",
+          "version": "repo-file-v1:sha256:996b03d31a667a8d42a725c5e2886ff767a06f7c240d93c93c6abce9a5fa5c27"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1275-L1303",
+          "version": "repo-lines-v1:sha256:ee80fa39e6a086952d7cbc20bc819685bc0fd1cba277cfd3115b630b0f9f1b4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMWYzMTNhZWZmM2IzZGRhOGJmOWZjOTViN2M3OTMzYTM2MmViYWNlNGI1MDhkOTU5N2UwOGU4Y2U5NDYxODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjU5NzA4NjNkNTgxM2JmOTcwYjAyZTM0YjU1YTIxMDIyZmY5MWZiYjM3NjAwYmM5ZjZhNzY2NzkwZWVkMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQwMTA0MjhhMGRiYTVjNjFlNjYxMDRiYjAyOTMxZWQ1NzEzY2E1YzBmNWQ3NjAxMDdlY2E4NTA3ODZiZGE3NWIifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L225-L242",
+          "version": "repo-lines-v1:sha256:4ebf364e3d529abcd93bd0a3ad8fe25c8de74b46846697f558269325339e644e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTAyNTcxMTFiMDEyYTM3ZjliZDkxOTY2YWMxYTU1ZGNkZjk1NjVkM2NhYzJhM2EwYTQ1YTFlY2JjNTM5YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlYTI4NjdjMmI0MTA3MTMyNTJkNmEzZmYwMWE4Mzk2OTA2NzFhOGU0MDFlMGVkY2ViYjc1NTM4ZjI5YmI4NWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a82565caf8ff407480b7d8de0bfb72f0",
+      "statement": "`evaluateEdges` enforces unconditional layer rules with no baseline — `core_must_not_import_adapter_or_cmd`, `adapter_must_not_import_cmd`, `port_must_not_import_internal`, `domain_must_not_import_implementation`, `application_must_not_import_implementation`, and `inbound_adapter_must_not_import_outbound_adapter` — over the entire production graph via `TestProductionGraphHasNoLegacyAdapterEdges`, and both rule names and diagnostic strings are pinned by `TestEvaluateEdgesRejectsForbiddenDependencies`.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1050-L1115",
+          "version": "repo-lines-v1:sha256:e65174868c202b3259b23f9e6d6656e0bd49008d141ab5bb5e7db3f6c4960cb7:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhMzU4NTYyOWYyNWZmNDkwOGQwM2Q0ZjhlOTc3ZTMwMDdiM2RlYmYzMTIxZGFiMDMyYTQyODA3YmJkZDRkMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2YzRlMGMxZDM1MDBiMmMyNjAzYzZiMzUyZTA1MDU3MmMzYTJhYjRlZmQ5NzQ5OWVmZGY3YTcxZjEzNjI2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMWRlMTcyZmJkOTc2ZGNiZDI2NGRmNWEwZmQxN2RjOGQ1ZmI4ZDMzMDVkOGFlYTJmN2JjNzRlOTJmODZiYWMifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L225-L242",
+          "version": "repo-lines-v1:sha256:4ebf364e3d529abcd93bd0a3ad8fe25c8de74b46846697f558269325339e644e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTAyNTcxMTFiMDEyYTM3ZjliZDkxOTY2YWMxYTU1ZGNkZjk1NjVkM2NhYzJhM2EwYTQ1YTFlY2JjNTM5YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlYTI4NjdjMmI0MTA3MTMyNTJkNmEzZmYwMWE4Mzk2OTA2NzFhOGU0MDFlMGVkY2ViYjc1NTM4ZjI5YmI4NWEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L29-L76",
+          "version": "repo-lines-v1:sha256:b1d66082bd5e3c2a5b0d6852f5a98fb214bd68edfe95bdaaad8c47798013aedd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YmE3ZTk0MzQzMWFmNDE2NDU2YmU1ZTQ2ZTU3NmQxN2FmMTJlYjZmNzNiNmM4MDc5YjVkOTg2YzYzZjdlNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjM0MGEwNTQ4N2FhNWM4YzFlY2ViMDVjNmY5M2E1NjgzMTIxNjEzYmE3OGRiNGZmZDliZjYxMDA5NWM2NWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkZWU0OTM1OWYyMGJmY2NhMjRjMjQxNmY1NjI0YTRlODk4ZDViOTdjZjQzODQyMGYzOWI1MmU4M2RhMmY2YzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_892f3e345dd74e5b814cc2c9b1518ae0",
+      "statement": "The legacy-adapter baseline is zero and can only shrink: the baseline file `internal/architecture/testdata/legacy_imports.txt` was deleted (ratcheted from 263 edges to zero), `TestProductionGraphHasNoLegacyAdapterEdges` fails if `legacyEdges` returns anything, and a change removing a legacy edge must justify it in the same review; there is no registration path for new legacy edges.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-27-architecture-dependency-fitness-ratchet.md",
+          "version": "repo-file-v1:sha256:996b03d31a667a8d42a725c5e2886ff767a06f7c240d93c93c6abce9a5fa5c27"
+        },
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-08-legacy-baseline-invariant.md",
+          "version": "repo-file-v1:sha256:7679d712c4f07212e5f99c5fb42cf9dc74e55f14a95cd43133abc3fbf01a3109"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L101-L107",
+          "version": "repo-lines-v1:sha256:9eb91cbaf18704b74e347fc85d379290f09be2c7e55e3610bf84a56d14b29513:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDY1NGY0MmY4M2UzNTA5YWJiOWVkYTVhZTk2MTY1NGE2ZWJlYmU3MmFiOWM1NzBkMGEyNTIxYTFjNjVkY2Y2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDI0ZTM5MGIyYmM0YTYxZDEyYmVhNTNjYWQwNTdmZWM3MTIwZDJhNWZjMzU4ZDMzYjMxNmE1NmZlOTdhYWIyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc0ZTRiYjMzMzQ1YjgxMjg4ZWI5M2QxMmY1OWRjNWUzODJjNzMyYjJiNmRlMGYxMmE0MGY1ZGZjMDJiNjY2MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzE2OTY0Y2U1ZDkyMzhkZjg3MzI3ZWRlMzM0NmU0MjJhMmMzZjAzYThlODE1OTdmOTExNjg4ZmNmNTY5MDY0OSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L225-L242",
+          "version": "repo-lines-v1:sha256:4ebf364e3d529abcd93bd0a3ad8fe25c8de74b46846697f558269325339e644e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTAyNTcxMTFiMDEyYTM3ZjliZDkxOTY2YWMxYTU1ZGNkZjk1NjVkM2NhYzJhM2EwYTQ1YTFlY2JjNTM5YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlYTI4NjdjMmI0MTA3MTMyNTJkNmEzZmYwMWE4Mzk2OTA2NzFhOGU0MDFlMGVkY2ViYjc1NTM4ZjI5YmI4NWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_aff21bed223f4011a830284d2f47e55d",
+      "statement": "`legacyEdges` classifies an edge as legacy (forbidden at zero tolerance) when: `internal/core/...` imports legacy infrastructure (`os`, `os/exec`, `net`, `net/http`, `database/sql`, `syscall`, anything containing `sqlite`); an adapter imports `internal/core/...` and is not one of the four migrated inbound adapters (`inbound/issueopslease`, `issueopspublication`, `issueopscompletion`, `issueopspreparation`); or a concrete adapter is imported from outside the composition root `cmd/harness/harnessapp`.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1350-L1361",
+          "version": "repo-lines-v1:sha256:39a58506017228b0deddbb134edcf7a392328b361364b2d07453ea2636081c19:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZGNiNWE3NGJhZWU2ZjdiOTNjOTk3ODZhNzg1MjU3MzcyOWJjYWY1YjIyZTRhODY0NTRkMjMxNGQ4MWVmNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2ZDk4YTA5NTI0ZWIzNTlkZTg5YjA3YTQ2MDZmZWMwMjY1OTYyYzU5ZDU4ZjczMDYyNDdmNThhNTU0MDUyMTQifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L161-L209",
+          "version": "repo-lines-v1:sha256:d72578075825d682c76bb9a5f1d12b8a9e6efe17a43926b486106a4d8f987408:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhYTI4MmZiZDM4OTAzYTkyMGM2OGFhOGJmZWY1ZjZmYTAwNmU3MDllMDE3NjJlODJhYmJhZjI0MGMzM2I1OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxM2ZhNTY3MzVjZDIwMzNmNDI0OWMxMGIwYjk2ODgyYjY2NjRjOTc3YTFiZjkxYTY1YWMyZmRhMzA5OGMzNDQifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L211-L223",
+          "version": "repo-lines-v1:sha256:db260947b3a36e865e7c7101c0669277c1dd864b20b1be8f788de53c0e274ef9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3Yjc1YTk5MWEyNDAwZWM0M2UyMDA2ZGM1Y2U0NjliNGNkZjg5MTljZmNjYWM1ZDY3MmRkYjJiZThlYmUzYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3ODg3OWFiOTIyYmM5M2YyZDM2YmZiYjA1ZjU0NzdjNTc2MzNlZmUxYzFmMTY4NmMwNzdjNWM5NzM4ODYxNmUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_22829636620c4ebba18f55371dd8f330",
+      "statement": "Capability boundary semantics (ADR 2026-08-08): a capability is the first path element after `internal/adapter/`, and `adapterCapability` reads one more element for `outbound`/`inbound` because they are direction classifiers, not capabilities; `isSameCapabilityAdapter` exempts same-capability adapter-to-adapter edges (package splitting is implementation cleanup, and counting them punished splitting with a bigger baseline, e.g. 226→181 when fixed), so only cross-capability concrete-adapter edges count as legacy.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-08-dependency-ratchet-capability-boundary.md",
+          "version": "repo-file-v1:sha256:1189bbda0082247463d8c00f6b93db6070d3e82bd934cdb7dbc550f320171769"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1417-L1442",
+          "version": "repo-lines-v1:sha256:acfef38c1dcaffc005f2b77ca19611c29ed1bec3ca0c9c5f5fc2ffcaa6c76f7f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyOWY1YzlmYjQ2MTNlZjQyOTg3YzE4MTUwNjdlNWVlZjcxOTA5MjVhOThhODZmMjE5OWIzMmE2YzMwNzhmM2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3NDZkMDEzMjMwNDUxMzE5ZDQwNDUwMjI1MGNhMTZhMjUzNzFkZTQ3ZGZjNWFkZTYxOTM1MjRjODZiN2ZhZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3ZDA1MmViNTYwMjE5MmNiZDRkNjc2NWZlYzZhYzRiMTZjZWNmODY1MDRkNjUzNGU5OWYzNjRhM2UzNTFjMjkifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L176-L200",
+          "version": "repo-lines-v1:sha256:451cbd1947fed7cd76ab55cf7c3649f357a3f66ce84b7f9e05c33c973a4500ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzhmY2MxN2JlZThkODY5NGI1Y2NlYjFhYTUwNTg1YjQwNzczNjY5MmQ3NTY0NDA3MjUyOTRlNGE2MjNjYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmNzU4NmRjNzM2ODRlNzA4NWIzMjY2NWNiMzFjNjdjOWM1ZTM0NTRmMjlmNTQ2MzRjNDFiNjM3ZDZkZjI2MTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f5d2f0b75dc64fad8fe83e9ce88b6f6a",
+      "statement": "The only canonical exceptions to 'adapters are imported solely by the composition root' are the shared storage primitives: `outbound/sqlstore` may be imported directly by any `internal/adapter/outbound/*` adapter and by `internal/adapter/issueops`, and `outbound/issueopsrecord` only by `internal/adapter/outbound/issueops*` adapters; `TestSharedStorageEngineExceptionIsOneDirectionOnly` proves the exception is one-directional (cmd, inbound, and domain code may not reach the engine) and must not widen, and new packages must not reuse these exception edges as a general bypass.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L27-L46",
+          "version": "repo-lines-v1:sha256:7663a760109c87cdfcea1b50677470417712125533b65bd90b78c1134753b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MDVkYTU3MjdiYjc1NDA0ODQ3MWI5ODFkOWRiN2U1ZGFiOTdhMzYwNDg1ZjFlZDgzMDBmMTg2OTc3MWQxZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNjM2MTRiNWZmOTc1ODVjMTFlMWQ0YTEzMjkwYWNjYmYzOTgzODMyODE4ODJhNjE5ZWI5M2Q4MWEwYzgzNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZmNiODE4NmU4Mjg2Nzg0ODk5Yjc1ODlhNDE3NmI2MjAyOTMyNDRkYThlMjBiMWM1MjQ5NzMzNGRmZjI1ZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5OTQ3NTgyYTVlODM4NWNkYjMwODJjNzM1MDgzMzcyNTIwZWY0YWEwM2EzYzExZTNhZmI2ZDM5MGJlYmVjYTgifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-08-legacy-baseline-invariant.md",
+          "version": "repo-file-v1:sha256:7679d712c4f07212e5f99c5fb42cf9dc74e55f14a95cd43133abc3fbf01a3109"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1444-L1461",
+          "version": "repo-lines-v1:sha256:e36c6b6532d6ea35f2e8b7f3eb3004f5dac4aedb1c61a8b4953ceddce0ea5cc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZDJkZjgwMzRlYjYxYWQ1NTMzYjZmOGY4ZjhkMjYzYThjMDQyZjdlYTk3ODdhMjJkNjcyOGYzNzE0MmM3NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3ZGY1ZGYwM2YzNDczMjEzMmI5YmE5OWNkODk3YTQ4Y2I3MWM0MzJmMGNiNWI4NGM1ZDcwYWNkZjMxNTg3YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM4MjQzN2Y1YzQxYzZlZTVjNDFmMDY0MTczZjUwYjAyNTBhNTU0MjgwNmUxNDVmMWIwYWRmYWQzZGRlOGU5MzYifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L87-L105",
+          "version": "repo-lines-v1:sha256:2581d46fdb4a17c092cd5af4dfda7707afcae68c31b28699e61c6322c20d61b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MTQ1MGUyZThiMWQ3ZWU2MmViMWUxODk5YjQ1ODdjYmY5Y2UzNzc2MzE1YTE1Y2ZiMWRlZWQ2NTMyNjA2ZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5YjI5NDkzZmQ0MzY1M2RiMTZiYTU1ZjQwMjY5MzVjNTA1MjYzNjM3ZmRhOGQyMDVmNDhiNTIxZWY5Mzg5ODMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_755d289864d3437fa7ddf8763d3810dc",
+      "statement": "`evaluateOwnershipEdges` (exercised by `ownership_manifest_test.go`) applies stricter ownership rules: `ownership_forbids_core_package` bans the `internal/core/...` prefix on both importer and imported sides including the nested `internal/core/issueops/model` prefix (the core layer is dissolved and must not be reintroduced); contract/domain/port/application rules are scoped by the `isFoundationOwner` allowlist plus a package sweep for `issueops/model`.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1117-L1193",
+          "version": "repo-lines-v1:sha256:393bc0b582ee03a9191d75fd01fe0c9f3bf0114784c06957e95ba7c37d966ef9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMmM4YjM0ZTdiZjM5ZGQxNDBhZjRjYWU2OTY1MmIxYTlkMzUxYTliYzMxYTUzZmQxMGQxNzA3MzFhYzc4NmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlYTYzNTIwZGVlMjEwYWU3NmQ5YzlhMDZmNzA3NjhlNDBiMjhlY2MyYTRhNTE3MzA3YTY4ZDYwY2ExZGMzMzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzZTdhNzBhN2U0MTgyMTBhMTBkMTJjMjE0MmZiZTNjY2U2ZGMxZmU5MGEwMmMyY2FlMWJiYTJiOTVlZTNjYTMifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L107-L120",
+          "version": "repo-lines-v1:sha256:957c62e9e6526bdf6ca67e11ec1d99908c15bb549e67790eb386ccf05a55afc1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNzAxYzBkZjliZGVlNmRlYWMzNTA5MWVmOTRiZGVjYmI2MTkyZjgxZTAwNGNkMmQ2MWI5YjhkYWY4MzhjZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee9d43ea914f4b6d8d4760710169fe5d",
+      "statement": "Two vocabulary allowances are deliberate: ports speak contract vocabulary (`port -> contract` and `port -> port` are legal; only ports reaching domain/application/adapter/cmd fail, avoiding DTOs that no layer could own), and contract-to-contract references are contract composition rather than implementation coupling (`contract_must_not_import_internal` only fires for imports of domain/application/adapter/cmd/port), while vertical-specific stricter rules like `publication_contract_must_not_import_internal` remain in force.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-08-contract-cross-reference-composition.md",
+          "version": "repo-file-v1:sha256:5adb0e0fc275bdfdb1cb213eb82e35bf3a4eca1464239c119e0847fb79f4cb9b"
+        },
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-08-port-contract-vocabulary.md",
+          "version": "repo-file-v1:sha256:00e55759f26ce3eb061325ea99d1585c5604ea55c6a2a69c9bf1b485b91b02e2"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1059-L1063",
+          "version": "repo-lines-v1:sha256:bbb0c65a5769146fe61420e17023d5cc00dc007b2abc3a942da0457d18ab855a:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVhN2UzMjIxZWYzZjZlY2FmMWYwYzYwNDIxNjQ4MzhhMjkyY2VmNTNiMjdjMjI3ZjlhZmJmNWJkZWJlYmUwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWNlNTQ1YTdjMDM5MWIxMDE2MTFiYTZiNzI0MWExYTE1MzAxNTQ1ODZiYjRlY2U2M2ZiNzY5M2I5ZjU0MjYzMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzZkYjBlODYwMGI2MWM4ZGZjZTYxZTQ0MmU1ODM4YmY5M2JjNmJkZDU2OTZhOGM4M2QzNWZjNzNjMzg5Zjg4ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjc5M2RhMzIwNGYwNDhhMTUzZDFhYmY3Mjg5NzYxNGE5MmRhNmZhNjg0YzQwYzQzZjEzMjYyYmJhODZmYzcxYSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1133-L1138",
+          "version": "repo-lines-v1:sha256:e894b2200d48be65517bc488dce33aae8670b10f90b287c5387da77aebd95a25:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVhN2UzMjIxZWYzZjZlY2FmMWYwYzYwNDIxNjQ4MzhhMjkyY2VmNTNiMjdjMjI3ZjlhZmJmNWJkZWJlYmUwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTQ2NDczZmU1NzZlZmVkYzkzYzcxYmY3YTFlMmYwMWZmMWUwODMzMGJkZjcxYzkzODlmYzk0NzA5MzgzM2QzNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTBkZGMwNmI4NDNhNjU3NzVkNDlkZTI5Y2IzNGYzNjVkMTc2NGYwNzE4MDliZGFhZjVlNTFiYzFiOTEzNGJiMCJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L32-L85",
+          "version": "repo-lines-v1:sha256:286b78b62db161bfa8f32178a74f33477d82ce7b7064e31cd7a9d07dfda4c920:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTBhYTQ1MGQ4NTVkNGY3MTExMzc0MGM4NTc3OGFkYTVkMmQ2ZTYzOGYwNjI1MTEyM2RiYjFiOGYwM2I3YWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyNjk5NTFiZTQ1Zjk4ZDRmMGY0OTIyMDgzNmJmYjEzYjM5ODlhOTNmZDIzOTlkYmI1MmQ0ZmE2N2Q3ZmQ4YzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71fae732f7c040f787a6f2e77ce6d794",
+      "statement": "Cross-capability adapter needs are satisfied by composition-root injection of function variables, not imports: consumer packages declare package-level `var X func(...)` slots in dedicated files (`adapter_dependencies.go`, `*_dependencies.go`, `adapter_tail_dependencies.go`), and the composition root assigns implementations in `cmd/harness/harnessapp/*_wiring.go` (e.g. `configurePolicyAndGitObservers` wires `policyadapter.EvaluateCommandPolicy` and `preflightadapter.GitCmd` into every CLI/adapter/MCP consumer), keeping implementation knowledge in exactly one place.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/policy_preflight_wiring.go#L22-L51",
+          "version": "repo-lines-v1:sha256:ee1313e6a1eee09cf83a1d324b088aa40559a1af542d75b741c87d11e552a5fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZWUwMzRmMjE4NDFmNGM0MDRhZDk2ZmM0ZjI2Y2Q1YjI5MWQwNzY1Y2E5NmI1ODRjNTJmMzZiNWM0MDAyYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYzODMwYjlkNDgzNTdhNDBlZjc5ZTlhNDFmZWY3ZDcyNWNmYWFmZWRiZTYzNzIzYjhmOWM5MWE3YjcwZGU1ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/audit/adapter_dependencies.go",
+          "version": "repo-file-v1:sha256:8a65a389edc5534b7426ab3f96220b6d59a7ff105fc90ec3ccbc831ff2abdd69"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/adapter_tail_dependencies.go",
+          "version": "repo-file-v1:sha256:dff1fa8c9bb4a4bd1064b74fd32c05dd5f6ab1e9a46d35c08ba47cc7dbdb2f8a"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/adapter_dependencies.go",
+          "version": "repo-file-v1:sha256:dd0f24aa35f43b7613c13b49bfa9a2e07ff536edda8f05ed9d0d81d89391ae03"
+        }
+      ]
+    },
+    {
+      "id": "claim_3d9082287ada43c98bc9644175b3573b",
+      "statement": "`cmd/harness/harnessapp/adapter_tail_wiring.go` owns the 'adapter tail' wiring: `configureAdapterTail` installs installation-planning and project-doc observation implementations (`installutiladapter`, `installadapter`, `projectdocsadapter`) into the host adapters (`claude`, `codex`, `omo`), the fingerprint adapter, and install/project leaf CLIs; it is one of ~30 `configure*` functions invoked in sequence by `wireBasicCLIDeps` in `cli_facade.go`, and the `gatesgate` package shows the same injection pattern for composition (`DiscoverGateFiles`/`CheckGateLedger` function variables instead of importing the gates adapter).",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/adapter_tail_wiring.go#L19-L77",
+          "version": "repo-lines-v1:sha256:a399a1280b8fb52d2525c0cc01bcbb1fd3c1e9aabaec0a27b789ffa7d27f6226:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5YWZjMWM0ZmNkNDc1MzlmYjM1YTMxZjQzOTkzODYyY2NmNGM5N2M4NWQwN2RjYWQ0M2Y2ZTM1YjY3ZDAyZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNTE3NzhkY2E0YzdhZTI4ZDlkOThkZTkwYjQxMWNhNTE2ZDY1NGJiZjYxNjFhYzY5MDVmNGEzZmM2MDI0NzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/cli_facade.go#L34-L66",
+          "version": "repo-lines-v1:sha256:86df4a0384577206d8645adb679291d601131c5866158e904db2ee2f9b2ce703:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5NGEzMjBjNTNiZjE0YzY5MmNhZjcyYjYwN2JhMzdmZWU1M2QzMjAzNGNhNzY5ZWE3YzRmYTNiMDY5ZWY5NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmYTNiNDc5Mjk1NzM0MzliYWI0MTVmYzg1NGU3YjBiMzVhN2QwNzEyN2JjZGYwNzkzZmUwYzkxZWQ4ZTM3ZWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmMWZmZTZiODJhMzY1ZDcxODhmNWU2YmY4YjA1N2Y5YmRhZWYyZTM5MmIyNTVkNTNjN2QwYTA3M2M2OWU0YWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmNDBkOWRlYmI3MTlmYzNlODE5NTY4MzhkYTYxMGJmMjhlODIxNmQzNTFlMGVmNmE3MzRmMWM1NDI1NWI0ODkifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L24-L32",
+          "version": "repo-lines-v1:sha256:8880048db2851d0eaaef1b74d0e5a9543c24f96653ccb7112f597398680dc335:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjE3MGMxMzA5ZDI1YWQ3YmE5ZTIzMGEwOTMzN2E1NmM4NzcyYmFkNzViMDExNzI0MzQ2YzM0NjM5MGUzZTY5MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTAyOTc2YjUyNmU5ODQ5MjY0MTEzZjdjMTU0MTM3Njk4ZGFlNzRlODFjY2FjMDg0ZDcxMjI4YTcyMDg3NGFlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTNiYmE2YzU4Mzg2ZGI0OWEzNGM2NmQzOTIzNzc5YTdkYTVlYzRkODdmMzI5ZjA0MjhhMWNmZjkwYzU4OTE3OSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_caf26576f71a4e4bbd98af1533db949f",
+      "statement": "Two hard rules complete the injection pattern: dependency variables must have no default implementations (a default pointing at a concrete package recreates the edge; un-injected dependencies must fail closed with a structured error, never silently pass), and tests inject the same concrete implementations production wires — `harnessapp`'s `TestMain` calls `wireDependencies` to mirror `RunRootCommand` — while the fitness graph ignores test imports entirely.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L74-L105",
+          "version": "repo-lines-v1:sha256:483db832bd5b8ec135fb8fbf977a5cdef510e2a5895952c8aed03b13fa5bde5b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2NTRmNDJmODNlMzUwOWFiYjllZGE1YWU5NjE2NTRhNmViZWJlNzJhYjljNTcwZDBhMjUyMWExYzY1ZGNmNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmZThlZTMyZjZlOTk4NWQ2NGQzZDI4ZTAwM2NhMjU4OTA1MmU1Njc4NTFiN2Y3YjUwNTM3MjA3MTA2OGRjOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4M2M1MGFhMGJiMzAwYWUwYzc2MDM2YzYwY2YzNzZjYzMyMzAyOTYzYzRmMzAwM2FhMmM1Njk5NTA1YzgzMDUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/wire_test.go#L8-L15",
+          "version": "repo-lines-v1:sha256:7c1151314a4e3cba27772dc4162386419e7ac81a056b935ddae62c0f7e0194a0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTlmNjJlNWI2YjcwNjVlMTM0NmIxOGIzOTFkODA2YWY4ZjA2Y2Y3MGE5YTYxODAzYWQ5ZTk0ZjM1Y2Y5NTg2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1275-L1303",
+          "version": "repo-lines-v1:sha256:ee80fa39e6a086952d7cbc20bc819685bc0fd1cba277cfd3115b630b0f9f1b4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMWYzMTNhZWZmM2IzZGRhOGJmOWZjOTViN2M3OTMzYTM2MmViYWNlNGI1MDhkOTU5N2UwOGU4Y2U5NDYxODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjU5NzA4NjNkNTgxM2JmOTcwYjAyZTM0YjU1YTIxMDIyZmY5MWZiYjM3NjAwYmM5ZjZhNzY2NzkwZWVkMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQwMTA0MjhhMGRiYTVjNjFlNjYxMDRiYjAyOTMxZWQ1NzEzY2E1YzBmNWQ3NjAxMDdlY2E4NTA3ODZiZGE3NWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e75d1ba6f16740e7a6d71cc97822eb83",
+      "statement": "`orphan_package_test.go` closes a blind spot of reachability-based dead-code analysis: `TestProductionPackagesHaveImporters` fails any non-main package with production Go files that no module package imports, because deleted wiring leaves tests green while enforcing nothing at runtime (the 2026-08-27 legacy-hook removal silently orphaned `internal/adapter/remoteartifact`, letting a wrong-target MR land); the remedy is reviving wiring or deleting the package.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/cautions/2026-08-28-record.md#L13-L13",
+          "version": "repo-lines-v1:sha256:a038020d829dda4b2e7377dd0cecebee9e1e410b1f71e9b5ad767cdcb5bc4410:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTAzODAyMGQ4MjlkZGE0YjJlNzM3N2RkMGNlY2ViZWU5ZTFlNDEwYjFmNzFlOWI1YWQ3NjdjZGNiNWJjNDQxMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTAzODAyMGQ4MjlkZGE0YjJlNzM3N2RkMGNlY2ViZWU5ZTFlNDEwYjFmNzFlOWI1YWQ3NjdjZGNiNWJjNDQxMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmI2NzkwZmU4MDQyY2FlZTkwZjdmMmQ5MTFhN2U3Yjc5ZjQxOGMxODA0MTJlMzg0N2RmNjk1MmYyMGNmNTBjMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDA0ZDUzZjU0NmYwOGU5MWIyNGU3NzUwZWUxNzA2OWQyNDQ0ZGI5YTczZjIwMjY5OTRjMDczNzVlZjhkOGQ5ZSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go#L19-L70",
+          "version": "repo-lines-v1:sha256:e6c5ab43f7a8251ee4e190cd7359474fc54b23ee172a30e5966f1fcb8304b77f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MzFiYWFhNzI3NWVkOTQ5NzkxNmNlMzY0NjNjMzM4ODlmNWZmYWZhODA1YzU0NTU5M2I5NjA3MTNjY2RlNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNmMWEwNzU1MmU2Nzk0YTE2NzI0YWE5YmUzOTRmNmY2OGU0MGJmZmM2ODVhMTEyMzYxODdhMmNiZGQzM2ViZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxNDM1NWMxNDEyZDM5Nzc5OWUzYjg2N2IxODZjMTFhNzk3MDQ3MGFkMzU0Yjg0ZTMzZDJkYThjYzRlNDgzNzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d17117d469c249889aa380b779d9317c",
+      "statement": "The orphan allowlist is self-policing: `orphanPackageAllowlist` accepts only intended test-support packages, each with a written reason (e.g. `internal/adapter/skillcontract`, `cmd/harness/apidoc/dogfood`), and `TestOrphanPackageAllowlistHasNoStaleEntries` fails entries whose package no longer exists, has no production files, or has become imported — a stale entry would mask the next real orphan.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go#L11-L17",
+          "version": "repo-lines-v1:sha256:a1510d69af2d2c841ca6fbc903b3ccb9425e83d6eb9a88dafcf86ca0e761505d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2UwZTZjMGUzZDhjNjU3NGNkN2E1YzFmZjdkMjE4YjQyNTVkYjYzY2FlZTA4M2Q0NjQzYzliMGQ0N2VkOTU1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzAwMzUzNzk3ZTZlZGEyNjg5M2M3MzgxNjQzOWU5NTM3YTA4ZjMzZWI3NGYxYTdkOGZmMjdjNjIwMzViZDA3YiJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go#L72-L105",
+          "version": "repo-lines-v1:sha256:4959f5fcb08e417ba4d00c8e57373ff3bfa5884ba78b29d8e589eb6c071db00c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZWEyYWYxYTNjOTI4MjA0OTEzNDc2MGE2ZGJjNjE2OWM0MWE2NTBmYjYzNWI2ZjZkZjIwNzc5NzI1OGE2ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyZjA2ZTkyZjE2NzVhMzVlMTljNDQ2ZWJmZWYyNWY2YmVhNjlhMzQ4ZjRmMDEwYTlkY2Y5MTVhMjA2Yzc0YzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_292a3a2bd78a4405b90a180493fba46e",
+      "statement": "Migrated IssueOps capabilities carry focused vertical boundary tests: per-capability tests (`issueops_decision_vertical_test.go`, `issueops_inventory_vertical_test.go`, `issueops_retention_vertical_test.go`, `issueops_routing_vertical_test.go`, `issueops_status_vertical_test.go`, `issueops_artifact_vertical_test.go`) require the five-layer set (`contract`/`domain`/`application`/`inbound`/`outbound`) to exist, forbid vertical packages from importing the legacy `internal/adapter/issueops` root, and fail if legacy symbols or files reappear.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/issueops_artifact_vertical_test.go#L13-L52",
+          "version": "repo-lines-v1:sha256:355f7221ce6a472d976ea1f8bb39569c89b9591b6bfd5268fb52c566c0af4787:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MzNjN2Y5Mjk0MmQzNTJiYzM0MWU0MzlhNWViMDcwM2Y3MzYxMzliZjU4NGY2YTZiMDMzNDc4ZDYwNjBlNTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2MmY0Njc2ODk3ZTBhMzY0NDE0OWE0ZDk0MmVkYzhhMmViZDMwNDE2OGY5Njk3NGE1ODkyZGQ2MzNkNjk4ODQifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_decision_vertical_test.go#L12-L48",
+          "version": "repo-lines-v1:sha256:a157e74ebf65c0c6e624f2236ccf74e8d0029b88b8a4f235a48d8e4756a31ff4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDdjOWRiODg3ZjVjMGY1N2EyMzI2ZjQxNzM4ZmFmZTk4ZjY4ZDYyYTNmMDk2M2ZlYWU5NDNjNzc2MWNhMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_routing_vertical_test.go#L12-L48",
+          "version": "repo-lines-v1:sha256:71a3cfab419f1312c2c4896aae04e5387af0e8344eea481f1f0d8e0a9745c9ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZjI0MDE4ZDBjY2M4MGQyOGJiZTQyZTExN2RhMjE5MTZlYmM5NzZiM2ZhMzRlMWRlMTRhOTU5NmJmNzhjNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_status_vertical_test.go#L13-L50",
+          "version": "repo-lines-v1:sha256:ba01e1ce439516dac21b5fc7e0d5af06e868e7ee97265a04cc0023c635d22708:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2MWVlNGM4MWE1NDM4NDg2MTE4YmQ2YTk1YmRlNDExOWM2ZTE2ODFmMmMzY2FhOTQ4YmYxY2EzMDhhNmVlZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmYTM2MGI5ZWYxODFjZDFhMzVhZDdmZGQxMzE2NGM1MTc2MmM1Y2Y5OTIzOGI5MzA2YTc2YTk1ZjQ4ZjM4OWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOTRiMWFkMTA5NDViZWM4ZTMyMTU3MmRlZGIyNmE4NDk5YjQ0NGMwM2U0ZTUzMjc4NWU4ZmIyYzM2ZGFjMmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec66023a717644a4a5a674519fd245b4",
+      "statement": "`issueops_record_store_test.go` requires six outbound IssueOps verticals (artifact, decision, inventory, retention, routing, status) to import the shared `internal/adapter/outbound/issueopsrecord` store and fails if duplicate record codecs (`codec.go`) reappear in individual verticals — the enforcement half of the `issueopsrecord` exception; `issueops_base_sync_boundary_test.go` separately restricts `internal/port/issueopsbasesync` to exported types `Request`, `Receipt`, `Inspector` and a single `context` import.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/issueops_base_sync_boundary_test.go#L14-L55",
+          "version": "repo-lines-v1:sha256:c42134aef6353c0e34f51b2c296245e7cee057e62b3b09ffc27a82799d6b2299:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0Yjg3ZjRkN2VhYjY1OWE4MmFjYWYxM2Q5ODcwNGYzYjEwZjI4ZTRhYTI2ZjRjOWNhNTVjZjA5ZjA1ZDVhYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_record_store_test.go#L11-L50",
+          "version": "repo-lines-v1:sha256:d1990f0891e97ccdb06366fc0df2be4fbfdb578e361eb8964424b31196f232d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNTlhNWUwZmM0MjNjZDlkZDg4NWRiM2Y1NmU0MDdlZWM4ZjE5NzczOGYwMmQwMTQ5NWE5ZGYxZWFjMTc5MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_85eacdc4b69f4224be2ffbc81d647413",
+      "statement": "`documentation_test.go` keeps prose aligned with code: canonical documents (`README.md`, `README.en.md`, `AGENTS.md`, `.agent-harness/ARCHITECTURE.md`, `.agent-harness/CONVENTIONS.md`, `architecture/hexagonal-core.md`, `conventions/go-and-packages.md`) must reference the current layer paths (`cmd/harness/`, `internal/contract/`, `internal/domain/`, `internal/application/`, `internal/port/`, `internal/adapter/`) and must not mention the removed paths `internal/core`, `internal/adapter/cli`, or `internal/adapter/fs`; first-party host docs must name Codex, Claude, and Omo.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/documentation_test.go#L10-L101",
+          "version": "repo-lines-v1:sha256:5d6ce5bff21eb66606a06f9435edabe8d83b059074d50cff4e0f050b3a2b5432:eyJzZWxlY3RlZExpbmVDb3VudCI6OTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMjFiMDA2ZWNkYjZlNGJiOWFmNTM3NDQ5NzhjOTY0MmVlN2JiMWIxY2NjN2FmOWVkYTJlY2IxOTBiMzI4MTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNGEzYzM3YWRlNjdiYzJjYjM5Mjg1MTE2OGRlNjU1MGM3MDMzOTIzNWYwYWZjZTQ1NmEwZDVkMWUwZjY3NzUifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/documentation_test.go#L103-L117",
+          "version": "repo-lines-v1:sha256:1bbf355b2a0bea2cdd222c6870ae5b2e23f496155587a4c27c76644c673c875c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3OTE5YjFiNTIyOGRkNTYyYTJiYmZkOWM1NDdkNmQxMzBkYzVkYjBmYzJmZTEyMmM0MmNkNDQ0OGQ3NjRjMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5b7660e4198545aaadab4daba2e46678",
+      "statement": "Adjacent fitness tests in the same suite: `TestStateSQLNetworkSourcePrefixesAbsent` bans the dissolved `internal/core/{sqlstore,state,webfetch}` prefixes as packages and imports; `TestStateSQLNetworkImplementationImportsStayOutbound` forbids state/webfetch capability code outside `outbound/` from importing `database/sql`, `os`, `os/exec`, `net/http`, or sqlite; routing legacy-fallback tests require exactly one invocation of the injected handler per route and fail on legacy orchestration symbols (`PrepareExecution`, `ResumeExecutionWithDependencies`, `reconcileOrcaExecutionIntent`, `provider.Resolve` in publication callers); and production code must use `errors.AsType` instead of `errors.As`.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L252-L307",
+          "version": "repo-lines-v1:sha256:ffdc313c34c98d12eee6eb1cb224cf406a039061f59e7726aad5b0dd9c7ef715:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZDIyNjNhY2JmN2JhYmVjNjdhNWI4MGU5ZmFkYjM5NmRjZmRjZGU0YzlkM2YwMDdkMzQwZjQ2NTI3OGZmMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1ZWM1ZjNlOGE2ZDFkYTRjNGE4YmJjZGUzMjQyYmIyZTEwOGIxMjIyYmVhN2U0MzFlMDJkYmM1NWYzMjE1NzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5ZDg2ZmE2NmYzMzBlNTE0ZDk0ZDYyY2Q3NDhhMmFiOTg5ZTllZjFhYTlhNTk4ODgzNWM1MjIxYjdkMjM3MzIifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L309-L470",
+          "version": "repo-lines-v1:sha256:650921313a3ada90dafd4ea469d4110318523157dc17aa4c9d33ccbce28c93b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2Y2MxMGMxMTY5NGJiMTAzMjUwZWNiNWViNDY5ZmY3ZjFmOWU5MDVkMGMxMWU2N2FlZWNlNTBlMWYzODI4NDhjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmYjY1OTcwODYzZDU4MTNiZjk3MGIwMmUzNGI1NWEyMTAyMmZmOTFmYmIzNzYwMGJjOWY2YTc2Njc5MGVlZDI1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJiNDhlMmZkY2JmZWY4M2FhYmMyZmIyYzIwN2I3MGY2N2MxMDEwMjdhOGEyMjVkZjJmYmI5N2U3ZjI2NTQyMmRiIn0"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L472-L499",
+          "version": "repo-lines-v1:sha256:798719aceeaa777b69b7614d90d4c42895e1ceb34c25813653b3ce5050593b06:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZmIwZjhkYmVhYTgwNTBkNjdiODgwYTcwYTgzNmNjYzg1NTRjMjU2MmNmZmZiYTQ0MjA3YjJjM2NlZGM0NjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjNzBhMzg3YWQyNDIyNGM2Y2Q2ZTlkNTQ1OTNkZjY4ZjBiMjk0MWRlNmUxZTllYWVhMTk2YmFiNDExYjMwMDgifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/errors_astype_test.go#L15-L69",
+          "version": "repo-lines-v1:sha256:6e113d1152c8c24b624619805b620afa85529b0cda9f04cdffa9c40dd7957dc6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlNzA5OWQ5Y2E1ZDI4MDAwZTMxMGZhODI3NGFlNTIxNGQ2ZjAzZTRlYjg0NTI2MjZhMjAwNmI1MGI2OWVlMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViYjBiYjBiN2MxODNkOWU4ZTFkMjJjNDM2YzZmMDFhMDQ4YzhhMzkxNzRkOWQ2YzBjYzRhOGE4ZGM3NmI0NjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8e1bda70dee74e678947bb8119a534b3",
+      "statement": "The prescription for removing a legacy edge is to classify the consumed symbol first: pure rules move to `internal/domain/<cap>`, types move to `internal/contract/<cap>` (field types cannot be replaced by injection), and I/O functions are injected from the composition root; type moves and function injection usually go together, and moving an edge upward (making a parent import an adapter after subpackage cleanup) reduces nothing.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L81-L105",
+          "version": "repo-lines-v1:sha256:c57ffdf3e8779c1fb28ed34f816cf5dd427f43795481c4fbd48ab779874574cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2N2JmNjdiZTUzYzBiMDkwMzVmOGZmZTM0NjRlZDJjYWM0N2QyNmEzYmY0MDgzMTE4ZTZmNDhlNmI0NDA3YjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjNGJiMTAzYjVmMGI5MTEyMTMwMmE4NTg5ODVmZjY5ODNkNWU1YTBmNzgwMjczM2Y4NDE0MDcwMTFiYmE3NWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4M2M1MGFhMGJiMzAwYWUwYzc2MDM2YzYwY2YzNzZjYzMyMzAyOTYzYzRmMzAwM2FhMmM1Njk5NTA1YzgzMDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8a75f6a48bc444e09db679ccaf0e949e",
+      "statement": "Adding code without tripping the ratchet follows a fixed checklist with focused tests per change: any new/removed package runs `TestProductionPackagesHaveImporters`/`TestOrphanPackageAllowlistHasNoStaleEntries`; adapter imports run `TestProductionGraphHasNoLegacyAdapterEdges` and `TestLegacyEdges*`; touching `sqlstore`/`issueopsrecord` runs `TestSharedStorageEngineExceptionIsOneDirectionOnly`; foundation-package edges run the ownership manifest tests; new capabilities add a `<cap>_vertical_test.go`; doc/layer changes run `TestCanonicalArchitectureDocs`; and the full suite is `go test ./internal/architecture -count=1`, with failures reported as sorted `rule: importer -> imported` diagnostics.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L41-L41",
+          "version": "repo-lines-v1:sha256:e7a863c8d50572d83b3aac3d47ba514e6a001251abf78dfa008f052c10a88185:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTdhODYzYzhkNTA1NzJkODNiM2FhYzNkNDdiYTUxNGU2YTAwMTI1MWFiZjc4ZGZhMDA4ZjA1MmMxMGE4ODE4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTdhODYzYzhkNTA1NzJkODNiM2FhYzNkNDdiYTUxNGU2YTAwMTI1MWFiZjc4ZGZhMDA4ZjA1MmMxMGE4ODE4NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWYwYWE0ZTVlNzk5MTBjOTg1OGFhNmY4NGM1NThjNTJjODcxYzYxNzdmZGM0ODUwN2NhNzZmNzA5MGUzZDYyMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGRmMzY5OWRiZTIzODBjMTI1OTMzZjFjYWYxNDhmYWYxNTdjMTgyZDViZjVhMDFmZGQ4NThmMzkxOTE0YzcwZCJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go",
+          "version": "repo-file-v1:sha256:9112fcbe45f40681a74642dfeb54e649cac336193b8256c695b7bd32c529a0e0"
+        },
+        {
+          "resource": "repo://internal/architecture/documentation_test.go",
+          "version": "repo-file-v1:sha256:3b069759d6c24ef74fa998b14f1dacd411f6d45c4b60ada10532b743ce6d7195"
+        },
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go",
+          "version": "repo-file-v1:sha256:4978e513ed6ff460f24531711c1aa4256562985877e69f24000be022abb3db87"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go",
+          "version": "repo-file-v1:sha256:c1226196819f593a187914c878c593712db7d5f8e88508665d22e0d9aafd0a64"
+        }
+      ]
+    },
+    {
+      "id": "claim_879eef962b014b5d936b6a979d407748",
+      "statement": "The allowed dependency directions form an acyclic graph: the composition root (`cmd/harness/harnessapp`) imports inbound, outbound, and concrete adapters; inbound/outbound adapters call `internal/application`; application composes domain, port, and contract; domain and port import contract (and contract may import other contracts); the reverse directions (application/domain toward adapters or cmd, adapters toward cmd, inbound toward outbound, anything into `internal/core`) are rejected without a baseline.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L27-L46",
+          "version": "repo-lines-v1:sha256:7663a760109c87cdfcea1b50677470417712125533b65bd90b78c1134753b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MDVkYTU3MjdiYjc1NDA0ODQ3MWI5ODFkOWRiN2U1ZGFiOTdhMzYwNDg1ZjFlZDgzMDBmMTg2OTc3MWQxZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNjM2MTRiNWZmOTc1ODVjMTFlMWQ0YTEzMjkwYWNjYmYzOTgzODMyODE4ODJhNjE5ZWI5M2Q4MWEwYzgzNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZmNiODE4NmU4Mjg2Nzg0ODk5Yjc1ODlhNDE3NmI2MjAyOTMyNDRkYThlMjBiMWM1MjQ5NzMzNGRmZjI1ZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5OTQ3NTgyYTVlODM4NWNkYjMwODJjNzM1MDgzMzcyNTIwZWY0YWEwM2EzYzExZTNhZmI2ZDM5MGJlYmVjYTgifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L46-L63",
+          "version": "repo-lines-v1:sha256:3f67d96c7cd510b862d6426495c422fc01400be7809533418d2f0632b06c8e96:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjODhlNWNiOTk1YWJjNmZjMzkyY2QwZTZmZTg3YjlkY2E2YjhmNDFmYjg5NmJkNTcxNGNjNzE1ZDlhYTI3ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0YTcxNjg2ZTFmYTZhZWYyOTI2NzNhOTM3M2RiNzRhNDMzYWQxZGJkZWE5ZTk1MmM4ZjY2MGZiMzQ0NjE5ODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1050-L1115",
+          "version": "repo-lines-v1:sha256:e65174868c202b3259b23f9e6d6656e0bd49008d141ab5bb5e7db3f6c4960cb7:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhMzU4NTYyOWYyNWZmNDkwOGQwM2Q0ZjhlOTc3ZTMwMDdiM2RlYmYzMTIxZGFiMDMyYTQyODA3YmJkZDRkMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2YzRlMGMxZDM1MDBiMmMyNjAzYzZiMzUyZTA1MDU3MmMzYTJhYjRlZmQ5NzQ5OWVmZGY3YTcxZjEzNjI2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMWRlMTcyZmJkOTc2ZGNiZDI2NGRmNWEwZmQxN2RjOGQ1ZmI4ZDMzMDVkOGFlYTJmN2JjNzRlOTJmODZiYWMifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L32-L55",
+          "version": "repo-lines-v1:sha256:132aee7f3278537cde4c25a99afea339470a8ecf8c0d695864cafa80095ac557:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTBhYTQ1MGQ4NTVkNGY3MTExMzc0MGM4NTc3OGFkYTVkMmQ2ZTYzOGYwNjI1MTEyM2RiYjFiOGYwM2I3YWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MDVjZWNiYzZlZWYyYzA3YzQ3ZmMxOTZhMjRjZjJjMTNiYThmMjVjMTE5NjcwZWQ4Mzc0ODA2NzVkNTViNTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_15b3e3726faa44c8b6c6ea5898f8f1a6",
+      "statement": "Production runtime behavior, CLI/MCP response contracts, and runtime wiring are outside the ratchet's scope: the ratchet measures imports only, so moving a production package or reworking wiring does not require baseline changes unless an import edge changes; contract golden tests and the response-contract suite own the runtime surface, and host adapters added per the architecture docs add only a `port.HostInstaller` implementation plus composition-root wiring without duplicating domain/application policy.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L27-L46",
+          "version": "repo-lines-v1:sha256:7663a760109c87cdfcea1b50677470417712125533b65bd90b78c1134753b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MDVkYTU3MjdiYjc1NDA0ODQ3MWI5ODFkOWRiN2U1ZGFiOTdhMzYwNDg1ZjFlZDgzMDBmMTg2OTc3MWQxZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNjM2MTRiNWZmOTc1ODVjMTFlMWQ0YTEzMjkwYWNjYmYzOTgzODMyODE4ODJhNjE5ZWI5M2Q4MWEwYzgzNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZmNiODE4NmU4Mjg2Nzg0ODk5Yjc1ODlhNDE3NmI2MjAyOTMyNDRkYThlMjBiMWM1MjQ5NzMzNGRmZjI1ZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5OTQ3NTgyYTVlODM4NWNkYjMwODJjNzM1MDgzMzcyNTIwZWY0YWEwM2EzYzExZTNhZmI2ZDM5MGJlYmVjYTgifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-27-architecture-dependency-fitness-ratchet.md",
+          "version": "repo-file-v1:sha256:996b03d31a667a8d42a725c5e2886ff767a06f7c240d93c93c6abce9a5fa5c27"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L101-L107",
+          "version": "repo-lines-v1:sha256:9eb91cbaf18704b74e347fc85d379290f09be2c7e55e3610bf84a56d14b29513:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDY1NGY0MmY4M2UzNTA5YWJiOWVkYTVhZTk2MTY1NGE2ZWJlYmU3MmFiOWM1NzBkMGEyNTIxYTFjNjVkY2Y2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDI0ZTM5MGIyYmM0YTYxZDEyYmVhNTNjYWQwNTdmZWM3MTIwZDJhNWZjMzU4ZDMzYjMxNmE1NmZlOTdhYWIyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc0ZTRiYjMzMzQ1YjgxMjg4ZWI5M2QxMmY1OWRjNWUzODJjNzMyYjJiNmRlMGYxMmE0MGY1ZGZjMDJiNjY2MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzE2OTY0Y2U1ZDkyMzhkZjg3MzI3ZWRlMzM0NmU0MjJhMmMzZjAzYThlODE1OTdmOTExNjg4ZmNmNTY5MDY0OSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

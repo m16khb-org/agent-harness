@@ -1,0 +1,644 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:685b695f8970bfae2cce5984edf4f6c5e9786b1aadd1dd323372298be056ddaa",
+  "claims": [
+    {
+      "id": "claim_b572bb2c6881431bb11952bbfe26422e",
+      "statement": "cmd/harness/main.go does nothing but call harnessapp.RunRootCommand(os.Args[1:]) and exit with its returned code; RunRootCommand then calls wireDependencies() once and hands off to rootcmd.Command.Run.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L15-L33",
+          "version": "repo-lines-v1:sha256:85b09b0964829f1c7d3f3a67d60132382a93656da6baef15ff053ea074d6754d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2VjNGEzOGFlMGViNDQwODNkODNmYjkwZGZhNDc4M2NlZTBhYjRiMTliNDU3YTkyODhkNzhlYmMwZmViMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmZDM5YWI4ZGMzZDA1ZDI0MzNkNjI3YzJjNjI2MzZjMDVlYzQ1ZWVhMzFiOGNiZjYzOTUyMjM1MGVlMDhlZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyZjExODQ2YzE1Mjk1ZTA4Zjk4ZDQyZGUyNTZhMWJmYmE0NWZjMzQ2ZGE3NGZkNGU1NjY2YWEwZTljMjBmZGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/main.go#L11-L17",
+          "version": "repo-lines-v1:sha256:a306d7085443a32e3a14838c3ee32ead25c26f3311a2aa0540b814b2748ebd71:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzE1ZDY0Zjk3MWIyNGY3MDFkMzRjNzdmMTI1YWQ5M2Q3MGI3YjQwYTAyYzAyMzZiMDQ1MzkzZTI0YmY2YjVmZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGU5YTBiYzY0ZjlkNWJmZTAwNWI0NjFhMGE5ZjRjY2M0ZTI2ZmQ5NjRlMDM5NTk3NGVmNGVhMTc2YmUwM2ZjYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1aa52f9d34294990857f4c8b1905bfa8",
+      "statement": "wireDependencies is guarded by sync.Once and calls an explicit ordered list of configure functions (wireBasicCLIDeps, wireHostCLIDeps, wirePolicyCLIDeps, configureMCPCLI) instead of relying on package init() side effects, so wiring is ordered, visible, and not import-order sensitive; a concurrency test pins that 80 parallel root commands do not rewire MCP dependencies.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/mcp_concurrency_test.go#L18-L41",
+          "version": "repo-lines-v1:sha256:f20acd72c0a58f4d2b0c06d80114ee81a5b64d75fd307e9480318d8d86206ff6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4NzcyZmRiMDc5MmZkYTc2Mjk5YTVlN2EyMzU1NTU1OTAyYTIyZTBkODNiZjY4MTE3YmY5MmJjMDVjMzA4NjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OGZkZWUzY2FlN2Y4MDdhOTc2ZGMwZjI5YzVmMWM5MmQ2ODMzOTJmMjMyODJkNWFjMmNiNTQ1ZTVjYjE0Y2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmZDBlYjRlM2U4YjliMzgxMzMwMGU1OTNjOTZjYjA5NzQ1NGY1Nzg2ZTJmNjc1MTQ0NzY3ODBhZjlhYjM1NTMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L22-L33",
+          "version": "repo-lines-v1:sha256:cedab73cdbdf7a67f5ce4676343d835d56b0681eda852c1435c30e8ba4cfbe0e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YzM1OGU2NjhhMWVmZWJjNjkxNjUwODkzM2MwMjFiYzRhYzUzMGMxZDVhNDg4YTIxZjdjMTc4Zjc3NzQ4M2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc4Y2U4YWQyMWFjOTIzYTQ2YWNkMTlhMjY5NzRlMjhmNDQwY2RmODRjODcwMmY5NzY1MjY5MmY3YTY1MmZlZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyZjExODQ2YzE1Mjk1ZTA4Zjk4ZDQyZGUyNTZhMWJmYmE0NWZjMzQ2ZGE3NGZkNGU1NjY2YWEwZTljMjBmZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_08964677a6e64769927f03f632d0a888",
+      "statement": "rootcmd.Command owns only dispatch, help/version handling, usage printing, and exit codes; its Runners map in the composition root holds 28 subcommand entries (inspect, preflight, status, doctor, docs, policy, guard, quality, verify-work, trace, contract, state, issueops, api-doc, hook, project, install, update, bootstrap, worker, loop, gates, channel, web-fetch, self-verify, self-augment, daemon, mcp), with version answered by rootcmd itself.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L35-L73",
+          "version": "repo-lines-v1:sha256:6bf51ed9e64ad03fa05713801b34bbe106f93b85ed47e3cae0421671914109a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4MGY0YWZkMjRlNTY2ZTAxOTZmMDRjYzU0YjVmODQzOTBmMTA0Y2E0NDZlNzgwNzhiYmJhOWVmMzM2ZGM1ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0ODU1Mjg3MGI1NWY0OTI4YzE2ZTQ2ZDQ1NmQ5Y2I4OThhZjJlZGI4MTU2MzBjNGQ2YjU1ODE5ZjdiYjNlZjYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command.go#L21-L58",
+          "version": "repo-lines-v1:sha256:a4db56270883dc9cb7bf5695d1fb0e5c1260d904853d9e5522cf0cb24441903c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NjBlNDhlNDM3NjVlMDZhMDVkM2RiOTBjN2FkOTAzZDZlYzI3NzIzYzM1OGU4Yjg3ODZlZGI0OWNlNzljMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyNThhMmFjZDA5ZWI2Y2VmMmY0YTE3MGZiMjdmMGMyY2MzZDRmOWQwZDhmNzk5ODA1ZDJkYzIyNzJiNDQyYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MmEzOWQwYTFjNDU1MmEzMmMzNGEzZDM1OTU0NjE1MDMyNmRlOGJlOWUzNDA2Y2VhODBkMDE3MDRkMjk1ZGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_470d8f592e074a6887931d7d2d3cee38",
+      "statement": "The canonical top-level CLI command vocabulary and usage text live in internal/domain/cli (Commands() and Usage(version), with the issueops block projected from the single issueOpsUsageCatalog rather than hand-duplicated), and the contractgolden tests pin usage.golden.txt, mcp_tools.golden.json, and mcp_resources.golden.json so the human surface cannot drift from the contract checks.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractgolden/contract_golden_test.go#L18-L28",
+          "version": "repo-lines-v1:sha256:2daa222c0973e9c20b162d1b05d40350b3700ad5f303dfd469d7c15b59969336:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxODE1Y2I0MTg5NWQ2NWFhOTJlYmI2NTBjYmE3ZTI4MjY5MmIwMTA3MWU0ZWQzNmNhNWE3NGRmOTY5YWEyZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjMyODk0YWRlZGNkMTRjNDNlMGRhYjQ1YmI1ZWU1NGI4ZGJiZDQ3NmNhNDI0Njc3YzdiMWI0MTg0ZmQxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjYzMTZmN2YxOTIzZDZlM2M1ZWQyOGQ5M2ZlNjc1MzA2OGY3ZjZmODkyMDUxMzM5OTUxOGFlNjAyMjE1MjcifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L11-L46",
+          "version": "repo-lines-v1:sha256:19fd2cf22a4eda21f198f37fabefb5c4b6dcafd29e6040ec7d21f5cd28ee1f30:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNTc1ODFmY2MwOWZlNTNkZmFjMWZmMDBkOWI1YWY2MGI1YmYzMjlmNzY4MTAwZmIwYmQwMDY3YThhMTY3YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ZTI4YjQ3ODlmZTIxMzQ5MjIxNDljMjY1YTJkMWY5Yjk1MDMyMTAwOGRlOGYyZDM0YzU0M2Q0MTkyOGMyYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMjkzYTI4YTM2NmZjOWM3ZjIxN2Y5OTM2MjVkYTUwNzAxZmMxNWM1YjZjZWMyYjEyYzNkMDY2MDE2ZTJmZDgifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L48-L54",
+          "version": "repo-lines-v1:sha256:c08cade53a44dde8e0e648026789fdc3e498d4e23eef048e51c513df65c845ad:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU4ZGFhNjYxY2E3M2M5MmQ4YjYwMzU1OWM3ZDM5NDY0YWQ3ZDQ3NDhmYzY3ZWM4ZTQ5YjZlZjY2N2U3OGY2YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzc1ZGM4NWY2MGVjZDA5Y2Y3OTJjZjVkZDM4NGZmOWMyMDJiYTNjMWUwMDZkMjcwOGRkYjdjNWU5MDViZDgxMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmZTMyNzRmMjkzNjI2MGJmZTM2MmRmN2FhY2ZhMTA2NDI1NzI5YjUwNzYzNGFhZTg5MjlmNzkwOWVjOTZhMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_071bef6a9cc74127930515faee7edfa0",
+      "statement": "internal/domain/mcp catalogSections() is the single ordered source from which both the advertised tools/list (51 tools, order pinned by mcp_tools.golden.json) and the name-to-handler DispatchMap() derive; adding a tool to a section makes it both routable and, if advertised, listed.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_sdk_server.go#L122-L176",
+          "version": "repo-lines-v1:sha256:5e21604a2d3269accb172ed625d901c200cb4c43481a0e70cd8003ffd408715f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0OWU5YTJjNTA5NTkwYTI3YzQxNjZhZTVhNDIxMDJkYzMyZDI0NzViNWU4NDZkNWZlYzFiMjBiNjIwY2M5YzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiYmZhNzZhMjA0N2JjNDliNDdjZGRiYjc4Zjk4NWUyMDlmZmRlNjk3N2VkNTVhMjRhYjE3MmM2ODMxOTI3ZWQifQ"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L45-L106",
+          "version": "repo-lines-v1:sha256:3342a8aa93c784b900c65f5e80f20c2abc0987d5f2b9bc7810ac979a48f75522:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiZDMyNTAyNjllZTBiYzJkNjAyNmU0MzRjODU0ZmM3YTI3YWI3YjcyOWIzNzkwNWI3MzQ2ZmQ3OThjMTg5MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1ODdlOGJlOGY5YTQ4ZDkzMWZhMjUwOGUwOTNkYWQ3ZTE4OWNkOTZiNzQ3ZmEwOGZjMGUyZjA3YzBkNDRlZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5NWI0N2UyMTJmYmI4ZTUyMzg2NzA3NGE1NTZlNGE2YjUxYzJjYjUzNjVjMDE3YzFhMDBhM2E2Y2NhMGU0MTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2c83f899c5ef4a3e83c4f4f473f12166",
+      "statement": "ah is the installer-managed shorthand: native install creates ~/.local/bin/agent-harness plus a collision-safe ~/.local/bin/ah symlink in every PATH mode, while agent-harness remains the canonical name in CLI output, MCP configuration, and host adapters (ADR 2026-07-24).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-24-canonical-command-ah-shorthand.md",
+          "version": "repo-file-v1:sha256:30a6fe41f61a2ddc823c6be80e10772673713cb82bd38ac8e5f00e8dd56c4eee"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_path.go#L35-L88",
+          "version": "repo-lines-v1:sha256:5ff762ab3554c21e5e14a94aad7cf356bc3a8408656c4217a21603ee1f001e10:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZDY1NDIwYjMwZTY1ZTJkMTU2MDQyOWU4MjY1ODA4MGRlZGMyNzJiNTRlN2JlYmM0ZTY2MTM5OWFiOTZhYTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5MTBiOTQxNzJkMjczOWMwNWZkNTBmN2YxODM4MzNhYTY4Y2ZkNDI2NWE1NjJhOWYyMmM4NTFhNjMyYWNmOTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzMmJkZGQ5ZGExNDYxN2VlNTc4NTJiNjA4MzhmOWM4NjdlNjRmYjY3YzhmZmMxZDMwOWNmMzFjOWRhZDgxZTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b58c2fd8c2d4a1c84176dfd6f659705",
+      "statement": "The exit-code contract is: 0 for success including help/version and any subcommand returning flag.ErrHelp (exit 0 with no 'flag: help requested' line), 1 for general runner failures, 2 for usage problems (no args, unknown subcommand after usage is printed, gatescli.UsageError), and 3 for policy denial (policycontract.IsPolicyDenied) or guard blocking (guard.IsGuardBlocked).",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command.go#L21-L58",
+          "version": "repo-lines-v1:sha256:a4db56270883dc9cb7bf5695d1fb0e5c1260d904853d9e5522cf0cb24441903c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NjBlNDhlNDM3NjVlMDZhMDVkM2RiOTBjN2FkOTAzZDZlYzI3NzIzYzM1OGU4Yjg3ODZlZGI0OWNlNzljMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyNThhMmFjZDA5ZWI2Y2VmMmY0YTE3MGZiMjdmMGMyY2MzZDRmOWQwZDhmNzk5ODA1ZDJkYzIyNzJiNDQyYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MmEzOWQwYTFjNDU1MmEzMmMzNGEzZDM1OTU0NjE1MDMyNmRlOGJlOWUzNDA2Y2VhODBkMDE3MDRkMjk1ZGIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command_test.go#L11-L58",
+          "version": "repo-lines-v1:sha256:5a47332af7bbd05d1a206056922887afb4abacb1cc0d99daed482acd11c79939:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2OTNkYTBlMDUzODJhM2UzNjE3YmJiZGIzMjVhZGE5MzVjM2U3OWQ5OTM0MjVjOTY0ODBlNDhiNTAzNjQ3YzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5NzgwMDU4MDkyZWYyODMzYWJmM2I0MzI0MjEyNjcyNjQ2OGZkYjRjNWYwMWY5ZjA5OWVkMmU4YzcyNGYwMjYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command_test.go#L98-L112",
+          "version": "repo-lines-v1:sha256:6e0c27ad9b2f812d94998620722b77c3bc308df9f76f411e737037e205691156:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwMjUyYjM1MTMyYTNlNzc2OGZiMjc0Yjg4YjM3OTc5NjQxYmZmY2QwZGI4NzgxODdkMjRhYjhiMGMwOGJhMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3YTUyYjA0YmFhMGNhNTQ0MWU2YzFiZjJkNjUxODk3M2Y5OWJlNzgzMzBkODVhYjRlZGE1NzQ4NTM3ZDM2MTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d23ba81d11ae4bd69eef8f95215e34d2",
+      "statement": "Exit-code mapping is centralized in the composition root's rootSubcommandErrorExitCode: leaf packages return typed errors (PolicyDeniedError, GuardBlockedError, gates UsageError, channel TimedOutError) and only the composition root maps them to process exit statuses, with channelcli.TimedOutError deliberately mapped to 1 because a timed-out wait is a normal outcome.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/channelcli/channel.go#L20-L23",
+          "version": "repo-lines-v1:sha256:fa384f3eaf3a50e975c1be38b264e85b4c00099f6ad27cdddecfa2c608089f41:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNlZGYxOTUwMjA5YTIyMDZlNGRmZjY3ZTBiZGMwMjgyMDNhNWJhM2VkMTQ0MjEzNjc1NTkzMzczNDVjZWQ3YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDFhZjYwMDI2OWI5OGMyNDE2ZmM5MGZiY2U0MDBjMjY1YzQ0YTI3ZDYzYTJkYzUxYzA1OTRiZDdkOThiZTkxYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzE5YzAwYWQ0NGNhMTBlZWY0ZGUyZDQ0NDYxNTMxMWU0NTQyYzIxMWY5ZGIwOWJlODBjZDI5NjdiZmQ1OGY1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2FiZjM4NjIwYTRhODUyOTI4ZjU4NGZiMzJkYmRmMGQzZWZmMTUwNWU0YmU3YzMxMDU0ZjE2ODBlOGNmODc1MCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L75-L95",
+          "version": "repo-lines-v1:sha256:c5d37ee8425e31782a68e6e9f92614ada29c1947f0e75ca5737907040d6aed1b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1YTZkMzM3YjRkNzAxZjBjMGNlZWQxMGY2MTE1ZTlmZDhkODA2MjhkZmYwOWRjNDE5ODFiOTlmMGIxNjlhZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/contract/policy/command_types.go#L82-L96",
+          "version": "repo-lines-v1:sha256:5a2ee07bb47fe2cc8e6a1e70d6a8829f08cc57904bba34b9950d7161333e2454:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkMDE0OWNhYWI1YWM4N2I2YTUyZTJhZWUyNzllMDFmOTNhMjU0MTY1OThkMzI1YTQ0NWU2MjExZmFmOWU3MTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3MzUxNzM3Y2U4ZGQ1MGRiYjczM2RkMWNkZTY2OThlODA3YzQzZTc3ZjQzODM2NzU4Y2E2ZTFjYjc2NDA4N2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_38c3ccc3989a431497eff1475c5175e7",
+      "statement": "agent-harness mcp with no arguments starts the MCP runtime; by default it runs the proxy (ensure the daemon, dial its Unix socket, pump JSON-RPC frames between stdio and socket), while HARNESS_MCP_DIRECT=1 serves MCP directly over stdio with no daemon using the same go-sdk server; mcp cleanup [--dry-run|--apply] terminates stale proxy processes.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/mcp_command_facade.go#L11-L47",
+          "version": "repo-lines-v1:sha256:95197c833c1697a4677260916f8b3f25b72b265d0878aab164c41c5b5a2d5685:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxZjQyN2FhNWIyNzQ5YzAxNmYyNjYzNmMxNWNiYjU0YjIzZTE5ZTFlYWY0NGEzYTdjYmRkYjM4YmExMzA2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxZDY5MjM2ZGNmY2NjM2E1MGYwMGM3Mzk3NDJhM2FhMGNkYTcwYzZjYTRjMzkxYmE1NGI1ODVlOWE5NTBmYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_transport.go#L9-L18",
+          "version": "repo-lines-v1:sha256:2ca7fd7ee306df7d848d6108709bd47d349a611c36be4290b128cc4b190f8e5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZjRhMTA5MTA3NjJlNWVhZjk3MzE1NDQxZWI1NmE5MzVjZjQ3N2E5N2E2OWViY2RmNmRjYzNkMDBjYzM1MzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwMDE4NTljMzhmZjJjNzM2MWJmM2JiNDg4NDNiMzhjZjRmMjBiN2UyMjY4YzA1YThjMDEyYWM2NmRjYTc0MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkOTdjYTg3M2UwZDAwOWQ2ZjFmNmYwY2UyZTQ2ZDM3MGQxODk0ODViN2RlZWI3NWY1NDAxNDQzOWIwMTZiNDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_85a2ee3a191c4591bfebab135c58e0ed",
+      "statement": "The MCP proxy (cmd/harness/daemoncli/daemon_proxy.go) calls ensureDaemonRunning, checks the admission snapshot (refusing before dialing if the daemon is not accepting), dials the daemon Unix socket, and forwards newline-delimited JSON-RPC frames bidirectionally without interpreting tool calls; frames up to 4 MiB are supported.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L205-L218",
+          "version": "repo-lines-v1:sha256:eae57342574ff4e0dbf07453739189cf7d23e851d4fced03fd9700d33f1e0bc1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NDJlYjA1OTAwZmI1NTJjNzYxMDEyYzY2ODQ2NTAyNTNkZmI5YzBlMzBkNDY2Mjg2ZjMxOTVkYTJlZWQ5ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0NTBkMjBkMWViODA2NzAwMDNiZjgwMTAwMDhiN2Q4NzNhMDgyMWZiNTg1NmM1NDBjNDFlYjAwZDAzMTE4ODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2YzU2MTlhMjQ1N2RmNzRkNjIzYjQ0NzFhNTAxMDg5MGMxZDlhNjliYjhkMDI0ZmM5ZTg3N2NjOTQ0MzhkZWYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L35-L56",
+          "version": "repo-lines-v1:sha256:1640772a24bf37dd7ca3ca336cfd126ee731c1a216b4a13184a26b691efe7ba5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5YjkyNmM1Y2EwNTE0M2UxZTA2ZjY0YmYwNTMzNTcxNWFjN2E2YjEyNjc5MmJmOTQzN2M5ZWFmYzdjODFmZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5NGM4NjBlZTM4NDA2NDZkOWVmYTA5ZjA4N2RhYmRkYTRkNTQ3NjRjYmY2MmE5ODA1M2M0NGVhNzc5YTY3YTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwODdiN2ZlMTVkY2ZmNzEzODgxYzNlNDE4MDUyNDU0NDBhYmExYjU0ZjQ2ODkzNGVhMGE3YWZhMjFjNjAwMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZDFkNjI5MTMwNmJlNjUxYmM1ZjI0ZmFiYTBmNDNmZGNlODZmOWVmZDRkNzgyM2E2ZTVmOWI0Y2Y5OWE0MmMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy_test.go#L335-L360",
+          "version": "repo-lines-v1:sha256:93f44632808a0f74963a43c98cc537b05d0d971d654b4c0ac6288e91d8f6c2a6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwNzQ0NTNmNGNkMGM3YWRjMmZhZTQ2NDZhYjhkMGU5ZThhYmY3YmZkZDVhNWQ5ZDkxMTk0ZmNlMThiNDY0YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5ODE1MDY4N2Y5NWUzYzYxMGUwOTAyMmVlNTdhNTI0MmI0YzkwYjBjNDNjNWM3YjJkN2UwODYyMGMzZTJlNGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cef8151884c84fec93633f0684912d21",
+      "statement": "Both MCP serving modes end in an mcp.Server from the official modelcontextprotocol/go-sdk; every tool call's arguments are validated against the catalog inputSchema before dispatch (schema violations are JSON-RPC -32602), and resources plus all advertised tools are registered at server construction.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_sdk_server.go#L17-L63",
+          "version": "repo-lines-v1:sha256:36f588620c54402174af35f9b094651fc7c7a1a02960fea031875d3f0084aed9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYzQ1NDRiYTRiNDQ5NWM3ODAzOTlhMzFmNDQ2MzE2OTMwOTBlMDY5YjlmMGNjZDc1OGZjYjhjNWIzOWE4MWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OGZkZWUzY2FlN2Y4MDdhOTc2ZGMwZjI5YzVmMWM5MmQ2ODMzOTJmMjMyODJkNWFjMmNiNTQ1ZTVjYjE0Y2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwNTNmNGYzYzVhMjBjODQ0NjBhNmVjZThmMGRmYmUzMjQwNTk1YzE3YjdiNGJmNTRiNzBhZjc4YjIwYzM5ZTcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tools.go#L128-L155",
+          "version": "repo-lines-v1:sha256:33fcf5cf3e3f251a0cac97dfd1cf00d308c6cd7e41b231420a1f9c9d48f81aa8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0OGE4ODdkZDRhYTM2NDhjYWEyNmZmMGIzMTE4ZWI2YWI2NWJhODExNGIyYzgzZGNhNjg1N2VhZmZlMDI0OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3ZjM0ZDRmZTVlNDA1YWMyYmVkYTlhYzE2NTAwNDMzZTdkY2ZiZDZiYmNhYzZhZjRkYjM3MTJlZDQzOTU5ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIzNTUyMWVjOGNlZmJhYjhlN2NlMDdiOWQ4MWE1MTQ2NTRmNzliM2M0MGQ2MmNiM2VkMDVhNDM2OWVlZDY3YTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e2533854823a4fa399f49818756fbea6",
+      "statement": "MCP tool handlers resolve through mcpadapter.DispatchMap() into eight stable handler groups (project, policy_state, issueops, loop, gates, channel, assistant_worker, self_loop), with issueops_execution alone getting a context-aware handler carrying the MCPDependencies snapshot; that dependency struct is fixed at server construction with no request-time package-global cache, so wiring changes take effect only in a new server/daemon process.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/mcp_facade.go#L89-L100",
+          "version": "repo-lines-v1:sha256:e2bc08f6e91f1be65d4062d65bfdcbfbfe4193c53e3d41719ed9d8667a88cf17:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlZjE2M2YxNTc2ZmIzOWFhMmZiMTFlZTQ0OWYxNDk5ZWQ2ZDI3MTk5OTM0NWViOTQwYjA5YWRlMjgyZjE2MmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiYjYyZTYxMWIwOTM4ZGZkNDQyMjk1Yjk3OTgzZDM2N2EwMjQyOGU4YjUzZWZjNTBhNGI4YzU2YzgzMTA4ZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAzNTU5ODQzNDcwYjRiZDk4MTM5MThmYzMxMDU4OGQxZjlhNjFiNzI0YWVhOTNkNGNmYTk4YTEwNGFiZGQwY2MifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_sdk_server.go#L148-L176",
+          "version": "repo-lines-v1:sha256:4ff20993e3ca03d07b1c2316348ad8ce247b6de6c5990d26e4cd416159e5ba13:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhMDU0YTA3NWQxOTk2MGMzYjZlNzJlNjRhYjg1N2EwNWYzNDRmMDJkYWY2MWNmN2E0ZGMzMDgwYmI0ZGIzNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjZjQ1MjYwMDJlNGJkMmIzYjEwYjJkOGJjYzk5MGU4YjQ4N2NmM2I1ZTE2OGI4M2Y2ZTc3MDU5YWZjMjU3OWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiYmZhNzZhMjA0N2JjNDliNDdjZGRiYjc4Zjk4NWUyMDlmZmRlNjk3N2VkNTVhMjRhYjE3MmM2ODMxOTI3ZWQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tools.go#L30-L45",
+          "version": "repo-lines-v1:sha256:63db8f04cb0f17c0a2070c0884b9474016373c6b89237f730b2344c2d02b910e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNGRlYWNhYjA4ODQzNTU1NzIxNjI3MmM1YmRhMWNmNDQyMjhkYTczZjU5MzMyMjZlMjQ3YmE0YTdlMDM1YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2NmIxZTk3ZWI5ZjMyZjA4NmM3NjVjNDdiY2Y1MzA2ZmFlNThjOTc4NWUwZDRjYmU4MGFmODdkNDU0YWJlMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE2ODk5MGVmZDc2NWY1YzU4YTM5NDU1MDYzMDNmM2IxY2FlYjg5YmI5YjBjNzI0NTQwOTQ1NTczOWRmODYzYzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c26105bbb85948f789a843379527386b",
+      "statement": "Tool-level failures (not-found, validation, disk/lock) are returned as isError text results mirroring the CLI's {ok:false} bodies, while genuine JSON-RPC schema/param violations use protocol errors -32602/-32603.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_sdk_server.go#L95-L119",
+          "version": "repo-lines-v1:sha256:c3242edd7ace57340c9946284b8e5c0b51d23b5ec41239f709eddd89566e3a32:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1Njc4YzQzZTIyZjhhM2Q3ZGFjMDAzNWMwYjE5NWZhNDI0OWY5NDhhYmQzNGZiMTAxNDlhNWEwNWE0Y2ViMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3NDZmMTZiY2Y0ZWU1OWFhNWY3ZjE5NmM1NGM2Mjk3OTk2ZTU2MDliMjIwZWYzNzk0YzZmMmYzNzUwM2YyZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlOTk3NTFmNTdkOTE3ODI3MjdiYmU3ZWZhMTNiNTczYmIyZDQ2MmU3OTA1YTk2OGE3ZTVjYzllNzE3ODdkNjIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tools.go#L47-L74",
+          "version": "repo-lines-v1:sha256:2f4aa15ed964342bad77683539e80dd23a035217f0b4629d8e287c6ebe55666f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzN2UyMDJiZDlkMmVmOTBjYTg0ZGVhYTJkMjE5MDQ3N2IxNGMzODMzMjNlZmM5YmExYWZmNzBjNmU2MzBjYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkZTJiMGNhNDc1YzI4MjI4MmUwMjc4OGYwZmExMzkwMjFiMzQ2NGIwYzA4ZWJjNWE0NjkyODFmYWUzYWE2M2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5MWQ5MWZiN2E5N2NjOWExYzBiNTI2ZjA3NmI2OWZlODM2Zjg1YWQ3MjZjNWI3ODk3YWVlMWM0ODMzMzEwMmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4476faa76bf64bb48c9e7dfe1d63bca3",
+      "statement": "The proxy session caches the initialize request, the notifications/initialized notification, and a canonicalized handshake contract (protocolVersion plus capabilities JSON); on reconnect it replays initialize under a fresh agent-harness-reconnect-N id and requires the new daemon's result to match the cached contract byte-for-byte, aborting with 'handshake contract changed' on mismatch.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L509-L608",
+          "version": "repo-lines-v1:sha256:72b2f81de58fdd196f1e9fd051d66b9ddd8545eeb50bf97ab5cf4d9033850f29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0YzM1MmI4ZDAyZTQ2OWYzMGEwMzA3ZDg2M2Y0Mzg0MTNjOWYzYzBiMjZkYWJhMWEzNWM2MzIzOWVlMjE3Y2M1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNjMxYjZlMmNhMDdkOGJhZjBlYjQ0ZTc0OWRiZjQ5MGIzOTJlM2E1MzRlZjYxMDIyNzcxMTQ2Y2RmOWFmMWEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4MWViMjUyYmIyMGIxMDgyMWI3NDcyMmM5NzZmMzMxMWNkYWViOGE5NmQ0ZTkxMzBhNzRkZjFkMjMzMzQzMmYwIn0"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L610-L667",
+          "version": "repo-lines-v1:sha256:89db5ecc6effd77caab3bea5617049934393795c7f61d250229677db341086fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3NGY5YzdjMjJkMjdhOWNiYjZlYzRkYzhlYzIwYjc3NThmNWM2NDNmYzNkMTJlZjQxY2M5ZTJjNmRkMzViYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3MmMwZmUzMWUzNmE4MzlkZDBhZjllY2YwZGY2NDE4OWE1YmJkZmE5MWMyZmQ4Mjc0ZDVjMmZmOTY3OGI2ZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNWY0NmUyOGZkYmM1NWU2NjgyMWJmNjc0MWVlY2I3NjY4MGM5ZTBkNjYxYTY4MDVhZmI5YjgzZmU4NmExOTkifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy_session_test.go#L112-L122",
+          "version": "repo-lines-v1:sha256:7e5c179cb09c4700939842a96bbe7c3c227a8084cfaa0cfd575b9d60d145ad36:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiNTZlMzM2MWRiYWYyNGNjMzg5MWI4ZjM1NTE4MTU2OGUxMDBkYTYzYzVhNmExZDFmODg3OTVmODUzMjI2ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5NDY3ZTExMzVjMzU2ZWFlOWRkOTk3NDlhOGIxNzgxN2IyOGVjMjI5NWQ4ZjQ1NTFmNzBkY2IzZTFhZTIxMmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a1f3c79c9128469489e913b16926eef0",
+      "statement": "The proxy tracks pending request ids per session with semantic canonicalization (escaped vs literal string ids and 1.0 vs 1 are equal, matching the SDK's numeric coercion) and is batch-aware, so responses that reuse an id correctly clear the pending set.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L396-L464",
+          "version": "repo-lines-v1:sha256:d8cf574e592197a1e4312e0ef2d4116fca12292fbd2f45adf0e18ebc49dd2452:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMjk1YTc4MGY1MDVjOTk4OGU0NTdkYTlmYjVkYzI3M2JjNGFlYWNjOTU0YTlkYmU2Y2ViZTE0MDNkZTU5ZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhZmFjNjJmMTAzZTBhMDk0ZmUxZWU2YWNhOWYzY2JjMzRlZDFhNjYxNDlhMDk5ZTAwOWQ0MDBkMDUyYzk4NTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyODViY2I5MmUwOWYxZTMzMDBlZDc1ZTIxOGJiZmFjYmQ3ZTI4MjM3YjdjNDA3NWM3ODhiMzY5YWI1ODU5YTQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy_session_test.go#L54-L110",
+          "version": "repo-lines-v1:sha256:1b30aaa59f91b24f41568e6c495c1cab497766a3e1a55dc07d6655efa45ca86d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0YmFjZTI1NDRmMDE0NzMxMDIwNDc5NTdmOTJkYWJiN2FkMTdhNmE3ZWEzNTZlNDI2YjJlOTgzYzM3OWRlMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU0ODI1Njc0MDk5YjM2NGI3MGY5Y2M2YmVhNTJkNWM5ZDBhZjQ5NTM4NGNiMzNjZjVkMjZkMjFkYWZjYjFhZmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_93f3faacd35844b98db14d69c18ca571",
+      "statement": "If the daemon generation changes mid-flight, the proxy answers each pending request (batch-aware) with JSON-RPC error -32002, code daemon_generation_changed, outcome unknown, automatic_retry false, reconcile_required true — it never replays the interrupted call to the new daemon because the outcome is genuinely unknown, and after reconnect it emits notifications/tools/list_changed and notifications/resources/list_changed so host tool caches refresh.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L20-L28",
+          "version": "repo-lines-v1:sha256:edf873c01d79579fdbdda3fa0e9ba4fc32b08d86d101483af6b2e5714c3abc45:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzQxMGNjOTBjMWIzMzI3YTY4MzE1Yjc4MmRhZDllNjY3ZDBjNzY3MDQyY2RlMzYyNDdiM2M4ODRkZWJlNzUyYyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L701-L764",
+          "version": "repo-lines-v1:sha256:ebf7faac28d6529ebb8fc941f9234deafee35c414ebff539e2a4bef3e72706f8:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwMjNjNGJiYmZhZDYzNWMxYmU4MTUyOWNhZjAyMTRkZDExMDAzNWM3YWI5YzQyMjI4YzU1MDA4ZDRlZTU0NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwMzkwZTI2M2FmODFiOWM4YWE2YWI0M2Y1OGU4YjY4YjNiYjQyZDAwNmE4ZTY0NzFmYThhMTZkNzJkY2Y4MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiOWVjMmU0MzJkZWZiM2NhN2I2OTNmNDRmMGI3ZDkxY2ExOWRiNDE0ZmZkYTVkMzk3Mzg2NzI2YjQxNDJiMmQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy_test.go#L242-L276",
+          "version": "repo-lines-v1:sha256:ddb080e435e9e23349df818e3c8c5719aeb50275226bb6e9291c9f496fa2bfa3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2YzY2MDU1YTEyY2NiNGZjNGUxOWY2NDk2ZmFkY2ZjODQ2ZDlhODU3MzEwNDU5NTIzMTFlMjQxMmNlMGFhMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMjY4N2EzYmVhN2M4M2JhYjJkZjc4MjU1Mzg2NzAxMmQ1YzY2ZDM1NDRiZmU5MGQ4ZjlhMGM4ZDU0MzdmYWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzNzc0Y2JiNWE3OTNlYjM4NDBiZTc2Y2YzNzE4NzVlYWNmNDYyNjk2OTM0ZDhiZjExMTI1ZmIxMDY3M2ZkYTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_78b176a7d7e24f2480398aa3f7922484",
+      "statement": "Proxy reconnection is bounded: up to 48 attempts within a 20-second budget with backoff capped at 250 ms, a 3-second dial timeout, and a 3-second replay deadline; setup, dial, and saturation failures surface as explicit errors rather than empty output.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L20-L27",
+          "version": "repo-lines-v1:sha256:59af9918b0b8214436f2bc2a5154755e1084041f89061ac71fa4b5372ca3d823:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzk3NDRiNzIzZjk5YmJjZWZmYmM3MDc3MjY0NDY4ZTQxMzhiNjk2NzdjMDJmNzI2YzJkOGE4ZmZhNTY2OWRlYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzczOTYwYWZlOGNlY2QwYmMwZDJhNjI0OWUxMzg5OGMzMjFmNjBmNzI3ZjJjZjBkYjE0YjUyYmUzMDhhZmIyYSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L220-L302",
+          "version": "repo-lines-v1:sha256:5e65c8e38e89c4639cef9fec4c054236294e2fbcf8b00b766e7561eaf1159cdb:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1NWVkMDYxZDA5Y2Y5NDM4N2QzYjFiZWQzYmQzMjA4OWExMjRlMTM4YzJiMTNjZDcxYTE1YzIwZmY5MGUxYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMjQ1MjllY2YxMGU3YTAwYzFkYWUyMTc3ZTZmYjE3NDQ3Y2QwNTRmZDhjMTJhMDRiNDFkZjAwNjE4NGZmZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhYzk3NzM1MjJlMWVjODBmNGNjOWRkOWUyYTI4NTQwYjdhMDBiZmZjZjVkYWNhY2IwNjJiMmUwODdjOTdjZTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b555c85ce49c403caba0febe8f6f24e5",
+      "statement": "The daemon's state lives under HARNESS_DAEMON_DIR, else <HARNESS_STATE_DIR>/daemon, else ~/.local/state/agent-harness/daemon, holding agent-harness.sock, agent-harness.pid (the instance record), agent-harness.lock, and agent-harness.log.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon.go#L34-L36",
+          "version": "repo-lines-v1:sha256:d3274d51bdce4ba003a03f908a0b45f790a26fcab06ee39bba7a694c06f53973:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2ZmMzA2MjEyZjMxNzViMDNmZDkyMGFkNGY4YTNiOGVjMjJhNTA5ZWE3NTg5ZWY0Y2M5YTM1ZmRhMmYwZjllYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNiNzZkZmQxMDg5MGNmOGYwZjEyYmNmZTE5MzRmZWRkNjlmYzNhZmUzNjZkYTJjMmU4YzEzMTkyNDc5N2QwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTUzMGYyOGE2MTJkNDhiMTRjMTJlYTMzZDI5M2JhYzk4YWZhOTVmMTgzM2ZiZmNhMTU4YjI5NzQyNWFjZTQ5MSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/paths.go#L19-L42",
+          "version": "repo-lines-v1:sha256:71267f2acb71146e87039368465f294dd55bcb8166612a318244f28d01182d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyYmJiZGUzYzU1OGE3MWViZGU2OGEzZmEzYzYxODViNjQ1YmVhZWIyMDJiOWYzNDZlNmU5ZjE3MTExNjg0ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1YWY2ZTIwNWUzYzEwZTkyODU1ZGJiZTc2NzQ0ZjNkYWJlMjEwYmViMTczMzBmMjJhYjIxMDljMDFlNGYwNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiODE5ZjZmZTkzNDNjZjY4Nzc4MTIyYmY2ZWUwMjFiMjVhOWE4ZDlhZWMzNTc2YzUyZmJhOTc2YmQ0OWVlYWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_29119fcb5b0c41f6a6d88c5938c0240e",
+      "statement": "Before serving, the daemon writes an instance record atomically (temp file plus rename, mode 0600) containing PID, process start time, executable path, a crypto-random instance nonce, the executable's SHA-256 build hash, protocol version \"1\", and a random generation token; the socket is chmod 0600 and stale lock/pid/socket files are cleaned at start.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L103-L185",
+          "version": "repo-lines-v1:sha256:29932851bd7e2f560a5f543b4cec26acc826c4a0e838d35c0a8b20d16ad5435e:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2MzFiMmE0MGI1MjA4MTQwOTc4Nzk2OWEzNzIxNWI1OTQ4ODc2MDNkYTE1NjkzNDQ4Zjc5ZTVjYmQyYWFkY2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjY2FjY2M3ZDExMGM5ZjM5ZTRhYTFiMjE1ZDg2MTdmMjA3MjUwOGE0MmFjMWM4MTJhNmY2ZmRiYTUxMDdkZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMDc2NDI1ZDNhYTk3MjQ3OWU2MTZhY2RiNzljYmJjN2RiMmNjMjQyMDhmMTBmZTg4Y2RkYzQxOTBiYjJkOGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/instance.go#L11-L77",
+          "version": "repo-lines-v1:sha256:e162567a37bdbc0dec6b69029f0af20093243d019ea4e9fc921d0ef4ccb7786b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjOGVmMDUyNTI3MmViMDc1NDVkY2ZmMjk3NjE0YzIxMjI2Y2YxMmRjNDZlNjhmZGM3ZmY1MWYzNTQ1ZjY0ZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5MzkyNTQyZDE3NDc2ZGM5ZjJjN2FlMDI3ZTY2M2M3NjQ5MTA0MmU0YWVkOTJkOTM0OWQ3MzRlNDUxMzljNTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_60d0624dbe3643a9b1374540bfca0638",
+      "statement": "Daemon startup is serialized by an O_EXCL lock file with stale-PID/age detection, and shutdown waits up to 30 seconds for active connections before exiting.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L172-L185",
+          "version": "repo-lines-v1:sha256:0645ed010b807eefd85c5369cd183017dc197d2aa56a7131de59dead5ae2c780:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlYTdjNjkwOTA4ZGRmMDQ1MDk1NmJmYjA2ZTQ1MjRjZTEyYmZjZmU4MTM0NzZjNjY5ZWNiMTllMTY2YzU4OWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhZWE4YWVmNmQ5MzNlOTA0ZTgxMGJjMzkzYWZkZGI4NTUyOWFhNGQ4ZTkyM2ZkZmE0YTk1M2NlYzQyMDQyMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMDc2NDI1ZDNhYTk3MjQ3OWU2MTZhY2RiNzljYmJjN2RiMmNjMjQyMDhmMTBmZTg4Y2RkYzQxOTBiYjJkOGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonlock/lock.go#L12-L29",
+          "version": "repo-lines-v1:sha256:e84da6409258da7031a0152263b0facb087c2bb5e907d5100ac32ebaf2817a3e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzOGVkNGY0MDQxMGQ5NjdmMmZmMjhmNGZhZDM0MmQwZjVmZjIzZTExMzVjZDVhOGYzNDVkZjdjZWUzM2UzOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEyMTZmZjQ3ZmM3MzhhZjFhNDAwMjlkOTA5YTQxYjcwNTk0NjMyOGYyMzE0YzkyN2FkNTNlMjljZjA0ODNiMDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9d50bbfe150c4eeb9fc6b563dba1a35f",
+      "statement": "daemon status verifies identity, not just liveness: it reads the instance record and probes the socket with a NUL-prefixed private request (\\x00agent-harness-daemon-identity/1\\n) that cannot begin a valid JSON-RPC message, so probes never fabricate MCP frames; status is ready only when record, probe, liveness, and OS process identity all agree, otherwise it reports instance_identity_mismatch, socket_unreachable, or instance_record_unreadable.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_identity.go#L17-L40",
+          "version": "repo-lines-v1:sha256:0109889b0b0ad568e736bc7212883613ba52ecb4adcdf6f9a0a4b775fd9c26fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMwNjE3ZWYyNDgwOTQ5MDE1OWQ4OTdiNmFlNmY1YWNkYzZkYjM2ZmZmZGI4MmM2ZjAxODljMDIwY2RhNzM5YzUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L39-L112",
+          "version": "repo-lines-v1:sha256:5826b4c8c0a4d332595ea165b562d3b34b1a1488c6a432c0bc45afec55d9374b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMGYzZjdiY2U3NzQ1ZjZmNTFhYTQ4OWI4YzY2MWM3YmQ3ZGE1OTIyNzY2MTcwZGIyNmQ2OTkzYjMyNzk0MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1Y2IxYmJmMWFiMWVlOWZmMmNlNTJlMDY1ODU3NjFkY2U1Mzg2ZjQ1ZjU0ZjNlYWMyYmI1MjE3NWIwNTg4YjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_381470dc2805472fb50429cd0f68b798",
+      "statement": "daemon stop refuses to signal an unverified process: it requires the ready status (or a socket-unreachable but PID-matching state), sends SIGTERM with a 3-second grace, re-verifies OS process identity before Kill, so a recycled PID cannot be killed on the daemon's behalf.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L145-L157",
+          "version": "repo-lines-v1:sha256:e0a77ed53008cbe7ed55dd28f5e833fbb96b16c5d0e37775d9ee35c1c78bdf71:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMGZmY2Q3N2VmZmU5NTBhOTJmNzc4MzU5MWE3OWE3MDM2OTc0NTAwOGQxY2E4YjBmMTNjNDYzY2Y0MmQ1MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4ZWU0ODQ2NTYxZDE0NjU5NGUzYzkwZTViOGM5ZmUyM2I2ODQyYjZhNjZjNWM3YmU2NWE4ZWMyZWZkODc0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1MWZiNGI5ZGZmNGYyOTc3NzU3M2Q4ZDIzNWNhNjU2OGUwODhiZWM5Y2ZhMDFiZmY0ZmU1MjY0MWIyNmU4MTMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L239-L313",
+          "version": "repo-lines-v1:sha256:413f1930daadaeb51d8f5134e1d71081eac3824ac90b9d190bff23074811d571:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkMzAwM2YyMTJkOWM2YWMwODg4OWNmZGM5ZTA2MzdlZjFmNGIzNTFjNDlhZTM0MWFlOWJjZjAxMmFhMTljZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0ZWIzNDNkZmFlOTY3NzFmMGI0YmQwZTYyZTQ3NjkzM2E0ZjExY2FkYjM0NjU0MzZhMzk5YjhjNDA4NTliOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1N2ZlMTM2ODFmMTljMDZlYmYwMDU5NTYwY2E0NDBiN2RlNGZjODM5NDQ3MjI0NzRkMWNmNWM3YjYxNmE4MWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c60ba546fa754a1aab65679ad5af7a4a",
+      "statement": "A slot channel caps concurrent daemon MCP connections (default 256, HARNESS_DAEMON_MAX_CONNECTIONS within 1..4096); each admitted connection holds a cancelable session released on close, draining rejects acquisitions, and one extra overflow-classifier slot lets a health probe be answered when full — an over-limit MCP connection receives typed JSON-RPC error -32001 'daemon connection capacity exhausted' with data code daemon_connection_limit_reached, active/max connections, accepting, draining, retryable true.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_admission.go#L24-L75",
+          "version": "repo-lines-v1:sha256:e96dc0e98cc0eb0f48104572b670d6c88c039393a22ac4028aa59d57a3ba0fae:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmNTFhM2EwNzU2NGY3ZmE5Zjg4MTUwNzMyYThlNjVhMWQ1MDRhMjNiMjhhMjI1ZWE5NjE4YjkzYWZlNWNhNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNWY3YzJjMzYxYTI3NzM1MTdkNzI0OWY0YzcxNDlmMzdiMWE3NzMwOWY1ZGFlMGU3YjBjNTg5ZGI4NTFiOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2Njk3MjgzZTcyZGE4ODlkZjkxZDYzOGQwZjhiMWYxMGRmYzQwMTg4NWUxMmZhYzE1ZjY3ODVlZjdiYjIzMmQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L18-L34",
+          "version": "repo-lines-v1:sha256:52bc08976a4ff9a25104e3c1c4c3b75d15a1b7ac2e3815515baf900f3522c959:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1ZDJiOWRjYWU3ZmQ3ZDk4ZGUwM2IyZTQ2NWJlMDJlMDJiNzI3Y2MwOGFkMDA4ZDVkZTBmZGYzNjA5MzE1MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1YTE1ZmNjOTg0YTlkNDMzNDNkYmMwYjgzYjMxMmZkZTYwMDBkZjBkZDZjYWE0NTdmMTBkZGQyMWIwMWUxMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_61b9a89983e74d68acae1665739a63db",
+      "statement": "When admission is full, a connection whose first byte matches the identity probe is still served (via the reserved overflow slot) with the admission snapshot, while a non-probe connection is rejected with the -32001 admission error — so saturation is observable without occupying a session slot.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_admission_test.go#L54-L83",
+          "version": "repo-lines-v1:sha256:b7c180fa16a9f3f104f53ba270c80c0421eea027f6072424e6bf558a1eb95dbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMmU2YTFlNzYzZjEyZGIxNjk4NDY0NGM0OGZhMDg0Y2Q3MWEwMDRmYzU4ZTAxMjM2ZDk5OThiMTBjYjM3N2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNGM2NThiYTBmN2RlMGFkNDBjZGUzYmE5YzJkYzMyZGNmNmQzZGUyNmM4NjE4NGQ4NzY3MjUwNWJjMDEwNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4YTI0MjAzMWY5MmQ0OTEwNGM0ZWY3OGI4OWNjY2E2ZGE3MWVlN2ZiMDE3NDkxYTg2N2RlMTc4ZGZlZWY5MDkifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_identity.go#L92-L144",
+          "version": "repo-lines-v1:sha256:ea301d87ef22fa219bf09de886dca609654707892dde0d278048bfdefac35f55:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiZGZiMzEzNTlmOWE2NTNmZmY5ZWYyNjg1MzgxZWY1N2ZlMGNiYjdiYzBjYjIxYjc0MzYxMWU5NGI3NTM2YmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMTdlZjVkNDk3MTU0ZmNmNTdhNmYxZjNjMjFmZmJmY2E1NjhhZjYxZDMzZjU4OTFlYmI3YzE1NWQ0ODhhOTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fd9b2164f284ca59a55f7aae38fef50",
+      "statement": "Every daemon connection is wrapped in idleConn, which resets a read deadline on each Read (default 30 minutes, HARNESS_MCP_IDLE_TIMEOUT), so abandoned clients hit the deadline, server.Run returns, and their admission slot is freed instead of being pinned forever.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L218-L232",
+          "version": "repo-lines-v1:sha256:537dce4dfb3097d1dea489c81128960ff57c7bbf5179bc2bbc58aabd9ceb4aff:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMTQ4NDg5MWZjODVjODVkZTg3Yjk0N2Q2OTUwMGUwMmYzOGEyMWIwMjBkZmNlOGEzOGE0Njk2NjI1MTljOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L45-L52",
+          "version": "repo-lines-v1:sha256:32d52d03047e3133d097188337a820afab9b2677a084a03877535ba99c3d3c15:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTFiZjQ2Mjg1ZjNmYjdiNjAyNTEzZjQzMWU5NTYzYmVhNmQ1YzM5OTU1ZDkzYWQxYTQyZTk3NmM5ZDU1NGNiMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTFhODdiNzAxZDYwZWMyMzNkOWNiNDZiNjRiMDM4ODU0Y2I3MWZlNTUxZGVjYjEzY2FmZjFkM2Q0ZTc4NzFhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzljMDI5YmZjZDNlMzI0N2ZjNDZiMzM1MTQ3OWFhM2MxNjE2ZTg3ZTIzNTgyNjlkNGVjMWY4MGZlMDkxNWZjOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVlMGIwMjM0N2UzOTk3OGJhNzAyNjg1MjU2MDQ5ZWYwNTY1MjQ5ZWI5NTQxMDU3ZjdmOTg3ZjUzMzUyMjg5NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3ff0b58610234265a2bb52ae40d4802c",
+      "statement": "The daemon serves each connection by running a go-sdk MCP server over the bidirectional socket with an immutable MCPDependencies value assembled by the composition root; go-sdk session routine events are downgraded to DEBUG in the daemon log because they dominated log volume, and wiring changes require a daemon restart — exactly the generation change the proxy surfaces.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/daemon_facade.go#L13-L25",
+          "version": "repo-lines-v1:sha256:c06ec6fca8d90409bae12b8b64d9af36ca84431d7110d2a54d5ce6ad8f955d6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MDYzZTc2OGZlNzFkZTNjY2JlNDY4ODYxNTMzNGM3YjM0YTdiYTJmMWJiODM2NjNiYTZmYmUyOGViOGI2YjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlMzkzNTdiODk4MDZmZmFlMDMxMjhlMjQyZmU2Y2ViZjhmMzM3MjY4YTVhMDIyODQ4YWQ5ZDliZWUwMWE5ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMzc1YTVmMzBmNjlmNWM2MWZlNGZjOWI5MDZhMDY5M2Q5YTg3MTg0YTU4NjllNzNmY2E1NTE3MWI4YmI5ZDAifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_daemon_logfilter.go#L13-L40",
+          "version": "repo-lines-v1:sha256:8b0c3022fc2a5365134a11521117a7b46745478152f4da856a847f9ac0137ae9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1MWQwMWFlN2JmYWM2MjViNjEyMWIyMThkODgxODczM2Q1OWQwYzViOTkxODRkNTVkODZmNjY1MGRmNGU4NjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OGZkZWUzY2FlN2Y4MDdhOTc2ZGMwZjI5YzVmMWM5MmQ2ODMzOTJmMjMyODJkNWFjMmNiNTQ1ZTVjYjE0Y2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f36da29724fb40f0af74d68354256b67",
+      "statement": "daemon start is idempotent: ensureDaemonRunning reuses a ready daemon, treats identity-mismatch states as blocking errors, and otherwise spawns 'daemon --internal' as a detached Setsid child with HARNESS_DAEMON_DIR/HARNESS_ROOT set, then polls the identity probe until ready within a 15-second budget.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon.go#L32-L32",
+          "version": "repo-lines-v1:sha256:d03ca9414af81b36b940f980a9c525a6055c7e0f2cf297694198fc5e381ecf67:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDAzY2E5NDE0YWY4MWIzNmI5NDBmOTgwYTljNTI1YTYwNTVjN2UwZjJjZjI5NzY5NDE5OGZjNWUzODFlY2Y2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDAzY2E5NDE0YWY4MWIzNmI5NDBmOTgwYTljNTI1YTYwNTVjN2UwZjJjZjI5NzY5NDE5OGZjNWUzODFlY2Y2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjc5MTUwNjgwYjAzYWQ5MjcyNzk3NDk5MjU5ODkyYWVmZGU1YTEyMzA0YzRlM2JkZjgwMDdiMDQxY2IzNmFhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmE4MjE3YjAxNWE4ZTZmNDY2MmEwYTUzMWM0ZDRiMmI1YzI0MTAxZWM3ZmU2YWY0MTYzMmMyYmRlMTY2MTkxNSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_start.go#L52-L120",
+          "version": "repo-lines-v1:sha256:094f1c5d247785cf8c5aa83fe656e3b7e214c5ec3d3f4172cf181e0d623d7bda:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NzU5NDk0YTM5ODYyZGM5ZDVlN2U4ZTYxYjNkODVjZGI5MGJhZWU5Mjc4OWZjY2ZhZTRmOGEwZGMyNzJjMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmNDZjOWIwMDQ5NjgwNjg1M2E3MDJlZWZhOGU3M2JlMTliZTNlNWEwYzYxNTcyMDkxN2YzZjQ4NDkyMTIxYWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTM0NDEyODYzNTUxMmU1MjNlMWVlMjI0Yzg0OWYxNzljOTEzZTYyMDViMTlmODY4MGIwZWJkOTJiNmMzMzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a07cbe306f14891a99667ace00ae664",
+      "statement": "The daemon status codes are ready, stopped, socket_unreachable, instance_identity_mismatch, and instance_record_unreadable; daemon status --json also reports running, reachable, identity_verified, active_connections, max_connections, accepting, and draining in one payload.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon.go#L42-L100",
+          "version": "repo-lines-v1:sha256:95634a4cbfb41b5fba82fbdd841d0e7a9f3aba3987de5b4172d865dffbd58cd5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMDgwMDBmOTM4ODE2ZjM4NjU2MjQ1YzhlZTJjNzQ0OWRhNmU0Y2FhZTc1MGMwNDhkODYzM2E2ODZmNGIwMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2YWM2YTQ5NzE0NDYzOWEyOTQ0OTA4YWI2NWNlYTRjN2M3MzdmNGM3NDVkOGM2NzA0NmFkMjlkZDUxZDg0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5MGUxYTRhY2VmOGEwMjU0YjJkNTMzZGZhMWM3NGYyZGMzMDg5ZDNiOTVmMjIyOGQzYzdkZWUwYzlmNmMwNzIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L12-L18",
+          "version": "repo-lines-v1:sha256:59188b581604224785654b40980f79d98f3ebe455b4bb9ad8c607b0accbe69bd:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDlhZWZmY2ExMDdlMTAzOTM1MDllNjNjZDY5YmYxNDk0YmM3ZGIxMGFmODRiZGVlOGYyNmJjZDFiZGI4MmY0ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2VlZmFjNTQ5MGJlY2QxZGEzNmUyNTZjNmNkN2FlYzAzN2NlNGI2MzdlOGUzOWRmOWIxOGRkODZiM2RlYTdmMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fb85e800822d4aa59cf7c0480a932d02",
+      "statement": "There is no long-resident job daemon: agent-harness worker owns durable job records (enqueue/status/list/cancel/cleanup-stuck) in the worker bucket of a SQLite store under HARNESS_WORKER_DIR, else <HARNESS_STATE_DIR>/worker, else ~/.local/state/agent-harness/worker, and worker run executes inside the invoking process; the same adapter functions are injected into both CLI and MCP transports by the composition root.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/worker_wiring.go#L14-L29",
+          "version": "repo-lines-v1:sha256:ccc719ca12b1a20b2a0b0dfd8cd967333acc36e8f421b83f8fad867ac35cc751:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkMzM5NDU1NzA2YzI3MjE3OWVhZTdhNDA1YWZlYTM2OWY1YjhmZWZjZDhmNjIzMjRkOWM5NDg2ZmRkNDc3ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjYWEzZDQ5MTM5ZTczODZiY2U3YjJiNGZkZjZkYzZhMWUwNzJlNzAxMzgzOTkxMjEzN2I1ZDY5MTBjOGNhYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/workercli/worker.go#L11-L44",
+          "version": "repo-lines-v1:sha256:9c7ea0b0eb08f3ec994b64d2106b5f3bc3dfeb972f71d2288b33e4baea2504fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwZDMyODlmZjg5YTRiYmY0ZTk3NzI5MmE0MzI5ZGM5ZWNmZmI2YzA2YWMzNjc1Mzg4NTMyMDZjMDc0ZGM1MTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxNDE5NTZkYTA3YzUwODExZTVmMjRlZGJkMGZlZDNkMmU1NWRjMTY1ZTk5ZjAxMDU1ODNhNzA3NTBiMGVkMjcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/workercli/worker_dependencies.go#L8-L17",
+          "version": "repo-lines-v1:sha256:3973e0ec7b213aaccf1059593cfdd71d36ce742166a0fc93bd6998c3ff242a72:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwOTE0ZDhkYWQ0MjIzN2FiNTc1MGZkOGQ4ODY5YzcwMTk4MjBmZTYzNDliMjE4M2QwODNmNTMyZWI5ZjkzMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZWFlNjdlYjU5MjU0NDllZjI4NjdhOTBmYjI2M2FkNjJiOWNjZDY0OTM5ZjFjYjJkYzZlZTQ0YmZhOTUyZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5507ac644e5f408ebb18c7a71355153d",
+      "statement": "EnqueueWorkerJob creates a queued job with a deterministic id (job-<UTC timestamp>-<12 hex chars of sha256 over kind, payload, and time>), a payload redacted through policy.RedactFreeform, NoShell true, and the standing safety notice that the MVP records lifecycle state only and never executes shell commands.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/worker/store.go#L199-L202",
+          "version": "repo-lines-v1:sha256:25f1303bb33d0d83e73b0a0fbec06be5416fa978a2082b65b2cdea70678e792e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjFlYmM1NzgyMmUyNjlhOGE1ZWU5MzBkN2NlODJiNjRjZWMwNmFhNDZkZWJkY2UwMzk5NjFlODQ1NmFiMTUzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGY4YzFkNWJmNjBiNTZjMTU2N2M5OWQ3ZjExOWQzZDk5ZTQyMzVjNTVkZWNmYTgxNGVkYzA2NzcwMzVlNGZkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker.go#L14-L48",
+          "version": "repo-lines-v1:sha256:b05a2efa413ae6744adb001c7ce59488578977463c71fb8179e2b6aedc31c9d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxZjgxN2Q3ZThhNjk5YTA4ODhjNDFjN2UyYjhlZWZjZTZkZjg3MjQzZDlkMDMyYTI3NzA3MzVhMTBiYmZkMTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkYjNmYmM2NzAwODg1YTY2OWY5ODhmZWIzMGY2OTBmZjUyMWRlZDllOTkzMmI3MGM5NmNjMDhiYWQxZDdhODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMmRlNzE0NmNhNGEwMzAyYmMyMDQ0MmNkMjA3MzNjYjRmMDEwZTYzNmY5MTFkOWIzYTVlODk5OTI1ZTVlYzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d57b307ddf624e969f84433a106555e3",
+      "statement": "worker run --read-only is the only worker execution path and the flag is mandatory: the job transitions queued→running under the span lock (recording PID, exact argv, NoShell, safety notice), executes via policy.RunReadOnlyCommand which forces write, network, and shell allowances off before evaluation, then transitions to succeeded or failed; argv runs directly with no shell interpreter, a 30-second default timeout, env allowlist filtering, secret redaction, and a 32 KiB per-stream output budget.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/workercli/worker.go#L46-L99",
+          "version": "repo-lines-v1:sha256:4c668b2e4c1753fd6f3f228783c4cbd8c7d680cd7831f9722fa27503050716d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MjIwZmRkM2U1NDJjN2QwYmIxZWY3YzE5ZTExMGRlZDU0OWQ2YTEyMWEwOGI1ZDQ2MGY2N2ZmNTZlNDRjMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTFkNzkxNDgwOWUzNDk5ZDQ1NzNlOGJmZTU4MjZhZTA4MmVhMmUyYTE0ZGI3Y2MxNDE3MjU3N2M2YTczNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3Mzg5YjdmMjNjYzRjNDg4OTAzZGUwM2E2MGE3YTI3ZmM4YTEzZjAzN2EwOWU1MGZkMDcyYWNhZDI2Njg2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L37-L112",
+          "version": "repo-lines-v1:sha256:001d311a652f545c1be0bdb07bc91ee0d0bfadf1a6ce285c8dec216966ee7270:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOTAwMmM1ZjA5YTkzZDFmM2M4Mzk3YjQ4NWIzMGFkZjg1YWYzYWUxNWMxZGQ5OThkYzA0ODNlZTdlZTI1ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNzlmNTA4MTJmODE4NzJiZGRmNzVjM2ZiZGRkZTlmYzJkY2E5MzBmZDhlZWFiZTFlNjBjMjczYjA3YjU0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVjYmVlNzJlYzM2YjUyMzRlMTcwOWM1MzE3OGVjNjVhMjliNDA0MGY1MTI0NjQwN2UyZTU4OTRlMzNlM2FmN2EifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/read_only.go#L13-L70",
+          "version": "repo-lines-v1:sha256:c08e7f39459f0f3eba782ef9f1e5c65d3effde3fc1cab2dbc1c7a76ae5001e2a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxYzdlNzE1Y2I0MWRkMGJiNGUzMWZmYWIzZWJhYjFjZGVlOGNhNjkyZjVhNTkzZDczN2QxNzkxNTY3ZmEzOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2OTY4MTYzMTNjODM2NmNmNGQ5MWE5OWRmMGM5M2M3YjRmZWMyNmQyYjllNmU1ZWI4OGQ5NmI5ZDY4NzJhMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_06e4bf712217458bb93d4237d2bdc7a4",
+      "statement": "A denied worker or policy-run command is never executed, reports exit code 3 in its result payload, and the CLI surfaces it as policy.PolicyDeniedError which maps to process exit 3; a timed-out command reports exit code 124 in the result payload.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/workercli/worker.go#L93-L99",
+          "version": "repo-lines-v1:sha256:ee6c8690c2192640a31d2e479f1515ce8b2eec2c0ae8b11923c60c1ffc505c2a:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjE5M2Y3NDYwNWQ5NjdmZjRiMDgzODJmNDYwMTY1MWU3N2RjMGQ2NDNlMGM0NTBiY2U0OTI4YTM1NjdlZDQzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRhMWQ3OTE0ODA5ZTM0OTlkNDU3M2U4YmZlNTgyNmFlMDgyZWEyZTJhMTRkYjdjYzE0MTcyNTc3YzZhNzM1YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM2M2U1MTU2MjU0OTdmZDA5MmVjYzY3MjczNTE3NGI2MTQ0OTE1MTMwZDE3YTlhOTA5NjUzMWIyNDkwZGJkOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/workercli/worker_test.go#L100-L120",
+          "version": "repo-lines-v1:sha256:efd3b0f92a3aa7d32c9f2df9c31ca6647f725562b39a25db814ea30700df26a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1OGRjMzliY2RhOTA4MmJlZjcxOTY0N2Y5NDYyZGQ0MjdjNzI5ZThhYmQ0MTk2OGY4MjI3MTQ0NzBkMTFiZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxNDI0ZDZiY2ZjZjVkY2ZkNDljMTc4MjhmMjY1NmM1NjE4YWU5MjEzOGQzNjE5MWY4NjA4YTIyYWU3YjdmMzIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L67-L74",
+          "version": "repo-lines-v1:sha256:29404398fe251a9989487c5f17b329f1538203f84f40fc2591bae22dbf226765:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyZTZhMmE1NDAwODMwZmY3Y2M0ZjEwNDgxNmQ2Y2FhYjlhODMyNjBmNGY3ZWZhMjA2NWU5NDM0NzA5OTQzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmI4YjA0ZWYzNzc5MGEyZmZkZDA3NDQ3ODU4OWZhY2FhNTdmODlmOWUwMzMyYTNlNWFhYzQzMzVlM2M4YWFkMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjdiNTIwNmY0YTZlYzRjMThhOGJlMzNlYTE1OGY2NWUyY2JhNWViMDk0YThmNjY0NDBkZDgxYTNkOTA3ZDYyNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff5a7a01d67b4e2a8f15af9b843ecc51",
+      "statement": "All worker job read-modify-write spans take the directory-wide sqlstore span lock, so cancel (legal only from queued) cannot race run's transitions and a crash mid-write cannot leave a truncated record; cleanup-stuck finds running jobs whose PID is dead and re-marks them failed under the same lock with an explicit safety notice.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/worker/store.go#L101-L122",
+          "version": "repo-lines-v1:sha256:30f4d1d40548f4b92a4086ed69aae43a98ef290af023a23ac1b395993321e972:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4MzUxYmY5NDFhYTZjZmQ1OGQxMDFkNGI2NWI4ZTRhMmQxNDQ5OWU1ZWZlMmFiMGJlZGNjMjkxYTMzOTJmMmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4ZTc5YTUyOTIzOGE3ZmJhNGZjNmY3OTc2YjgyYmM2MGE4ZjExZWM4MmI2MTVkY2VlZTlmNDIyNzkzMjkxZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzNWIyNjZkYjQzNzQ3YWM1YzM4NzM0MDNhMjBlYzJhNDQ0YWIzOTU3Y2EwZGE0MTdiMGNmYWI0YWJiNDY5YmUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/store.go#L139-L197",
+          "version": "repo-lines-v1:sha256:4c451f54c08882375e3c85e54d00c385ca3b4b62d1de621ea1b67e8845739794:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MWVhNmNlYjcyOTkwNjA3YzliN2QzMTVlOGU5ZDU2NGU2NmM3ZTkyMmE4YzU0MzU1OWE0NTllMDEzZGNlMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwNDYzZjY4MDFiM2FlMDRjYTRiYWE2ZTA1YTI1YTk2OTZiOGJhMzJmN2Q2YWMwYjYzOTRhOTQyOWM4ZjY4NTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3YjkyZDA4NzlmYzg1MjRmYjk1Mjc1ZWM0NzY3ZjA0NTA5OGYyNDk5YjI5M2IwYzMwOThlMjllNmMzZjMwMTIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker.go#L50-L79",
+          "version": "repo-lines-v1:sha256:580fea88281674e126353e958d67a9c0a9ef40bc7f294e84e3017e9d36193b35:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMDVkOTM5ZmIwYjA5MDI3NTk2ZGRiN2NjNmRiYTM4NzA3MjJiOGU4MzY2ZGQ4NjliMzIzNTZkODU5ODA5MDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiOTBmNjlmOTFlNjlkMWRlZmFhMmEyNjA5NWUyMGY5ZDFjOGRmMGM0NTM0OTY0M2RlZmFjZThkYzEwYWMyNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker_lock.go#L7-L18",
+          "version": "repo-lines-v1:sha256:8cbe2e1f5be25c342c095fe6591c58790a7e443354c8f3e7205c02d7723cb6a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlNjFkYjgxMjAwMWI3ZjA5MGViYmM2NTA4NTU3MjVmMjA3N2JlNWNkMGQ1YzVkMTBkZjkxYjQxYmUzN2E1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NTNkNTU1YzRmMTFlZTk1N2QyNGYxNTQ1ZjY2YmMwOTc0YjI4YmM2YjRjZDhhM2VkNDRhMDE0MTE4YTQ4ZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_809dc89878f04d78a7dba0612934aded",
+      "statement": "The MCP tools worker_enqueue, worker_run_read_only, worker_status, worker_list, and worker_cancel dispatch to the same internal/adapter/worker functions the worker CLI uses, injected by the composition root into both transports — the MCP tool is not a weaker side door.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_assistant_worker.go#L52-L92",
+          "version": "repo-lines-v1:sha256:38109a09aab917734710b2cd0d14b2c05d0a560af15f76ed05a4d402d3feb2b7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmZDAzZWQxODcwNzJjMjIzMjA1NDkzNmJhZTg4NGRmYmYyZTc5ZTQ4ODViOTYxMGUzODFlOTBjNWRlYjg1ZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZDczMjI5NWFiNDM5ZGFhMDk1YjkxODNjYzc0ZTZiNGY1ZDZiOGRkZDZjMzU0MDMwYTMxMTJlNzJiMzJiMTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYWY0YmIxZTI5OGY1Mjc0ODllOWE4MjA1NzQ3MzI4OTc1ZDVmMmFjNGMyMzU2MDljZTZkMDk1MGYxZmQxYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjZTc2MmNiZWQxMTQ5YzVkNmZjNGNkOThiNzEwZTc1ZWEyOTEyMGM2YjA2ZjRiOTYwYzlhNjI2YzA5NTM3ZmIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/testdata/mcp_tools.golden.json#L1196-L1276",
+          "version": "repo-lines-v1:sha256:16e5422b770644e1df8c070726fcf53981f583a8ba301d8f700d3d4a50232783:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNDI2ZjNiYmJmMjYwZGEyNDFmODdlZGNiNjhmZjc1N2ZmMGMzNTY3MDJlYzQ2ZTY4NTAyYjRlMmVmZjQ3MjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1M2ZlZDRjYjU3MmNhYWFmMzU3NTRhOWMyYWEwMjhlMzUzZjM2OTcwNTdkZjNmZDgzN2JlMDg3YTVmNWRjZTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0OTliOTY5YjY2MjQ0NGNmOWU1ODdiNTEyNTJlNDI3ZmVmZWZlNTA1ZWYzYzYxZmRlYjA4YTk3NmU2N2M2ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4MTEzZWM2NDM3ZWQ4NjA3ZjBkYTFiMzI3YWQzNTY2NDUxYTczZmM2M2Q3Yzk4OTBiZjMwMmVkZjExNzk4NzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b7a0fd1b8411470fb1c5d1538bba4f40",
+      "statement": "Only two hook subcommands exist — hook session-start and hook post-compact — and the enforcement-era surface (user-prompt, pre-tool-use, post-tool-use, pre-compact, stop, failures/metrics ledgers, guard chains) is deleted, not merely unregistered (ADR 2026-08-10, superseded in part by ADR 2026-08-27).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-10-default-hooks-thin-static-context.md",
+          "version": "repo-file-v1:sha256:29c2095a986ea9b65953912d6527b82ad06cf4a2040c575ee56cc54beca8a4de"
+        },
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-27-session-start-owns-compaction-context.md",
+          "version": "repo-file-v1:sha256:156205c9be54d9948d1454e4e795f2d180c771b362dec9ff55d7894d3e5a07db"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hook.go#L19-L43",
+          "version": "repo-lines-v1:sha256:d8dce56f6c4c028b630236d60e20d4d3d123eec13c5f4e923a09a6b3c5cfeae2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyY2NiMjA2MzNkM2U1MWM3ZDBjNTQ4NGI4ZDU2MTUzNDdjMmM4NjYxOTkwNzVjNmM4NDdkNDc1ZmVlNTVjMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkYWIyODdjZWVmZDVmYTRjYjhjZmJhYjIzNjhhMDg3M2NlNGE5ZWYwMWNjMzcxZTlkZThmYzczOGZmZjNmN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzM2RlMWExODk4NTdmYzgxZjNmNjJjNGQ4ZTE4ZGExY2E1MGQ1Y2I5NWZiMjFmZjA4MTg1YjViODkwOTZiYzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_377be99b1b7042eaa2b399c3cd9008df",
+      "statement": "Both hook commands resolve the target repo (explicit --repo, else the host stdin JSON cwd/repo/workspace/workspace_root/project_dir aliases, else harness target resolution) and render the static project-doc catalog via the hookprompt adapter, emitting a compact model-facing string and a readable user view; they touch no durable state and no telemetry.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L18-L79",
+          "version": "repo-lines-v1:sha256:8287331cd08b241650ee28512c49cecc602142b15a42e7793ada589b8ad416ab:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MDhiNDRmODVlNzgzYmMzMjhjMmM5M2NhZmQ2YzIzM2FmNDA4OTkwYTA4ZDI2ZDlhMmMyODEyMTk2ODM0YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlOGJjYjAyYzMzODIxZjkxNWQwYTdjNzhhN2I1MTdiOWY0ZTM5MjdlMmRiNGQ3NjJiZDlkNzA1NjZjNmZmNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1Mjc2MTZhYWEwZTkzODlkNjU4NDQ2MTNmMzE1OWExNzgzYjdkZDBkODI3ZWMxNGRmYmJiNTBhZTBjNzJkYjMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookinput/hook_input.go#L12-L38",
+          "version": "repo-lines-v1:sha256:ce5438f9d6730a2bb31832f1d96b8566ae6c0af211c1b0b0e8d1fa6fad1cbb9e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ODEzMTE1NzEwNGRlMzljZWFmYjNjNWU4NmZlZDI2MDFkMzQxMzA1NzI4ZGQyYjMzMmY2MGU1MGNlY2Q0MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/hookprompt/catalog.go#L13-L46",
+          "version": "repo-lines-v1:sha256:f020ecfef53d32fd86875bd99c89ccc3b56cb6ddcff6059aadcd5f26c25af244:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhNzE0ZjI2MTg5OTNmOTgzMDU4MjdjMWUxN2Q0NjVhYTUyZTIwOTdhMGQzY2M4MTc0NTVlZGU0MGE2MzUxMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3YTFiODBlYmUxNjkyNGZhNDFmY2Q0ZTQ0Yjc4NGEyZjcxMGUwODYwMzY3MTJlNGJmY2NlZGUzMzc3MWViYTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a244b80242f429c80f064593bc07f79",
+      "statement": "hook session-start injects hookSpecificOutput.additionalContext for every SessionStart source (startup, resume, clear, compact) because Claude Code and Codex both re-run SessionStart with source compact after compaction and only SessionStart output can carry model-facing context on those hosts; Claude additionally shows the readable catalog via systemMessage while Codex omits systemMessage; a test asserts hooks create no harness state across isolated worktrees.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/hookcli/hook_catalog_test.go#L158-L178",
+          "version": "repo-lines-v1:sha256:7ad2d562bbff5f52044df690c3773ea4c048afa9e2d9fc6bc4fa302ccd7e74b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4YzJiOGNiZjIzMzM2Yzg5NjFiOGMyMTg1OTQyZjQzZWQ3M2Q5MTJhMWI0MWIyYzI2NjliMzRkYTA2OTE2YzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlNmFhYmY3MGY1ODg4MWNhN2ZlNjRjNGQzMTU2OWM1YWI1NTFjMTM0NTZiMGU4OTcwNTAzOTgyZjgyNDcwOTEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hook_catalog_test.go#L82-L94",
+          "version": "repo-lines-v1:sha256:f79459ebf861ff2ef9d605d2d1a60fbb2db4b1c09714a48c05fd4a1acf6f6e2f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMDViMzY2ZWE4MDg0ODU3YjVjOGMxNWIwZjlkZjI0ZWNiMzJmNmUzMWQ2NWYwMTgzNDM2MDgyMTNhOTE2ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxMjkxN2Q1MWIzMTdhYzlmZTZhZThjMDgzNmZjY2E0MjViZjQ5NGFiZWFhYTU0MTNmZDM1ZjkwMGZiZDgwZDMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L18-L23",
+          "version": "repo-lines-v1:sha256:5a25aeaafaf9c6e0ac19a9ffcd77a84e054381459a95708dcae67058a980e6d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODUwOGI0NGY4NWU3ODNiYzMyOGMyYzkzY2FmZDZjMjMzYWY0MDg5OTBhMDhkMjZkOWEyYzI4MTIxOTY4MzRhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWI0NDk2OGZmMDAxNzljMTk4ODhhNGU4MjM3NGQ4NDQ5MTUzOTMzYWMzYzQzYjQ2MGRmOTlkMGVmNmFlYTI5MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGU4YmNiMDJjMzM4MjFmOTE1ZDBhN2M3OGE3YjUxN2I5ZjRlMzkyN2UyZGI0ZDc2MmJkOWQ3MDU2NmM2ZmY3MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDBkYWUwZDI5ZGVjMjE0MGE5YzI2ZjY2MzA3M2E5N2M4OTAzZmE0NjliZDQ0MDNiNDQ3OWY0NTMxYThkMmUwYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_806b3726b72d437fad21874ae278e0d2",
+      "statement": "hook post-compact exists for hosts without a SessionStart re-run (Omo session_compact, which reads --json) and for diagnosis; Claude and Codex default installs do not register it and neither host accepts model-facing output there, so the host shape carries only a user-facing systemMessage, never hookSpecificOutput.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/hookcli/hook_catalog_test.go#L121-L137",
+          "version": "repo-lines-v1:sha256:feab07c97fa0bc849a3ae5ca75241c0ec6e14131f18eed01b8e5d706c46f4ddf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZjE5M2RkMzc1YTVlYTE5YTNiNWE2MTJlY2M1YmQ0OWU0M2RkMWMyNjBkZTNlNTQxMmRjYjEwOTRmNmM0NzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNzgwYzY3ZmNmZGMxNjlkYTEzNTQ1OTk1YjFkOGI2YTYzODA1MDNkYmViMjAwZGRmZTYzNGY2NjM4YjZmNGMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L44-L68",
+          "version": "repo-lines-v1:sha256:2293e54f8d5d24f697676a8502d729d0f7bdde3f8f5ca56f9b46ce8ba06e4f0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwMDUxZWIyM2VkZjRiNjcwNDk3N2QxMGUxNDBkOGIxNjMxZTFlNzM2YTk5ZDFjN2RmNGJkN2RkMDdkMTE0OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlMzI3YjUwNGJkOGZkMjUxODQ2MTk1NWNjYzQ4MTQ5ZjA2NzBmNjU0NzMxY2QwNGRmMDNkOTU2OTA1YWQ4YTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhODA3ZjRiNmQyYjY2ODRkNWFkNWE1ZDVmYzJjMmJkNzlmNjc0NjcyMTc5NDc2MjgxNzU4ZDRlYjE4YjAzNzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4dde34fc1e845de8f7142f2099483ab",
+      "statement": "HARNESS_DISABLE_HOOKS=1 turns both hooks into a completely silent no-op (not even an empty JSON object), so one host-level registration can stay installed while working in repositories the harness does not own; with no project docs and no kill switch, both hooks print an empty JSON object.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/hookcli/hook.go#L12-L17",
+          "version": "repo-lines-v1:sha256:f0b927b04f9b8eb11fdeec0f142cc1c5fcccb05a732853921580f26170edbd74:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzk1ZTFmODMyOWM3OWI2OGVlYTYyNTRkYjhlYzBjMTY1MDJiMzdlZGI4YjBlMjZmOTYxMzI5NTUyZWI5YjQwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjNmYjZjOWE2Yjc4OWI2OTRiZTg3YTkxM2JjMzI0NThjNDFhYjVhZDgzNDgzMDdmNTM2YTliNzM1OGI2MjI4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTE4MzkwMTJiMmU2MmQ2MzkxYWY5MjQ2NWM0NDgyMmFlZGM1NTE4YzljNzc5ZTZiZTMwNTZjNDJmMDY3OWJjYSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hook_catalog_test.go#L180-L192",
+          "version": "repo-lines-v1:sha256:cf35dd454b1093edaa9a7b3cebba331449ea85bd5adc0b32620d71bca3e73405:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNzk2OGEwOWNlNzk3ODFmMGViZmJiYTY4M2RhOGI5OTFjNjdmMGMwNzc4Y2I2MDFkMjMyNDE3NThlY2Q4NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5MzM5N2FkYWY4NDg3MWFmOTMxYjY0MjQwOTA0Y2U1OTZmMWNiNGNlMTIwZDAwZWM3MzMyNzY2NThlMjg4YzMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookenv/env.go#L8-L14",
+          "version": "repo-lines-v1:sha256:c34461c9b12cb12fd6664009fe50e230e586a65dc28e410e7eb723157d7ad0b4:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjFjNWVlYTZmZWFlZWY5ODQxZDM5MDc3NjRiOGEzYjQ5Y2M3NDk3ZTJlOWI5NDc0YjVjMGM5OGNmZDI1YzYwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQ1ZGU2NzM5MGNlMzJiZmZlZjBkZTk2NGMxYzcyMDA5OTVkNjhjYTNlZWNhZGViM2RkMDliODcyYTU0ZWI3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_83dbfd77c00d4bbabbda0673074b5566",
+      "statement": "Hook output formatting is host-polymorphic through internal/domain/hook's HostHookOutput: CodexHookOutput replaces additionalContext with the readable user view and never emits systemMessage, while ClaudeHookOutput keeps additionalContext model-facing and adds systemMessage; both FormatNoop to an empty object.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/hook/output.go#L1-L60",
+          "version": "repo-lines-v1:sha256:f621c5b46ba5890bc5157e61894f8d852e5437a87020845eafbb13950f9e0808:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1YmUxNWEyNTA5NmJkMGM5ZjcxMWU4YmNjYzQxN2YxMTc4ZTBiNzMzMmYxYjYzYjg0NjU2Y2NkODFkNmIxNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_136709121e454b04bd743c8e6cf0cb6f",
+      "statement": "HARNESS_MCP_DIRECT=1 makes agent-harness mcp serve MCP directly over stdio with no daemon, using the same go-sdk server and the same composition-root dependency wiring as the daemon path — a one-shot, daemon-free mode for isolated use.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/mcp_facade.go#L22-L63",
+          "version": "repo-lines-v1:sha256:67a44e4977ccc1c014d23381902ee9926585da692ee4d7cbff892a43fd404db3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxMThkM2Q3Y2JjMDRhYTRkNGNiNDVlNGMxMmY5YWFiOGZlMjczZGQ2NWQyMTEzM2JjOWZlOWFmMDk2NjA1NTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2NmRlOGY3ZmQ3NjBmODc5ZjA1MmU3NTYyMDVjYTBkYTNiNmQ4MjU3ODFkMmNmMDFiZTE3NmMyYjIzNDJlNjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyMDBhMWUzYmZlYjI0MWVkZWEyZGUzNzJiMTM4ZjI2MjJhNmQ3ZTdhOTgwODYyOWRmMDVlNWRkZTExZTQ1ZjkifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_transport.go#L9-L18",
+          "version": "repo-lines-v1:sha256:2ca7fd7ee306df7d848d6108709bd47d349a611c36be4290b128cc4b190f8e5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZjRhMTA5MTA3NjJlNWVhZjk3MzE1NDQxZWI1NmE5MzVjZjQ3N2E5N2E2OWViY2RmNmRjYzNkMDBjYzM1MzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwMDE4NTljMzhmZjJjNzM2MWJmM2JiNDg4NDNiMzhjZjRmMjBiN2UyMjY4YzA1YThjMDEyYWM2NmRjYTc0MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkOTdjYTg3M2UwZDAwOWQ2ZjFmNmYwY2UyZTQ2ZDM3MGQxODk0ODViN2RlZWI3NWY1NDAxNDQzOWIwMTZiNDAifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T17:13:20.810Z"
+  }
+}

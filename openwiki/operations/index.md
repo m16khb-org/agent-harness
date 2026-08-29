@@ -1,5 +1,4 @@
 # Files
 
-- [CLI and MCP Surface](cli-and-mcp.md) - CLI command tree, MCP server architecture with stdio proxy and daemon backend, tool-to-usecase dispatch mapping, and the contract golden testing model.
-- [Policy, Guard, and Testing](policy-guard-testing.md) - Command execution policy catalog with tier-based classification, code anti-pattern guard with block/warn/review severities, and the testing conventions including golden contracts and cross-host tool conformance.
-- [State and Storage](state-and-storage.md) - SQLite-backed state store with namespace isolation, dual-database locking via BEGIN IMMEDIATE, schema versioning, install/bootstrap flow, and host adapter pattern for Codex and Claude Code.
+- [Operations Runbook](runbook.md) - Task-oriented procedures for first-run install, refresh via ah update, daemon and MCP process recovery, state maintenance, doctor/status/inspect diagnosis, the release build matrix, and rollback caveats.
+- [Safety & Command Policy](safety-and-policy.md) - The safety model for command execution — the command-policy catalog and evaluation, workspace/cwd fences, the executable shell fence, secret redaction, the read-only executor surfaces across CLI/MCP/daemon/worker, and the fail-closed handling of ambiguous outcomes.

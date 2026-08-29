@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:26bc7a0beb01172f73fbe9b03ac87a2943686d4fbb83e7ebaf411d2a6ff51194",
+  "claims": [
+    {
+      "id": "claim_f5a9f74cb7e94962ba3d76683f129fa0",
+      "statement": "The modular documentation contract `.agent-harness/documentation/manifest.json` (schema_version 1) defines six families — ADR, ARCHITECTURE, CAUTIONS, CONVENTIONS, OPERATIONS, TESTING — each pairing a required root index with its module directory, with `max_root_lines` and `max_module_lines` budgets of 250 and a `single_owner_topics` map for COMMIT_POLICY, CONSTITUTION, OPEN_API_SPEC, TECH_STACK, and AGENT_WORKFLOW.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/documentation/manifest.json",
+          "version": "repo-file-v1:sha256:822d77d14e7d76a0dc8841297ca11730c20a4dbdcbb55cee3d3cf5c8f521679f"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/families.go#L19-L65",
+          "version": "repo-lines-v1:sha256:92b43e5925c6c63d345f28728d2074f48815d3d58e56fb56ed65ca6bd175498e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1M2VmMzI2OGViZmJkODg1YzNhYTA1NWIyYjViMzBhNjVlMzcyZjgwZDM1YTk3MmNhZDQzODMwMDJkZWIxYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyYjVjMzllMWJjYmI0OTIwMmQxZWFmNzAyMDUwMmRlMDBkODMzNjkzMTEwOTJmMWIzYjE2NjhhYzMyNmE4MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjODY1ZmI0ZmIxNWE5OTY3YTY3ZmExZTVmOTQzNDVkMTc1OGIyYzMzYjljNjUzOTRkZDhlMjc2OWQ5NWFmMDUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/families_test.go#L73-L96",
+          "version": "repo-lines-v1:sha256:92f171efc1399c243ea85d4c8d9e892213b2350be087129992cc3f4bdd0ee319:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNGM1YWVmZjdhOTJkODNkNTRjM2U0MzBkYzEzM2UwODUyNmI2ZTRhNzlkNDFmNTBkMzM3NDYyMmUzZTU5ODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxMDI0OGY1NWJiZjhiNTQ0YzFiODlmOWQxN2YzYzIyNjliMTcwZGE2MGRkYjVlYmM3NDgyMGQ5MDI2NDhiMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0c0b1fd28704777824169f385a11fa8",
+      "statement": "Each family root index owns only the short normative summary, links into its module directory, and family update instructions; detailed modules own procedures, rationale, examples, and dated records and link back to their root, with cross-family references carrying only a link to the canonical owner. The 250-line budget is a retrieval boundary: an oversized module must be split by responsibility, not truncated.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/documentation/README.md#L42-L91",
+          "version": "repo-lines-v1:sha256:b2c7fb13de7f7b667e84cadcd5e3908f8d258222c2a8ff2591167964a136dde0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YjBhYzM1ZDQzNzUzMzUzM2EyZmUwNmNhYmM0MjA4N2E0NjE4MDBkMDRkY2NhOWRiMmU2NmZlZTA4OTM2MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZTExYzc2OGQ1YzgzOGE0MDQyMjBlMzZlYmMwNjg1YjgwYmI4NWU0NTQxZjNiN2Y0YjU5OWM0MzljZjljMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkMjZiMDZhYmM3YzMxNWNmNGNlOTIzNTY0MDQ5ZjlmNjlhZDdlY2M0NTBlNGFkMzJhODhjZWRmNDg3NzE3Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhYzI5MDEyZmVhYzYzMmIwNDI5NzUzNjRiYmIzMGM0YjkzMWE3YWRjN2M1ZmU2MDQ5ZmUzMThhMzdiMTVkMzUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_render_families.go#L41-L56",
+          "version": "repo-lines-v1:sha256:06842486be1d84a1c9d21d5a3d6393c2f7c093579111541f94c54580b251b0f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNWUwZTc1ZjExODc5NGE4NzJlMmEwYTEyNzgzMjlmMzcyMTI2OGM4ZWRmMzg0NmZhMjU5NjY4YzA1ZGNjZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0NTY1NTgyYmZlOGMxMzk3MzU4Yzg4OTk5MjdjNzZiZTc5MmEwYzgzZDdjMDQyOGViZjlkMmY2N2FlM2ZlZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwNmY0NTJkOGUwMDk5MzhjNDg0ZmNjMmNmYTM4NTA4Y2NjY2E2ZmEzMGVkY2MxMzg0YzRkOTI3ZDg2MzkwOTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fbc6319815464f9cb9e6cff211191354",
+      "statement": "The agent-harness repository itself dogfoods the manifest contract: its `.agent-harness/` tree contains all six family roots plus their module directories, and `.agent-harness/documentation/` carries manifest.json, the responsibility audit (AUDIT.md, which measured the pre-modularization monoliths such as a 956-line ADR.md), and README.md owning the navigation model. The repo-owned manifest extends the five seeded single-owner topics with two audit-record entries (`archive/issueops-audit.md` and root-retained `PROJECT_AUDIT.md`, parsed in place by `quality inspect`).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/documentation/AUDIT.md#L16-L31",
+          "version": "repo-lines-v1:sha256:9d233784ffaf7282c3cc175a7e5b81cb14738cfe3315b5a0442183cef07e1f36:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwMTlkMjk0YjA2NmU5YWQyNWEwZWEzZWY2MmE1ZWIzZWZkNmQzNDM3NjJiYzQxNDJiOTY1YmE1OWQyZDEyMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlMjY1YmZjNjQzNGNiY2NjNTI2MThhODdjMmExYjVkNTEwNDkyZTUwYzQ0YzRmOWQ1OTYzMjY3M2IwYzliNDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MmNjZjlkZTJhN2Q5Yjg4NGZjYjQwY2RmMDY3ZDFlMTcxNDY5Y2U1Mjc1Nzk3ODU5ZjYyZDliN2JhMWE4ZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5OThjMzlhYjNjNThmZDBkODEzYzJmZWYyODUxNDQ5ZjgzMWMwNWE1YmYwZGZmZTVmMjUxNTY2YjU2NDEzNWMifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/documentation/README.md#L54-L78",
+          "version": "repo-lines-v1:sha256:ce4435239f977d4c7a57d4c0e5df4021c1eaec930ed7ad8aab36a968fb1b6f92:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MmUwMjIzYTJkNDZkYWFmNDI1MGQ3NTExZmNjMmYyMGQwMzQxMWI5NjUwYzYzODQzYzgwMjc3NWFkMjA2MWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzY2UwNTBmY2Q5ZjRmZWUzZTE4NmNkZGZlNDYzYjUxYzdhNjU2ZmM5N2Y2MTk5MTE4OGVjNWUxNjM1M2Y1NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1ZTRiYzQ5ZTU2MmI0MWI1YjQxZTYxYzlkMWNmNGNjYjk0NzdiN2JhM2MwZDdlNzM1Y2UzYzYwYzI4MmE2NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3NGFkOTA4MTRmZDc5NDMxNWZmYjM4YWI4ZmI5MTA5Yzg3ZWEyY2NjZWZkZTNjODBhNzliMjQxNzU2MTI4M2QifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/documentation/manifest.json",
+          "version": "repo-file-v1:sha256:822d77d14e7d76a0dc8841297ca11730c20a4dbdcbb55cee3d3cf5c8f521679f"
+        }
+      ]
+    },
+    {
+      "id": "claim_d2127ab7e3194953894d9f4403dabf17",
+      "statement": "Default native install writes nothing into a target repository: host installers plan only user-level skill symlinks, MCP registration, lifecycle hooks, and in-repo templates under `configs/`; repo-local files (`.mcp.json`, `.claude/skills/`, `.omo/`) are created only on explicit `--project-local`. The install contract matrix asserts default install leaves those repo paths absent, and the installer prints that project-local repo files are unchanged by default.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_output.go#L45-L50",
+          "version": "repo-lines-v1:sha256:deadd59fb994779407e066f2c395c83631eb26e40cfa80e41f9627b88a3e5c73:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjcwNDRmNzc4OWMwMDZmZmQ0ZTNiMTM5MzljNDA5MjRlMDEwNzNjZmVlYTg0MDE4NDE5NjlmYWE2NTYzODZkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDQ3NGQwYmVhNjg2YTM1MmM2NWViMGZjNDFjZTcwODFkOGFhYjg1YzhlOWJjMDc1M2ExZTZjMWUzMzY4MzE4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODBkMWQ0MjJjMGRkODZkYzEyYzBjNmFkY2NlYTlmN2RmY2M1OGJlYmIwYjViYmY0YTU2MDY3ZWNmYTA2NTQ1YiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install.go#L35-L40",
+          "version": "repo-lines-v1:sha256:fdbc8f6a274c56609cd3616c14431c4395e29144cd0e0515bef9ef5583ce76d2:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQ0Njk2YTA2OTNkMThlOWNjNGQ2M2M5MWUxZmVjMTRkOTAxMDIzYWY4ZjdhOTkxZmE4ZWE5YjBjY2VkOWI5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDA4NjA2ZWI2YTc5NjQ4ODNlM2QyNTY3MzViNjA5NDAxOTkyYWVkZDFmNmRmNzY0NzMzYmY4MzI0NzFkZDA2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWVmM2Q3YjBlZmY5N2ZlODg1ZjVkZDVkMzE4M2E2M2ViYTExMGVhODQ1Y2E1YTRmZjY1MTk4MzJlNGI1ZjA4MiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L680-L701",
+          "version": "repo-lines-v1:sha256:46dd13e9b07e6aa5493cbe158958d1d54ffa1695865e8d444e352513c7df4283:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NDY5NmEwNjkzZDE4ZTljYzRkNjNjOTFlMWZlYzE0ZDkwMTAyM2FmOGY3YTk5MWZhOGVhOWIwY2NlZDliOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYmY4MDVlNzI5NmFhMTdjZTcyMDJkZTRiMjk1NDEwNGY0ZmUxMGQyOTIwNTI0ZTdjOTJhMzlkN2JjYTYzZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlNTlmMmUwZjBhM2U3ZWRhZGVhYmMwMmNlYWQzOTAyMzNjNDU5MGI4MmNjNmQ5YTA4NzBjZmVmM2ZkYmI0NGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bdbfae0b31f94af4b849600bc24dbab2",
+      "statement": "The only paths that create repo files besides the project-local install opt-in are `agent-harness project bootstrap` (and its MCP plan form `project_docs_bootstrap_plan`), where `--dry-run` previews the plan without writing and `--sync` is an explicit opt-in to refresh existing generated docs.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_project.go#L32-L37",
+          "version": "repo-lines-v1:sha256:dc8bcb23cb6e5f0d1d97c6bc121525a3b1d42ffe225c51951978756ae545f99c:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzY2NzViOWJkZjY5YTMwMWNlMjBiZTExNmFhODBmYzFiMWZkNzMzOTA4M2FlMGE0OTI0OGQxM2VkMzZmZjU2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEzZDc0NjNjYjFjMTMyMGJjN2JlODQ0NTZjYmIzYTE3NWMyZGM3NDcwOWFiYTI2YmY3NGY4ZGZjNTdjZjkyNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWEwNmUxNDQ1MDIyNzAzNzBlZTdjMGQ2MTllNWIxOGU0MjQ3ZmMyYmRkYTQ5Mzg1ZDQ3YWYwMDM1MzBkODJjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDVjNzZmMWRjMjAxNjY0OWI0Y2U4ZDljNzJiZGI0MzY1OTA1YjNlY2M1N2Q4YWIyN2U2MmYyYjZjYjZhODcyZSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/projectcli/project_cli.go#L11-L45",
+          "version": "repo-lines-v1:sha256:296cabbd8f1206749faf212ee35b06ca81091e0c1ec6d65c0956deb4339092a1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjc2Y2M1Mjg4ODk5NGQ5ZWQxODZjZTgwNWRmOGVhNDIxMjFjYzg5MjI5MGNiNmJmMmQzMDVmMGM2OThjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxMDk2Y2U1YWYxMDAyNDQ2MDQ5MDA4ZWM4NDQxNzdjNzQ0MGU3YWI2MzYzYTdjNjkyYTllZjhjMmJiMzYxNTAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_bootstrap.go#L13-L77",
+          "version": "repo-lines-v1:sha256:0618d0b0947bbd26e4f7e9182873f0fc943a68e164195ab5bd5417d74449230e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNGQzNzllMzU3OTE5YzQwY2MxNzExYTg0NThhMGQ2ZWU3YTA5MGJiYmZkMjlkYjAzYmQ3MDFhMTNkODgxNzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzNzgwZDQ5MTA2MGI0NGNhNmUyYTY0NmIwYzQ0ZjVjZmIwYTcxMTI3MTIzNmE0OTQ5ZDI4YjY5Mjc0ZjIyNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkZTJlZjM0ZjgzNTNiMjM1MTJiOGE3ZmYxZTBiMjAzYzViZjc0ZmE5NTM2MjU1ZmU4MDBmZDBiMmQyYmNhOWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e7ac62cae48d4594b4436ad54072a596",
+      "statement": "Bootstrap manages AGENTS.md through its `AGENT_HARNESS:START`/`AGENT_HARNESS:END` marker block only, never the whole file: the routing block (doc-per-concern bullets) is replaced between markers, existing content is preserved, the generic behavioral template is prepended only when the file does not already open with its own `# ` heading, and a missing AGENTS.md is created from the behavioral guidelines plus the routing block.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_test.go#L71-L74",
+          "version": "repo-lines-v1:sha256:3109f21ed06c8ac05a78ecb271bda877c691eb4cd5092705ab7e71928ef642ad:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmYxYmRhMTdjOGFjMzAyYmY0Y2ZjZTI0NmQ0OGE2MTI1YjY2MDQwZDUzMTZlNWQyMjBhODc1ZDhlMzNiMTQ2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjg5YWZmODQ3OTM2N2RlYTFiNjg1ZDVhYTNkNWVlNDE5MjIxMjdkZWJiNmY0NGYzYzliMjhkOTY0ODNhNTQ2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTVjN2RiZDc4YjgyMTM3ZWNhYzIwMTc4ZjkyMDc1NTFlMDU4MzBkZTE5ZDZiY2U1ZmMxMjA3OTk5MjU0NTc1ZSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_agents.go#L10-L77",
+          "version": "repo-lines-v1:sha256:00f189b028d40a2662fee8514516e6ea203677110bdd95daf4163e8fcaba20d0:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2NTQyOTY5Yjc4MWFhODhhYjMyYjNjMTllMWQxOWNlZDMwYjZlMGViMDAxNDhmNDMzZTcyZmRlMGVhY2ExNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/constants.go#L21-L23",
+          "version": "repo-lines-v1:sha256:35d618bed3b6d6b62a2996010feb3e6a78363c8a67cd4a8658dab53bc3e5c5f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTc5ZDM5MDNjNGM0ZGUxYzZlZjZlYTE0Y2Y5NGNiOTQ4YzE4OTI2OWI5NTZiYWI5OGE0MmRkOGZhMzM1MTMwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODg4ZDI4Y2Y2YmQ4YmUxZGE3NjJlOGRmNGE3YzgwYmI3NjE0ZWQ5MTc5YmZhOTEwMzk3YTBhY2E2Yzk1M2QyMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmVlYjg1NTMxMWYyNTJiODcxODFlMTcyOGUzMGI5MDAyMWZjNzYzMTQ4YWZjMDIxOTRhNzk2ZjJkMzBiNWNlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWMyYzM3MDAzMjNiYzUwZDE0YzA1ZTUyOGJjMjk0N2E4OTkwNjhmZDJjZmY4NGViOWM5MGM5NGJlODU3NGFjZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e057b4c75c134bf49e255ea2b8cb547a",
+      "statement": "Folder-first family roots and module starters are create-only artifacts: bootstrap writes them only when absent and never updates them, even under `--sync`; an attempted family update reports `family_docs_preserved` and routes curation to `project_docs_revise` or `project-docs-optimize`, while non-family generated docs are preserved with a `sync_available` warning unless `--sync` is passed.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_bootstrap.go#L27-L77",
+          "version": "repo-lines-v1:sha256:f10706c0c9e5bab2330c734d3d4ae0df8a15093c3f9ef31f61912128c4ae0efc:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliN2U5MDc4ZGM2N2Y0NzE0Y2IyNDZmMDRiNTc4ODZmODRhNDg3Yjc0Yjc5NzY4MTU4OWJlMTc3MDNmNTkxNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3OWVjNTUxODhkZDJkN2QzZjFlNmFhYzU3NTZmNmJkNDhhNjhjZjQ4ZGJlZmI3YzMyYTk1OGVhZmM3YjNkYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkZTJlZjM0ZjgzNTNiMjM1MTJiOGE3ZmYxZTBiMjAzYzViZjc0ZmE5NTM2MjU1ZmU4MDBmZDBiMmQyYmNhOWMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_test.go#L84-L117",
+          "version": "repo-lines-v1:sha256:9e5398b969b13d963213673caec81f0e7c037c87b035d4d8c206f1a5864a9bb5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzNWQ4OTYyZGRhOTgwNjcwYjhjZjZmMzI5OWVkYmMzMGE1OWRlNzUwMDQ0ZjA4ZmZmMWY3NjIzYjFjNTNkNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxZWNjMmI5OTBjNWNmNmRkZWI1YzJjZDI0OWJmZjUwMDdhODZkN2ViM2Y3YjFkY2M4N2QxYmQ1NzQ4YzQ1MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0M2U0YjhjMzA5YWY0YzE0N2M5YjFmNzZiYTViMjI2MTc5YTM3MGUxM2ZkYWIxYzE4ZmI2NDNlYWVmYmJmMjEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_render.go#L10-L38",
+          "version": "repo-lines-v1:sha256:fd7ec312ef6249bba2645251c0e19988bb93a19c06e25c4f560e0483ca2ee932:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmI4OWI5NTAyMjdiOWNjYWQyMmMwZjkwZjNiNzc1NzM4OWM5ODI0MmNmNzRhYzczYWU3NTYyNjc1Mjk1OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4MmFkYWI4NGEyYTBlNTViYTA2NTcxZWFiMjViMjNhMmUwOGEzYzAzNzY4MWM4ODNiNzNkNDdmNjUyYzM2NWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f6432944eba04142b9744e77ebeba0e3",
+      "statement": "Bootstrap preserves a legacy flat layout — family roots present without `documentation/manifest.json` — instead of half-migrating it: it emits `legacy_flat_layout_preserved` and skips module-starter and manifest seeding; restructuring belongs to project-docs-optimize, not bootstrap.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_bootstrap.go#L33-L50",
+          "version": "repo-lines-v1:sha256:d9fe77836575fbb152e2fe1fa5ade60fe1abaa84ad2df0a06c9516d973190ca9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MTE1NDY4NzU5NjgwNzJlZmJjOGYwNjJlZGE2NmNmMmVmNWY4NjA2N2Y2MWFhNzEwNDQ0ODdjOTU2OWVhODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhOWZhMzU4ZDYyYjRkZGI2NGFlYzAwNTRiM2M4MGU0NTZjYTU3MzBjYjUzMGMwNDk2ODBmYzUyYjdhZGJhMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyMDFjNjQyYjNlZjdmZTM3YjhkNDQ2YzZjN2RjZjFmYzljMWI4NTVlNjBlOThiNzE1NjE1NmQxY2ExY2VmYjQifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-bootstrap/SKILL.md#L18-L30",
+          "version": "repo-lines-v1:sha256:5a768b52d847b9646c5a069b61557c6f687d78a604ac165c338dde6eec16ac92:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2YjIwMzliMGEwMDUyMjc5NWY5M2M1NmUzMTFiY2JjMjg2MWZmZTZkOTFjYTc0YWEyZWZiODA2YWRhZDY5NzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyNjYzMjViZWYwMzEzMmQ3YmE4OTdhNzA5OTNhZDZjNjk0YTU4NTNiYWUyOWMzNTE0MDZhNjg3ODFiNTNmMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5Y2M5YTk0M2NmNTRmZTY3YTVhYjMxY2Q0ZGIzMzI2NTA2ZTgxMzA1ZjA0OWRiMzlmOWQ5ZTBiYjk5MGQ1ZjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6abb77d69d6a4d04b4ebf82a99068303",
+      "statement": "The manifest is seeded once by bootstrap and then repo-owned: `--sync` over an existing manifest reports `manifest_preserved` rather than resetting budgets that the repo or project-docs-optimize may have tuned by hand.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_bootstrap.go#L119-L146",
+          "version": "repo-lines-v1:sha256:caf5969fda4f83e21a94d60ea362f8b05e85d4d41125df0591c42aa2af0c4bda:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZTdhNjQ5MmMzNjc5YzU2ZjA2NjNkMjZlZjNlYWIyOGY5YTViMzg0NjNiZmJiYWMzYmM2NmQ4M2IxMzYxNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMzY5ZTUzODg5MjZmODA3NzEzZDY1MGNiMjA1MGFjM2ZhZGFiYjY5YzNiYmQzYjc1OTUyMGExZDE4ZjBmYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljYmJjZjFkYWYyYTY2YzE2MGEzNzlhYTYxNmM0NmUyNjU5M2IzN2VlZTM5NGViMDliZjIzMWQ4YmNjMGZiODEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd2af6ceb2004e9596401fe96f70cf95",
+      "statement": "Bootstrap plans from repository evidence: AnalyzeProjectSignals walks known signal files up to depth 4 (go.mod, package.json, pyproject.toml, Cargo.toml, CI workflows, task runners, existing agent docs), deriving languages, package managers, and test/build/lint command candidates each tagged with evidence and confidence, plus a profile (VCS provider from the git origin, project types, frameworks, monorepo) that also seeds the repo-scoped lifecycle namespace and persisted repo metadata in user-state.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/projectbootstrap_wiring.go#L12-L16",
+          "version": "repo-lines-v1:sha256:19146b53a297bcdd3954c7c5be3e1b2e0a85cfe26f5215e96b5f4d23372f2d98:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDY3NDBiNjFlNjlmMTQwNWU4N2Y5YzdlODkxMmZiMTlmZjkyYjgyMWExYzIyNjBjMzdmMjQ1MmFlNTRlZmQ2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FiMTdmMDVhOWY3NTE3ODY1MjhmMTAwNWY3YzVhY2U0M2U5NGE0ZTBkNDM2Nzg2OWM2ZGQ2NDkzNjU1YmVhMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_test.go#L16-L70",
+          "version": "repo-lines-v1:sha256:d9d7265ef751d080185218333f6b23f0bd1f8457dd20935b054f4f50db9fa1af:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0ODk3ZWVmOTNkOGJkNmFiOWRkZjRhYzY0MTk5MGQ5YzNkMWY1MWYzZWFhNzgzMmFkZjkyNjdhYmFiNGI5MTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzNzgwZDQ5MTA2MGI0NGNhNmUyYTY0NmIwYzQ0ZjVjZmIwYTcxMTI3MTIzNmE0OTQ5ZDI4YjY5Mjc0ZjIyNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3MGQ5YTlmODM4ODdiN2I1YjZhYjg2YmVjZmNmODc4YzZjOWMyNTJlZjA4NjEzM2ExNThjNGZiNTc2OTVhMTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_profile.go#L13-L45",
+          "version": "repo-lines-v1:sha256:a8bc1c0dcaa458434a4bfa772675424bf3791d3e7d32e46d518a0db8bda28853:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNTVjYmZmZGY4ODA0NWYyMTgyYjM3YzgyYWM1MGFiYzQzNTY4ZTljMmE1OTA5MTdjNWU5MDY5MmM3NzAyN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3OTRlNWIyZmE3ZjgwN2Y2ZGE0MWJkYmRhMjE0YWFmZjNhNGI0MjhhM2ExOTI5NWU2NjVmNjU3NWU0NWQ0M2MifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_signals.go#L9-L70",
+          "version": "repo-lines-v1:sha256:4250d2c99e23cad6186b6c6d411fbd0abe59f4cda8d6af2c5f4b9bb41955e485:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4ZDEyYWEzYzdlYTg1ZjRlZmI5MjcwMGZjZWNhMzgwN2Y1NjdlMjc1OWI0ZDhlNDZmYWYyMWQ0MzJkNWNhMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1566318b987146b59bb091e59ef7770d",
+      "statement": "Every standard project doc carries canonical, name-keyed meta frontmatter (`name:` plus a fixed one-line `description:` per doc name, identical across repos and stable across bootstrap and --sync). EnsureMetaFrontmatter runs on the write pass for even preserved docs, and the hook catalog falls back to the same name-keyed table when a doc's frontmatter lacks a description.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_bootstrap.go#L147-L163",
+          "version": "repo-lines-v1:sha256:2a6f2b58afe87ddc70db2277de4d8b358db921f719d3b0539c73b9df51b86a59:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljMDY0NmI5M2E0Y2RhMTU4YmRkY2U0NmE1OGI1NTk4YTYwNWY4YTYxZTE3MDc1Yzc3NjY5MjU2MzM0YWZhMmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjYwNjcyZDg4ZGM3ZDQyNjhhMmY3ODVhZjU1OWZkZDljZDJjNDQ0ZDg5YzQ0YTY4MjUxODk1ZmRmMzYzYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3MDMzMWRlMmM3NjRiYmI3ZWQ1YzA3MjM2NWU4MjE5NzkyYmU3YjU0YmZjNWQ4NWExYjMxOGFiZmRmN2IzODEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdoc/catalog.go#L76-L81",
+          "version": "repo-lines-v1:sha256:56bd4caff4d0fb587d5ae12556ca624c309f03cc5e1e24e34287185dcdb5fcc3:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWNlYTFjMjljMWQxNDIzNGMwY2Y4ZDJmZDIyY2NmY2QyZGE4Y2Q3YzQyYjQ5MzdhODVlM2MxMWU3NDE2MjdkMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMThlOGZkNmI2YzJhZmE5ODUyYzRlYzFkMTMxNjU1ZDEzNmRlMWZhODMxYzJlZThhYWQzNjM2NDQwZjlkZTZkMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjJhMGI1MTcxZGNiNDdlODRmMjg5ZTc2MTNmYWI4NWM3NDJmNTM4ZDUyNTk1OTM0M2JkYzg4NTI3ZGViOTgzOSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/meta.go#L5-L93",
+          "version": "repo-lines-v1:sha256:a3379a225e7adcc30ced9725998864e1f169829eaa3906da8da70b803f5c1a0e:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZTNkYjBjZTE3Mjc3ZmMyN2YwMWYzYTc1YTc0OGMyOTMwOTA1MGQxZGZkMzk0OWMzYTY3MDNhOTEwZWUxMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0NWFmNzJkYmE2Yjc0Yjg3YWVjOWFkMGMyYWM0MTAzMGZmNDdkOTM2YjBmYjEyZGViODU4YTA3MDA4MmY2YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9656987c61f64c1eb2442836687ea983",
+      "statement": "Only VCS.md and DESIGN.md are optional project docs: DESIGN.md (design-system contract) is rendered only when the profile detects a client surface (frontend or desktop-client), and bootstrap never creates VCS.md — route-docs attaches it only for VCS-related tasks.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_test.go#L36-L38",
+          "version": "repo-lines-v1:sha256:df8c5dd37727643431cf464e477478909857c937a80e35ea122dd5ce960d1482:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTk3MjIxZmJkYzZlZGJkN2I3NWY2MTdlNzJiNjMyYzdjNjQzNGRkYjE2MDNkMmFjOGQ1ODU4NGQyN2IxMjE0OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI5ZjIyZjlmOWYwNzUwYTY5Y2FmMjdmYTZlYmE0NTY3OTA5NTI5NGVmZWFjYWQ4YjNjZmFjN2E4Y2MyNTU3OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQwMTcwNjlkY2FhZTQ2ZGYwMzMyZDBhYTNiMzNhZmNmNDFmOTg2NGUwNzFhODM3MjE0ODBlYmYwNDIwZjA3NCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_render.go#L111-L120",
+          "version": "repo-lines-v1:sha256:bd416562c8a06c64f5a9abcf424ffe6909cebfc1e9956e012c3c174b0d5d12d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwM2RmYTFmZTFkNWM3MjQ2MGYzMDQ3YWNjOGQxYjMwZjk1MDI0MTdmM2VmYTJmNzFhMDNmYzlhMjdkNzJmYmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0MWI5NmQ0YWU3ZWNjNmIwNDlhYjNmNjFiMWNjY2NmNjRkN2U3NWE3ZjRiMGJmMDc0YzExZDJhODNlZGJlNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxZTFlNjZhOWViOTJmYjMzMTVkYWUyZWRmYzgwOTAwODQ3NzYyNTllZWFkOWUwZWU2YmY1NDljZTc5NmMyMGQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_route.go#L67-L73",
+          "version": "repo-lines-v1:sha256:1487401bcc26dd3e160b73d70d4134d6e34e1f485d0c1800cac37b5ab2319adc:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmI5ZDIyMDY0NDRhYmM4Nzk3MzRlNjJiMzFkMDI1YThkMmIxYWQ1MjkwN2YyMGE5ZGRmMzJlYjcxOGIwMzUxNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjQzYTFmZDk3YjZhMWIyN2I4ODdkNjgwOTM1NmIwZGE5ODFiNWVlZTVkYzA1ODY1MGJjNzY0ODRlYjhhZDQzZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWNhMmNjMGZmMmYyNmExOGZiNWZlZmQ0ZTgwZTJiYjNlNjQxOWE0MmE2ZjI2MTc0MDhkMDFlZTkzNGQ5ZDUwMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_14c42fb1249841899f32762b62e749e3",
+      "statement": "`agent-harness docs [index] [--json]` indexes the harness corpus (AGENTS.md, CLAUDE.md, GENIUS_THINK.md, `.agent-harness/` markdown, skills/self-verify, skills/self-augment) with rel path, first level-1 title, up to 20 headings, and size, sorted by path. The index is hermetic: candidates are filtered to git-tracked files using root-relative, NUL-delimited `git ls-files` matching, falling back to all candidates when git is unavailable or the tracked set matches nothing; `.agent-harness/draft-wiki` and `.agent-harness/evidence` are always excluded so untracked session artifacts cannot drift the index.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/basiccli/docs_cli.go#L12-L36",
+          "version": "repo-lines-v1:sha256:5cecd2bec34d214e32a727d4706dc063357dcb9effabc201c9456d0ed81d847b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5OGZjZTQxMDU5ZDZlOTYzNDMwZDEyN2ZiMjJiNTgzYTMyN2JjYzliNDA2NGZmODk5MGEwMzY3ZTFhMGNiZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZmJjMmFmZmJjMDM5YTA2YTA3OTA5ZTgxOTcwNGJhZDEzYjg1ZDg4N2NjMDY0NTkyZTYxYWNlODc4MzM4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/docs/docs.go#L14-L111",
+          "version": "repo-lines-v1:sha256:f12c16b5ec6df942673d1d3079bf377d497685e4000869390059998463ce69a2:eyJzZWxlY3RlZExpbmVDb3VudCI6OTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjMTg3NjVmNTlhYzhmMTk1ZjIwMDFhMjc1NTg3MmEzNzVmYWJiYmUwZDljMzg4YWE5MTRiYmFiYTllY2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3M2Q3MWU4Yjk3NDNhOGI2YjllNTRkNzUzMzc2Yzk0ZThmMzA1NmE3NzgzMjE2NDA4NWExMjNmZDEwNWVjMDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1307a99847ad4945a91d3f6b2ee53447",
+      "statement": "The docs index is a golden-pinned response contract: CLI `docs --json` and MCP `docs_index` responses are snapshotted into `cmd/harness/testdata/response_contracts.golden.json` via a projection that pins required entrypoints (AGENTS.md, CLAUDE.md, the .agent-harness roots, self-verify/self-augment skill docs) while numeric docs_count/docs_indexed values are replaced with a `$DOCS_COUNT` placeholder (the structural fix for #109's per-commit golden churn); a non-numeric counter still fails the gate as a contract regression.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_docs_count_golden_test.go#L75-L96",
+          "version": "repo-lines-v1:sha256:cbcda0f35a86e2706df6e111b521afbc25d17c0f0f9686ad9d164f428d5c9b53:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZmU2MTNjYjZlMzc5OTZlYjJkYWVjMDkzYTI1MTk0ZDNlZDkxYTBmMDljZTBmNDc3ZjY0MDAyZDg5NTY4MDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE2NjVmMWExNTA4MjY3MWU3YzYxMDk1ODZiMjI4NDFhMzQ3ZDYwOTQyZDgzYzNkMWUwMzRkNmM4NWQ2YjhmZWUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_docs_projection_helper_test.go#L8-L48",
+          "version": "repo-lines-v1:sha256:43ac7c1706cdc3315e5310d2327153ca645ca0e37441db9f37ba892ae8701c4e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyMzI2YjdkNjMyYzdmNjJmOTBjNTIyMTI1NjViODNmMWQwNGNmYWMyMjY1ZjBkYjk5YWRjMTc2Y2RiOTMzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1OWE5NjM3YzRmOTUyNGM4NGM3ZWUzZmI2NWNiNmRmYmM4NzE3OTlhMGU2YTRkNWFhYWFhMTc1MzlkMGM2YWUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L118-L186",
+          "version": "repo-lines-v1:sha256:3c0e7d95a2c430f0ea7f04378b931b27a44ac1f7f8908fd41899be035441cce8:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3OTg2MmViODEwNTY4OWZlOTk1NzlhMDY3YTkxMmEwOGNmZjFhYzQ4NTcyNDYxN2JmYTRhYWY4MGUxNmVlZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNWZmMTI0OGM0OTY4Mzc3NjgwODhmODgxOTAyYTc1NDRjMGIzYTliZWNjOTE0MzU1YThlY2QwZWU0YzExYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjYzMTZmN2YxOTIzZDZlM2M1ZWQyOGQ5M2ZlNjc1MzA2OGY3ZjZmODkyMDUxMzM5OTUxOGFlNjAyMjE1MjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_70c403893a9040a9943b1437c4177166",
+      "statement": "The MCP surface re-exposes the same doc readers: the `docs_index` tool and `harness://docs` resource both call docs.DocsIndex over the harness root, `harness://project-docs` returns the default (general) route, and `harness://project-doc-upkeep` carries the route → read → revise/append upkeep guidance; maintenance tools are `project_docs_route`, `project_docs_read`, `project_docs_revise`, `project_docs_append`, and `project_docs_bootstrap_plan`.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_project.go#L24-L75",
+          "version": "repo-lines-v1:sha256:b184f4fc3db0026013f7936ad0085114a6c0c465df424a7304b7268681bd6e07:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzdiNTY3NTg4MzdiZjdjMGNiOTMwMmEwMTQxZDc4MzA1NjJiNmNmZTc4ZjgzZDA0OGM0Y2MwNjczMjM5MzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxM2Q3NDYzY2IxYzEzMjBiYzdiZTg0NDU2Y2JiM2ExNzVjMmRjNzQ3MDlhYmEyNmJmNzRmOGRmYzU3Y2Y5MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiZmEzYjg1ZGE0YmVmNDNjOGJhMjliYjllZjFkMTA2ZDk0M2VlODM3Yzc1YzdiM2IwOTVkNTZmNDU2ZjFlOTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhMzU5NmZkYjRjYTI2MDhhZTFmZTI0M2FkNjdiZDAyMmFlMGI0ZDI1MzRlMTM5NGYyMDk2ZmY1N2U5ZTVjNWUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/resources/resources.go#L69-L97",
+          "version": "repo-lines-v1:sha256:6df7f62d4d15f59cab32f1b4c948c9bcde56741208ac6986c30b713847eeb132:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OGJkMWI3M2FkNGY5M2FmNGQyODg0ZWQ2NzMxYjIzOGZkM2I2ZWE2N2E2OTU5ZGFlYmIxMmYxMGIzNGU5ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5ZTQ2ZDcyNjcyNWEwNmNkY2NlNWI3OGY3ZTM4ODQ4NjcwN2FmYmEwYTAzNjZjNGEwNTcwY2ViMGMyOTJmZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzYjRkNGU2NWY0MDliNDBjY2YzMDRmYjUyYzczZDc1ODMzZmIwNDJhMDIxN2I4ZWQyZDdlZTYyMjNiMzUyM2UifQ"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/resource_catalog.go#L3-L15",
+          "version": "repo-lines-v1:sha256:08dddb6636cdc7b169ac4fe23ead4752f78312f2349d37580d7ab1384750b9ec:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMjNjM2I4MTIwNGQyNjU0ZjZjNDYxMzJlNzkwYTE0NWYyNTcwM2FiOGYyOWFkYTRhNTNhNzJmODU4OWVmMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkYTM3Zjg5MDdlOWFjNjlhMzAzMzQ4NzMyNDgwNDBiYjMzNjRmNzY4Mjc5OGM4YTE1Y2MzOWIwZjVjY2U5ZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f2883cf1da1f40d7b8c66218aa22d9e5",
+      "statement": "`agent-harness project route-docs --repo PATH --task TEXT` maps a task to owning documents instead of injecting every doc: AGENTS.md is always routed, keyword rules select sets (e.g. commit|pr|push → COMMIT_POLICY+TESTING+CAUTIONS; test|spec|verify|ci → TESTING+TECH_STACK+AGENT_WORKFLOW+CAUTIONS; VCS keywords add optional VCS.md), unknown tasks fall back to the CONSTITUTION/AGENT_WORKFLOW/CONVENTIONS/CAUTIONS/TESTING set, and when a routed family root's overview module exists it is attached automatically so agents read actual detail. Entries report existence, and a missing `.agent-harness/` directory produces a warning pointing at bootstrap.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/projectcli/project_cli.go#L70-L96",
+          "version": "repo-lines-v1:sha256:0a601cdd3152d729736114652688bb2e4e7ed1e6423b11cf4cc9d35e2a4dc979:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0Zjc4YjEyYWU2MjA5YTJjZTE3YmUyODM3NTEzNzlhM2RlOWM5NTY2MmRlMmI5MGRlZWExYTBmYWJjNTEyMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0YTAxZTJkNmY3M2E2NjcxMGM3YTJlZTkxYTM1ZDdhOTE5NDgxYzBkMWRjYzg3NGI2ODEyODFkZTI4MTI0MjEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_route.go#L12-L112",
+          "version": "repo-lines-v1:sha256:e47fbb52d0a5fa5cb2347704396270edd772b8a2f7740125ccf5cc9cfb93dba2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyYmVmMDM1ODA3ZDM1ODAzMmE4MzYyOWIwMGViYWQ3ZjNmYzU2MGQ4NzEzODE5NTYwZGI3MDFmZGQ3NDM2Mzc1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI2NmY3NDc5YjI1ZjY3OWQyZDMwNTRiOGZmYTZiYTYyNDkxNjM0NWIzNzE5NTdiNWY4YjE4OTNhZTQzOTZjMDdmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI3OWVkZDcyYmE2YjQwMDgzY2U5NTI2OWZhNTZmY2YzYWMxYmQ5ODIyMWFhNjYyMWE2ODNmN2Q1NjMyYmIyMWQ1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MSwiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_b0b68d41f28e413e81415808ce1bb93e",
+      "statement": "Default installs register exactly one lifecycle hook event per host — SessionStart in ~/.codex/hooks.json and ~/.claude/settings.json — invoking `agent-harness hook session-start --host codex|claude` with a 5-second timeout, because both hosts re-run SessionStart with source \"compact\" after compaction and only SessionStart output carries model-facing additionalContext there; `hook post-compact` remains for hosts without a re-run (Omo) and diagnosis, and HARNESS_DISABLE_HOOKS=1 turns both hooks into no-ops.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/hookcli/hook.go#L19-L57",
+          "version": "repo-lines-v1:sha256:7b11553a2b3284cd4738b77c834e2e77a87dfeded62b73640341416747ec0d98:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyY2NiMjA2MzNkM2U1MWM3ZDBjNTQ4NGI4ZDU2MTUzNDdjMmM4NjYxOTkwNzVjNmM4NDdkNDc1ZmVlNTVjMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMmI5NGI5ODg4MjMwMTNlZWEyM2Y0N2RhZmFlNjlkZDlmOGEwYjE3YmYyOWM4NDg2YTRkZjUzNGE2YWZhY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkYWIyODdjZWVmZDVmYTRjYjhjZmJhYjIzNjhhMDg3M2NlNGE5ZWYwMWNjMzcxZTlkZThmYzczOGZmZjNmN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiY2RiMzJkMjMxMWMwNjBjOTYwZTA0YzYyNzU0YjJhNjdkNjAwZWU1ZmQ3ZjZjZGUyYTk1NjBkNTM3N2Q2YjgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L18-L68",
+          "version": "repo-lines-v1:sha256:4a3e6fc34dbc416163b6df7161686e5ef0bed22d80465baab890a6b8f70232e8:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MDhiNDRmODVlNzgzYmMzMjhjMmM5M2NhZmQ2YzIzM2FmNDA4OTkwYTA4ZDI2ZDlhMmMyODEyMTk2ODM0YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlOGJjYjAyYzMzODIxZjkxNWQwYTdjNzhhN2I1MTdiOWY0ZTM5MjdlMmRiNGQ3NjJiZDlkNzA1NjZjNmZmNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhODA3ZjRiNmQyYjY2ODRkNWFkNWE1ZDVmYzJjMmJkNzlmNjc0NjcyMTc5NDc2MjgxNzU4ZDRlYjE4YjAzNzAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install_hooks.go#L81-L98",
+          "version": "repo-lines-v1:sha256:4d4f7cd43c054966b7d65c0e36c521b699f9c9a717a1e9ce3d4b6a5608d1d674:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyNmYyYjRiZWExY2ExYjMxMDAwY2JhMTlmNGI0OTE4MGJkZjg3OTY5M2YwMTQ3NWUwOGIyYjYwZGYzYzk1MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNzJmZTM3OTIyYTMxMThmNjkzMzA5MjYyMGUzYzFmNmQ3MTRjMGY2NTkzOTg3YmY4MGZiMmE1ZDU3YjJjOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiNTFiMWU3OTc2YmY1M2E0YTdlM2I4OWNjOTY2NDU1OGM0OTRmNmQyNzZjOTU0MmY2MThmMzY2MDYyZWZkZGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install_hooks.go#L74-L81",
+          "version": "repo-lines-v1:sha256:9520c8dc41c54793e2779915f62ee81d82d83e2f542b2a598d0afdf0ad8d0ea1:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGY3ZWE0ZWJhMjM2YjRlZmEwNmU4N2RiMGVmZTc5MzEzNTljZWI1YTQ4M2I1NWZmNjM0ZGMzNTk4ZTRmYTAyMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmY3MmZlMzc5MjJhMzExOGY2OTMzMDkyNjIwZTNjMWY2ZDcxNGMwZjY1OTM5ODdiZjgwZmIyYTVkNTdiMmM5ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWUxNjMxYjFhNDdjODY4OGQ1ZTcwMGY2OTM3NjhiZTdjNzBiYThkYTYwOGI4YTliNzdhNDUwMGFlZDI3NmNlYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fdab7cf903ce4fbabb9cf720e1b6a3ac",
+      "statement": "The hook injects a menu, not a relevance decision: DiscoverProjectDocs scans only the working repo's top-level `.agent-harness/*.md` (rejecting symlinks, bounded at 64 entries, 256 KiB per file, 2 MiB total, deterministically sorted) and describes each doc by frontmatter description or the canonical name-keyed table; BuildProjectDocCatalogContext produces a compact model-facing menu and readable user view and sets ShouldInject=false when no docs exist, leaving the choice of what to read to the agent.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/hookprompt/catalog.go#L13-L46",
+          "version": "repo-lines-v1:sha256:f020ecfef53d32fd86875bd99c89ccc3b56cb6ddcff6059aadcd5f26c25af244:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhNzE0ZjI2MTg5OTNmOTgzMDU4MjdjMWUxN2Q0NjVhYTUyZTIwOTdhMGQzY2M4MTc0NTVlZGU0MGE2MzUxMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3YTFiODBlYmUxNjkyNGZhNDFmY2Q0ZTQ0Yjc4NGEyZjcxMGUwODYwMzY3MTJlNGJmY2NlZGUzMzc3MWViYTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdoc/catalog.go#L12-L90",
+          "version": "repo-lines-v1:sha256:8bfd569ca2b35b8b3d05f619d3d9e310acd198e312bc6574ae7f80066c7bf090:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjMTZlNGQ3OGEzMmQ4OGUyMGYyN2YzMmVkY2Y3NzhmNDM1MTgwNDcxOTI1OTRmOTM2MjJmMjY2ZmQwMTdmMzkifQ"
+        },
+        {
+          "resource": "repo://internal/contract/hookprompt/types.go#L9-L18",
+          "version": "repo-lines-v1:sha256:bbd3aa86c09864db864ff28767a9b63f7b56b311b98b81f7cbe6871e526daea8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiZTA0ZTE0NjNjM2VkOWFjYjIzMTM1MDdkZjRiY2M0YmFjMGY0ZDM0ZTg4ZjFlYzY1NzkyOWVhZjMyMGJkMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzNWM3ZjU1MDFiMmI3ZjJlOWFiYjE5ODQ1YTMxOGNjMjM2MGI5OWVlNjUyYzE5ZjVjYjc0ODZjMGQ4OGExMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7d66ea21819e4f81b39bcc46c02c116a",
+      "statement": "`project_docs_append` normalizes record kinds to caution or adr and always writes one dated, collision-suffixed record file (`adr/YYYY-MM-DD-<slug>.md`, `cautions/YYYY-MM-DD-<slug>.md`) with canonical record frontmatter into the family module directory, never touching the family root index — so append cannot churn the root SHA other agents hold — and there is no flat-layout fallback even in repos without a manifest or bootstrap.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_append_test.go#L62-L68",
+          "version": "repo-lines-v1:sha256:0423f4e149cf881ab2afd2727b68eab942167922cc1bdc6f1d87016b8377008d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODRlMWY3YjE0Yjg3MDlhZjE3MDhhMGFmYmQxOTM2ZDk4MzQwN2ZkZGFlOTJhZGE1Mzc3ZWY5MGE1Mzk1YmIwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWUzNjBhMjliMDFkNDgzYTIyOTQ5OTZmZjgxNDMzNjViMjc1MmNiOThkZWNkMjUzZjkxMjQ5ZmUxNWY5ZWE2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODE0MjA2ZTZiZGFmMWQxOTA1MDk3NmJmMjQ4M2ZiOGJkNDkxNGJkMTE0NjI5YTNlZDBhYjAxZDdhMDMzYjQzNiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_append.go#L13-L86",
+          "version": "repo-lines-v1:sha256:daf5de38978f39ce701e5bc01971becdf04083acff6eee39c064a07201144837:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmYTdkMjUzMjA5MDY2MjNhNDI1Mzc4MjZlOGY1YWFkMGE3MTQxYjc5MjIzZmM5ZjJmOTY0NjljN2NiNmQ5ZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwNDAwYjQxYzNhYzNkYjBkYjdjMDhjNDE1NjkyNzNmNjU3NjFkZjFiN2ZlOWI4Y2U2YTc4NTE5YmU1ZjkwODIifQ"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/families.go#L86-L102",
+          "version": "repo-lines-v1:sha256:76988280ac886934a2d11512b999cb12f398f223002fd60b1ab6865ce39261da:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkZGNlYjUyZGViZGFlNTNmYWQxYmFmODU4MTY1OGMzZTEzYzdmZGMyYzBhNGQ0ZWE0M2NmNzJjMDU2YjY0ZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmYzI0OGUyMzgxMWUwMGQ5YzA1NDQwNjNmNmU5YjkzZThhNzAzMmU4ZWFmYmUxYjc0MzFmYjA0ZTQyNjA2NmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZGU4NjM5MmQ4ZmNkMmMxMDA3NmRlNGI0MmM5NGFhMzkxMGNkOGYyNmNiZDYwZTRlNmI0MTZhOTI4ZWYyMTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7640dd4e0e5b454c9ee291e6acc62262",
+      "statement": "`project_docs_revise` gates full-document replacement on consensus: updating an existing doc requires `expected_sha256` from a prior `project_docs_read` (a mismatch refuses the write), a non-empty summary, and `confirm=true`; without confirm it is a dry-run reporting the prospective `next_sha256` without writing.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/projectbootstrap/project_docs_append_test.go#L71-L110",
+          "version": "repo-lines-v1:sha256:522f252c671cf0d65abf467537ffef739942a62a9d9631a1e1c494d827f2d0d4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzOGM1Y2U4MDgyYzUwNDdhZGMwZjkyZGNmOWUzMmVhODcwY2Q2NGQwNTk4ZmE5ZmFjMDUxNzA3NDExZTA1ZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMjdmOWI3ODgyNDA5MTM3MTUyMWY2NGExYjcwMmRiMTk1NDAyYmI2NTAxZThhOTg4YjJmODIzZGVkN2Q1MTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/projectdocs/project_docs_revise.go#L45-L113",
+          "version": "repo-lines-v1:sha256:f62b0c5f0c26e0b3e6cd8870c6bb1ad12a9eae5b0d9b535a729459f11da567aa:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmYzU5MTc2OTJkYTI2NWE4MDdhOWM5ODBkNGQ1NjRiMzZmNTc5NzY5M2U5MWIxMWI5MjMyOTViNTkwNWRjYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmOGMxZDViZjYwYjU2YzE1NjdjOTlkN2YxMTlkM2Q5OWU0MjM1YzU1ZGVjZmE4MTRlZGMwNjc3MDM1ZTRmZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9a170640590e402b81490071e7fc159f",
+      "statement": "Rel-path normalization accepts the required and optional doc names plus any family module document path (e.g. adr/2026-08-20-slug.md, testing/overview.md) — rejecting traversal and non-markdown targets — so the read/revise contract can address record files and module starters in folder-first repositories; `project append` is the CLI fallback for records, and full-document revision has no CLI surface.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/projectcli/project_cli.go#L98-L131",
+          "version": "repo-lines-v1:sha256:89af975a31a9e9f9dcaf09a6de1a94ff004bcd12f8fba77a435b021445b2e279:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZGU3ZWUxMmJlZDE0NDQyMmNlNjJiYmRkN2M2ZWRmNmM3OThhOWNmYmVlMzI3Yjc3YzVmYTcwYWYwYmVlOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTFkNzkxNDgwOWUzNDk5ZDQ1NzNlOGJmZTU4MjZhZTA4MmVhMmUyYTE0ZGI3Y2MxNDE3MjU3N2M2YTczNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/projectdoc/path.go#L31-L54",
+          "version": "repo-lines-v1:sha256:588129e02fafbbd11ffe44b8877448f5a66ed6a961353eb42d11bd8afd7c4084:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZGY0OTU3YjUyMmFlNzZkNTg2MjZmYzY2NTU4NDBlNWVhOTYyMTE4OWNmNmFjNzdmNjEzMGU5ZWE0MWQ3ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmZWRiMmE5YmI5OWM5MDFkNzc2NzY0OTJiM2FjOTRmNzI2YmQzNDc5NGUxMjJiOTVmNjhhNGM5MTgzYjI0YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1ZGNmNDc3Yjg4YWY5MzVlMjA2M2I2NTNjNzYzMmMzYzJlYzk1MzBhZTQyMWQ1OWRjOThhNDM1NzhhMTU4YjkifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-update/SKILL.md#L62-L71",
+          "version": "repo-lines-v1:sha256:66b242d3213021cc773bde23160535ec12e9b84b2a6598d833c8ff6b02f88795:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzOGM1MjM1ODNmMDllMmFiNTVhYjQ3MzA0YzhiMmU2YWUzNWM0OGIwZjBlNzVjNDcxNzU2ZTg5ZTlhZDU5YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViOTgwY2U4NmFlODU5ZGM5YjdjNGI2ODEzZmEyNmYzNjA2MDg3ODdlM2Q1YTE3ZTMyZDFkNTFjNDdlNzlkZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5ZmMyNTU1ZWQzNmU0OTQ1NzI1N2EwMjczMjFkOTY5ZmQzMzdmZWRlOGVlYmIzOWM2NjQ4YjA3ZjZjN2RmY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzNDk2NTcwYTc0ZWI2YmRlOGVjYTQ4MTdiMzkyYzI2YjI1NzVlNjU2ZjhlMWM5MmU5ZjJjNjNhMzJkMDk5YWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5346bd09c79246ac99fde421e61de8a4",
+      "statement": "Four skills map onto the CLI/MCP surfaces in a create → refresh → restructure lifecycle: `project-bootstrap` orchestrates and owns lifecycle routing (missing docs or explicit refresh → project-docs-bootstrap; completed work produced a caution/ADR/stale section → project-docs-update; over-budget roots, duplicated ownership, or checker violations → project-docs-optimize); each sub-skill is usable standalone and wraps one deterministic surface.",
+      "evidence": [
+        {
+          "resource": "repo://skills/project-bootstrap/SKILL.md#L39-L53",
+          "version": "repo-lines-v1:sha256:331909ce62ca4418215e9644f4332d74ea549a536bc29228d094189459fc4679:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwNzAxNTQ5Yjc0ZGYyYTQ5NmQ1NDk4YTdkZGQzZGQ4YzUwODYzZTNhZTMwMjlhZWE0NDMwODFlMWI1M2FhYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZWU3NjBmYmRkNTU5YjI0MjQzODQxODM4OWUyNTc4N2JhZjEwNjVjNDAwMDI1ZThkZGZkOGUxZTczN2FlMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyZTk0MjgzNDY5MjE2NjQ5ZDJlMGZiODEzNjc2YWUzMzViOWU1NjFjNmQxZWYyNjdlN2MxM2U3ZGQwZDAyNTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NWEyMzAzOTA3ZTZlZWFlMTUwMWVlOTQ1MzkyMDY3NzgyNTU4MTg3NjMwZDVhOWQzZTY3NTBlYTg4ZTYxODcifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-optimize/SKILL.md#L23-L39",
+          "version": "repo-lines-v1:sha256:657383e85d8e2c286aa6a24a9b8754786cd2aca2d3128a5f4743268c80b0cf72:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4YTYzM2MyNmY5NTI3MjljMzdjZWY2OTYwZmJjYzUxYjg4ODQyZTVkNTY5MzgzZWI0NWVlOGZmMGE1YzRlOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkNWQwMmVkYTVkNGQ4YTBjODZjMDcwNzBjYzQ0N2I4NDM3NGE0MjY0NWY0MjU2Y2Y5ZjZlMDYyNWU0MDdkM2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhNWY3M2IxN2UyZWRmZjRiYzY5ZjRjOGM3YzZmNjIyZDg1YmVlMzBmMGI5YjA5NTdhMjMzNTI3OGU2YTBhNGUifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-update/SKILL.md#L14-L20",
+          "version": "repo-lines-v1:sha256:3ec3971d4c663426accb3ab5dae35138ee06f034a71befda5ed2e1d40fe07e19:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzhhNjMzYzI2Zjk1MjcyOWMzN2NlZjY5NjBmYmNjNTFiODg4NDJlNWQ1NjkzODNlYjQ1ZWU4ZmYwYTVjNGU4ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVkNjcxYThmYTEyMjUwYzY3ODM1MjgyOTQzY2ExYjQwZmRmNTczZTAwMzQ5YTI3MDU1MDI2MGQ1MmUwZWI4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmI1YzdkZmEwODZhNDdkOTVjNTFiNWJhZTE0NzBhODA2ZmI0OWM1NDAxNjQ4MWMzM2Q4ZGVjYTcyOWEwMTRlYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzVlZDgxYjgxZDIxOTEzZTYxYjMzMjM5NDQyOWU2ZGQyOTAwYmM3MTQ1Yzk3MmY5ZTA1OTAwYzc2ODJhMzE2OCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b5e8442d7c0644819fce87017aba1144",
+      "statement": "project-docs-bootstrap runs the deterministic CLI pass then an agent enrichment pass (PROMPT.md) with a fixed boundary: the static pass fills only skeletons, detected signals, candidate commands, routing, generic guidance, and managed AGENTS.md blocks, while the agent fills actual architecture, operations, conventions, testing, and cautions/ADRs from repository evidence; the engineering-standards catalog is a checklist — each topic must be evidence-confirmed and written to its single owning document, unconfirmed topics are marked `Unknown / not confirmed`, and repo conventions and doc language always outrank harness defaults.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/projectdoc/constants.go#L117-L136",
+          "version": "repo-lines-v1:sha256:eb7308909f593c6c8fecab590f9316944cf3173be9a2d77bf9783207772a7019:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YTU3ZTEyNjQyYjVmZTdiMjY3ZDUwMzVkMGYyNmQ3NmIyNzM3ZWFkYmNhNjg2OWQwYzIyMjNhNTZiYjcwYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjOGJhMGYwYzE2YjA3N2ViMjExMGZmNjdiYjNlYTdlMmMwOGQ5NDk0ZDIxZDJmN2M0NjhlYTg4MjUwZWI1YjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhYWZlNjQyOGRkNTY3YjgyOWIxZmYxOGZmM2UzYTBjNmU3MTdlMDg3NDc0MGU1MDJlOTE1NzM4ODQzNzM0YjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwOGMxODRhY2QyMTZlZDc0YmZhZDBjOGE3YzhiZTRjMmFkMWRiNWZlMDA4Y2FhYjhhODM0OTM2YmNlNGY5OGEifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-bootstrap/PROMPT.md#L36-L110",
+          "version": "repo-lines-v1:sha256:75a13c9fce3880b96302df70eead30960ce962c9c1fa2a6f7869758496e4a6fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1ODM3NzE3NGM4ZWRkZTEyNjIwMTE4MzA1MTdiZWEyZmNlYmQyZWJkMTNlOWE3NjRjNmRjY2YxMTNhZmJjYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3YWY4YWYzN2VlOTg2N2Q0NmY1MGQzOThlNDMzY2I2ZmNkNjQ3ODZiNDZiNTk3ZjM3M2YzMTM0OWM5ZDZhNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmMTdhYTFmY2JkNjIyM2Q2NWE1MTVjYjAxODgwMDgxMjBiNjUwZDUxZmM0YTY0M2NmNmI0ZTk0MGQ3YzY2MjkifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-bootstrap/SKILL.md#L61-L74",
+          "version": "repo-lines-v1:sha256:5ad1ca44a9db28c774b5068b821e79656fd830d8a8473fc1b6b4a8fe4c678ba8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlN2YyZDIyZGNhOTYxNWUzOGU2ODIyYzU4NDVmMTQ4Nzk5OWNiZmVjMzJjYTA3MzQ0ZjY3ZGEwZTkyZjJmMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjZmZhYmExYWI0OTg3ZDY4MzAxMDE4MGEzN2ZhZjQzODVhNzg4YmQ5NWEyYmQ0YTYxMmFiNTk5Y2ZjMzFkZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NWEyMzAzOTA3ZTZlZWFlMTUwMWVlOTQ1MzkyMDY3NzgyNTU4MTg3NjMwZDVhOWQzZTY3NTBlYTg4ZTYxODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6a08f6743c034e40a52fdd86dcaf69aa",
+      "statement": "The project-docs-optimize checker (`skills/project-docs-optimize/scripts/check.py`, --mode report|check) executes the manifest contract against `.agent-harness/**.md` plus root AGENTS.md: it reports missing_root, line_budget_exceeded for roots and modules, missing_module_dir, empty_module_dir, module_dir_unlinked (root must link into its module dir), missing_owner for single-owner topics, and broken_link for every local markdown target; check mode exits non-zero on any violation.",
+      "evidence": [
+        {
+          "resource": "repo://skills/project-docs-optimize/SKILL.md#L103-L118",
+          "version": "repo-lines-v1:sha256:95b4523bafab2c1116cc9b72ad14e59d05585722307ef58c4098fb71836f3459:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2YTJkYjE1OTdkYjJmMzI0YjY1ODhkYzRlNTI0MGEzMzZkN2Q0N2Y2OGEyZTk0MzQ5NjE1ZDU0ZGJhNWFhM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YzViYWVlMjNlNWIwOTI0OTQ0NTkwZmFjYWQ5MTNhZmY2MmVkNzk5MGVmNjQ2Njg0NmIxY2ExMjViOGRjNjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmZjdhNTZhYmNhMzk0NTE4ZTNjNDE0YzI2MGYzZjg3ZTlkMmExNDBmYjQ3NDNhNjZmNzY2NWRhODNmZjJiMzMifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-optimize/scripts/check.py#L75-L211",
+          "version": "repo-lines-v1:sha256:6061668c51ef29a07711fc823569b617deadf2c2774c880ad47915d1d53615b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI3NDcwZTE4MzFiMzRmNjQyNWNhNmE2NTIzNzBjZTI4ZTc1MTk4Y2QwOTJiNGYxMTBhMGRiZGM0YzRhYzBjOTQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhODgxNDZiNmZlZDUzOTc3MjM0Yzg4YWNlOTk1YTQyMDQxYjIyNDQ1ZmNkZGFhODM2MmE3ZTY3ZTI0MTU0YzBiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4MjkwZjRlZGZlYWExZTJkNzBhMzE1MTNlYTYyMDUzNDg2YzJjODk0ZDA2OTJiNTdlYmVmMmVhZDY2ZDdkYzdlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzZDQxMzQwY2MyMzlhMTU5Y2U5YjYwMjJlOWY2MzIyODMyZTJlYWQ3NmNhZTllNDc1NGQyMTBlYjhmYjZkNWU4In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_3eee9594c4734def9641e0829dfce360",
+      "statement": "`agent-harness doctor` checks project-doc and lifecycle state: missing standard docs are reported as the `project_docs_missing` warning whose fix is `agent-harness project bootstrap`, an uninitialized project lifecycle namespace or a fingerprint mismatch surface as `lifecycle_state_missing`/`lifecycle_namespace_mismatch` pointing at bootstrap, and repo-local runtime artifacts (`.agent-harness/state`, `state.schema.json`, schema-talk in STATE.md) are flagged as `repo_local_state_present` to keep docs and runtime state separated.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/doctor/checks.go#L32-L64",
+          "version": "repo-lines-v1:sha256:357b0c8bb39c0b0c6c46a9ea6427df3fedf85a451cd12708101e5bb7c717b5b6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmM2EwNzgyZWRlNWFjNjgyYzA1NDkwMjIwNTc4MGQxMjIxYzE3MzdmNjcxZGM0MjBiOGYwZmYwMDRhNDczNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwMzc1MWUyOWQxM2EwZDg1Y2ZjZjRhYzYyZWNhMjc0ODY4Mjc1YzA1ODliZWMyOTEzYmIzMGIxZjZiNWMzYWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3YmFjMzRjZGU0ZGI1ZDNhZmE0ZDg3MTlkZmQxMGQ5ZWJjM2RkMjY4ZjRkODI3NDVkYmY3NDM2Y2NlNDMzM2MifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/doctor.go#L76-L89",
+          "version": "repo-lines-v1:sha256:e50ac35d7bc9fcef8b1083c9418c13fdcea26de0fbff3c4b902bcc3def97f38c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyMzNkZDAwNjUzNjA2NDdmYmQ0ZjUyYjY0ZTdlMGZlYzZmYWNhNzYxZmI1MDk2ZDNiNjk0NmY4NjU5Zjk3ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1YWFiZTk0NTM5ODYyMzFmNjY4YTYwZmNjMTI4MGI3ZjcyNWFjYTVmNjRiNjdjMmViOGNlMDA0NzlmYzBlNTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyZjJmZjVmZWVjNjBmNTg3YzhmYWU0ZTg3ZjgwOWE2NjFjZmZlZDZiNDdhYWU1ZjZkNmEyNjUzYWE4OTUyZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1MmFjNjc0MDUwMjMzYmQzYzhjYWQ1NGY2MmY3NGVmZDM5MDI1MTFhYzQyN2JhYThhZWNhY2M4NDJmZTczOGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c80118e4ea6d498fbbda9b33aed7f8d1",
+      "statement": "Editing `.agent-harness/*.md` can drift response-contract goldens because the docs index feeds them: removing or renaming a tracked required doc changes the pinned required_docs projection, and a regression making a docs counter non-numeric fails the placeholder gate; the documented update workflow runs `agent-harness docs --json`, command smoke checks, and the optimize checker after doc changes.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L26-L45",
+          "version": "repo-lines-v1:sha256:8072052fc33b271067124a61f872dcde6c7869a78b946a9a03e9e29002e706ea:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzY2RiNTg3OWU1NDA1OTdjNTdiNjU0YjIyYzQ5YjYxMzZhNmFmZDAyOWM2OGQ2NTAzZTAwYWE3OTU0MTBkMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YzRiM2EyMDdiZDRlYTJmZWM2YzA5ZmM2N2NlZThjOWUzNDUzM2M0MzM4MjY0MDI1NDA5MDJmMzMzYTJlMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlY2NlYmE4ZWIwZWIwZDgxOWQzY2ZkNGEyOWRhMTY2ZWQxOGQzYjQ0YTZhNjhkZGFlMzY3MTUzYTZiMmRhMWUifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/documentation/README.md#L166-L174",
+          "version": "repo-lines-v1:sha256:2dfe074e4651221ab6a0f231f8e6020e3165bdb0d8145a236e2a8f111c0b4450:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWViMTRiY2NhNTFlOTEzOTBmZDRkMGFhM2E5OGRiZjk2YzQwNTBjNWViYjY2MDBlMTM0NDcwZGU1ZTI2MGE0OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGNiZmUyNGVhYzc4ZDI4Y2YzMjczYTQyZWQ1ZjFmMGEzZGYwYjAwNWJlNDU5ZDU2OWRiYTUzOWFiYjcwMWUwNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/docs/docs.go#L41-L71",
+          "version": "repo-lines-v1:sha256:3d37cb7f987e0418c7a6107c3ab965a47bb79f9b8ba9975ea7a4a11ef1d7d868:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMDA0ZDZmY2QxMjhlMDg0MGM0N2E2MWUyY2E5NjdlZjU0MjA4ZTFiMTYzYzNhYmEyNzU4NGI1N2E0MzU2ODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiMWQ1YTJmOGViNTVhYzlmZmQ5MDkwNDZmYmI0ZTZlMGZjNDZmZTgwNTk1ZDU1NmYzMzI2YjFkYjhkZjZmNTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MjVlOTA3ODVhY2VlNzg0NjQyNGRkNzNhM2I3OTE0MDhiOGYwZmNjZDM1Yzc2ZmRmMmZlNjJlYjg4ZWY1ZjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0378615393304a66a4a785766df87047",
+      "statement": "Doc readers are injected at the composition root rather than imported by consumers: configureDocsReaders installs docs.DocsIndex into mcpcli, basiccli, the self-augment planner/catalog, qagate, and inspect; configureProjectDocReaders installs DiscoverProjectDocs/FormatProjectDocCatalog into the hook prompt layer and PlannedFileAction into both bootstrap and projectdocs; the CLI facade passes DocsIndex into basiccli.Configure.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/cli_facade.go#L67-L76",
+          "version": "repo-lines-v1:sha256:3c13e4b963832f533cb597189a19b3d2fe3caf616e4cb0778f36ef471934c529:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MGNhZmNhMzg1MGViNWNhOTlhMDNlOTMxODU1ZDIxZDM1ODk3OTNlZDE4MDY2ZWZlOWVjMTc2MjI4MWQ2M2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YTliNWU5MDE5YzhkYjg3ODNlYzljM2ZlYmIwYTJjOTg2MmY2MWEwNWMzMDhmZTg5NWU0YTliZWQwM2VkYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZWU3MzZmODMyMmRiZGViOTQxZGE0ZGY4NDk3MTU4NzYzZWU4MTBjYjY1MDhjY2RhOGMyNWE3ODBlYTdmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlMzU1NTc0NGE0YmU5ZTIwODM5YzMzY2NjMzA2Y2MwZGVhOGIxYWY2MWQ2MWY2ZTRhOWY2NjZiYWE1MmM1ZWEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/docs_wiring.go#L12-L23",
+          "version": "repo-lines-v1:sha256:9405c4bbf2438a32bfb7940db2337e9f8863ff5de804275dd12e063e16a646df:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4NmU5YjY2NDNlZTYwM2ZmNjVmZWY5ZTRkYzNjNGU5YTU5Y2JiMWI4Y2UxMjM3NTA3ZDZiNDZhZjA2ODRiYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzM2U2MTBjN2ZmMGI2ZWVmMWI5ODJkNDE1ZTBlNjgyMzJkMDExY2Y4ODg5NmE0MmEwNDBkZTA4ODU0M2FhYTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/projectdoc_wiring.go#L10-L19",
+          "version": "repo-lines-v1:sha256:14990a5dd5385c0d1d094873b440e8da87158056b71f7cf67bab6c510f8f1ff2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNThjZTA5OWEwN2ViMDY5Nzg3NjQ4NTg5YTNhYmVmZGEwY2NlMThiYjA4MDExOWMxNjRkYTBlMTljODRhN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiYjZkZjY0YjA4NzQzYzViOTBiOGJhYjQyNzAyOTZmMjZlMWIwMWI2MjRiYWYzNmM4NzgyNjY3ZDM0YjBiNGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fba3fd6de18d43d08d7c874ce099baa1",
+      "statement": "project-docs-update keeps docs current during work without restructuring: it routes first, reads with SHA, then appends cautions/ADRs by default or revises one document at a time; it never edits AGENTS.md outside the behavioral top block and managed marker block, never moves or splits files (that belongs to project-docs-optimize), and refuses CAUTIONS/ADR updates for hypothetical rather than concrete solved cases.",
+      "evidence": [
+        {
+          "resource": "repo://skills/project-docs-optimize/SKILL.md#L23-L39",
+          "version": "repo-lines-v1:sha256:657383e85d8e2c286aa6a24a9b8754786cd2aca2d3128a5f4743268c80b0cf72:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4YTYzM2MyNmY5NTI3MjljMzdjZWY2OTYwZmJjYzUxYjg4ODQyZTVkNTY5MzgzZWI0NWVlOGZmMGE1YzRlOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkNWQwMmVkYTVkNGQ4YTBjODZjMDcwNzBjYzQ0N2I4NDM3NGE0MjY0NWY0MjU2Y2Y5ZjZlMDYyNWU0MDdkM2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhNWY3M2IxN2UyZWRmZjRiYzY5ZjRjOGM3YzZmNjIyZDg1YmVlMzBmMGI5YjA5NTdhMjMzNTI3OGU2YTBhNGUifQ"
+        },
+        {
+          "resource": "repo://skills/project-docs-update/SKILL.md#L48-L95",
+          "version": "repo-lines-v1:sha256:594278c103c2d5a0b997de8e9ed20cd49f7ee60d965925fcc1174bd348715f69:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhNmNmZDlkZmEwMGEzNzAwZjNkNDhmYjA0OTc0ZWRhYzQ5Y2YyZWQ5NGNhNTgxOTM3YmI4ODU0MmQ2ZGQxNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzZTE0MTAyNTUxOTgzMTBkM2U2OTExYzU3NWU5YjhmYWU4MWYzOTFlODc4ZDJmMzQxNTg5MjY0NTZhNmQzNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyNGU3OGVlZTM4ZTdkMjE2NTFkZjkwODI1NDA1MWEyZTdmNDMzNzQ5NThlOTA0ZjQ4YjgyMWU2M2M2NjhkN2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmZWEzMTIyMTE0OWVkN2Q5OTY2ZDhmNGE0NGQxYzM1MGMzNWY5ZWJkYjg5YmNiMjAxMDc2NjgyMDE1MTk3ODMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T17:13:20.810Z"
+  }
+}

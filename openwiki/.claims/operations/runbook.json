@@ -1,0 +1,510 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5afe4366edd56030b14ed11b45b500e63fc24cc69dee3c9eaab7d044c6e72434",
+  "claims": [
+    {
+      "id": "claim_6a7c9f04c0864939860e7bbef7fae1f2",
+      "statement": "`agent-harness` is the canonical command identity and `ah` is an installer-managed symlink (`~/.local/bin/ah -> ~/.local/bin/agent-harness`), not an alias or wrapper; install/update refuse to overwrite a regular file, directory, or foreign symlink at `~/.local/bin/ah`, and the only sanctioned replacement of an existing regular file at `~/.local/bin/agent-harness` is `--adopt-command-file`, which requires the file and the staged/canonical candidate to share the static Go build identity and runs as a transaction with a mode-0600 backup, atomic exchange, displaced-identity revalidation, and restore of original bytes on pre-seal failure. The `ah` shorthand is never subject to that adoption path.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L46-L48",
+          "version": "repo-lines-v1:sha256:3a9a91fde1c3e3dd115b2957a67889d1f823d8c163fcdd2ff2136d127d0f571d:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRkNjE3YjdmMDhiNWI5MjMzMzNlYmVkMzc5ZjBhMzE3NDc0ZjM3NjgyYjU1YTYxMDQ2ZWRhMjc0M2UwZmM5ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmJlNmNmOTVjNTc3ODI5MmU0MjYwNjU1NmZjZjQ4ZTM5MDNjN2QwNDlhOTQ2NDZmNjkyNTc2M2YwMjg3YTFhZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTA3YzFiZDgyZDBmY2NlMGU2MzNjNjA1YjgwYzk0OTY0NzIwYWU1MDkxNmE4NzI0OWRiY2VlYzUyYTM2NzkwYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2RjOTBkYWM0NTg5ZGVmYmNkYmZjMTEzZGE1ZDhmZTllM2I2ZWRkMDAzMGY5ZWEzZTg3MWZjMzllYTY0OTFhMyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L66-L67",
+          "version": "repo-lines-v1:sha256:6b6be86c8fbf0c82dd14326f4c0495d503a250c874b1f7e1e3a01a0ebbb097e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDhhOWQ2ZDBlZjRhZjJiOTNlN2IzOTU1NDQxODQyYzFmZWU3YjIyMThiZWIxMTJlYjc1NmFmZGMzMzEwMDY3ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjg0NjEyNmYyMDM4NjhmZDZkOGNkZTExZTM2Yzc3Yjg5NTIyZjMzYjk5YzQyNjM5ODJjNjlmZDMzNTQ4MmMzMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGQ4NmU1ZDUwYzhkOTQyN2Y5MTQyMTExZDVjMjQ3NTJjOThmNjZhZmQzYmVmZDZjOTgzOTA1ZWQ0NmMyMDdiMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTM1OTcwMzRhZGFmMjBiNTczNTNjNjdmZmZkNjM5MDgyY2FmZjliMWIxNzVmYzRjNTlmZmUyMzM0NmJiOGNhNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f1ebef99b7742fc8e73f2bf9fa8e93d",
+      "statement": "`./install.sh` computes the checkout root, builds `bin/agent-harness` unless `--skip-build` is passed, and execs `agent-harness install`; in a real terminal with no arguments it adds `--interactive`, while non-interactive automation passes explicit flags such as `--dry-run --json`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L29-L29",
+          "version": "repo-lines-v1:sha256:030e5d093383420b9b67f081c7e9ca1eab1e49c06d2b95971d25b5cfe79b96e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDMwZTVkMDkzMzgzNDIwYjliNjdmMDgxYzdlOWNhMWVhYjFlNDljMDZkMmI5NTk3MWQyNWI1Y2ZlNzliOTZlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDMwZTVkMDkzMzgzNDIwYjliNjdmMDgxYzdlOWNhMWVhYjFlNDljMDZkMmI5NTk3MWQyNWI1Y2ZlNzliOTZlOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjA4OTYyMmJmYzllYWQ4Yjg3NTQ2Y2FmZjM0YmNkNTc4MmEyM2ZmMDA4ZmI1NzVlZWU2Y2RjMDQxZDEzZjNlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTk4ODNhMTRmYmFkYzkyYWJjYjM0MjQyYzJjYzkxMzQ1Y2JlZTgwNTgwODYzZTZmZTY1NzYyMDk0N2UzNTFmMCJ9"
+        },
+        {
+          "resource": "repo://install.sh#L20-L33",
+          "version": "repo-lines-v1:sha256:8ac558ad694eee72887f3f423a0af9feb6e187682aa8dc70f92a21c1d29bff03:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZTViYmZiYjcxYWQ2NjkzOTZjN2M4OGM1ODRjZGRkM2FhZDA2MWIwOTJjODM2MGNlZDQ2YjViZTkyZThhNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3ZjE5YmYyZjRlOTM1MTY2NTVmMWQzMmZhM2I0ZWU0MGRlZDE0NjExOTkyZTI1Mzg4ZjEwNzQ4OGQwZGFiM2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkM2RmN2ZjNjc3ZWFhN2Q1ZDY4MTZhYzdkMTIzODA0ZDNhMWVlMjg3MjJlMWQ4ZjU4MTViOGJkZjQ5YzI0NzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3367680a7d5d41e39ca88e4dd37dbb1b",
+      "statement": "Default install writes only user-level host configuration — command shims, skill symlinks for all three hosts, MCP registration, and lifecycle hooks — and creates no target-repo `.claude/skills`, `.claude/settings.json`, `.mcp.json`, `.omo/skills`, or `.omo/mcp.json`; repo-local files appear only through explicit `--project-local` or project bootstrap.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/OPERATIONS.md#L75-L77",
+          "version": "repo-lines-v1:sha256:9af8244aea79148bfee0615206565a979a5712aa8bcc3c44e5541bb91196538f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2MzYWM2NzcyNzhkNzIzN2UyZDZhOGM5OGIxNTU4OGViMmFhZGVhOTJkZTZiYWZhOTczM2U1YTQ1NzIxMjFmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjg2MTJkNzE4MThmNDU1N2ZiOTllZDQ1NDk0N2Y4MTBiMjljNzJjZGY3MGNjNDA3MDZiOWRlZTA1YWUyMzc2ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDVkZDYxMzIwMTg2ODU4YTk0ZWVhNjc4OWE2NmVjYzA1MDFiN2Q3OTc4Mzk5NjliMDY2ZmNkYzFhZTMwNDY2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTgyYzdlMjAyNGYzMWY2NzNmZjA1OWIxMGRhYjg4ZDc0YjNlNTkzMmMwZDgwZTYyZjc1ZTA4MDFhOGQ2ZmYyNyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L64-L80",
+          "version": "repo-lines-v1:sha256:3bfe9b10990f7dd2bdac5af5a98be2b6033f6bd0832058741ba52a85f5765a4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxOTMwNmIzNWNiYmZlNjYwZDhhNGMzYzgxMzdmNzhlNGI2MzliYzAwY2QwNThjMGNlMmQ1NTM5YWIzYjU0YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZTUzYzNjZTJmYWRkYmFmMjFmODRlYzY1MTE4Y2ZjYzJlMDY5N2I0Njk2NGZkZDdjMTg5MjY0NWQ5MjdiNGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhYTRmNjA5NWE5YzQxOWRhZDIwZTFlNWZhNWYyOTkwMTdhMjhiYWFhMzQzZGM2YTZlM2RjZGY5ZDFkZWQ3ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlOTVlODk5NWJkZGU4MjU2ZDYyNWJiMzRkYzI4NDM4NWJlNDYyNmZiNzBiYTljZDQ2ZTA3OWY1NTVhYTIzMjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_742acaf5298b4191b44dd09abcf6782d",
+      "statement": "`install --dry-run` plans every file and link without writing, reporting stale harness-owned skill links as `would_remove` instead of deleting; before any non-dry-run activation the installer snapshots every affected file, symlink, mode, and newly created parent directory, restores those snapshots together with the command shims on any host write or activation-seal failure, and if only post-seal backup cleanup fails the activation stays committed with the JSON receipt's `backup_retained` naming the recovery path.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L33-L48",
+          "version": "repo-lines-v1:sha256:29e1b137fad1cf9eee5faac2bcb51ffba0c3ea4dd5103923c2940deeb0b9a9cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3M2UxZDMxZGE0ZDE2YWI3YTNjM2EwN2Y2MWYwM2RkNjVmYmU3YmYxNjllYjc5OWY5ZTg3ZmFhNTM5NDMwMWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZTZjZjk1YzU3NzgyOTJlNDI2MDY1NTZmY2Y0OGUzOTAzYzdkMDQ5YTk0NjQ2ZjY5MjU3NjNmMDI4N2ExYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ODgzYTE0ZmJhZGM5MmFiY2IzNDI0MmMyY2M5MTM0NWNiZWU4MDU4MDg2M2U2ZmU2NTc2MjA5NDdlMzUxZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkYzkwZGFjNDU4OWRlZmJjZGJmYzExM2RhNWQ4ZmU5ZTNiNmVkZDAwMzBmOWVhM2U4NzFmYzM5ZWE2NDkxYTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f7cc544485a4489093e97314344c3986",
+      "statement": "`install` owns environment setup: it writes `HARNESS_ROOT` into the hosts' MCP configuration (users should not export it manually), honors a pre-set `CODEX_HOME` (default `~/.codex`), and selects PATH handling with `--path-mode=auto|manual|skip`, where `manual` and `skip` still create both command shims but omit shell rc changes.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L31-L31",
+          "version": "repo-lines-v1:sha256:60840270f418eab71fdd47146675bfc62e4792da8b7d72ab54ae365fb6e1a4bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjA4NDAyNzBmNDE4ZWFiNzFmZGQ0NzE0NjY3NWJmYzYyZTQ3OTJkYThiN2Q3MmFiNTRhZTM2NWZiNmUxYTRiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjA4NDAyNzBmNDE4ZWFiNzFmZGQ0NzE0NjY3NWJmYzYyZTQ3OTJkYThiN2Q3MmFiNTRhZTM2NWZiNmUxYTRiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWIzMGQ3MTNiYTZmNDE5YjhkZTZlYmE1NmQzYjNmOTUwZDJmYWMxNjVmMjc3NjRjZGMzMjRlY2RjNTFmZjhlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODUzYTExNzg2Yjk4NGY1OTIzMDQzZmY3NDMyZGZjYWQ5YmU3YmJjOTRiMDdkMTJlZDExNGM1MWIzNTE5MjRkYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff06c395428847cb99e6e919f9036aac",
+      "statement": "`agent-harness update` and `bootstrap` refresh from the current checkout (build `bin/agent-harness`, refresh both command shims through the installer path, run native host installation, refresh MCP registration, and restart the shared daemon when it is already running), never run `git pull`, forward to `scripts/install-native.sh` for the staged activation transaction, and resolve executable symlinks back to the checkout so `ah update` works outside the repository directory.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L50-L50",
+          "version": "repo-lines-v1:sha256:a95f831dfd57c9a7e5b34d4348569ae3c7799836886cfa46e585ce4ec6f0548f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTk1ZjgzMWRmZDU3YzlhN2U1YjM0ZDQzNDg1NjlhZTNjNzc5OTgzNjg4NmNmYTQ2ZTU4NWNlNGVjNmYwNTQ4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTk1ZjgzMWRmZDU3YzlhN2U1YjM0ZDQzNDg1NjlhZTNjNzc5OTgzNjg4NmNmYTQ2ZTU4NWNlNGVjNmYwNTQ4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2EwZWVhZTkxMmY5MmM1ODgzZDFjZWEwYzBkOTA3MjZiZTNiMzhhMmE3MTM1MGZiZDQyMTMyODBmYzkyN2VjNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTdhYzBjMTVjNDEyYTYwNmU3MjQ4NGYxZDg5MWEyOGY4ODUwNWU4MjEzOGVmMGIyZTQ1NGVlMTg2ZWFjNGU1MiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap.go#L13-L75",
+          "version": "repo-lines-v1:sha256:01041e577b82385d71113d672688c19cb2c68b3edb0d9226da81c7cbb6b2c211:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkMmYwNTAyYWI4MjJkZTBlYTk3YzFhMjA1ODNkMTllOTBhNzNlYjZiNzJmMzZmZTUzNjUwMThjMjAwOTgxMWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5ZDJkOTIyOGRjNWM4OWZhZDIwN2Y1OTNkMDgxN2ExZDQ2NDYzZDU5MTNjZDcxOGI0ZDk2OThmMGUzYzBlZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5NzkyMjc2OGU3YTk0YWE1ZTBlYjJhOTUxYmRlNzQyZjE5MGRlZmZlZGZjMzVmOWJiNGY4YjAyNTY3MjZjZDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0dcdc3417a94443eabb72b9104641a57",
+      "statement": "Post-install daemon refresh runs `daemon stop` with the installed binary, terminates leftover processes whose command line is exactly `<checkout>/bin/agent-harness daemon --internal` (skipping the current process; `ps` unavailability is treated as no matches), then `daemon start`.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap_daemon.go#L25-L110",
+          "version": "repo-lines-v1:sha256:7bb9372743cdf0d073aac9a12d4fd6a3aaa58ab3bf464c18b57abbfd5a584cc6:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhNThhZDUyODkyMTQ4YWIzM2Y1NzVmOWIwZmZlOWQ5OTMwMWMxYmNiNGYxOTY5OTYzYWZkMDZhODA0MDVmYjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyNDI1YTM0OWZkZDgzYjI0ZDY0Y2RkNWM0NDMyYWZlOTU4MDc3OTQyMWEzN2QyZWY1YThjYjY4ZDYyZDNkYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMmM2M2YxMmRlOGY5YzVjZTFkNmZjMThiOGExZDg4NDhlZmY5MDI4NmIzYzc5M2IzZDE0NWU0MTdkZWIwNjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c089842a10f74563af21b0c751576195",
+      "statement": "Update never enumerates or kills host-owned stdio MCP proxies: a live proxy detects the daemon generation replacement and re-initializes against the new generation under the same protocol/capability contract; if the new daemon's handshake contract differs the proxy exits so the host reconnects with a fresh session.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L52-L52",
+          "version": "repo-lines-v1:sha256:a68d982126430cd3ae85665e31ff870712fdb53ca51d7c623402b3802f4bf846:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTY4ZDk4MjEyNjQzMGNkM2FlODU2NjVlMzFmZjg3MDcxMmZkYjUzY2E1MWQ3YzYyMzQwMmIzODAyZjRiZjg0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTY4ZDk4MjEyNjQzMGNkM2FlODU2NjVlMzFmZjg3MDcxMmZkYjUzY2E1MWQ3YzYyMzQwMmIzODAyZjRiZjg0NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2RjOTBkYWM0NTg5ZGVmYmNkYmZjMTEzZGE1ZDhmZTllM2I2ZWRkMDAzMGY5ZWEzZTg3MWZjMzllYTY0OTFhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDFjYmY2NWJmODczM2MzMTgzMmVlZWNkYTIyZGZkMjZlNDU0NDYxMGFhMjFjOGIyZTk3YTQ3OTNiNzUyNmU3ZCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L30-L33",
+          "version": "repo-lines-v1:sha256:246af03110ab6a336fcbc8a691ce4acb4c6ccd3153bf0f6f38c67de87c182aa3:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTE0NTZkMzlmNmZhYTEyOGZkZDk3NTc1ZjRkMTAyOTYxYTFkNjI1NjY2NzNkYTRlM2JlOTgwYzAzYTdlOWQzMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjY5YzY4MGY2ODViZDdiNDZjNzU5OGQ5ZDhmNGUyYTU3ZWQwNWUzNDgwZjQxZTgzZjgxM2M0MjJiMTllYzA4MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTlmODVmZjdkYjJlYWEzOGY3MDEzMzc3YjFkMGY0MTMzMGIyNzc0NTZmNzExNWNhYzdlY2M4ZDJjZGQ1Yjk5OCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap_mcp.go#L45-L50",
+          "version": "repo-lines-v1:sha256:f864d2cdbfc47ef21e5e69397148c767a09a8b9ae44b25a760eb1b23e912874f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzcyMzI5NWE0MjhiNmVkZDJmMWU4YmE5ZTVjYzE3NjNhY2Y2NTUwMzA2YTZjZTU1NzIxZTRkNmU4NzY3NjYzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWU4MjYxZTY2YzZmNjNmYjU0MTI2NTI5ODQ5Mzg2NGIwZmViYWM1ZWZkOTk5YjA5NzE1NDBlNmQ2MWJkZDgyOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDdlNzMyYTczMDA0YmM2YjA0MjY2YzdlNjVkY2QyOTdhZDYzZmE3NDgzODhlZTNlOThiZjM4NWRkYjIwYWNiMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_45bb608862d448298369ad880c62e00f",
+      "statement": "Requests in flight when the daemon generation changes are never auto-retried: the proxy answers them with JSON-RPC error code -32002 and data `code=daemon_generation_changed`, `outcome=unknown`, `automatic_retry=false`, `reconcile_required=true`, so callers must reconcile whether the operation happened.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L20-L28",
+          "version": "repo-lines-v1:sha256:edf873c01d79579fdbdda3fa0e9ba4fc32b08d86d101483af6b2e5714c3abc45:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzQxMGNjOTBjMWIzMzI3YTY4MzE1Yjc4MmRhZDllNjY3ZDBjNzY3MDQyY2RlMzYyNDdiM2M4ODRkZWJlNzUyYyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L749-L764",
+          "version": "repo-lines-v1:sha256:c63848f3334a82405b26a6e37af2d7d5bc93e750bf3b956952648c4e6282b76c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMWIzYzYyNjJkNDZmNmVkODgxOWJmZTZmMDkxNjQzNzM5NGVkOGFhNzJjMjk2MzVlYmZhNDI1MDkwNmQyNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiOWVjMmU0MzJkZWZiM2NhN2I2OTNmNDRmMGI3ZDkxY2ExOWRiNDE0ZmZkYTVkMzk3Mzg2NzI2YjQxNDJiMmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71d5d0c0479844ca93e9e5190f4020c9",
+      "statement": "Omo reuses MCP tool schemas keyed by server config hash for up to ~7 days, so the installer records the advertised tool-catalog SHA-256 as `HARNESS_MCP_CATALOG_SHA256` in the Omo server env; changing the catalog changes the config hash and forces the next session to re-fetch `tools/list`, while replacing only the binary leaves old schemas visible. The value is a cache revision token and does not steer MCP handler behavior.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L54-L60",
+          "version": "repo-lines-v1:sha256:1ed58db7ccce9bb14749afddadd569764d34efdd14f3513d0338bd6ff6ff6182:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjQ1OGM5YTFmNzAyOGYwODJhYWEzNDM3MDU0ODhmMWYwZWVhODdiNmQ0MmQ0ZjU0YzIwZTg4NjBmMjQ5MWE0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWY3YjRkNDcwNDk0YWZjODlhZjE2ZjZmODE2ODcyMTg4YTYxYTU5NjZiMTQzNjMzZmY1OTE0M2UwYzk4ODc4YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdhYzBjMTVjNDEyYTYwNmU3MjQ4NGYxZDg5MWEyOGY4ODUwNWU4MjEzOGVmMGIyZTQ1NGVlMTg2ZWFjNGU1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGFhNGY2MDk1YTljNDE5ZGFkMjBlMWU1ZmE1ZjI5OTAxN2EyOGJhYWEzNDNkYzZhNmUzZGNkZjlkMWRlZDdkNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_8483f7522d154a3e8e0af19a007c5d3c",
+      "statement": "External GitLab MCP and personal wrapper registrations are not part of install/update; operators verify with `scripts/sync-glab-mcp.sh --dry-run` and apply only by explicitly running `scripts/sync-glab-mcp.sh`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L62-L62",
+          "version": "repo-lines-v1:sha256:9741fc0041ab3635789ed31863fa73961a249106a4c182b1181283ec69f27150:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTc0MWZjMDA0MWFiMzYzNTc4OWVkMzE4NjNmYTczOTYxYTI0OTEwNmE0YzE4MmIxMTgxMjgzZWM2OWYyNzE1MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTc0MWZjMDA0MWFiMzYzNTc4OWVkMzE4NjNmYTczOTYxYTI0OTEwNmE0YzE4MmIxMTgxMjgzZWM2OWYyNzE1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGU4YTQ2MzBiMzY5Y2M1ZDNmNmU5ODA2MmE4NjBlOWZhMmFhNDY5ZmY4YTE1NWMwMDY1ODFjMjJlYTM2MjcyNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGQ4NmU1ZDUwYzhkOTQyN2Y5MTQyMTExZDVjMjQ3NTJjOThmNjZhZmQzYmVmZDZjOTgzOTA1ZWQ0NmMyMDdiMiJ9"
+        },
+        {
+          "resource": "repo://scripts/sync-glab-mcp.sh#L13-L15",
+          "version": "repo-lines-v1:sha256:511a6ef0fce316c8db3ce46e9db480be953781879f9bbf5c055c4de89e01c2dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjQzMjgwZTg5MDdhNjUzZDgzNmM5Y2EyMDg4M2YyMWVlNDNlNmFhMzk0ZTY2MTc3MjUwOTMxZDhlNjcyY2I5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNmNjQ3YTZmMGMyZDhhOTFhNTFmYTRiMTcxNzQyODRkMDU2OGJlNjBiM2ZiZWNiOWY5MGUzMjIzZGRjNDEyNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmRlNmUxMmRjMWQ5MTI3MWU0OGRhNDRkMTQwNzg0ZDJkMzQ3NTljY2VjYzJhNWQ1YzdmYTVhYzcwNjc4MGJkNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM3NjFhYWM2ZDFkMGE1NDM5M2ViYTUwZDY4NjA1NzIzNWJhZmY4YzdkMjgyZmJmMzkwZTlkM2M5NWNlYjNlYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1190d349089741bfa88c40468e7ca218",
+      "statement": "The read-only projection commands have distinct scopes: `status` is the daily summary (one `harness_status` payload combining inspect, doctor, daemon, state, workers, and latest self-verify record, where `ok` requires no collection warnings and successful state/worker collection plus `doctor.OK` — not `doctor.healthy`), `inspect` is the install/native-integration detail projection, and `doctor` is the cross-system diagnosis.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/basiccli/inspect_doctor_cli.go#L27-L51",
+          "version": "repo-lines-v1:sha256:b40e94e07ac65c114f9e24f09ff568118cc01cf82e1a9bd4659d7c67345b68d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4NjQwNmJlNmU2MmUwNmU5OTUxNzRhNzliNTg5NWJhNjJkMDgxMTU2ZWE4ZTg2MjRiMmM2OGYzZGRhMWQ2ZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyODYxMmE5N2FmYzUzMWVhOGVmYTNhZWQxMTIwMDUyYTU3NDM3ZDI5MjBhZDczY2ExNzkyZWEyYjY2Zjk3NDUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/statuscli/status_verify.go#L16-L112",
+          "version": "repo-lines-v1:sha256:00391a2e29e8896fc0987d1c2800ee615eebe6878c34b994f6836f8d77170255:eyJzZWxlY3RlZExpbmVDb3VudCI6OTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiYmY5MThkYWE3NDIwMGYzNWMzOTQ5NmMwOTc3NzIwNWExNDRlMDEyNTE4YjMyMmU3MmIxYTViMTJiODg0ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZWFlNjdlYjU5MjU0NDllZjI4NjdhOTBmYjI2M2FkNjJiOWNjZDY0OTM5ZjFjYjJkYzZlZTQ0YmZhOTUyZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dc90d421cac34452a5f43d2a2de67cd5",
+      "statement": "`status` shares the observed daemon admission snapshot with its embedded doctor evaluation, so a saturated daemon surfaces as the `daemon_connection_limit_reached` warning in both `status.Daemon` and `status.Doctor` from one probe.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/statuscli/status_verify.go#L62-L98",
+          "version": "repo-lines-v1:sha256:cce5c0a3ddcde14d0cb2d49989ae7254e51f4224d2c459346e6fb624d9808dd9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZjExZjAzMDhlNjhlZmVkMjc4M2Q2ZGVjZDNlY2Q0MmVjMzlmZDlhZGVlMTNlY2JmNGMxMzAxMTg1MGU3N2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiNDI2ZjVlMTc3M2JkNDhhMTU3YTdiOGJiY2JiNDAzYWIzMjI1ZDA2MDE2OTg5OGUyNDMxYWU1NWY3OTFjYTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2ZTVlNTczZGE5MWJjMTAzYTY3OTg5ZGI0NzU1MTkyZTdiY2Y3M2VjYjIzN2I5ZDEwNzRlODkwYzI1MzEwZTgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/statuscli/status_verify_test.go#L51-L88",
+          "version": "repo-lines-v1:sha256:28f859ba03151978d5bc9ca93c6be78d38bdc1b95a01f58624f4e076e0dc4da6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5ZjA1NzU4MzhlM2NhZDllYWNjZmU0OTRlOWFmOGE0ODhjZjczZDU2Njc3NzZkYTdkMTk0ODZjYTFkOTk1MDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzZDk3ZDJiZmRmZGU4MGM2YmUzNjUwN2Y3YTM4ZjZkM2M2ZWNlOTk3NDY5NWMwNjk3YWYyODhiNTMxZThmNjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4436d82383334cbd834742ffd55051d2",
+      "statement": "Daemon paths resolve in order from `HARNESS_DAEMON_DIR`, then `$HARNESS_STATE_DIR/daemon`, then `~/.local/state/agent-harness/daemon`; the directory holds `agent-harness.sock`, `agent-harness.pid`, `agent-harness.lock`, and `agent-harness.log`.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/paths.go#L19-L42",
+          "version": "repo-lines-v1:sha256:71267f2acb71146e87039368465f294dd55bcb8166612a318244f28d01182d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyYmJiZGUzYzU1OGE3MWViZGU2OGEzZmEzYzYxODViNjQ1YmVhZWIyMDJiOWYzNDZlNmU5ZjE3MTExNjg0ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1YWY2ZTIwNWUzYzEwZTkyODU1ZGJiZTc2NzQ0ZjNkYWJlMjEwYmViMTczMzBmMjJhYjIxMDljMDFlNGYwNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiODE5ZjZmZTkzNDNjZjY4Nzc4MTIyYmY2ZWUwMjFiMjVhOWE4ZDlhZWMzNTc2YzUyZmJhOTc2YmQ0OWVlYWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_55862a57a3f44048b44c8dea0cc96660",
+      "statement": "`daemon status` classifies the runtime into exactly one code — `ready`, `stopped`, `socket_unreachable`, `instance_identity_mismatch`, or `instance_record_unreadable` — by reading the pid/instance record, probing the socket handshake, and verifying the live OS process identity; `ready` additionally requires `identity_verified` with the pid matching the instance record, and a reachable socket without a matching instance record is a mismatch, not a healthy daemon.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L12-L18",
+          "version": "repo-lines-v1:sha256:59188b581604224785654b40980f79d98f3ebe455b4bb9ad8c607b0accbe69bd:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDlhZWZmY2ExMDdlMTAzOTM1MDllNjNjZDY5YmYxNDk0YmM3ZGIxMGFmODRiZGVlOGYyNmJjZDFiZGI4MmY0ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2VlZmFjNTQ5MGJlY2QxZGEzNmUyNTZjNmNkN2FlYzAzN2NlNGI2MzdlOGUzOWRmOWIxOGRkODZiM2RlYTdmMiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L39-L112",
+          "version": "repo-lines-v1:sha256:5826b4c8c0a4d332595ea165b562d3b34b1a1488c6a432c0bc45afec55d9374b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMGYzZjdiY2U3NzQ1ZjZmNTFhYTQ4OWI4YzY2MWM3YmQ3ZGE1OTIyNzY2MTcwZGIyNmQ2OTkzYjMyNzk0MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1Y2IxYmJmMWFiMWVlOWZmMmNlNTJlMDY1ODU3NjFkY2U1Mzg2ZjQ1ZjU0ZjNlYWMyYmI1MjE3NWIwNTg4YjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_18ceebe193a9458e8afe280a7c402141",
+      "statement": "Daemon identity binds one lifecycle behavior to exactly one OS process: the instance record carries pid, process start time, executable, instance nonce, build SHA, protocol version, and generation (all required, absolute executable); start-time equality guards PID reuse, and on Linux the stable `/proc/<pid>/exe` makes executable mismatch decisive while on darwin ps-comm projections may legitimately change when `ah update` moves the symlink, so the file/socket handshake seals executable, nonce, build, protocol, and generation.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L145-L157",
+          "version": "repo-lines-v1:sha256:e0a77ed53008cbe7ed55dd28f5e833fbb96b16c5d0e37775d9ee35c1c78bdf71:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMGZmY2Q3N2VmZmU5NTBhOTJmNzc4MzU5MWE3OWE3MDM2OTc0NTAwOGQxY2E4YjBmMTNjNDYzY2Y0MmQ1MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4ZWU0ODQ2NTYxZDE0NjU5NGUzYzkwZTViOGM5ZmUyM2I2ODQyYjZhNjZjNWM3YmU2NWE4ZWMyZWZkODc0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1MWZiNGI5ZGZmNGYyOTc3NzU3M2Q4ZDIzNWNhNjU2OGUwODhiZWM5Y2ZhMDFiZmY0ZmU1MjY0MWIyNmU4MTMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/instance.go#L11-L43",
+          "version": "repo-lines-v1:sha256:c82d52bd90a2dd740edacdf7dbba5a2d5e8c5d0a90a6de927bd03caf6c0b8161:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjOGVmMDUyNTI3MmViMDc1NDVkY2ZmMjk3NjE0YzIxMjI2Y2YxMmRjNDZlNjhmZGM3ZmY1MWYzNTQ1ZjY0ZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlYzFlNjM2NzZjZjI1ZmQxMGRhNDM3ZDM4YzQzYzZlNTc0ZDFiMGE2ZDI0NjU0MTZhM2RjMmE1MDM0Y2ZjMGYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/process_darwin.go#L9-L30",
+          "version": "repo-lines-v1:sha256:43383994a98d3db8c589fffa1853e82829a085a00854be66d3723708db5aec16:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjNjZWZlZDFiMDg2NzIyNTg2Nzk3ZThhMGIxMjAzOWNhMzM1ZWEyMzg5YWJkZGJhYjFkNmRiNGJkNTc2YjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/process_linux.go#L21-L52",
+          "version": "repo-lines-v1:sha256:f764a77167cc673a2a87d277f3759aa70cfa1f74a035aba30ae91b4cf437c2de:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjNjZWZlZDFiMDg2NzIyNTg2Nzk3ZThhMGIxMjAzOWNhMzM1ZWEyMzg5YWJkZGJhYjFkNmRiNGJkNTc2YjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1ZGM5YTI3NTg1Nzg2OGE5MzliM2FhMzAzOGMwZjViY2M1MzhkODNjNmFmMThmZGU0MzI0ZGI2ODdhMGZhOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1Y2Y5ZDhiN2Y5NmU2ZmI3M2QyYzgyMjBlOTY5ZGU3MGYzM2QxZjA0N2YyZTk4OWE2ODhlOGQ3NjM3Nzk3ZTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c171202721e741c799d24ad45fe6cf49",
+      "statement": "`daemon start` is an ensure loop: a `ready` daemon returns immediately and an unverified status aborts with that status code; otherwise it creates the daemon dir mode 0700, acquires the lock file, re-checks status under the lock, spawns `agent-harness daemon --internal` detached with `Setsid`, and polls every 50 ms until ready or the 15-second timeout; if another launcher holds the lock it waits for readiness instead of failing immediately.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon.go#L32-L32",
+          "version": "repo-lines-v1:sha256:d03ca9414af81b36b940f980a9c525a6055c7e0f2cf297694198fc5e381ecf67:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDAzY2E5NDE0YWY4MWIzNmI5NDBmOTgwYTljNTI1YTYwNTVjN2UwZjJjZjI5NzY5NDE5OGZjNWUzODFlY2Y2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDAzY2E5NDE0YWY4MWIzNmI5NDBmOTgwYTljNTI1YTYwNTVjN2UwZjJjZjI5NzY5NDE5OGZjNWUzODFlY2Y2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjc5MTUwNjgwYjAzYWQ5MjcyNzk3NDk5MjU5ODkyYWVmZGU1YTEyMzA0YzRlM2JkZjgwMDdiMDQxY2IzNmFhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmE4MjE3YjAxNWE4ZTZmNDY2MmEwYTUzMWM0ZDRiMmI1YzI0MTAxZWM3ZmU2YWY0MTYzMmMyYmRlMTY2MTkxNSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_start.go#L165-L183",
+          "version": "repo-lines-v1:sha256:c20b1c5f1d9228571c71d404cf44b1736e91de071ba005cf68380716f74175a2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyYjdlYTg0NGIxZjA3NTZhNTBlZWFiNjU2MThmODNlOTg0ZjQ4OGQ5OWE2ODY4ODI0YTgyNmUwMjJjYWMzNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczZDI3Mjc5ZWMzNmUwM2M3ZmExNzY5ZDg1Mjg3NDRlNDA2YjczMTdlNTJlOTI5ODAyYjAzNTdhMjcwNDEzOWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3OWQ5NDU2N2Y1Yzc2N2Q5Y2YwM2ExMTkzYzc0OTA0MjI0Yzg0ZGNlYTQ2MThkMDA2ODA3NTVhOWIzZjAwZmUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_start.go#L52-L120",
+          "version": "repo-lines-v1:sha256:094f1c5d247785cf8c5aa83fe656e3b7e214c5ec3d3f4172cf181e0d623d7bda:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NzU5NDk0YTM5ODYyZGM5ZDVlN2U4ZTYxYjNkODVjZGI5MGJhZWU5Mjc4OWZjY2ZhZTRmOGEwZGMyNzJjMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmNDZjOWIwMDQ5NjgwNjg1M2E3MDJlZWZhOGU3M2JlMTliZTNlNWEwYzYxNTcyMDkxN2YzZjQ4NDkyMTIxYWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTM0NDEyODYzNTUxMmU1MjNlMWVlMjI0Yzg0OWYxNzljOTEzZTYyMDViMTlmODY4MGIwZWJkOTJiNmMzMzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fbb3921b88e44339a31d1b297bc64b1",
+      "statement": "The daemon start lock recovers from stale locks automatically: a lock file older than 30 seconds or held by a dead recorded pid is removed and acquisition retried once, while a live holder causes the launcher wait path; operators should not delete a fresh lock by hand.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_start.go#L78-L85",
+          "version": "repo-lines-v1:sha256:c68acfb4cc254fa7847c2c8ce5cd3192193dcc04271acbdb4c273bcf3ecd481a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGQyMTEzNzJmZTc2MGMyMWEzMzgzZWViYTdkNWNmYmIzYjY2M2U3ZmY1MzhiYjQ5YWU5YmUxMDlhNzYxM2IwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTZkZDNkODlmNDgyNTFkZDdhZTMyMjBmYmVkMDYzZjJhZTAxOWE2NjkzNDJjMDc4YjIwM2U1NDViNjc4Yjc1YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTg1MmI3NDUwYmNkMGMxMTdkYzVlYjY0MDllNjJmMjM2YTIzOWZhNWFjNmEyNjdmZDUzMDI4MWM2NmQxZDQxYiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonlock/lock.go#L12-L48",
+          "version": "repo-lines-v1:sha256:833d53afe5213dc8da54eb5d2e6065c44efff3f3041b1c3c752cfdb38cdbc3be:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzOGVkNGY0MDQxMGQ5NjdmMmZmMjhmNGZhZDM0MmQwZjVmZjIzZTExMzVjZDVhOGYzNDVkZjdjZWUzM2UzOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_68772d2be9844268bec56feb9df24a3d",
+      "statement": "`daemon stop` is idempotent over stale artifacts: when the pid record references a dead process and the socket is absent, stop cleans the leftover pid and socket files (\"cleaned stale pid file\") instead of refusing, so a crashed or externally killed daemon cannot wedge the post-install stop-start refresh.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L247-L253",
+          "version": "repo-lines-v1:sha256:ba95b2fb08ed531c3c7cf215a615a50e1c2c25301d996e7cbc606728710b01e9:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGIyNzMxMWE4M2E0MmFkYzg5YmY2MzgyYzBiMDgzMjVkMDE2NzlhNGE1MDVkYmE0NzE0MDQ5OWZiMDc3MjJlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDU1MzcwYTQzZWJiN2JmZDE0NmI4MjBkZTMyMjU2ZDA2ZmJmYWUwMDExMDM4YzVjNDRjZjQ3NDMzNTFkYTIzMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTViNTNhNDNjMDI5ODlhYjcxYzI2NzhhNjI3MmQ1M2QwZmUzMTk4YjM0MmUzNGZlODEwYTYzMzA4NmViYWNjNiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L315-L326",
+          "version": "repo-lines-v1:sha256:9b148da5c4849949051bf4ef755323b841e21f3357159ba88d5dff970742032b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1NWRmNzBjM2ZhZDlmZGUyNTNmMzI0NmZkYjU5MjM5ZTk2NGU4MTgzZmU5MjdiZTI0YWU3ODYwYmJkODgyZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1MTNhOTYwZTNiYjVjNjM0Y2YzODdmMzlhNmY0NmQwZmExNDM2YTdiN2ZhOWU4NTgwNDdjZTFlODhjNmQ1Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MTE5OTlkZTcxOTUyMTMwYzZjNTRkOTdkZTMwMGY4NzdkNTAxNmU3N2Q3ODZjZWQ0NjBkODg1ZDI5YzE3NjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ad81ad316491460ca2efc5ed2ceeb1f8",
+      "statement": "`daemon stop` refuses to signal an unverified daemon: it stops cleanly only for `ready` status or `socket_unreachable` with a matching live instance record, re-verifies the OS process identity immediately before SIGTERM and again before a forced kill (re-checking liveness to avoid misreading PID reuse), waits up to 3 seconds for exit, and on any identity change aborts with `refusing to signal/kill unverified daemon process`.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L239-L313",
+          "version": "repo-lines-v1:sha256:413f1930daadaeb51d8f5134e1d71081eac3824ac90b9d190bff23074811d571:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkMzAwM2YyMTJkOWM2YWMwODg4OWNmZGM5ZTA2MzdlZjFmNGIzNTFjNDlhZTM0MWFlOWJjZjAxMmFhMTljZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0ZWIzNDNkZmFlOTY3NzFmMGI0YmQwZTYyZTQ3NjkzM2E0ZjExY2FkYjM0NjU0MzZhMzk5YjhjNDA4NTliOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1N2ZlMTM2ODFmMTljMDZlYmYwMDU5NTYwY2E0NDBiN2RlNGZjODM5NDQ3MjI0NzRkMWNmNWM3YjYxNmE4MWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2738e0d9e3d04b96b5d32b7d67ca2d01",
+      "statement": "Daemon admission defaults to 256 concurrent MCP connections; `HARNESS_DAEMON_MAX_CONNECTIONS` in the range 1..4096 raises it and out-of-range or unparseable values fail safe back to 256, while idle MCP connections are closed after `HARNESS_MCP_IDLE_TIMEOUT` (default 30 minutes) so abandoned clients cannot pin connection slots; `daemon status --json` exposes `active_connections`, `max_connections`, `accepting`, and `draining`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/cli-and-mcp.md#L143-L148",
+          "version": "repo-lines-v1:sha256:deeb1c78ea5b46bb5103b1ea129bf81fd79084faa40f85faa6ef303d534a2ba0:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQxMTkyNDllZDgzZjk2NDc2NTQ4NjMyMDg0MDRmODEyZDNmZjg2ZmZkZjMyMmJjM2FmNzcwNDEyNTVkZGVlZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODM1NTJkMjY2ZjEzYmQ1ZDQ4NmRiM2JhYTZhM2YwMzc1MmE4NmY3YTg5YzIwOTBhNmRiNDA5NmFhMDk2ZDViMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWM1ZmNkMjI5MTBhZTY0N2QzYzZhMWU4N2RjZTBlYTBiMmI1Njc5ZGNiYjEyMjZjNTY5OGE3MGM2MzFiMjFhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjU5ZWFkMzVlMjU1MTk5ODIwNzU3N2U1ZTkwN2NiNzU2ZDI3M2E0ZGY5MDJiMTNmZjdlMjZlYjM0MWJiYzgwNCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_server.go#L18-L52",
+          "version": "repo-lines-v1:sha256:b101ddd338990da9185f2e7dcf191dc0a41f91a97e214690cdde107e48927c03:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYTg3YjcwMWQ2MGVjMjMzZDljYjQ2YjY0YjAzODg1NGNiNzFmZTU1MWRlY2IxM2NhZmYxZDNkNGU3ODcxYTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1ZDJiOWRjYWU3ZmQ3ZDk4ZGUwM2IyZTQ2NWJlMDJlMDJiNzI3Y2MwOGFkMDA4ZDVkZTBmZGYzNjA5MzE1MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlZTBiMDIzNDdlMzk5NzhiYTcwMjY4NTI1NjA0OWVmMDU2NTI0OWViOTU0MTA1N2Y3Zjk4N2Y1MzM1MjI4OTYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_status.go#L130-L135",
+          "version": "repo-lines-v1:sha256:5075f27e6909b3ff54e53e8c43f92227bbdfbe4499a145660838f37c0d688182:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQ0MDJjNTk4MzU1YzU0NTIyMWQ0MTE4YzM4MDQ0ZTc4ZTNhZDNjM2U2NjQzM2M2MDRmNGU2MjU5NGYwN2U5MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2U0ZTQyZjcwNDAxN2JmZjExZWI4NjE4NDVkMzJhMDQyNGE2Nzg4YmExZTc0NDI4YWIxMjYwMmM4YTNmYTJmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjgwNzZmYjRiY2UwNjYyMmFhNzg3MGVkZGFhY2U4OGNlMTIwODY1YzM5ZGUxMTU5NmRiMjUyMGNmNGI3NjM2NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_be237d9c41de4316b5bc14db77240fc0",
+      "statement": "`agent-harness mcp cleanup` is dry-run by default (`--dry-run` and `--apply` are mutually exclusive) and terminates, only with `--apply`, orphaned `agent-harness mcp` proxies from the current checkout that simultaneously satisfy: exact `<executable> mcp` command line, verified identity with start time and executable, PPID=1, and a supported platform (darwin only — platforms where PPID=1 can be a live host, such as Linux containers, reject with `skip-unsupported-platform`); live host proxies, other checkouts, external MCP servers, and identity-unresolvable processes are skipped, and the candidate's identity is re-confirmed against a fresh process enumeration immediately before signaling.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/cli-and-mcp.md#L150-L150",
+          "version": "repo-lines-v1:sha256:6385c5d0e4c0bbdb46dd648ba21ae1456ebc10954074a19983a4e2b5fcef8be9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM4NWM1ZDBlNGMwYmJkYjQ2ZGQ2NDhiYTIxYWUxNDU2ZWJjMTA5NTQwNzRhMTk5ODNhNGUyYjVmY2VmOGJlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM4NWM1ZDBlNGMwYmJkYjQ2ZGQ2NDhiYTIxYWUxNDU2ZWJjMTA5NTQwNzRhMTk5ODNhNGUyYjVmY2VmOGJlOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTlmY2RjMzE5YTgyMjRlMzFjODdkNjFkNTcyNzNhNjYzYzRmMTE5OTQzNWI1NjgzNTcyMzVmNWY3ZGMwOGFiMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTI2Y2M5NTM4OWE3ZWU5YmE4ZjY4MTczN2I3YmQxNjZjNjg2N2RlM2Y2ZjVjMmM1MTY3NjU4MmMzYTc0MTM4NSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/mcp_command_facade.go#L21-L47",
+          "version": "repo-lines-v1:sha256:79fb42b2e237091cdd3841685a8e152f5f9d0f37c742af8b906cb4e3062799cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYjk1Y2E5MjE1ZDZhMTljNTUyMWUzZmJiZDczYTIyMTA4YTIxOGRiNjE3ZTFkN2RkN2NiZjhiM2JjNmQ4ZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YjNlY2NlMmUzYTdjN2M0MDZkNzg2NWQ5MzgyNDkwZGFkZjJjZDRmYmNkNjQxMjQ0Nzg4YzYxYzRlNTI2NmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap_mcp.go#L16-L114",
+          "version": "repo-lines-v1:sha256:cc97cd5e3e2b4cdf57aa19d3e23f1a990d430049f6957adae370022e9e5521a2:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmM2YxZGI2NGFkMzRjNWYzMTNiYjNiOTM0YWZlNGY4OTM4NWM2MTJhNTQ2OWQxYjYxZTI3NDkzOTgzN2E4ODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5YWVmZmNhMTA3ZTEwMzkzNTA5ZTYzY2Q2OWJmMTQ5NGJjN2RiMTBhZjg0YmRlZThmMjZiY2QxYmRiODJmNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZTM4NTY1NzlmNDU3NWZmMWU5Y2Y4ZGVjN2EyNzU2ODNmOGY5MzY1NDVjMTAwODU2NzFhN2I5NjI2YWQ1Y2UifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap_mcp.go#L163-L200",
+          "version": "repo-lines-v1:sha256:b5dfab1e589ff2b649d8a346bf2ef553654374a482b69de9e2e18d153f6ddc77:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5NTk1YTBmMjBkMDU5MjM1MDIxMTcwNWJiNWQ4ZTVkZDE0OTM4YjYxZmExMjk2ODYyMTdkMzVkMzRlNzE1NGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxMmMzZDU4MTAzOTc2YzAwM2QyYWE0YmNhY2Y5NmM3YTU1N2JjZDQyODRiOGMyYTU1ZjI3OWJhMDMxNTYzNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1NDlkYzBlNTBmOGRiZDMzMWRhNTMzOWMzZmI1ZjVmYjFhNTY5MTZjNTZjYTUyNTIxYWJhOWY1M2VkNmNjZWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4285d75f08b4f90aaa1d0e053515ebf",
+      "statement": "State commands operate on user-state storage, never target-repo source files: `state prune` is a dry-run unless `--confirm` is passed, `state doctor` is the narrow integrity check over the user-state store, and `state maintain` compacts store WALs; when full doctor reports a `state_store` problem its fix hint routes back to `state doctor --json`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/cli-and-mcp.md#L46-L56",
+          "version": "repo-lines-v1:sha256:c695522f12dcd32c4864ed0431d5e4f0527a4c3d6744d007b97372398a072fb2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkZTJmNTMyOGVlNmU4MDUwZThhYWZkOGRjODY5YTA2OWNkOTU4NGVkYWFmNTRmZTU4OWQ3M2MzYjdkY2Q3OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3NzM4YmM1MzUyODVjOGVkYmEwODViNTUyYTRmZmNiYzVhNTBkOTRhNGQzODM1MjUzYTdhNDE0NWY0YTQyZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5N2I3MjczY2JhMTk2YjUxMzYxZmI3MzM0ODk1NDdiZmQxYTRmOGM5OTg5NTExZGFmZGE3ZjE0NmZiMmU0ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjYTU3ODRiNWI2ZmNjZDFiZGZlNDkyM2I2OWIyOTE1YmM1OWMzNjU3ZmYyM2ZiZThiOTEwMTBjNDJkNjYxMzkifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/statecli/state_cli_maintenance.go#L8-L76",
+          "version": "repo-lines-v1:sha256:91e30e4e15bcb6819f081a627774ce55a21a1ae5bd7cd891da66c43323ee9633:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2MmQ0N2U3N2JiOTg5ZWIyNDk0MGRlZTQwZDlkYzdjNGE3ZGQwM2ZiYWQ3MjVkMDZiNzA5ZWY1MTZiZWJlOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/doctor.go#L36-L47",
+          "version": "repo-lines-v1:sha256:08c03571b40afdb1ee1a4a991e1eee5d6307a79a3ba4cc5eac581d2a8f7e969a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1OWU3NWZkMTczODgyY2FmODYzNDBjNDhhYjdmYTlkMGU5MWIyZjMyMjEyOWNmMTkxZjQxMmU2MmJmMDkzZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmMjlhYTA1MTliZTBkZTM1YWM1ZmVlMWNhZjk5MzljNDBjZTFlNzU0NGIxOTE4ZmM1NzJmMWY0YjJjMDE2ZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhYTQyNWE5YWUzNDNhMzFlZGRhNjQ5NzBhYjAyZmQ1MDcwYjNmMTgxOTg3M2RlOTQyN2NkOTkyZmYzNzQ1ZDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3eb3651aa0f74e40bd65c99a9aab4759",
+      "statement": "`agent-harness doctor` is the sole public cross-system health gate; its checks cover the binary, daemon admission, state store, operational state (IssueOps records/bindings, worktrees, refs, optional Orca inventory, unexpected user-state artifacts), project lifecycle namespace, project docs, repo-local runtime-state leakage, loop contracts, pipe capacity, loopback MCP gateways (reachability plus fd-pressure threshold 512), native user-level integrations, and binary drift of `bin/agent-harness` versus the newest `.go` source; health fails on any unhealthy check or error/warning issue.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/troubleshooting.md#L13-L13",
+          "version": "repo-lines-v1:sha256:abb52d92e16ae07d01b4e5c97ea86de589dacdb4f611dfb76b6188c4035774a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWJiNTJkOTJlMTZhZTA3ZDAxYjRlNWM5N2VhODZkZTU4OWRhY2RiNGY2MTFkZmI3NmI2MTg4YzQwMzU3NzRhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWJiNTJkOTJlMTZhZTA3ZDAxYjRlNWM5N2VhODZkZTU4OWRhY2RiNGY2MTFkZmI3NmI2MTg4YzQwMzU3NzRhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjU5MmU0ZDNmYWI1MGZjZTliZDdkN2NhNzJhMGEwZjcyZGRhNjYwOTAzYjMzZjA2ODhkZGNkYmJlNjM3MzVkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzZlZjk5OTkzM2E3ZWE3NDcyNDYxOWY5N2ZlZWE2ZDM5ZjlkOWU0MzY0ZTgxMWE5ZWM1OWQ5NmVjZjM3OTc5NiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/checks.go#L19-L23",
+          "version": "repo-lines-v1:sha256:049bc57eee5858d6f9f2fbf4ba48524b5661b54ed736a7210c3ab86ab1969e89:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IyNGU3ODY5NGQ5YWRhM2I5NGJhN2QxYzg5NzlmYTZlZjFmNTU4OTZjOTNiNWE3ZDJhMjkwOWZkM2I1MDUyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTYzZmU3ZWJhMDcxYWRlMmFjN2RhNjE0NDk5MTA2OTRkYzM5NmQ0OGRiZGM1Nzg0MGZjOWJiYTc4MTJhOTQ4MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjRiNDJjNjY2MjdmOTcyYTA0NTZiZGE5ZTIwY2FjNTNmOGVmNDBlZmUyMWY3NTlhMGE0YTIwZGMxZGNiYTRmZSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/checks.go#L309-L344",
+          "version": "repo-lines-v1:sha256:08a7a6001de76a558ca99f0b8b9eeae838b711e89b6bfc30546a3b5ed41137f8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjMjFhYTVmOGM1ODk5NDMzMmFmNmFlNjY1ZjVhMGZmMDcyNmQxOWNkMjU5MzJkN2ZjNjgyZTJhMzI2ZjFkMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU2ZWY4NTdlMDY3N2MzZDc3NGVjZTFiOTI0NTQ4OGU2NTQ4ODI3MmVjOWU2MTRkZmE3YjRhMjUyZDE0YWM4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/doctor.go#L112-L124",
+          "version": "repo-lines-v1:sha256:224c7df2e7970a5775b2f6e5433da4b232d45c0cfc1b231648c6a037786a8f57:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5ZGVlZWNmNTgzOTc4ZjMyMDRkOTY5ZWYyMjUyMzdkMjAyYmQxYTYzNDA5OGFjZWNhNzliZDI5ZWNmZDA2ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmOGMxZDViZjYwYjU2YzE1NjdjOTlkN2YxMTlkM2Q5OWU0MjM1YzU1ZGVjZmE4MTRlZGMwNjc3MDM1ZTRmZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1MDY3ZDcwYTEyYzhjOTRhYWU1NjQ2NWFiYTVjNjc4MDlkYzVhODBhMTM2Mzg0MDY2ZWJjN2NhMTNkOTlkZGIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/doctor.go#L33-L98",
+          "version": "repo-lines-v1:sha256:8109081b2661a2358c1b26adcdd2bfcc9a2727d0ca7e1f085c8e8c3f67e6d2d8:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2OTRlMTUwNzdhNjNkZjZjNWMyYzkyNDBhN2Y5ODU1ZmJmYjc1Mzc0ZDg3MWZiNmZiZmQ3YTBhODBjYTM0MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4OGJhZWY5ODI0NjFhODk0NTkwOGFkODNkNzc5OTBmMDNiNTU0NjA2YzJhMjllMGY3ZWEzNzBhMWFmMmMwYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxY2E1OGIyMWU0ZDBmZWM2NjM0YzFmODYzYzMzNzE2NDFjMzMzNDk4ZjkzMDkwZGU4ZDcyZjBlM2EwMWU1NGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3b6405cc597945b487c564eba2695345",
+      "statement": "Doctor preservation is invocation-only: `--preserve-cycle` and `--preserve-terminal` take repeatable exact values, deduplicated and normalized per invocation; they never create persistent exceptions and never cure incomplete or duplicate identity, and a plain doctor invocation writes no state. The default interactive profile accepts the user's own open Orca terminals and message history, while `--sealed` re-selects the strict residue contract.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/troubleshooting.md#L16-L20",
+          "version": "repo-lines-v1:sha256:cf12c7c9303f8b694fd631e0f0f6fcd75681c356bc73585f9fb6cb1bf4b5fe1b:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVjZTNjMzMyODhmZGEyYzI3ZjVhNDQ4YzM0NjFiYzNkODQ3MzA0NGY5ZjY2MGIxYmE5OGU2YjkzYWIxYTEwMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWIzNDllZTc4ZTU2MmM2MzY3NjgyMDkxNTkwNGE1ZGYzNjBiMjE5NTRkOGJmMWYwY2IyMmUwYjQ0MTczNGIyMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTFiM2FkMDc2YmRiZGI0ZDRmMTQ1NjJjODA3ZDNjY2FhZjRiOWNkOGRiMjIxMTg5YzM0NWYxNDJhNjk4ZTg3MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTdjMzAyZDVlMTI1ZWY5ODJjMzE1YWZiZDVjNDNkYTkxODkwOWExNWRlOTRjMDg3MThkZDFhYjY1NDY2N2MyNCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/basiccli/inspect_doctor_cli.go#L134-L160",
+          "version": "repo-lines-v1:sha256:44f5e0869fd6620879f7e8db776c958bfb278600815c10fbcdfd2387c1fe4972:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZjA2NzdlNDdlNTVhYWFiNTY2OThjZjE4YWJmNzY1ZjAyMDA5ZmExNzcwODQ2NTFjYjdjNGY5MTVkMmIxNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/basiccli/inspect_doctor_cli.go#L53-L66",
+          "version": "repo-lines-v1:sha256:3b843bbe2438f94d93bcdf626294f7378b9546fd0f78a5163ce94ccc5d4ab301:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMGQ4NGMwMzdhYzQ1MzY2ZjMyMzI4MzliZmQ4NTJiMWVjMzAyNjM5Y2NhZjM2OGU5MDIyZDAwZjQyYmVmZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3ZTE0NDZkYzgyYjFjOGFmZTJjZDA1ODNhNWJjM2VkYmNmM2U5MjFlNzkzZDk5MmYwZTA1Y2FiZjg4MjZmYWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d6923d596af4ebb809925df8f585518",
+      "statement": "Doctor's operational contract: an active IssueOps execution is live only with a complete generation, native process receipt, canonical worktree, and mode-specific resource identity (process absence alone never authorizes interrupt, deletion, or lease replacement); Orca is optional and its absence is healthy only when no durable cycle claims Orca resources — otherwise inventory is unknown and doctor fails closed; the stability audit builds the binary then delegates operational judgment to doctor, where `--preserve-terminal EXACT_HANDLE` takes precedence over an inherited non-empty `ORCA_TERMINAL_HANDLE`; `--static-only` skips live operational, daemon, pipe, and MCP probes but retains `binary_drift`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/troubleshooting.md#L19-L24",
+          "version": "repo-lines-v1:sha256:125f776e3fe0b1936dd5d81fb33e7c59b9f989133c8e39c6a00cf9a05a0f5e57:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Y0MDk1MGQ5YjlhMGQ5YjkwZDVlYjhkNzM5ZWUyODIwMWRjZTdkN2MyZWY2ZmZjYWVmM2M5NGI1OGY2OWU5YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjM3NzkzM2UzYjEzY2YwYjI0ZmNkMTQzZTllZmU4YWM4NjNkYzc4OWEzMWEzNWI1OWNiODdiNGRmY2ViMDc4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjk1MDQ2YWE3ODE0MTljMzcyODA3MzA5M2YzMTFlYzJmM2I0MjQ2Y2E4N2Q2OWE4MDVhMmNmZGEwYWViYzY0NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTAzYjBjNzAxNjI5MzQ5YmU0ZWQ4ODYzNmZlOTRkYTNmMTVjN2U4ZjA5NThlMmMzMzg0YzY2YWY4ZjY1OWI2YSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/basiccli/inspect_doctor_cli.go#L85-L113",
+          "version": "repo-lines-v1:sha256:96d45e9c72fba3969e3f9a15c3291bd5e810f39a583b2280704440360ad42a74:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMTE5MDhlZjhmYTM3MTczZWEyMTQwZjVlZTI3YjYxY2QzNzdhMmVjZTZlYWRjM2VjN2VjZDg3NWIzOTBkZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YTliNWU5MDE5YzhkYjg3ODNlYzljM2ZlYmIwYTJjOTg2MmY2MWEwNWMzMDhmZTg5NWU0YTliZWQwM2VkYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNjNlNTE1NjI1NDk3ZmQwOTJlY2M2NzI3MzUxNzRiNjE0NDkxNTEzMGQxN2E5YTkwOTY1MzFiMjQ5MGRiZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjNjNlNTE1NjI1NDk3ZmQwOTJlY2M2NzI3MzUxNzRiNjE0NDkxNTEzMGQxN2E5YTkwOTY1MzFiMjQ5MGRiZDkifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/basiccli/inspect_doctor_cli_test.go#L132-L155",
+          "version": "repo-lines-v1:sha256:c329808bbfe27c500cf60963d304dda06f5a6977d7ceeb967f1615f3360d878b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZGJmNjFmYmE5YjZjZDJjYmU4MzgyN2NkNzRjYzFmMjUwZjRjM2NjZDM3MmRiNmZmMjUwMmM4ZWEyODBiYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNTg0YjFmNTRhNDAwYTNiMzBlYzM5MGU3MzdiMzNiNWE0MWUwYjM2NWYxNGVhNTJhMGMwYjNlZWU4OTA3YTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0ODAxYmMxZWI3Yjk2NjA2MzIxYzU4MDcyYzkwMWJlMTFlZTM2MmEwNWIwZjE1OTk0YWU1YjFjNDc4N2EwZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiOTRkYjlmZDg1NzA2YTkzNDAzNDE5ZjhhMTgwYWM5OGUzN2YxMTdlMmY3N2UzYzMxN2Y2ZGUxYTI5ZjJiMzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4558f44b13d8408491b3f98b713f88ac",
+      "statement": "The approved one-time full reconciliation uses an external mode-0700 bundle at `~/.local/state/agent-harness-backups/<repo-fingerprint>/<UTC-timestamp>/` — not a product cleanup command; Git and SQLite backups there are restore-tested while Orca snapshots are archival evidence only (the CLI exposes global reset but no conditional reset/import/restore), the operator must stop before reset if the final full digest drifts, and after a reset or crash seam the sealed append-only journal is resumed forward idempotently rather than inferring a partial rollback.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/guides/troubleshooting.md#L24-L24",
+          "version": "repo-lines-v1:sha256:2377933e3b13cf0b24fcd143e9efe8ac863dc789a31a35b59cb87b4dfceb078f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjM3NzkzM2UzYjEzY2YwYjI0ZmNkMTQzZTllZmU4YWM4NjNkYzc4OWEzMWEzNWI1OWNiODdiNGRmY2ViMDc4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjM3NzkzM2UzYjEzY2YwYjI0ZmNkMTQzZTllZmU4YWM4NjNkYzc4OWEzMWEzNWI1OWNiODdiNGRmY2ViMDc4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTdjMzAyZDVlMTI1ZWY5ODJjMzE1YWZiZDVjNDNkYTkxODkwOWExNWRlOTRjMDg3MThkZDFhYjY1NDY2N2MyNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTAzYjBjNzAxNjI5MzQ5YmU0ZWQ4ODYzNmZlOTRkYTNmMTVjN2U4ZjA5NThlMmMzMzg0YzY2YWY4ZjY1OWI2YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bfb1eeecbc14d1889d511bc96d62b6d",
+      "statement": "The MCP stdio smoke validates the daemon-backed proxy end to end in a temp state dir: pipe an initialize request, `tools/list`, and a `resources/read` of `harness://commit-policy` into `agent-harness mcp` with `HARNESS_STATE_DIR`/`HARNESS_DAEMON_DIR` pointed at the temp dir, then `daemon stop`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/cli-and-mcp.md#L152-L163",
+          "version": "repo-lines-v1:sha256:849e4cbcd7b90cd41655038e49485f6bc162caf48b72087985ef38e8fcdd4aa7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmNTgwNGRhZTAyZWNkMGY3YTA4ZDFkM2VkYTlhNzIwYWMwNjRlMzc0MTM2NzkxZWQ3MjNmMDVkNjUwOGFlOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1OWVhZDM1ZTI1NTE5OTgyMDc1NzdlNWU5MDdjYjc1NmQyNzNhNGRmOTAyYjEzZmY3ZTI2ZWIzNDFiYmM4MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2MTg3MDA1ODQ5M2IxZGVhYTc0OTAyOGFjZWEwNDUxYzkwNjVhZGI2MDhmZmVkYzIwMzI2YjBhNzZhODQ0OWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_12b2f1bcc6874375a10ba8b074fa0f9a",
+      "statement": "The release checklist runs in order on the release checkout: `git status --short --branch`, `go test ./... -count=1`, `go test -race ./... -count=1`, `go build -o bin/agent-harness ./cmd/harness`, `scripts/release-repro-smoke.sh`, and `agent-harness self-verify --seed=100 --target-score=95 --json`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L14-L21",
+          "version": "repo-lines-v1:sha256:fa6e73698fbcd8039bbf7047a751b64a24bfb0a20b0ce110591dc91e150f9626:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRlMmY1MzI4ZWU2ZTgwNTBlOGFhZmQ4ZGM4NjlhMDY5Y2Q5NTg0ZWRhYWY1NGZlNTg5ZDczYzNiN2RjZDc5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTAxMjMwNGRhMmJlMzQ4ZjZjM2UxYWJiNjc0MTdhYzg5NDM0ODVhYTU1ZjUzM2UyYmQ1MTNjNWU1MGM3NDViYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjQzMDkxMDIxZjNkM2Q3MTk2YjZhMDJkZmU5NWI2OWFjNjdkZjQyMDc1N2M4YjQ4YmVhNmE5ZjM2M2QzMGE1NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1da08405f15b4122893d0dca0c3cc724",
+      "statement": "`scripts/release-repro-smoke.sh` never writes the operator's real HOME/CODEX_HOME: it builds the checkout, runs `install --dry-run --project-local --json` under temporary `HOME`, `CODEX_HOME`, `HARNESS_STATE_DIR`, and a fixture `HARNESS_ROOT`, and asserts `ok=true`, `dry_run=true`, `project_local=true`, hosts exactly `[codex, claude]` each with an ok dry-run, no `files[].written` or `links[].created`, and the fixture skill present in the plan; then it verifies `inspect`, `docs`, and a state write/read round-trip under the temp state dir. `HARNESS_RELEASE_KEEP_TMP=1` keeps temp files and `HARNESS_RELEASE_SKIP_BUILD=1` with `AGENT_HARNESS_BIN` verifies an existing binary.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L26-L53",
+          "version": "repo-lines-v1:sha256:d42e8f171520ed74c4bdb22db11cdfe3a0ddf2b9c9d64d82987b41a9c991ce87:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkNGI0ZTA2ZTQxZDc0NTcyYTU0NzMzZjdmMDI4YWQ3M2NkYTMxMGNjM2ZjNzQ0OTQyNTBiMmNiMGMyNTg1YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2ZDQwOWVjMmE2MGEyYTEwMzZiYzNjM2FlOTQxMmZjMTEwYzY3NDVlODY1MTc1ZmQ3NjQ0ZTg3ZDZkOTgyODQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1Yjc1MTE4MDlkM2I2Y2Q2YjUwZmU4ZmI0M2E3N2E1NDYxYjc5MjRhNGQ0MmVlMzlhYmYwMjViYzc0MTZmYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyNGYxNGQwZGY1NWYwY2JhM2UwYWQ1M2UxNjEyMDk1ZGEwN2UwZTI2OGMxOWM5Y2M2OWRjNWUwMzU3ODVkMGMifQ"
+        },
+        {
+          "resource": "repo://scripts/release-repro-smoke.sh#L4-L7",
+          "version": "repo-lines-v1:sha256:9e4d9306e06926fefeed15506640c12b81a6e68be18201734a4e88af3c1890f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTkwNGExNzYxMTdmOTVlMGE5OGFhODA0MGQ0N2EwNTM0ZDc4NjJhOTE1ZWZkOWRlODRlZWQxZmE2NmUxNzBjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Y3YzYyOTIxMWFiODE2NDU5Njg1ZDE2ZWZiMTRjMGIzMGU0ODQxOGUxMmRkYThmZGJkYjg2ZThmZTVjNThjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGY4MTdlNWU1ZmQ3NGMxYWYxZDUwMGM2MWFmOGI0MzVlMTllNTYyM2UwN2FjOWMxMGNmNmFhODI4ODNiYTk1MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzQ1NTk3ZmZkOWYwMmUyZTk1ZDMzNGY0NTA1NTdjOTkyMGEzY2EzZjQxZmU5M2Q5MDVkYmQxZDA0OTdlMGU3NiJ9"
+        },
+        {
+          "resource": "repo://scripts/release-repro-smoke.sh#L57-L158",
+          "version": "repo-lines-v1:sha256:ff34e2c263b52a26fdd82d55a86b9e3b6c71dff9528b2540c7fc8d5bc77691d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4ZTVmZTFmOGUyOWI4MjIxOGE0MDEyNDE4MDliNjBhMzk2NTViNDk4YmQyYWRhZDdmNDExMTdmOGNjYTAxMDEzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1MWI5YTUzODJkNGYzOWJkYTczZGY4MTYwYTFmZTJhMWE3ZTUwNDgwNjQ4OTNiYzRkMTkxNzc1OTQwNzcwYjVjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwODkxYjc4YWM2N2Y0NzRiMWE3Njk4ZTU1OTcwMGQ3YTBlOGQyN2U0ZjEyMmNkNTAzY2RkNTg2ZjQyOWE4MjM3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5YTRiODE1ZGM0NDVhODMyYjc5YjVjN2Q2ZjUwMDdmOWNiMWY1MTVmZmU0MDg2NmViMmE2ZTBmMGM5YmE3ZTc1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_66f968abcf454deb9e526cdbd45a911d",
+      "statement": "`scripts/release-build-matrix.sh` cross-builds the default matrix `darwin/arm64`, `darwin/amd64`, `linux/amd64`, and `linux/arm64` with `CGO_ENABLED=0` and `-trimpath`, failing if any output is missing or empty; targets are overridable with `HARNESS_RELEASE_TARGETS`, artifacts retained via `HARNESS_RELEASE_OUT_DIR`, temp kept via `HARNESS_RELEASE_KEEP_TMP`; `windows/amd64` is excluded because the daemon process setup uses Unix-oriented `syscall.SysProcAttr.Setsid`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L57-L83",
+          "version": "repo-lines-v1:sha256:cf7a5d430c2ba354e175a690817deef54ae8c70955d88d943969d50ae039ebf4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkYjc4MTMyNjMzM2IzYjUzNDhhODgzMGEwMTM4ZTBlNTIxNTAzOTBkMWY3NTJkNDEzMWE1NTFkZTIwZGZlZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyNGYxNGQwZGY1NWYwY2JhM2UwYWQ1M2UxNjEyMDk1ZGEwN2UwZTI2OGMxOWM5Y2M2OWRjNWUwMzU3ODVkMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0YjI0MGYyMzUyYjQ1ZDlhYmYwM2Q5MWQ1NWFlMjU2YTViZTI2NmZlNzI5NGM5MTNhOGI2NjNkMGE1MmNjNzcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_start.go#L108-L120",
+          "version": "repo-lines-v1:sha256:c02ccfa9d640b64fb91b7b3c0cab2bfbfc72dc8d884cb624cc76efd07e80b215:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMTU3NjJkM2RiYTc3OTE3MzdjNTA5OGU1ZTgzMzQ2N2RkYzQ3YWVhMjg0YmU3M2I3MGMxZWEyODkxYjk4ODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyMTAyMzIxNmEyZjVjYmM4OWRjNTc1NmYyY2IwYzlhNjE0ZDM4NzcxODQ0OGY5MTU1MWNlNjIwMzU1NjU0MDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTM0NDEyODYzNTUxMmU1MjNlMWVlMjI0Yzg0OWYxNzljOTEzZTYyMDViMTlmODY4MGIwZWJkOTJiNmMzMzUifQ"
+        },
+        {
+          "resource": "repo://scripts/release-build-matrix.sh#L3-L7",
+          "version": "repo-lines-v1:sha256:2600efce5e576ec46a4a568e96d91332f5830830166ed023cceb9e66f40d28e6:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Y3YzYyOTIxMWFiODE2NDU5Njg1ZDE2ZWZiMTRjMGIzMGU0ODQxOGUxMmRkYThmZGJkYjg2ZThmZTVjNThjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI2OWZkZDg4MWYyYThmZmY4MDRhZWQ5ZDE4ZTQ0ODdjMjk3ODkxMjcyMDIwNDA0NWVhZDBhMGM1NDcyYjI1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzQ1NTk3ZmZkOWYwMmUyZTk1ZDMzNGY0NTA1NTdjOTkyMGEzY2EzZjQxZmU5M2Q5MDVkYmQxZDA0OTdlMGU3NiJ9"
+        },
+        {
+          "resource": "repo://scripts/release-build-matrix.sh#L73-L93",
+          "version": "repo-lines-v1:sha256:8897b1637e79aad9c6961321b022b1b8964dd4627ebae10bb72bbf823aa99a05:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkN2IzYmUxMjg4MTU4Yzc0MjZmZTQwZjBmZWI1NTM1YWRiN2U1ZmRlMjBhZmQ4MDk0MDYxOWJhYzRlZTZiNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2MjA3MDlmNmU5MDBlMmI2OTZhMmQ2Zjk0NTE1YTA1ODJlNmMxNjc2NDc1ZWVkMWM1ZWVmMzMyMDk4OGNlZGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2ZjM4Y2Q2YWQ3MjM1ZGVhNzM5YWVhNDA5N2UyYzcyMTljYTU0Yzg0ZmY5NmU5ZGFlNmNmZGU0OGJmNmE3YjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c109fa418537418bbee01fee18c93274",
+      "statement": "The distribution decision gate prefers tarball/manual archive for the first release and defers Homebrew until the release checklist, clean-machine smoke, build matrix, one-screen install/update/rollback user guide, identical Codex/Claude `inspect/docs/state` workflow, and current dogfood notes are all green; the decision is recorded in `.agent-harness/ADR.md` (2026-06-13, Distribution decision gate) with criteria owned by `.agent-harness/operations/release-reproducibility.md`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L89-L101",
+          "version": "repo-lines-v1:sha256:4ac1ebe84af0f3916f7e636a8a0810b19fe7c1734a0fa8e7753ea5c7d4a72d84:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NWE3YmU5MzljOTlmYzNhZGIzNmJiMWZhODQxNmJjOTRiNzdiYTM2NTMzZDE3OWMyZjdlOTU3ODRmNzg2MzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmYTc0Nzg1MWQyZjdhNTZjNTIxMGQyYjMzYzBhYjM4NWJiMmIwMzE3NmFiZjNlMDQ3ZGRmMGZlMDUxZTYwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyZGE5ODIyZjA2Mzk5OTgxYTljZTEyM2UxODJiZDdjOWU1MDA0MTFlMDc3NDI5MDU1YWZmNWYxOTdlODFmNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2NTJiMzUwOWRjYTUwODhlMjA3MmNiZmMyODg5MzI5MTE1MDYzODQ2NjlmY2MzNzc4NThkNjgyMTkwMmVkMzYifQ"
+        },
+        {
+          "resource": "repo://README.md#L302-L312",
+          "version": "repo-lines-v1:sha256:364121279f1b1ee4c9f64c9435dedae7b757c216d142494004cbe15c6e3f606c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlYTQ1MmNjM2E4ZDA0NmU0NWUzMDBhZWViN2ViNDZlYjE3YWQ0NWFiMTljMjAyNDlkNzRiZDczYzhjZDhhNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OGI3OGFiM2E5NTA1MzM5Y2JhNTIwMGY2NzZlY2EzMzUwOTEyMmIxZDdkZWVmYTNiNjc3ODg1ZTBkNjYwNDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlYjYzMjcxYWFmOGJjYWU3ZmI4YjZiNWVjOTY4ZmUxNjgzZDY5MzlmYmFlYjU0NjZmYzQ4ZTU2NzUwMjA1NGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwYTg2Y2YxNTBlNTUzYTkyNTRjMzMwMjVhY2I1ZDcwYzg1NGM2MzM4ODMzMDRlOWE3ZGMxOTdhOTdlZWIyNGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_08b95cffa43f4a3bb3ff4eb108cbf737",
+      "statement": "Rollback criteria are: any of `inspect --json`, `docs --json`, `state maintain --json`, `scripts/release-repro-smoke.sh`, `scripts/release-build-matrix.sh`, or `self-verify --seed=100 --target-score=95 --json` failing on the release checkout; Codex or Claude Code failing the same `inspect/docs/state` workflow with the rebuilt binary; or the release checkout needing manual host-specific repair outside documented install/update steps.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L103-L107",
+          "version": "repo-lines-v1:sha256:b91e4389d2506ffeaa8375e996d1e8495cc840869037bce19aca2fc7829606bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTZjYTVjYjk3ODBiNGUwNTc3ZGYwZjhhOTM4YmFhYTEwZDI1Y2NjZTIyMmE4MDVkZDUyOGEwMzM0YTA4YzdmMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTkxMDk5MzQ0MzAwYzA3ZTdkZWNhMGYzOWNlNmFhODU1M2U5YTA2YzA3NjljZjg1M2YwZjIyYTRiMTIwMTZiOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FiOTFlYTFkMzUxNjU2ZDMzYTAxZWM3MDFmNjE1MzBiYTZkY2E2YzAzMDhmMmZmM2VkOWE4ZDY3M2U4OTgxNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODVkZjliNTY3NDg4NGExYzBkYmVmMDRiOTVjMWRkYTYzY2VlZWZlNjEzZTFiZDY5N2Q1NTA0YzZmNDUwMGFjNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_133dc1d6e9724d088262b0b1c8e76532",
+      "statement": "Rollback mutates both the checkout and the install state: the documented path resets the branch to a known-good SHA and then runs `agent-harness update`, which re-runs the installer against that checkout (replacing user-level shims, host config, and the daemon binary), so the destructive `git switch`/`git reset --hard` commands must be taken from `.agent-harness/operations/release-reproducibility.md` after verifying `git status` shows only intended changes — the user-facing README deliberately omits them — and recovery is confirmed with `agent-harness inspect --json`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/release-reproducibility.md#L109-L116",
+          "version": "repo-lines-v1:sha256:71014fd87a06c58cab00b87112978e7bbe25bc272f928fbb3b1611515a9cd579:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTU0ZmQwZTJiZDFlMjM5ZWJmNmU2ZjFmZWI4NWUzOGVlMmIxYmIxZGI4MmU5NDY1M2I4YmZjYWZmN2MzZTMwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDMwYTg3NTljYWMxYmEyZjQ2MGRiNTc4Nzg4Y2MwN2UzM2Q3NTExOGFkZThjZTFjZTJkOGVlZDhhYzJhZmI3NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGU4NjkzMTc4NWQxOTZjODQyOGZjYzY0NGJlM2NhOGMzNmJkZGRjODA5NzgwMDdmMjBmODUzMDM1ZWMyOTAwMSJ9"
+        },
+        {
+          "resource": "repo://README.md#L309-L312",
+          "version": "repo-lines-v1:sha256:ce7285d337e52947c02e1a688fe106233795bd2500bb3df7c9cb587f57ad4587:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjA5OTE2OGZiZGFhZjM3YmVmN2I3ZDk0MTQ2YzczMGM5YzEwNzViMzliODc0YmQ3ZTJiNDU0YmJjZTQ2ZDVmMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODk4Yjc4YWIzYTk1MDUzMzljYmE1MjAwZjY3NmVjYTMzNTA5MTIyYjFkN2RlZWZhM2I2Nzc4ODVlMGQ2NjA0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDRlZGZjZjViOTgyNTcwYmYxMTlmNDU3MjVmYTg0Yzc1MDgzZDU1ZmMzZjQzMTIzNjI3OTEwMzY4M2I5MTA3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTBhODZjZjE1MGU1NTNhOTI1NGMzMzAyNWFjYjVkNzBjODU0YzYzMzg4MzMwNGU5YTdkYzE5N2E5N2VlYjI0YiJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

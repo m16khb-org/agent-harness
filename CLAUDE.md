@@ -18,8 +18,6 @@ Claude Code에서 이 저장소를 열면 먼저 `AGENTS.md`를 읽고 동일한
 
 ## OpenWiki
 
-This repository uses OpenWiki for code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
-
-OpenWiki 갱신은 자동으로 실행하지 않는다. 필요할 때 사용자가 `openwiki code --update --print`를 수동으로 실행하고 변경 diff를 검토한다. 명시적 요청 없이 생성된 OpenWiki 페이지를 직접 수정하지 않는다.
+See [AGENTS.md](AGENTS.md) for OpenWiki agent instructions.
 
 <!-- OPENWIKI:END -->

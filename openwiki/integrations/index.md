@@ -1,0 +1,4 @@
+# Files
+
+- [Host Integrations (Codex / Claude Code / Omo)](hosts.md) - How agent-harness installs and activates into the three first-party agent hosts — Codex, Claude Code, and Omo native — through one host-neutral install engine, user-level skill symlinks, MCP registration, SessionStart lifecycle hooks, and a strict staged activation with readback sealing.
+- [Providers & Orca Boundary](providers-and-orca.md) - How agent-harness reaches GitHub and GitLab through one normalized provider port, how GitLab-linked Orca preparation sources exact-identity issue snapshots from a host-observed glab_api capability or the generic glab api adapter, and how the optional Orca execution adapter projects bounded argv/timeout/envelopes behind core-owned fences with intent-first, fail-closed reconciliation.

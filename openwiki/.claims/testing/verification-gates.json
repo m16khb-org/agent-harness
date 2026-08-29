@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d29211a2de7ac82bbcc3d01aa261d19eee17fe0fdcc207f5952a9261229ccd39",
+  "claims": [
+    {
+      "id": "claim_36cc0e14581f4dc5898b4040d028bd96",
+      "statement": "The minimum completion gate applies to every change including docs-only edits: go test ./... -count=1, build bin/agent-harness, ./bin/agent-harness docs --json, ./bin/agent-harness inspect --json, and self-verify --seed=100 --target-score=95 --llm-eval=false --json.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L26-L44",
+          "version": "repo-lines-v1:sha256:386cdf772357cc2da99f10db5616103435c92be8bcb0bd42e3a582173c4f1003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzY2RiNTg3OWU1NDA1OTdjNTdiNjU0YjIyYzQ5YjYxMzZhNmFmZDAyOWM2OGQ2NTAzZTAwYWE3OTU0MTBkMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiNjIxYmNhYWVhOWZjNjQ3OWExNjVjMjVkMzUzNzliODY5NDZmY2ViODc3YjYyNDZiNGJkODc0YjJkYTdkNGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YzRiM2EyMDdiZDRlYTJmZWM2YzA5ZmM2N2NlZThjOWUzNDUzM2M0MzM4MjY0MDI1NDA5MDJmMzMzYTJlMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMzlkN2I3OGY0ZDdmMmJmMjc3YWJiNWRkNDhlNWYxZWY1ODFkOGM0OGY4NDQ4MDQwZjM2MGRkM2ExOTZjNDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_522b92a14e074a71bc3162bcb18ab238",
+      "statement": "Verification stages are never combined from different runs: if any stage fails, the whole sequence is re-run from the first gate; completion evidence must come from the last single all-steps-passed run, and expensive re-runs never promote partial passes to verified.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L46-L53",
+          "version": "repo-lines-v1:sha256:e327a1e3c71649f403b748a2284bca7816d8b2b0e41b883a02bc65462a5e9a68:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmU4Y2NjZjFiOGMzMTA5Y2Q2NGFmZTc2ZGI2ODVhZDg1MmQzZGFhYjRlYjAzNTE1NWYxYzk1NDhiNzQ1MWNlZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFkMDJmN2UwZTdmM2M0NmY1NzQzZjhlYjcwYjQxNjVhYWQ2NjE4MmY3MmU3M2VkNWVhMDg2Yzg4ZDQ5Y2JiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWRiMGIyZDIwOWNiNGQzNDRjMTc4MzVlYTA4ZDg2Y2ZiNmNmMTg1MTY2NzFjMGQyYmZkZDdhYzJiYmJlMTY2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTIzZjMxM2IxNmJhYTc3MDNkYWNkMDA3OWZiMzE3ODJiMDVmYjEzYjBmYWNmNDMzMGM1ZGVlZTI1YzViOTk3ZCJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/testing/self-verification.md#L78-L84",
+          "version": "repo-lines-v1:sha256:5d871bb607faba0bb598e22ff63bc8cd2860673861859da25d5061076212349b:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg1M2Y2MjhhYjA5YTE0NjA2Njg4ZmNiNjI0NGRjOGY0YWEzYzc4M2NiM2IwNTU5MWNhZDk3ZDEyZTZhMWQ3ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDU1OTJmNjM2NWNkMDc5ZWYxOGRhMWM0YzZmMmFmMjMyM2RhMDczMDY5OGIxNjdiMTI5M2I3YTVlYTJjYjIwOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY0YmFhNzcyMTIwNTgxOWM2MDUwYjg2NjIzN2U5Y2YxMGMzNTNmZTExNjllMWU4NDk4MDY2M2VjMjE0NjQyOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Y4YzRhNGE3Zjg5YjgzZWI2YzU2YmUxOWFkMGU2OGNmMGY3NWFmZDBiYzNhOTU5NWI3NWVjMGI4OGIyMzAzMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1f319a89ce5b43c6a6e7810a9735a8bc",
+      "statement": "The gofmt gate checks exactly the CI file set `git ls-files '*.go'` and passes only on empty `gofmt -l` output (the tool exits 0 even when listing files); local gates must mirror CI because CI stops at gofmt and hides later test/race/self-verify results when formatting fails.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L16-L27",
+          "version": "repo-lines-v1:sha256:fd9a13e036873267f1deca84e7e491dd4ac766c4f0295ccf40f55cc1322565da:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MzFiZmVhMzU4N2JhMDM4ZDgwYTAxNmVlMGI0YmU0NzFlOWZiNmUxZGQ4ZDhmZjQyOWViMzE1OGE2MzYxYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNGM0YmI1NGVlMGY3ZTUzMzEyNjVhNmVhY2FhOGE3NmZjNTEzN2NhMjg2ODI0MDFlNmNlMzhiOWFkNGE0NTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjYmMyMjIxOWYxM2RkNzllYTJhYTljYWVmMDZlNjYxZjkzMzlmNDFlNDAyZWZmOTE3NmNlNmFiMjU4YzA4ZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxZmZkYTlmZDkxN2MyODgyYzRlZDdjNGZlYWVlNjQ0ZjEzN2VjZmE3MDgyYjc4NWYzYzY5NTg2NjIwZTJiMzYifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L35-L42",
+          "version": "repo-lines-v1:sha256:ce30cbb84dceef862e9406cb405d48d2703a3e6fd7c6886dcd916a3ee5d1b723:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDUzYzU1ZDMzZmZjNDBkNTk5NDcxNGQ5MGM1MjhlNDEyNGVhOTAyMjA4NzVjZTQ5ZGE5NjQ2M2E3ZmM0Y2Q3YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmY1NTk3OWNlNzMwMjAzM2U2YjJmZDdkODhmNTM3YTNiOGUwOTFlYTMwNWM4MTFmZmExMjc0YmY1NzY0ZWE1ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDZlMGM5MmRhMjcxOWQ5MWJiYjI5YTAwMDFiNWUwMDljOWZjMGMxMzliNGYwNDc3Mjc0NmQ3NDgzZWM1NWJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDJhNTRhMzllNTRkNmJjYjY0YzI0MWFiMzQ3YWRmYzY4YmQ5OTk3MDY5ZjQxMjdmZTJkMjY3ZTlkZmYyZDA1NCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/validationcli/goformat/validation_go_format.go#L42-L49",
+          "version": "repo-lines-v1:sha256:655ce9cc6a582a815a8b5e8afb527bbeac91248b2ce1d89d27428884a47e606d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMThmZGZkNmRhNDAyMmE1NDFhZTlhYTUxYmE3YWE2ZGE4MGYxNmJiYTYwZmJhMWI2OWU5NmRiOTg4OWRjNmZhNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhiZWU0MzU5YzUxZjQ1ZTIyZTAzM2VlZWI2ZTA0NThkZGI0NDExNjQzMDhjNmRmNzE2ZmM4Y2Y3YWRlODRmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTZmYTI0MTUyOTY4YTdmZjcxZjE5MzVmNTY1OGRiODA1ZjRmMTM1ZmFjMTA0ZTUxMDhkMDYxZmQxZjliMDVmYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3c75e8c13b844f9e92f7e7671d54a5d6",
+      "statement": "CI mirrors the local gates in order: gofmt over tracked Go files, go vet, golangci-lint (pinned v1.64.8 via goinstall with the default linter set errcheck/gosimple/govet/ineffassign/staticcheck/unused), per-skill frontmatter validation via scripts/validate-skill.py, scripts/*_test.py unittest discovery, build, go test ./... -count=1, go test -race ./... -count=1, and a seed-pinned self-verify gate — no LLM or live-skill invocation required.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L29-L34",
+          "version": "repo-lines-v1:sha256:14110c0e3608d3661852e931d2fa8fb839f3135666b3150788a4d6f2db4f2e6b:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWU1NGQxYTZjYWZjY2E1YTM4MDkyZWU1MTlmMDg2OWFiZjJmZjIyOTYzNDE1YzA2NmEwMWVlYWY2NGEyZGY1OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGIxNGI3OGI3YmE1YTZlYzFiZDhiNjFhZjFiNGM5N2FlMmUxNDc0NmMwNDQ3MDFkMTBlODNkMjU2YWE2ZDc1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTdkNjgyZDdjOWVmNDMwZTA5Njg4OTM0NDgzYzVlMWI1ZDkyNGRlMGNiN2IwZWY2NjI2MWRlZjMwZjMxZDU4YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmIwOTIzY2UwMjBiNzQyMDcxZTkwMTZlM2U0ZjEyNmExYmRlZWJlMjU0OTc5MTgzYmM3OTVmZWNhMWZjMDU2YiJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L44-L81",
+          "version": "repo-lines-v1:sha256:6e9839d28d921cfb1890ca85f0f31811a13e3fb8b9c28b1bdd8aca45e1faba60:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3M2JmYjAzMjIyZjUwMzNmOWIzOWI2ZTA2ZGMzYjRjMWJhMDVmYWM3MmYyNjI2NWM5ZDE3ZjNlNWE5YmU2MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwZmFhOTlmOGYxN2RjYzk0YTIyNjVhZTQyYzMyZTM3ZmQzNTY2ZGY1OWE1MzkzNzk3M2Y2NzlmODk1MTFjZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyZGVkMDY4YzkyYTk5ZTVkOTU2NmU1ZDI4MDI1NjM3MDU1NmFhZTM2YTE1MDBmNTMxZTJjMWYwYzkxODY4OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4YzE4N2JiNzE3ODhjY2E5MzYwZDc5MWMzNGY2YWJiNjU1OWU2ODU3NzBiNzJjYTE3ZGI0OWM2MWU2ZmVjNTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9235d8155472489abfa13a924a720e09",
+      "statement": "golangci-lint is a CI/developer-only gate: .golangci.yml keeps the default linter set and only removes per-linter/same-issue caps so local and CI report the same complete list; it is explicitly not part of the install/update/self-verify readiness path.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L47-L56",
+          "version": "repo-lines-v1:sha256:3ff2d736cc1c22ae9db321594a4d12c6e630d9895597e4f80297c7d60caba4b0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNjJhNDliZTg5YjllODNiYzE5YjAxYzQyOGQyYmYzYTFjMjk4NWFjZjY5YzY5M2QwMDQ2ZTEyZGYwNTJhMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4YjY3MTAyMjg1MzllMzc5ZTU1OTBiZGE4Y2FiMmE2ZGQ5NzhkNzYwMjEzNzYyMTVhMDFhZWIzMjM2YTEwNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiOWZiYjY1M2I2ZjE2OWNlZTIyNGJjMTExN2JiN2I4MzgwY2QyYTQ0MTJhODFiNjM5ZGRmNDBjMjg1N2I4MzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhZmU5NWY5MzlmMjEwZWQyMjVlMWJmYzRkOWZmNzIxNGRjNjMwNWMwNWIxNDQyNzJhZTcxOTI2ODlhNGJhYTgifQ"
+        },
+        {
+          "resource": "repo://.golangci.yml#L1-L13",
+          "version": "repo-lines-v1:sha256:65467f5d647948571b0d903563514bbd275b7c53c25d650a164abd8fb1ae2d5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkMDQ3MTQ4NGU4NTVlZWJmMGFlNmUyMGY3YzdiYzk0MDE5OGI3MTZhYTQ3NjZlYmM3ZTliNjVlYTc0MzZlYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzOGMxM2EzNjVlZjBkZjA0NmI2N2Y4NmI0ZTRjMGQyZGEyN2Y4ZTM2YWRkMTZjZDFkMmFhMDEzYzc2NWMwMjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b824a723db3644b1b72b43baec8503a5",
+      "statement": "self-verify plans an ordered step pipeline — harness invariants, unconditional gofmt, risk QA tier, go test, contract goldens, go build plus binary-drift check, then a fixed sequence of binary-driven smokes (inspect, docs index, candidate export, step budget, install dry-run, command policy/audit, contract check, tool conformance, worker, MCP, state, parallel isolation, daemon resilience, preflight fuzz, web fetch, native integration, redaction audit) ending in the QA gate.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/selfworkflow/steps/self_verify_steps.go#L50-L108",
+          "version": "repo-lines-v1:sha256:d653732b56347178f0821f6bd17a8c8f1651ab962c88a94171944ed47dfb2e19:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2NDY0YmVmNGViMzhmNjljNjE0ZTI5MzMyYmJiYWY1Yzg4YjA2YmZlYjdhMjY5M2JkNTdlMDNjMTUwNmQ4NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhYTkyYzY1OWU2MTg5OGI5OTNkMGFjYTkyZGEyMmFlMzkzN2M3MjZmY2JjYTU2NzZlMmJiN2JmNGQ1OWUyMTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkMzBjMzE3MjEzYTBkZDE1ZTIwNDJhNGUxMmM3NjYwM2Q1NTUwNmFiNjdkNzlhMTJkYjRjOGYxNWJhZDVmODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c7093e29f2de42ce9f01757948c2781e",
+      "statement": "self-verify runs gofmt unconditionally and before the long go test step, mirroring CI's Format check, so the cheap deterministic failure surfaces first; the risk QA tier is the step that reacts only to working-tree changes.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/selfworkflow/steps/self_verify_steps.go#L53-L56",
+          "version": "repo-lines-v1:sha256:9b3af0b2f22c5ffd40e1d5dd55456dfea5d898ff0c7ba2b9b4c863912a3d90f4:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZThlYjJkZjU1NDJmZmE1NjQ2MzA2ZjY0YzI0MzkwNGJkNGY5ZWM3YWU1NDQ1MTVmN2VlMmJhN2ZlOTMzODA4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2RlOGVlYzcwMWJhNzNkNjk2Y2M4MzY1YjY5YjEzNWU5ZjUyNGNlYzU0MDEyN2YwMDAxNWQ1M2YwMWRkZTg1YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGRjMmNiYjNiYTQ0ZDQ2MGYwNjk4ZTI4MDVjOTE3YzdkOTJmOTE0YWU4YjgyZTdjYzc0MDdjZGQ4YWVkMzdiZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTFkODkxNjUxODZjYTIxNjYyODY2N2JmODQ1ZDgzNjBhMjI4MzRmNWRhMjRiNzZkYjQyY2Y4ZDgxOWY0MDQzMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2ecc555e19b148e7bd8f6105ee77ebb5",
+      "statement": "The risk QA tier classifies the working tree: any changed .go file promotes to the static tier adding `go vet ./...`; Go changes touching sensitive surfaces (cmd/harness/, internal/, or paths containing daemon/worker/policy/state/mcp/adapter/install/hook/self-augment) promote to elevated which prepends `go test -race ./... -count=1`; no Go changes skips both.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/riskqa/risk_qa.go#L15-L17",
+          "version": "repo-lines-v1:sha256:8e0841419ca1a01e10cd3f0695f765a6358a7b964e8284982a02eb670b16df57:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVkZmYxZDcwMzJmNDEzZTkzZGQzYzE1NDg5ZTRiNTBiMDJjNDM4MWY5OTE3MTVjNzBhMGE3ZWI4ZDY1Y2Q2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE5MzAyN2E4NWExMjc2MzE1NzM2NTg0NmFiODg0ZTE3OTYwMGE0Mjc2YWRhZmMxNTc3ZTA2MTE1ZWNkOGI3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDNiNmE5OTUwNzA0YWU3YTNhZThhMmU3NzkxNzM2YjQ4MDkxZDkxYzBkOGYwYjMwZWZhNTA2MjQxMzc1NTFjNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2QxNzE0YWIwZDZlZjViNGRmOWMwMGMxYzAyMTE2ZmY5NDgyMTkzMGI0MGUxMTNhYzI4YTBkMmQ3NWJlNDkyMSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/riskqa/risk_qa_plan.go#L19-L63",
+          "version": "repo-lines-v1:sha256:fb2188988a49ed071f47c9a0f8de71ea29e3549e7d00266be7c3febab77c297f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMDk5YTU3MjRkOTUwNzA0ODhlNDhiZGU1NWI1OWNlMDhkMDEyMjY1ZDVmZDI2YWVkYzEwZTM5MjA3MGM0NDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3ZDU0NzRkN2RmNjdiNDljN2I4MTBkMzdkYmVjYjU4NDkwMjQxYTJhNDM1MjYwN2EwYzUyZTYzNjY4MGFkMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyNGIzMGYwODY4ZmFiMTNkMDhhYTM4NWVlNjE0MjBhM2E4YjdiYmYyMjBiMTBlYjZhNjM5OGFhMzdhOWEyZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1f2dc469143c4ac6a96a1a59c5bb49f4",
+      "statement": "A successful full race run inside the risk QA tier covers the plain go test step — the pipeline records 'reused successful full-suite coverage from risk QA race test' instead of running the full suite twice.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/riskqa/risk_qa.go#L33-L38",
+          "version": "repo-lines-v1:sha256:d03889d3da9c6b9d44519f44103117781f5e8c0e836d220b0339ee382e227b63:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDY4MDgzYjkzMzY3OWY0NDkxZGFlNDc0NzNkODVkZmU3ZmM5ZTViY2YyY2JmZGRmMzAwM2ZjZDYzMTgwMjVjNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2Y3M2RjNDcwYWIwOTE4NmQ0MDExMzI5MTMwMjdmZjIxN2EwMmU3NmQxNDBmOTY2OTg1ZDQ1ZWYxODA1M2IxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjA1MmQ2NDk5YzM0ZGFhNmIzMDQ5MGQyNTRlNGZhYzE3ZDVlYjM2YjgyMDRmN2QxZGY3ODlhNjI2NWY0NWEzOSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/selfworkflow/steps/self_verify_steps.go#L61-L73",
+          "version": "repo-lines-v1:sha256:2857d91eed77f7af462009b4d0921f310f19c706bf46ceb897907e8b7c1cac83:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhM2U0ZWY2ODUxY2U5MmJkNTc0MjEwM2ZkZGQ0ZDI1ZTMyZGQwYWRhM2E2MGI4ZjE0ZDVmNWI2YTFiYTExODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNzkwZGViZjFhZGE2ODA4YjhkMzJhYzhlZTgyODhhZWNkMDI0ZjhhMjM3YTcwNTJiMWZiM2RkZWM2ZmY5MjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2M2MzZWY4Njg3Y2QyMjdiOWJlZTI1YTllZGMxYTQzOWE2ZDgxZTQwODYxNWUyM2FmNjY0Yzg4Mjk0M2RkZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzN2YwMGNlODg1ZjhiNTg5Njg3ZTc2ZjEwOTEyNWE4MzgxMTUxYzQzZDQzOGEyM2EzN2EwNzY0MGZkNTk1N2YifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b87207f41b0a47b68c099b4d17176208",
+      "statement": "The self-verify QA gate checks loop documents, GENIUS_THINK.md, shared skill metadata, native integration install state, redaction audit, bounded stdout/stderr metadata, and Mermaid lint, and the run may exit only when every goal score exceeds 95; deterministic invocations pin --llm-eval=false so ambient HARNESS_SELF_VERIFY_LLM_EVAL=gate cannot turn the project gate into the prompt-only diagnostic path, and gate mode stays non-passing without an ingested external verdict.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/self-verification.md#L74-L92",
+          "version": "repo-lines-v1:sha256:9ca79f9892e766aaabe7412d33c828b7ac5aac313c6bba1e0635c54bb3a25479:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxOThjNmVjNzZkNmNhZjAyYzljOTFkMGY3ODQwMzgyYTkwNWIwYWZjNmIzOTliMzZhMWNmZjZlMjBjMDNmYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5ZmNkY2M1ZTFiMTcxMGE5YzYxYmQ0MmNlM2RlZGYxMjBjMmZhZDgzMTkyNzE3YjY2OWRhZTFlY2MzM2M2MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiNTYyYjY5OTViNDM4MjJkZWIzOGM5MTMxYzk5ZjEyMWM3NDg5NDE2NGRkYTQwNTczZDMwYzVjZjY2ODVmZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzYTdiMjhhMDFlYmViYTEwNTk3M2NiZDA3MzBjMjM1YTIwYjRiYzY0MTdkOWViZWU4OWU4YTMwYWRkY2U5OTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b37e5a94ad044a55bb402526c4959b1e",
+      "statement": "The standalone verification policy requires harness tests to verify core and native integration contracts without external toolchains, accounts, or companion MCP servers, and forbids tests that clone, install, patch, or register external tools during normal verification; failed self-verify steps emit exact rerun_commands followed by a full --collect-all-steps re-run.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/self-verification.md#L86-L92",
+          "version": "repo-lines-v1:sha256:d65d2345005915ded64ba49860f68921feb5b27cea830913b7b6056348b43b22:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWJiMzI2YTc0NzAxMDBlZDMxZDY2NGI5M2MyOWQ4MzQ3ZTQxYWNkNGFlZGMyMWU0Y2QyOWIwNGVjNzk4YTEwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlmY2RjYzVlMWIxNzEwYTljNjFiZDQyY2UzZGVkZjEyMGMyZmFkODMxOTI3MTdiNjY5ZGFlMWVjYzMzYzYyNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWQxMGI1NWFjMDY4NmNmZWE2MWQzODVkNTY1ZTI2MDg4NWY5YmU0OTgxMjgwZjdlYzZlMzkwMWNjMTU4M2ZiZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODNhN2IyOGEwMWViZWJhMTA1OTczY2JkMDczMGMyMzVhMjBiNGJjNjQxN2Q5ZWJlZTg5ZThhMzBhZGRjZTk5MCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/selfworkflow/rerun/self_verify_summary_rerun.go#L8-L15",
+          "version": "repo-lines-v1:sha256:12819f0a460248b20257a58db8ff5be9a9b3d86c43fc4b410c726498c930caca:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTk5OTgzMzcxMmM2MWFjZTkwYWYxYjllN2VkOGY5OGRlYjA0MjYzMTk3ZTQ3YTBhNDdmZDdmYjliYzZhNGU4NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzg2YjBiYTQ5ODU5NGRmNjY4ZWUwY2M1NzZhZThjMTViOWZkZDFhNzMxZmFiNTE5MTFiNTlmNDBlY2M0NDY3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWQ0ZGViZDkzYzgwMGU3MGMwYWE4ZjlkMjI5OWY2NmQzNjczNjkxODcyNmUxNDVlNmJhMTVlNmYzOWQ5NzMwYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a9817ca335a64926838d8e3139d69308",
+      "statement": "Golden determinism is manufactured by responsecontract normalization: dynamic time keys and RFC3339-like strings become $TIMESTAMP, pid becomes $PID, head/sha become $GIT_SHA, audit_log_id becomes $AUDIT_ID, worker/issueops ids become $WORKER_JOB_ID/$ISSUEOPS_ID, temp paths are replaced by $STATE_DIR/$WORKSPACE/$HOME/$HARNESS_ROOT-style placeholders, dynamic state-record byte sizes are dropped, and MCP text payloads that parse as JSON are normalized recursively.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L12-L85",
+          "version": "repo-lines-v1:sha256:23a1899b74ec96364178cc27130a791093077f2f2c37a0b9417d523fd3177e1b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1YjQxZTVhODdlODgxNTRmOWUyNmRkZDE1NWU2MzMwZjFhMTI4YTAzZWExMTRmZmIzZjA1MWE1ZmQxYWMzZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkMDc5N2Y0MjFlZjg0NDM4ZmY1Y2QwODRiMmUyMzgyMjgzM2Q5Y2I0NjI3Mzc0OGQyNzczMjMxNDFkYmU1NzgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L169-L240",
+          "version": "repo-lines-v1:sha256:1b58c01a35c1bb3e8a413ca426b9d3d66f46a318a76ed188df5d1c4cdf8d66a4:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyMWYyNWYxMjYwNDc5Zjk2OGY1Mzc4ZDM0ZWRjYmQ5YTUzMTFkNjFlZDJlNThiMmE2YTgzMmM2MzdkN2VlNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllYWNmZTNhZTg1ZTMwN2Y4OTMwMzE3OTczMTUyODU2ODMwN2MyNzEwZWVmOWRjZjVkOTQwZjQ0N2IyNTlkZGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d6155f15a04a4f0a8985d12d05daf555",
+      "statement": "Three structural normalizations keep goldens from recording repository facts: numeric docs_count/docs_indexed become $DOCS_COUNT (the golden pins response shape, not how many markdown files exist — a non-numeric count is a contract regression that must fail), IssueOps lifecycle-derived state keys /issueops-v1/<16 hex>/ become $ISSUEOPS_STATE_KEY, and the implementation_delta goal's working-tree observation (evidence/score/passed) is placeholdered so the golden never records whether the checkout is dirty.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L148-L186",
+          "version": "repo-lines-v1:sha256:f45303aed3f448d504bc069a1ceffbd2b491d798671726351c7cb1b6e89e0eaa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlNThmOGU2YTUyYTczZmE3NTA2MDFhNGYxNzkzOTBmMzdiODE2NTY3YzFmNjQyM2ZlZjE3YjMwM2M4NTkxZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjYzMTZmN2YxOTIzZDZlM2M1ZWQyOGQ5M2ZlNjc1MzA2OGY3ZjZmODkyMDUxMzM5OTUxOGFlNjAyMjE1MjcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L73-L146",
+          "version": "repo-lines-v1:sha256:46a116d3af56df1b9a753fdd98ed421ec336d81a14d2ec30f96ee56c4baf83b1:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4Y2RlZmJiNDU1NDZhNzliYmJkNWEyYjdhZjhiMWM0ODQ5NTlmNjZhZjJmZjViNDkyM2U3YzRiODkyOGY4YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlODZjNWQxNjJkZTg1NTI1ODNmZGYxMzI5YWY2NDQ4OTU2M2EzNzZhOGVlNzUwNTcxNTg4ZWJkOTVjZWFkYmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlN2Q2ZTY0ZmEyYWRlMzNiNDk4MzdjNDM4NmE0ZTA4ZmQ5YTgyZTI2NjQ0NTk0MDdkZDgyYTA0YTg0MjY3OGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d6fd6963bf446bf829bbef861b5016e",
+      "statement": "Goldens are updated only when the CLI/MCP contract change is intentional, and only through the documented regeneration commands — `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1` and `go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-adapter-contract -count=1` — never hand-edited; the -update/-update-adapter-contract flags are the sole write path in assertGolden.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L61-L66",
+          "version": "repo-lines-v1:sha256:55c34832b3cf1294c9261c188af2ed14a0aa882c46eec240f92ec2348761bd8c:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQyODQxYThkZjUxYTE2ZDk5ZWZmNjdjZjFmOGI1NGVmNWI3MTNkMWI1Y2M0NzhlZDlhMmUwMTllYTNmNWM2YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTRmMTZjODk0MGFkYjI4Yjg1MDk3ZjcxNWI3Y2EyZWExNjZmMjQ5Y2IxMTk2NjJmMjcwODM3NjQ0NmNkZTBjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWU5OWEzN2M5YTllM2JmOGVjODYxNmQ0NzhkYzVhMTc2ZTlmOTE1NzYyNWRkZGQxZjFmYzI1NWRmMzYzM2Q0ZCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L17-L22",
+          "version": "repo-lines-v1:sha256:e944575842520828bd8e0d60c0fc7c91130361008071d2b061e1e63a9fdc3bf1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmVmMTQyZGRhNWUwZjE3ZTg3NmQwOWEwNDU3NjRkOGEzOTM0OTJlYjAzOWVhNDUyMGY2ZmE2ZDQ2OWUyMDNiNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmE3YWNkYzc3Njg2OWM5Yjg2Y2VjNGIzYzg2Nzc3ODEwMzVlZjllM2Q4OTgxYzUwZWUzMDFlNGJiZDAzNWM3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTI3NmM0ZmVmM2VkMjA0OWJkODA5ZGUxOGY3MzJmYjJlZWVkOGM4NTJlMzY4N2E3OWEwN2U3NzQ2YjE1MDVjZiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L197-L213",
+          "version": "repo-lines-v1:sha256:adf527019672e7f69f7084bffa05bbc4b88ac4ca70dc4b9461e5cabddd9ac6d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MGNlY2FhOTQwYWFjMzEwYmJlYmM4Y2ViYmY4NGE4ODlhYzgzZDdkYmFiMDgxMjBjMTgxMjY4YmQ0ZmFhM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0MTJhZWI0Mzg2ZWRhZmY5YjU4NTNlZThmMzk2YTMwNDg2ZjU1M2VkMjc2MjFiNDY2NjllNzkxZjA3ZTgwYTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMWVmMGU0NGY5YzQ4MGNiZTZhMmViZDdlZmQwYTkwMTAyZjQwZTJlOGZmYzFkZDVmNTU5ZmIzYTZkNDcxMzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bee980746eb643239e230be84514fc37",
+      "statement": "Response-contract golden mismatches are reported as the first differing JSON path (e.g. $.cli.docs_index.field: got X, want Y) rather than a byte wall, and the golden inventory covers inspect/docs/policy/guard/MCP/loop/install-matrix/self-verify/state/issueops response shapes plus command policy and redaction results.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L107-L148",
+          "version": "repo-lines-v1:sha256:d073aa1e6675682b3639c41bf0731a4e3f46a1f136a8b7e13e37fd3f5d75a868:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyMGI0ZTViOGY2MTU5YzUxYWY1NjU4NWY2YWZjN2VlNTg5MDg5Yzc2MTBmNDFkYTVjMWEzNDE3MDY0YTQ2YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNTkyMzIzZGE4NDQ1ZjgxMzI0MmE2YTRjYjhiYzA4NDQwMTZjYTE5M2MzOWFhM2E3ODE1ZWY3ZWFlYTEzZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGQ3YWYyM2VjZjZmYTIxMjljMzUwNGI2YTQyYjJmMWViZTQ4NDU3YWNhYTRkMGI4MmUzYjQ3MmU4ZWYyOGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwOTZiNTQ2ZTAzM2Y4NTc0YjU1MmE0MDY3ZTQxMzAwMDE5Y2Y3MGZkMGJiMWZiNDE0NTQwNjM3OGVjNjRmYzEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L211-L226",
+          "version": "repo-lines-v1:sha256:291b6d0fd6e4fff46c21d2686f4d69a7f63891e7acb6fbcf5a8176f12b60d13a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1M2U0NjRjMjQxYmQ1ZDg5N2IwMWM1Yzk0Nzc1MGIyMWU5Yjg4M2E2YzdlMDYyZGM0Yjg1MWY3ZGM4MTNiMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczNjgyMWQ0MzYzM2E0YTNkYTI3NmM4ZjRiZmEyZmU5M2M5OWU3ZmU0NGIwN2RjMTg5Mjc3YWQ3ZDA1ZDlkZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkNGE5NWJlZjM5MGI1M2FjOWY5MGY4ZjkxMzdmNTU3YjRkMjZiODYxMjIyZmEwYzBiMDE0ZWJiZmIyZTUwMzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_065dd1dfc4da47c5881ff159ba823214",
+      "statement": "TestNativeInstallAdapterContractMatrix drives the real install.InstallNative with the Codex, Claude, and Omo installers over user-global-default and project-local-opt-in cases, snapshotting every written file (kind, path, content SHA-256) and symlink into internal/adapter/testdata/native_install_contract_matrix.golden.json; companion tests prove --dry-run writes nothing and that scripts/install-native.sh does not wire companion tools.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L134-L160",
+          "version": "repo-lines-v1:sha256:b43912204990b36342a0b416c87f09f47ad6aeccbccc50454df99cd201d1462b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMjM1NjkxYmZiNTlmMGM3YTAwODZmODYzOTA4NWJiYzQxN2FjNjA5NGZlMDA3ZWYxMmU3ZWNjZmEyYjhiZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2MWMzN2MwNmQyMjgwMDk0ZDliYzJjNTI4YjIwOWNhZjM3OTZhMjUwNDViNjQ3ZWVkNjExNWMzMmNlY2QyZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4MThjOWY2ZmMzZmUzOWUyYzdmODQ2ZmY3MTUyNjhiM2EwNTM1NGI5MjRlZTJjYTg1Y2E4MTZkZTY0ZGIwYjAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L61-L96",
+          "version": "repo-lines-v1:sha256:c6a2438da60b865f2717674d0b71a36221421f70025577478b5604c13444ddca:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwZmU5Y2ZiODYwM2ZmM2U3NjE0NGQzNTU2NDI1NzcwZGIxM2E0NjBiMDQ4MTM1YTBhMTIzZjE1Nzk3NDdiNjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkM2ZlYjc5ZTdmNTExZjBkMzc5YWRkN2NhM2NlZjA5ODk0ZGQzNjMwMDcxMDEzMDYyMjMzZjU0MTA1N2NmMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2Y2VjMDlkNzRiZjc5YThlYTJjODRiMDc0NTk3MmYxOTk1MzliY2Y2YzQ2MTg4NjMyZmIzYjg4Yjk5MjRlNjcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L98-L132",
+          "version": "repo-lines-v1:sha256:8d0cb5cb61995fa411130239bb177d5e5c03aedc3610bfc8a0525b0579db2bf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhZTM1OWM5M2UxNDVhMDBlMzVhNzEyNTY0ZDc4Y2JhZmNjMzI4Nzc2NmFjYmUzZWZiMjg2MTllMGYzN2MzYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxN2RkMGEyMjk4Mzg2ZGU2MjhkZDdmMWRiN2JlNjE3MGY2N2IzOGNiYmMzNzAwMDViMDg5OTJjNzE2ZTA0MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzNmMzNjI0YmRlZjk1MzU0ZThhOGIwNGIxMzU0Y2ZlZTFkNjhlNTFkZDA2Mjk4YTM1OGFlOWMyOTUwYTBiNTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40403190a1dd48b5855be055842f00e7",
+      "statement": "The architecture fitness gate (go test ./internal/architecture -count=1) collects the production import inventory twice and requires byte-stability, fails unconditional layer rules immediately over the entire graph with pinned rule names and `importer -> imported` diagnostics, and enforces the zero legacy-adapter baseline — TestProductionGraphHasNoLegacyAdapterEdges fails if any legacy edge remains and there is no registration path for new ones.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L40-L44",
+          "version": "repo-lines-v1:sha256:e960ecb4dece764add045e34e644ad785b9cf6a0c9d0f623dee77581c0fe4caf:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRlMmY1MzI4ZWU2ZTgwNTBlOGFhZmQ4ZGM4NjlhMDY5Y2Q5NTg0ZWRhYWY1NGZlNTg5ZDczYzNiN2RjZDc5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTViYjVjZjM2NzExNjg2ZDFkZGZkNTRlZmEwNDcxOGZhYjY1MDVlZWI1MjZhYTgzZTQyMGFkOWZmZjIxZjY1NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTE5ZTdkYmRlYzdiNGI4NGRjYjUyMjQ3ZjE0Y2M0MzI5ZThkYjMwMmM1YmI2YTBiZjRiY2Y0YjBkMDQ3ODEzNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjE3YzQ5ZDM1ZjZlYmVlYzEyZjE3N2Q2Y2U0YmZmMzFjNzg2NmFiZDI5OTUyMWJjYzZhMTA2OWU0ZTYzYzNiYSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L225-L242",
+          "version": "repo-lines-v1:sha256:4ebf364e3d529abcd93bd0a3ad8fe25c8de74b46846697f558269325339e644e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTAyNTcxMTFiMDEyYTM3ZjliZDkxOTY2YWMxYTU1ZGNkZjk1NjVkM2NhYzJhM2EwYTQ1YTFlY2JjNTM5YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlYTI4NjdjMmI0MTA3MTMyNTJkNmEzZmYwMWE4Mzk2OTA2NzFhOGU0MDFlMGVkY2ViYjc1NTM4ZjI5YmI4NWEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L29-L76",
+          "version": "repo-lines-v1:sha256:b1d66082bd5e3c2a5b0d6852f5a98fb214bd68edfe95bdaaad8c47798013aedd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YmE3ZTk0MzQzMWFmNDE2NDU2YmU1ZTQ2ZTU3NmQxN2FmMTJlYjZmNzNiNmM4MDc5YjVkOTg2YzYzZjdlNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjM0MGEwNTQ4N2FhNWM4YzFlY2ViMDVjNmY5M2E1NjgzMTIxNjEzYmE3OGRiNGZmZDliZjYxMDA5NWM2NWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkZWU0OTM1OWYyMGJmY2NhMjRjMjQxNmY1NjI0YTRlODk4ZDViOTdjZjQzODQyMGYzOWI1MmU4M2RhMmY2YzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40782c5ba32b4fc08b837f130c748466",
+      "statement": "IssueOps execution tests must stay green without Orca using injected workspace/provider/process/Orca adapters; the current contract is issueops_v1 with schema_version=1 where legacy rows reset only through explicit fingerprint-CAS maintenance (never migrated or dual-read); the release vertical is a differential test over schema v1/missing-zero legacy schema/rich sidecar/holder index/denial atomicity, and a focused package set (internal/adapter/issueops/..., orca, codex, claude, issueopscli, hookcli, hookinput, mcpcli — plain and -race) runs before full repository gates.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/issueops-execution.md#L24-L60",
+          "version": "repo-lines-v1:sha256:97ed38fe37adb8ec20be37b3a4e8b71fb718459e907700e7a5e94d4f5331b36b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMDY4Yzc0ZmM4NzcxMTFkYzI4YjI0MTRlOGFiOGQ4NWFkOTFmMjA0MThkOGY2YjUxNTFiZDIyMzA0ZjQ3MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMDM5OWZiNjkzYWY3YWM5NDI5MmRjOTQzZWJjMmVmYWI5MjhhZGE4ZjRkOWI5MTMxZGRlNGUyZTNiNDQ5YWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyMTk4YjZlYWJhMTcwZDc5NmNiNWExZjRhZDExY2RiOWJlZmM5NjUxOTk1NTkxYmU1YjY5MzllNWUyYTU3MDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1ZjljMTZkZGRmMGZkODFiMWMxYWZlYzFjYzM0MTkyODcwY2ZkYmJiMTA3NzhmMzhmYmRmMzdkMjFiMjRjNTgifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/testing/issueops-execution.md#L80-L129",
+          "version": "repo-lines-v1:sha256:3163dc5b7e66773ad29abec8aeb92aaf915716bf8afa7ff53048f6d158500b23:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0MjJmMGIwNWQxNTY3YjJmYWEwYTRjOTkwMDc5NDY3ZTdkNGUwNWE1NzhjODNhMGFlZTU1OWI1MGRiOGUwZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjZjg0NWUzZDUzMWZiODgyMmNhODEyZTcxZTRlODkwODk4NWMwMTk4YmM1MjMyYzQ0NjRlOWY0MzliZjc4OGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1OTZlMTVkYzI3YWQ1YzAyOWYxM2YyYjhkZGRiNTdhNzM0NGE0ZWQxYzdmNmUyZDE4MDgwY2MxOWJjNjRjYzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3b0f1b12e6f3408bbf15a8feedcef749",
+      "statement": "Architecture tests scan every production Go file in internal/port/issueopsbasesync and allow only the exported types Request, Receipt, and Inspector plus the context import, so a port may not accumulate behavior.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/issueops-execution.md#L80-L83",
+          "version": "repo-lines-v1:sha256:928e8ffb940c825baa736f341395baf6d86c427e3496e87d0daadae5017d6308:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTQyMmYwYjA1ZDE1NjdiMmZhYTBhNGM5OTAwNzk0NjdlN2Q0ZTA1YTU3OGM4M2EwYWVlNTU5YjUwZGI4ZTBlZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOThlOWM4ZWE4YWQ0OGE1MDJiZWE5MWVjZmMxZDRhNTgyN2Q4NjZmNjM4MTk1NjZkY2EzNGZmY2MwZTFlMTgzMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmNmODQ1ZTNkNTMxZmI4ODIyY2E4MTJlNzFlNGU4OTA4OTg1YzAxOThiYzUyMzJjNDQ2NGU5ZjQzOWJmNzg4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDY5N2YxNGQ0MDM4NGNlODQ0Nzc0MzNjNjIwNWQ0NGEyYzdiZGM1ZDgwYjI1YzBkYTRjZWQ1NjA5M2UwNzkxMSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_base_sync_boundary_test.go",
+          "version": "repo-file-v1:sha256:a3647d6bf1f529264d3435e8c1a664d318611d817648a36f0b9215fd0b14162c"
+        }
+      ]
+    },
+    {
+      "id": "claim_1ede8b96e8c44704bc1874fb1e9d91fa",
+      "statement": "scripts/validate-skill.py validates SKILL.md frontmatter without PyYAML — allowed properties are exactly name, description, license, allowed-tools, metadata; name must be hyphen-case up to 64 characters without leading/trailing/double hyphens; description must be non-empty; unknown keys error — while scripts/verify-skill-shell.py checks executable shell fences for syntax, swallowed failures, fabricated zeros, unsafe expansion/word splitting, and destructive annotations (exit 2 on missing input); their unit tests run via `python3 -m unittest discover -s scripts -p '*_test.py'`, the same command CI runs, because the Go suite only shells out to the validators.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L58-L72",
+          "version": "repo-lines-v1:sha256:af634a1e83ce35ebcd506176b92a8b5488ea2df3d1c4e6e74a6877ead8c0a9dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkZGU1YWU1YWE0NzQ0ZWE5ODNkOTdmNmI2NGFjYzg1MmE2MTA2NzNmYTZhM2QxNDlmMTRmN2QzNDUyMmY0MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyNmMwYzZlNTFmYjU5ZTJjODIwYjFjZTc2NTJmNjgxYWVmYzM0YTQ1MmU4OWZlYmE1ZDExZDEwYTFiYjgzZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2ZTY2N2E5MWIzOTcwMzgyNDZiOTVjMzMzYzkyNTUyNzkxYTFkYjc2NDg5MzQ4MWFjMGE0YjhjMGY4MWFkYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1YmJkNDUzMzI3NWUyNGM4YjFkOWJhMDBiMDU3MWY5M2U4OTgzZDY2MzJjMWM1YjUyODQ5N2I1ZTcxMjgwMmMifQ"
+        },
+        {
+          "resource": "repo://scripts/validate-skill.py#L113-L142",
+          "version": "repo-lines-v1:sha256:6d9b893cf90957228830c3eaf3aa4d70bb1c64c834c260e7b3e35629380805a1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5ODlmNjNhMDdiMzBjOGRmMzI2MjJhODY2N2UwODA0ZjU2MWM5YWNiMzdjZWM4MWFiNmY0YmRlNGFhM2Y2YzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZjA0MzJjYThmNTQ2YjFhZWUyNGM4MTczZTkzZjliYWQ2NGJlYWQwMTE5ZDdhODUyM2ZjYWQ0NWU1ZTU2ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzZWZjNzQ3NzU1YzI5MTE3MzEyYTFmYjM5YzI5YmQ5NGYzYTZiMjczMzY2MjhiOWMxYzc0NTE2OTc0ODI1NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyZGFiYWE5NzA2Y2I2YTMwY2NjZjQxM2NiYTc5OGEzYmQxNWI3YTA2MGFjNTczOGM2ZmQyMWM0Y2FjNmJjODYifQ"
+        },
+        {
+          "resource": "repo://scripts/validate-skill.py#L16-L17",
+          "version": "repo-lines-v1:sha256:606a52fa54b46a39bcc93d13de23dc0802f96868c2198516b766dbd7d80dc219:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTU2MjdiNTE4MTY1NDdiMTdiMWNiZDljZmVjYjlhZTU0ZDcxNTJmMjgzZGY5MDU5MzZhYzk2NDExNTM1MDA0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTkwZTM4ZDA2ZWRkMzJjY2E0ZTdjMDc3OTVlOWU2N2FmOGVhNDA0YzhjYzMwNTg4NDgxODI5ZDQyMGY4OWJjMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRkZDY3ZWM1NjRjNTJmMmU1Yjk0YmJhZjc5MDJhODg5MmU1MDc1NWU2ZTYyMGUwZmNhNjYwOGMyNGFmNzZkYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fdd031b986d6478987e9d5dbd6d3fbf1",
+      "statement": "IssueOps benchmark fixtures must stay repo-agnostic — they score portable workflow evidence rather than one target repository's domain facts — and a fixture file fails to load unless it carries id, title, user_prompt, repo_context, and at least one critical_failures entry.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/self-verification.md#L55-L55",
+          "version": "repo-lines-v1:sha256:3fc1ca977a89ba11959d5565e64aa48b0631071f2603488d685030f92b5ec6a3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2ZjMWNhOTc3YTg5YmExMTk1OWQ1NTY1ZTY0YWE0OGIwNjMxMDcxZjI2MDM0ODhkNjg1MDMwZjkyYjVlYzZhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2ZjMWNhOTc3YTg5YmExMTk1OWQ1NTY1ZTY0YWE0OGIwNjMxMDcxZjI2MDM0ODhkNjg1MDMwZjkyYjVlYzZhMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2FhZDA3ZWI3YmQ1YmE1YjYzYjJjMzc5OTUzNDkzZTQwOGU4Y2NmMTcwYjg1ZDUwYjJkYjUyMDIwZGM3Yzk4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjU2NjQ0OTBiY2M1YzdkODU0OGU3NjUxN2JmZTJhY2I0NjUzNGE1MmE4OTdiZTg3MGUwMzM2MGVhYTJlMmE5MiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/benchmark/issueops_benchmark_fixtures.go#L13-L64",
+          "version": "repo-lines-v1:sha256:417496847f8b173c842a9ec11f5e086eee16fd2eb337842924dcb0feacbded8c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyYWU4OTc1ZjJjYTczMWQ1Y2I0YTVkMGQzOTg0MzcyN2FiZTFiNDczY2ZhYzEyYzYxMjdjZmIzM2IzNTE0ZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTFkNzkxNDgwOWUzNDk5ZDQ1NzNlOGJmZTU4MjZhZTA4MmVhMmUyYTE0ZGI3Y2MxNDE3MjU3N2M2YTczNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0213be660f04905a1a1213121fc9b2b",
+      "statement": "Deterministic benchmark scoring checks 19 dimensions (each 0 or 100), records metadata-conditional dimensions as honest N/A excluded from average/minimum/passed, and a run passes only when average_score == 100, minimum_score == 100, and critical_failure_count == 0 (FinalizeIssueOpsBenchmarkRunResult computes OK from these plus per-fixture Passed).",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/benchmark/issueops_benchmark.go#L3-L25",
+          "version": "repo-lines-v1:sha256:1f97c323b37e0e2644a668d1042a396e3914d0e484ded7dd4d3ed12feba36f2e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2MzEyNDNhM2U3ZjFlODcxZDhlNTY4YzA4OGExZTU1YjllMTgxMDBhMDU1M2Y3ODdkYmJhNzJiMmIxZWYwYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MjI5MzEwNzdlMTc2ODkxZWEyOTU2NTQ1Mjk4MWQ0Mzk5MzBhODc4MzAxMmY3NzhmYzRiYWU1ZjBiNmMzZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1NTk0ZDgxMGQ2NmRmMTA0ZjAwYzY2Y2I2Y2QzZWVlNDcwOTFhZDVhYTAwMDA4NThhYjI3NTBkN2Q0OWQ4NWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/benchmark/issueops_benchmark_run.go#L52-L67",
+          "version": "repo-lines-v1:sha256:749847a4d0f412f88815fd6c20755e26ada07a80d2b95b772c5d3164b5cb26bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZGRhZmZmNzdjZWQ1MmI3Zjk4Yzc4Mjc4OTc5N2UzNDc4YmUzMTQ1MTlmODU4N2Q0MzgxZjk5MTFmZTI2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmOGMxZDViZjYwYjU2YzE1NjdjOTlkN2YxMTlkM2Q5OWU0MjM1YzU1ZGVjZmE4MTRlZGMwNjc3MDM1ZTRmZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmNTdmYmQ1MzBkODFhYTdlNWFlOGRjNmE1NDliODlkMDdjYjUzYWQxMTVkMWIxNDNkYmU2MDllOGYzMzFhNDUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/benchmark/issueops_benchmark_score.go#L110-L141",
+          "version": "repo-lines-v1:sha256:8634ef48b1b0ec246afa5fa652b0c951bfe7b9534628a195fc362bb194759a9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1Mjc1M2I2YjViNWY4MTdlODVkOTNmY2IyMGRjNWE1NmZiYTM0MmFhZjYzYWY1MGNjMzI3MjMyYjNiNjU4ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMTExZjJhMjI0ODJlYmQ4YmViMGI5OTg3MDJmOWNmMGY5YjgzMGU5ODIxNjZhZTZhMzljNDFiMzEyZTRiZGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhM2UxMGI2ZDUxNzRhMTA1MzBhNDI3OTk1YWM4N2I1ZmQyYjBiMWI4Y2ZiMjA0ODUwZTdiMjY3NGM5NTJjMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3Yjk3N2M4M2Q0NzY2MGZiNWNiZjE3ZDNjZGI0MDRjNjcwNDIzMzA1YTg0MDBiZTE3OGNjYzQ4ZmJkN2Q1YzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3e1241847f174cef97c9e1f0d6d1c12e",
+      "statement": "The --judge file path merges an LLM judge map only after provenance validation against the saved source run (fail-closed before merge), and judge scores can only lower a dimension score, never raise it; judge failures and critical failures are appended to the merged score.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/issueopscli/benchmarkcmd/benchmark_subcommands.go#L15-L76",
+          "version": "repo-lines-v1:sha256:8f16adf31d2cd76a4726793552da91d3f71fea4beccf2da1016b781396911f9d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NDcyYzAzOGE1NjlhMjFkMGI5M2I1Njk4YzliZmZlYTk3MGQxOTA1N2ZmMmQyNWM1ZjQyM2ViNTExNGEzNzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlNmJkMzliMGJlOTNhMTdkNzdhZTllODEzODA2N2Q5ZGI5YzM5MTU4Y2Y0N2VmZDk1NGU1MjdiYTk2NDMwN2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5MjRkZGE2ZDMxOTlhMzU1NzUwOWU0YWZhYjY4YmY1NjlkYzEwODUxZDA3ZDE3NTU5OGFkMjkzOTNmNzVlMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyOThjM2JiNWYxZWRlZGJhODQzOTFjYjA5YzExOTQyOTM5ZTcyNjFlMmVjNDY5ZjNkMzQ4NGZkNmNkN2ZjNWUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/benchmark/issueops_benchmark_run.go#L69-L99",
+          "version": "repo-lines-v1:sha256:041e53cf21d921970422576cdaf83d7ebe38f6c8993f091cbcf30411dde1aeae:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OWI0M2UyZDQwNzVjNTVlOGQ2Yzg4YzZiZTJjNmE0YzBmYjQ3MjQ5MjA0MzgwNDYzMGZmZjg2MDE0NWM0OTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNzlmNTA4MTJmODE4NzJiZGRmNzVjM2ZiZGRkZTlmYzJkY2E5MzBmZDhlZWFiZTFlNjBjMjczYjA3YjU0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ4Mjk4NGIwMzE1Njc5OTI4M2E5ZWQ5YzhhN2EwMzk5MjJlNjBkNjU1OTQ2YTBlNzkxZGRlMzllYzQ0ZTAzZTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f408006999a944d39436991ed3d472eb",
+      "statement": "testdata/pioneer-holdouts/ is a reproduction harness, not a blind holdout: it commits inputs only (seed files, setup.sh builders, TASK/BOUNDARY/OPERATIONAL prompts) plus a redacted evaluation-manifest.json and evidence records, while answers (root cause, fix, scores, result.yaml) stay in the blanket-gitignored .agent-harness/evidence/ tree.",
+      "evidence": [
+        {
+          "resource": "repo://.gitignore#L18-L18",
+          "version": "repo-lines-v1:sha256:bdcf4c994585af6dd6cb1cfbff78bcc73ab27dc30a299db5bb83766ca05b5de4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRjZjRjOTk0NTg1YWY2ZGQ2Y2IxY2ZiZmY3OGJjYzczYWIyN2RjMzBhMjk5ZGI1YmI4Mzc2NmNhMDViNWRlNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRjZjRjOTk0NTg1YWY2ZGQ2Y2IxY2ZiZmY3OGJjYzczYWIyN2RjMzBhMjk5ZGI1YmI4Mzc2NmNhMDViNWRlNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTlmNjQ5ODgzZDZkYjI1MTdlNjdlNmZhNjg5Y2NmMTg1MmY4YmJlNDVlYTEzNjY0ZjExZjA1YTk1MjBhMjc4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzAwMGI3MmY1N2MwMTQzOWY0NWNhNzEzNmRkYjg0NWI0Y2QyNWMxMDk2ZmRlODk0OTM1MDMzZjYxMWYxMzNiNCJ9"
+        },
+        {
+          "resource": "repo://testdata/pioneer-holdouts/README.md#L1-L35",
+          "version": "repo-lines-v1:sha256:8fc369370832aba7777fb6ff4d9360ae8b590d2c37d43401445222199844c752:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZjgyMTFkMDUzZDE2YjgyNTRlOTBhOTFjYzlmMmRjYmQzMjk2YjU1M2ZiMGRjODczZDgwN2ZkZmY0OGQzMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3MjI4ODQ2Y2ZlMzVmNDAzZTk0ZWFlZDBlNzkxZWUwZjgyZDk5ODZlODI5NjExZjFkMzk3ZTAxYjU3ZDY1YzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0YTYzMzMwMWUzOTQwMjc5NDM2NzUzMzFjODUxOTIzZjdiOTBmN2FmNDY1ZDkyZmZhNDUwZDc3ZDIyY2Y0OGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f45247a3ef384622af1e43b54a0f312b",
+      "statement": "internal/holdoutdeleak mechanically guards the harness invariant: it fails if any committed fixture file contains an answer token (case_score, keep_discard_decision, ...), checks .gitignore still blanket-ignores `evidence`, and runs git ls-files to prove the answer tree is not force-tracked.",
+      "evidence": [
+        {
+          "resource": "repo://internal/holdoutdeleak/deleak_test.go#L20-L32",
+          "version": "repo-lines-v1:sha256:849c0712d2e85b34ff96aacd4c9b598745fe5ab7697af3841108858c2123bedd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5MTI4NDAyODdjYjJkYjM0MmUwYTM4MTMzZmUzYTQ4NmEyMDUyZTk4YTFmN2M2NGMyODAyMTg4NDZlYmJkOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ4OTExNTNiMWEwMzQyNjc1YzkyYjE2YzM3ZjdlY2EwODVlOTFhY2NhZDFkNzYwMzZiNzkyMGE2ZTI1MmU0MmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyYWE2YzllY2I1MjI2ZDlmNmYwNmEwMjdmODI4MWM3MjFmYjVmMTQxN2Y1OWM2ZmEzNWY4YTliMjkwMjMxNTkifQ"
+        },
+        {
+          "resource": "repo://internal/holdoutdeleak/deleak_test.go#L46-L120",
+          "version": "repo-lines-v1:sha256:2e69188451839fa9d2932c225cffc7ad24c732bebb792fc02a9414c412a6b637:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZGNmNWRkZjYxMWNhNDdlNDY3NTgwZTZmZjRiOTNjYTVkOTI1YmVkNjZiMGI1ZGRmYmUyZjcwM2JjYTk5MjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjNzQ5ZTUwYTcxNTQ0NzRhOWIzYzgzNTMzZDRmNjQ2MzMyNzU1ZDAzMTc2MDlmN2EyNDUzOWZmYzEyOTlkYzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_016b63d35808422d84847616fd61d0c0",
+      "statement": "quality inspect validates evaluation-manifest.json (schema 2) end to end: provenance invariants (answers_committed and hidden_holdouts must be false, sha256 receipt algorithm, execution/case counts consistent), per-run receipts (fresh_context_child_task execution, bounded byte sizes, evidence-record digests), per-case file hashes recomputed from disk, verdict enum pass/blocked/fail, blocked cases requiring blocked_reason, and every run axis referenced by a case.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L504-L573",
+          "version": "repo-lines-v1:sha256:d51cc1173f8592a0779fe9f3467b2daacabe2d49d24c3e94d29ac9a724ec2e29:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViZjg3ZjY1N2U3OGMzYjJhOTMxMmEwODUxNmE4ZjgxYjQ1ZTBlZmVmOTA2ZTBiOWJkYzczNWZiNTY5YzNiNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyMDJlYWFjNmVjOWZlZDM2YjNmMjlkNjcwNWEwMWZjZDdkNTA3OTBiNjJmMTQ0MWRlMjQ2NDJiNjJkNzNjODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2YTNmZjAwOTUyMjUwYjQyOGQ0NWQyY2NlYzhmYTU5YzZiMTVhMjk1Yjk3YWI1NWMwMGQ2MGU2OGQ3ZGQzNTIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L613-L698",
+          "version": "repo-lines-v1:sha256:64bd591f46102e514f1cc70f9bb76c73d7bca1a4cf1a10517b721ea2014ef445:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiOWI4MWMyNjA1MzIwNDQ3ZmQ2Mzk3ZjQ4NmE0Njk0Mjc0NjQwOTEyZGQ2ZmEwYzZlMDU1ZWJkOWFiODE5OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5ZTcxOTQzZjdiN2U4YjZmNzdiZDBhOGQ2N2E4Mjc2YzFiZjE0YTdhZWVmZGRhZDUzNzkxMjM0NWJlZTEyNDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyNjliNDI4Yjk0M2UyNDA5MGZhNDVlOGQ0YzQ4OTM1OTI2NjEyM2NjMGUxNDA1MDdmM2ZmZmYyYjUxMDU2YjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c10ccd9447204a60b449225a6434195a",
+      "statement": "quality inspect reports three independent statuses with strict semantics (qualityStatuses): clean collect with no findings → ok/healthy/pass; only non-blocking findings → ok/needs_attention/report_only; any blocking finding → ok/needs_attention/block; and any collector warning/failure → collection_status=error, health_status=unknown, gate_status=block.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L46-L57",
+          "version": "repo-lines-v1:sha256:b2eba979d7bc1a9295e18ce5b4cb6fe5ac27cd30008e1239bfe90fa31277bbec:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViOGRjOTc5MDc1MzhjMTY0YWI1OGRlMWQ0M2I1ZmMyZWJiNTM0ZmQ4MjhjY2YxZTUxMDFjYTIyOWYxZTBhZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhZDM4MzQ2OWRmZGMyODUzMjdiY2NhMGJmMzlmYWJkYjEwOWNkNDQ4MWQwNWNjZGZiZmE1ZDg2YTE3Y2Y1NDcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L827-L840",
+          "version": "repo-lines-v1:sha256:92b32821e786a4d4b33f6f796cdf0d99c96ceab471e4ea58cb36754ebf56f51f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmYzBhY2ZlNWJmNGRlOTVjNzY1YTYyM2IwODZiMmFmYTY0NzU1NjQyOGE1Mjk5YzZmNDhkMjdmYTAzZGE3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2OTFhYTc3NDIwM2VmODdiZjhiNmZmNmZlYjA0N2E1Y2U2MzgzMTk2NTE4Mjg4NDg5ZjliMGRjOWZlNDkxY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjMTFlNDI2ZTVhZmZlYjU5YzFkZTk3OGNmM2U2YmRiNTU1MjgwZjJkMTg1Nzc2ZThmNTYxOWI5NzRiYWQyMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_095a191b050e42f8ad2986c96e4d7bb5",
+      "statement": "A collector failure is fail-closed: it produces a p0 quality-collector-error finding, sets collection_status=error, refuses to claim health knowledge (health_status=unknown — the tool never reports healthy from incomplete evidence), blocks the gate, and the `quality gate blocked` error is returned even in --json mode so the exit code mirrors gate_status.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L193-L201",
+          "version": "repo-lines-v1:sha256:18daaaa2b3770f833174c728478cc0bfdfb514addfe2a82c20e1f28be1ceca1e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDhkYzk0NzIxZjVhY2E5OGRhNTZkNjA2Mjc3OGVjYTYwMmFhNGJlNzVkYTg4YjExZmIzYTA5Y2RiMjBjZGQ1YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDM4MWIzZDA2MjNjNzgxYWM5NjcyMDM0YTQ4OGE4NzZjMDM3Y2E4YzZmMzNhNmRjNGVjYmExZTMwODdiY2YyMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzJhZGFkNWEwMjI1NzY1OWIwZWI2ZTlhMGRkMWNkZTVlOGY4NDhiMTE3MWIwMDU4MWYzMzYyZDc0ODM4NTg5ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDY0NjAzZDY5ODJjZWUzNzhhNWYzMDhlZjhmZjIyZDQ3NDg5OTcyYzE5NTQ0MWNlYThhZmZhYmRmOGJhYWYzZCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L232-L271",
+          "version": "repo-lines-v1:sha256:18d9f2d1aa5235bad3fd4d43a3e394ee4fb20a4d4e8678014d51c46b0a4d0a3f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZWY1NGJiYzI3ZmM0OTg2YmYzMjJkOGZhMmNhZDdmYjhhNTc3MzVkNzlkZmQyYzU5OGZkZDI3NTZlZDJkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1MGEzYzdlY2ViZDZiYTNhYTUxNjgzNDUzMDlhNjM1OWZjMmNkYzFkZjU3MjBhYWYzNTVlYTFhZjEwYWI4MjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlNGM3YjFmOGZjZmZhYjBkZjNhZWZkYTk0ODcyNmY3ZjFjNDdkNzQ3ZTg5NDliN2ZmNzdlNDcwZWY1ZTZhMTgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect_test.go#L408-L429",
+          "version": "repo-lines-v1:sha256:01faae308d720ad9d28ee082a166fee90a3c2ec4c5da3ed94d8500c5597f8849:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkMDE3YzdjZGJiZTRjZDA5NGQ1MzU5NDAwODg3NTQ2NTEwYmJiMWIzNjY0MDIwY2U5ZjViMTVjYjhiYmExNzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmNTFjNzk4M2U4ODYwNmY2NWY3MTMzZDQzMDQ5ZjgwNjA5MTQ4YmMyZjFlNmMyYzYwMTI5NGI4NDI3OGQyYzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b84e69cc41e24a6caefe1c948ca00841",
+      "statement": "Low-coverage debt stays report_only and does not block: low-coverage-packages is a p2 non-blocking finding (VerifyCommand `go test -cover ./... -count=1`), as are high-branch-functions and pioneer coverage/blocked-case findings; project-audit-items blocks only when a P0 item is open, and a code-SNR regression versus the saved baseline is a blocking p1 finding.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L771-L780",
+          "version": "repo-lines-v1:sha256:5af8cf44fd3cbfe12e704909cd04ded7dbdbf45c2f994eb99d5b004be90d9316:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NzNhZjllZGU5NDg5ODY1ZjA5NzAxOWExZjMwNDdhNDBkOGY2NjVhMGJkMmYzODcxZGZkMjRjYjI2OTFhN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZmI0Yzk4MTgyNDM4MzVmMGYzNzNlZjM2YzhmZDY5M2E4NDI3ZjA0NzI5ZmMwNzJjY2I0ODA5M2Q3NzY0YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkMzgzY2IzZDExMDNjNjYwNDU1MGI1YmRiYmI1NjYxZDZkMTFmYzBjZWRiYjY5NzBlMDg1ZTVmMzRjN2Q4ZWQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L797-L816",
+          "version": "repo-lines-v1:sha256:c16ed9b1eb08b949c710de43d284af95bfc24b4e6076d41e77e01a3620069c37:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5MDUxNGMwNzNjYWMzODUzNDBlZjdlYTY3M2MzZDQ1ZTRkZGFhNzQxYTZhZDZiYmE4NGVmNmUzMzMwMTY0YzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZmI0Yzk4MTgyNDM4MzVmMGYzNzNlZjM2YzhmZDY5M2E4NDI3ZjA0NzI5ZmMwNzJjY2I0ODA5M2Q3NzY0YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhYjgyNGNlMzc2MzQ1NWYwNWM4NGJkNDZmODEyNTM0MzNmOTAwYjI5OWJlZTNjOTdlMTBlMjkyMTJiYTQ0NWEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect_test.go#L379-L406",
+          "version": "repo-lines-v1:sha256:e8f104520547fb67d7b9d63434a67ba5afb03af92cbef8b7b6e50feea794059f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2NGRhNmVlNmE0MjM0MDlkMWM1YjBhMTdlZmJiOTcyYjE0YzBmZWMzNTY2ODk1ZWE1NzJiMDAyZGI2ZjFjMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1NWMwNGQ3Y2EzNGEwODI2ZDUzYTIxOTA1MjRmYjJhNzY0ZmIwNjVhYWNkMWJjYTQwNDNiNmRlODkwZTYwNGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1e044e77ea284991b7f59bb0e1cf1db7",
+      "statement": "The coverage collector runs `go test -cover ./...` with an exact-fingerprint cache and a 10-minute timeout (bounded above the measured ~270s warm-cache run) with bounded 16 MiB output, so a healthy first collection can seed the cache instead of failing before it.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/qualitycli/quality_inspect.go#L842-L880",
+          "version": "repo-lines-v1:sha256:c73c9e1d322a11c23965a3d13cbbc4102afadb0c50b690285e52f9843d9830e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNGY1N2I2ODY1MjBkNGNkZDY2NWYzNzE0ZDVkMjUwMTI5ZGVkMWM3ZWVhZmIzNGRmOGIyNmFmZTU2ZDViMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMmVkM2FhZmVmNzE1NTg4OTViMTdiMmYyNTkyYjhhMjg0NWUzZmRkYjIxODdiZDdiNTBmNmMzYThlMzhlOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiYzRhZjg5ODUxZDM1YWJmODVjOTc2OGVlZGU0YTMxZDliZmY1NDU0MThmYWQxY2U3M2FlMmE3YWEyMDg1OWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_198e9cbcc8c7470d8fc8ad623f4769cd",
+      "statement": "The CI self-verify gate runs native install with --skip-build --path-mode=skip into a throwaway HOME/CODEX_HOME and then self-verify with a pinned seed (--seed=100 --target-score=95 --json), making the workflow a pure wiring of existing deterministic commands with no model call; superseded runs on the same ref are cancelled and the workflow requests only contents: read.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L3-L23",
+          "version": "repo-lines-v1:sha256:8426f68439b7d095f78c42fecb0b780323ac982e6db3db4038c45740937c8c36:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1YTY3MjNkODE4MzE5NGVmMThkYmU1MWJiZDM0OWRlNTZhOTQ5ZWU3NTdhOTZhMzI2OWEyZDk1MmEzN2RiNjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3MTIyMjkzYThiMWI2NTYxYjliNzNkMmQ3YjE0MzcyMDdlMzk1NjMwNzNhYmZiYWYzNDg0NjU3YzczZWMxMDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiY2I0NDM0MjI1ZDljMjU4Y2UxOTUxM2Y4MTUyYmM4YWQ5Y2MxMTMxNzM3ZjI3NWYwMzAzZThlNDIwNjMzYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1ODJlYWI4YTU5N2E4NzA4NGM2NDExMjE4MTNiMGRlNmY2Mjg3ZDhkNWViMTc4ZjMzNDdmODAwYzQ5ODc5ZWQifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L83-L92",
+          "version": "repo-lines-v1:sha256:f75d4d445a801d3a3c5bc6a6cc511fd3c205716d2950c0d732843b1643dd5dc2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjMzMDgwMDI0NTZlN2IyZjhjZGJiODZmODYxNTJkNWU1NTQ5YzA2ZjgyNmE1YWVkOGNlOTlmZjU2ZGQ1NDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyNDljNzE5ZGM0MGRlOTZlOWNlOWE4ODgwZTA3OTMyYTZlZTQ3MjU5ZDgxOGNiNWFiNDYxOGVmZTZjNTBmMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNTljYThmNGZmMDUyODM5Y2ZlZGJjZWJmMWQ3NGQ0MGU3OGUyOWY4M2EwYWUyYjc5ZGQ2ZjExYjI1MmFjYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

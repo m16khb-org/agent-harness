@@ -1,0 +1,606 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3beef297ed22ebc4e5bd27e0cc195f768070f7e76c9981a06cf00b3d7993d90d",
+  "claims": [
+    {
+      "id": "claim_83be643f4045432f8591ae6a8ab7ad48",
+      "statement": "install.InstallNative is the single host-neutral installation engine: it validates shared inputs, resolves the stable root, discovers the skill list once, and delegates all concrete writes to port.HostInstaller implementations (Name() + Install(request)); the composition root harnessapp passes exactly codex.NewInstaller, claude.NewInstaller, and omo.NewInstaller, so the aggregate result covers hosts in the deterministic order codex → claude → omo with per-host failures joined into the final result.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/install_wiring.go#L22-L35",
+          "version": "repo-lines-v1:sha256:becb6fa5e07ade836d9b6e4f3c69bc0d484451f16c25471e0f79c00328131157:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzJiODNmOTg5YjY1NDY0MDI0MmMzNWQxZGI4ODU2MDNjMWQwNDMxNzg5MmFkMmEyMDM3ZmJkMzkyN2ZmZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExZGYwYjlkOGViZjI2NjQ5YjlkNzQ5MWQxM2U0N2Y5NzhiOGVmZDIzNTZjYzg5ZjdmY2UwYjBhNWIwYWJiNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkMDQwZGUzODYzYjdmNzk3NTQ1ZTdmZDcwN2Q3ODZiMjIyOTJiZTUwOGFiMjMxZTYyYzQ1ZWQ1ZWJmYjk4YmQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install/install.go#L44-L113",
+          "version": "repo-lines-v1:sha256:543cd0f8494ea69c1fc2d8086fc674790327c45fbea9a8e9d23585b59a94ecb8:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3ODNlMDE4OTgyODNiOTk5Y2MxZTJmYmQ3Nzg0NTI2ZTUzN2QxYWJlNDcxYzVjMzcxNWQ4YmNiMWI0OWM2MjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L655-L662",
+          "version": "repo-lines-v1:sha256:6521538ba4c27e562135deba021adad0182bab0d83220d13d0435b48fd15ca90:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzIwYTM0ZDNiZTI2NmE2NzY2MmI5NDBmMDA4NDhlNTIzYTFjNGEyZDQ5Y2Y3ZWI2NzEyYzhlMjg4MTRlZGM0MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmI2NTk3MDg2M2Q1ODEzYmY5NzBiMDJlMzRiNTVhMjEwMjJmZjkxZmJiMzc2MDBiYzlmNmE3NjY3OTBlZWQyNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjAzNDZmOTUyNmU3MmVkMDg0MDU0NjA1NGVhZGY1YjE5NTZhZjZmMjExMjk2YTlmMTMxMjY5OTY3ZTdmNmZlOSJ9"
+        },
+        {
+          "resource": "repo://internal/port/install.go#L96-L100",
+          "version": "repo-lines-v1:sha256:15708791a5d767d63345226ac2cb26925d1d57dc12a7f2c92f5a009a03fb70a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWEyMzNlOTk5NmM3NjY0ZTdlYzAyZWE0Yjg2YTc3N2UxZmQ3OTczYTllMGJlZmY4MDg3NDE2Njk0YjYzMzM0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGE2NTVjOWY5NTAzNDMxNWUyNmQ3YzUxNTRjN2IwYTNmMTE0Y2UzYmNmZGMwM2NjY2U2OWNhNjZkMGNiZDc4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_db46a8a1f8064e6bafddf4553e7f48f1",
+      "statement": "Default install writes only user-level config (skill symlinks, MCP registration, SessionStart hook) and creates nothing inside a target repository; repo-local files (.claude/skills, .mcp.json, .omo/skills, .omo/mcp.json) are created only when --project-local is explicitly passed, and the contract matrix asserts their absence otherwise.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/installcli/install.go#L19-L19",
+          "version": "repo-lines-v1:sha256:71118b266595486dfefd7c294db497336071cc609ba09f77109c47337837408c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzExMThiMjY2NTk1NDg2ZGZlZmQ3YzI5NGRiNDk3MzM2MDcxY2M2MDliYTA5Zjc3MTA5YzQ3MzM3ODM3NDA4YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzExMThiMjY2NTk1NDg2ZGZlZmQ3YzI5NGRiNDk3MzM2MDcxY2M2MDliYTA5Zjc3MTA5YzQ3MzM3ODM3NDA4YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDIzZjJhMmUxZjllMTJmM2Y0YWFjZDVjYWMxMGVkOGMyODA2Mjc3NDBkNTA4ZTI5YjlmZWNkOTVmNWYxYWI3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzU3ZjZiZjI2MDIzYmMzYWZjZjFmNDhiOGMzZmExOTdlNGNjMGY1MjAxYjUwYzUxODJlMTY5MTI0Mjk0NWViNSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install.go#L35-L40",
+          "version": "repo-lines-v1:sha256:fdbc8f6a274c56609cd3616c14431c4395e29144cd0e0515bef9ef5583ce76d2:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQ0Njk2YTA2OTNkMThlOWNjNGQ2M2M5MWUxZmVjMTRkOTAxMDIzYWY4ZjdhOTkxZmE4ZWE5YjBjY2VkOWI5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDA4NjA2ZWI2YTc5NjQ4ODNlM2QyNTY3MzViNjA5NDAxOTkyYWVkZDFmNmRmNzY0NzMzYmY4MzI0NzFkZDA2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWVmM2Q3YjBlZmY5N2ZlODg1ZjVkZDVkMzE4M2E2M2ViYTExMGVhODQ1Y2E1YTRmZjY1MTk4MzJlNGI1ZjA4MiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L680-L701",
+          "version": "repo-lines-v1:sha256:46dd13e9b07e6aa5493cbe158958d1d54ffa1695865e8d444e352513c7df4283:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NDY5NmEwNjkzZDE4ZTljYzRkNjNjOTFlMWZlYzE0ZDkwMTAyM2FmOGY3YTk5MWZhOGVhOWIwY2NlZDliOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYmY4MDVlNzI5NmFhMTdjZTcyMDJkZTRiMjk1NDEwNGY0ZmUxMGQyOTIwNTI0ZTdjOTJhMzlkN2JjYTYzZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlNTlmMmUwZjBhM2U3ZWRhZGVhYmMwMmNlYWQzOTAyMzNjNDU5MGI4MmNjNmQ5YTA4NzBjZmVmM2ZkYmI0NGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/install.go#L50-L61",
+          "version": "repo-lines-v1:sha256:26baf64f341354b70792da95444ea2127e39a7bf9cb74960596ca9d88ed5e447:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NDY5NmEwNjkzZDE4ZTljYzRkNjNjOTFlMWZlYzE0ZDkwMTAyM2FmOGY3YTk5MWZhOGVhOWIwY2NlZDliOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjOTYwZWMxMTVmZDllNjBlM2JhMzE5MTNhOWYzNzA2OTVlM2RiNjQ2NmQ2Yjk5YmI4ODVkNTdiZjEyNjE4ZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhMGE4Mzc2NWI2YjNiM2ExZmM2ODg0OTRiODc0N2Y0NDU1Mzg2NWUyNjQyOTUzMDU3NWNkYWZlYzUwYTZmOWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_071ae01b758747f2af1095d50f9d2a67",
+      "statement": "Each host adapter owns exactly its own user-level surfaces: Codex writes ~/.codex/skills/* symlinks, the [mcp_servers.agent_harness] block in ~/.codex/config.toml, and the SessionStart hook in ~/.codex/hooks.json; Claude Code writes ~/.claude/skills/* symlinks, the user-scope agent_harness MCP server in ~/.claude.json, and the SessionStart hook in ~/.claude/settings.json; Omo writes ~/.omo/agent/skills/* symlinks, agent_harness in ~/.omo/mcp.json, and the lifecycle extension ~/.omo/extensions/agent-harness.js.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/claude/install.go#L16-L47",
+          "version": "repo-lines-v1:sha256:93ebbd7c43e6231662f42ceb8180f13577b4706ad73365665b34e7434ae7e2fb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZWUxMTQ1M2FiZGRhYTljMzRiYjM3NmJiYWM0NzdmNTUyMDQzYmVmNzk2NzY2OWVhNTdmODJmNmVmNTQyZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmNzg1MzA3ZWVhNmZiZGU3MmViMjc4ZTBiYTU2Mjk0ZDU4MzE2YjZkMTMyOTExODU3NWU5ZDc0MjhlNTc0MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3ODQzYjNmMzBmOGQ2YmRmNDUxZDk3MmVmYWI1NWEyNTFjZWY4OTZmM2Q1OGVjMGZkNThkZTNkNGRiMWE1ZDkifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install.go#L15-L40",
+          "version": "repo-lines-v1:sha256:6cc8f10f17189cd968aa180bf00b60db8ba3b1175a179b34070deb442c3f3341:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZWUxMTQ1M2FiZGRhYTljMzRiYjM3NmJiYWM0NzdmNTUyMDQzYmVmNzk2NzY2OWVhNTdmODJmNmVmNTQyZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ODg5ZWRkNWU1MmU4NDczMGIyYWY1NDE0ZjUzOTljNGIzMjNlMWFmOWQ2ZjE5MDdmMGY1Mzg3ZmRiMDJiN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/install.go#L15-L66",
+          "version": "repo-lines-v1:sha256:517005ddaf6da414ffafe5456b5553b77060216cee71128ae17525abbf78016d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZWUxMTQ1M2FiZGRhYTljMzRiYjM3NmJiYWM0NzdmNTUyMDQzYmVmNzk2NzY2OWVhNTdmODJmNmVmNTQyZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNWU5OGUyNzhhZTUwN2IyYTVkNGM1YWFlMTk4NDMzNDAzOTg2MTVmY2Q2ZTUxMTFkOGE2Yzc3Y2IyYjI5OWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MTAxMGVhZWFhMzc2ZWY2OTA1ZWEwYTY4ZTkzYmJjZjRhNGJjMTM1YTA2MzMxMzEyZmZmZTI2NDNlOGZlY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2064eedbe0ca474aa35c48079516a29b",
+      "statement": "Each installer also refreshes the repo-owned host templates under configs/ (configs/codex/mcp.config.toml and hooks.json, configs/claude/mcp.project.json and hooks.settings.json, configs/omo/mcp.json and agent-harness.js) so the checked-in templates cannot drift from the content the installer writes into user homes.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/claude/install.go#L29-L33",
+          "version": "repo-lines-v1:sha256:633fa64a94b2d60ba60b2b3b29c75696758ac43e961003d21174b8f6d4e4896b:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQyZjFhN2QxNDk0MWNhMWIwMmM3MzAxYWE0OGIxOTFjZDE2Y2U3NDc5ZWQ1MWEyMjI3MDMyNDMzYTg1N2U3NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2MwZGIwMmVlYzE3YTg3NDMzM2VmZjEyZDY0NDQ0ZWFjMjZiOTlmZjA4MDk1MDYxNWEwMTIzOGRhZjkwNTJiOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjZjODA3NzgxYTc1MTBmMWMyZjhlODg1M2RmMzNlZTg1MjQ3YmM4MzQyZjQwNWY3OTU1NWMyZGZmNjRjNmExNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmZiNjc3Mjc2Y2UwOTdlOWY3Y2FmNTZiMTg4NGU2ZGNiMWFlZTg1Y2Q1NjViOTQ2MTRmNzY1NmIwYWMyNDE5ZCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install.go#L23-L33",
+          "version": "repo-lines-v1:sha256:f975592c2628014892701275896fd1ff622517a73dada29e9e5fa7cb7cfdf457:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MzdhNjZkNTY4Y2ZiNTQ2NWRmNzdiNDRjYjlmZjRmYmQ5NWFhOWVkMzFiYzFmOGRkOGY5ZWU4YzYyYzFkMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmNTBmZjhjM2JmMjQyZWFiN2VjM2I1Yzk4NjgzMzIxMDVhY2I5MzUzODA2MzBjNDZiZDRmYTI3N2M1OTY5MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxNTViYWVlYWNmNTgyMmFhZjIwYTA5YzI2YTA1MjZiZjYyZjIzMTQ4NGNmMjUwMDNjZTE2NDM4ZjgxNGIzOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4Y2RjMzhhOTUwNWNlYzZlMjk5YzVlNjM1NWFjODk1OWRhODE0MGZiZjkyZGZmYmYzYzgwNWM3ZjQ3MDhhZjAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/install.go#L30-L48",
+          "version": "repo-lines-v1:sha256:1911e80a058ac37576f5cca178f59c892016c9688f1f48af836aca63e58436dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhYTczZWQyOWY4ZGQ5MDNlMDA2MmE3OGJlZTBlMDRiYWRlMTg0NDA3YzQ4ODlkNDVlZWIxMjNiYzc4NzgyZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5NWE1MzIwZGRkZTUwY2QzYTI3YjI4ZGE3YjFlYzY2MDA0MTYzMTJmNTZiNGY0OTgwMWJkYjMyNzZjOTE5MjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjYTk0NTFjMzNjMmFhMWZhZGExNDBjODViOTVhMjkyNzgwZjNiN2IzMzEzNGJjYjBmNTAxNGY3MTFjMzk1NDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmYjY3NzI3NmNlMDk3ZTlmN2NhZjU2YjE4ODRlNmRjYjFhZWU4NWNkNTY1Yjk0NjE0Zjc2NTZiMGFjMjQxOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ae64539e9ceb412bbb438cfbcecdb525",
+      "statement": "Before delegating, install.DefaultNativeInstallRequest normalizes the request: ResolveStableNativeRoot maps a linked Git worktree to the source checkout owning the common .git directory, ValidateStableNativeRuntime rejects binaries outside that stable root so installed hooks always execute an installer-owned binary, CodexHome defaults to ~/.codex (overridable via CODEX_HOME), and the skill list is derived from skills/<name>/SKILL.md directories, deduplicated and sorted.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/install/install.go#L14-L42",
+          "version": "repo-lines-v1:sha256:edee428aac6d8453e6fd1844a6bf3725637f9775c693392b0477216ce0dff9d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNmUxZjQ2NDMyM2U0MjQyM2Y5ZWViYzMxNjliODNhZGUwNTRkMGU1ZTI0MzY0YzAwMjA1Y2UyMjRiMDhjM2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3YWUxMjAwNWMyNWY5MjQzNWMwMDhjM2MyMTNkNjA4OTdkZTYyNTI5YjFkY2E1YTdhZmE0YmI5YjhkYmMzYTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZTMzYzhkZDk3Yzk4Mjc1ZmYxNDBiYmMyZTFmNTZjOWRkYWZkODFjNjBiMDVhY2NjYzdkMjNkNmFjNTBhYzMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install/native_root.go#L12-L75",
+          "version": "repo-lines-v1:sha256:b18731fb894fdc5a9c522fe8d8fbb29a51e59e9c27664027f1e33a219ef49455:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMjA0MDMzOTQ4MGU4NzlkMGI0YjAwN2JhNjBmNmExODNhMWVmZjc2ODAzYTI0NGZjMTdlZmUzNDBiMjk0MzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3YTc4MjhjYTg2NWNhY2M5ZDAxZDFkYzhmN2IwYjExNGQ2YjAzMDNjODI4MjA1MTUxMjIxYTg5ZWY0YTYxZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ4NjQwOTRjMDc5ODg2MmUwMjIwOTQ5YzY3MWFlN2QzMzI3N2M1MDdkYzg2ZDBjOWI0YzM5ZTFjNjdjNTA1ZmIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install/skills.go#L10-L42",
+          "version": "repo-lines-v1:sha256:b371947d710598298ebbe7cab46f0e6a477abd5c03641cce6fac73d995db6b56:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1ZjkzNmJjMjRhZDgzMDEwNDUzZWU5Yjc0ZGIxZjg1NjM4MjMzOTIxNDdlYzVkZDE2YWYxNzg1MDI0Njg3MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e3f401c48b394105ae86bc886dc0fec0",
+      "statement": "skills/ is the single host-neutral source of truth for shared skills (34 SKILL.md directories: 12 pioneer namesakes fixed by internal/domain/pioneerskill plus operational skills); installation links each host's user skill directory to <checkout>/skills/<name> via symlinks and never copies content, so host-local copies that drift from skills/ are forbidden drift.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/installutil/install_util.go#L14-L100",
+          "version": "repo-lines-v1:sha256:8f22d025cddb291c7c59f0f8c8b67394c72a64a7f68f21b3b17206bfe676502a:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2OWUzZDgxMDgzY2ZhNTZhODk4YjdlYWFiNDkzNzc4ZTE4ZTQwNWJlMDEwN2FiMTM1ZGUwZTNiODg4ODJiNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NjI4NDM1YmU4YTE0MmFlYzYwNWIyMzJiM2NlNWY4MGYzMzg0NGYyMTA4MDk2ZGI2MzZiODMzNGIxZmJkZDgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/skill_hosts.go#L13-L45",
+          "version": "repo-lines-v1:sha256:e0b0ca3ae4c3e3af836231c8218a98721939b3fad25967e4e42f5769dd7cf23b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyYThkMGJjYTY5ZjE4MTgxMTJiNjIwMDkxZGIxMmI0NThiZmY5MzlkODJhNGEyMjEzZmUwN2NlOTRlNmZmZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1M2E1YTgxNDhjMjM1ZmM4ZTAzMzEwNDI4YzNiOTQ0ZTQzN2VkY2M2YzM2Yjg5M2M1YTI5ZjQ1NWI5NTNlZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/pioneerskill/catalog.go#L3-L20",
+          "version": "repo-lines-v1:sha256:739cdf4dfb589945a041b5ccf698697d2e5cb13a74d653e4ed1d1c1f9ab5f45d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiY2YyMzM2MTFiM2I4OTQwMDY4OWI3YmM1YWU0MjI4ZmVlMGQ4MDc0OWVhMWEwM2M0NTg2NTlhODc3MjUyNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwYzNkZTE4ZmUwOTMxODkwNjEwN2M0NGI1MTRmZGQzNGRlMWNlNjNhOTcxMmM2MWQzNDcxMjBiYTFhNDcyOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMjJjNjVmMzcyYjEyMGQyYzExZmIyZGZhOWI5N2MzNzVmODMxYTQzNTEyM2NiZGZiYjdkYjljYzgyNTU0YmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8af9c8e930344ff59e1e949a3a0203f4",
+      "statement": "Skill linking honors a per-skill install.json host filter ({\"hosts\":[...]} enables a skill only for listed hosts; missing or invalid config keeps the historical default of all hosts, with skips reported as messages) and prunes stale harness-owned symlinks: PruneStaleSkillLinks removes only links pointing under this checkout's skills/ whose target no longer exists, leaves foreign links, resolving links, and non-symlinks untouched, and reports would_remove during dry-run.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/installutil/install_util.go#L21-L31",
+          "version": "repo-lines-v1:sha256:6f6a3399fd694975df1395890278693a995408d575118d6133afcfc826f68b09:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjZTVkZTkyY2Y3YjZkODg0NDdmNTlmZjBjMzEwYTEzYmQyZDZlNjU5Y2IzOTA4NGFiNjZmM2FiNTNmOWRkMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0NTE2N2M4YzY1NGU4YWZmYWQxOTIwMjlhODhkYjUyMjFjZjllMWFmMTVkZmUzYzBmYWVjMmM5YTNlMzQ3ZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmZTg0YzAyMzE3MWIzNzlmMjgyZjk0NzAxODM3MjgxNTQwZjMxYWFlZGZmNTI5NzBlOGQxZDZjNTBkNjRlN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxYTY5MjRkZDI3MThlYTQyZmRkOGY5NDYxNzUwODVlMTAxOWM3MDg2ZDU0ZTgwYjlhYTIwY2NjZDc4NmRmZDAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/install_util.go#L34-L87",
+          "version": "repo-lines-v1:sha256:db210b7e0880ca998e8db05e559c23bf37f5a96762d2b35e68eeeaa263c46c7f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1MDc0YjNiOTE0M2UxMWJiZjU0NTQzYzZjNGEzZThlMDA2NzE2ZWIwNGMwNjk2Yjg4NmViMjQ2NjQ5NDNjNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMGY2MDEyMTBiYTZiNWYzMDdmY2Y1MTc0NmFhMmNlNGIyNmYyYmU1YWVmZjk4YTQxOGFiYjRmNDg5Yjk1MmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwNWVlYTZkYjNmZDU3ZjZjNzM2ZDBlZjE1MDUyNzBlMDNkMjQwYTYwYWNmYWJmYjUyNTQ1YzIzZjY3ODhhYzcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/skill_hosts.go#L16-L32",
+          "version": "repo-lines-v1:sha256:8e17852484c571a8b92cdaee988eba1f923231cefca7573fe4a67c5e305cafed:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkY2VhYTJjYzFiMzRlN2RlYTQ3Y2E4NGI3YzdlMDU1OTNjMzQ0MTgyOWYwMjY3ZWRkMWM4ODczNDFkNmMxNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhZDc0N2I5ZGQ2YzU2YjhhMGU2OTg0ZTQ0YTkxNGM1YWVmMmUwMDk3YTE2NTIyNjU2ZmMxY2M3MDlmNGNlOTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3M2NkOTBhMzU0N2UxZDM4YmQ1ZWMzMTRlNjBiYzEwNTYyNjFhOTE4NTlmZWI0MTFkOTU5NzI0YjY3NjAwNjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_20ba8c0d1811498983a9f8c0c6a44b59",
+      "statement": "Default installs register exactly one hook event, SessionStart, for both Codex (~/.codex/hooks.json) and Claude Code (~/.claude/settings.json), invoking the shared context CLI ('<bin>' hook session-start --host codex|claude) with a 5-second timeout; this is because both Claude Code 2.1.247 and codex-cli 0.150.1 re-run SessionStart with source \"compact\" after compaction and only SessionStart output can carry model-facing additionalContext, while PostCompact output is user-display-only, so PostCompact is not registered and upgrades remove any managed PostCompact group while preserving non-harness groups.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-27-session-start-owns-compaction-context.md#L9-L18",
+          "version": "repo-lines-v1:sha256:125327cc97ea0b79090ee04daad26e0693ec1d4cd912fe9f75304e540eed902b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3YmNiNjA2YzRiZTc3MWViYzllNjcwODU2ZjI2OTNlYjQ5ZDE4MWIyYjAxYjU3OTQ4NjFmZWZlYTU1MTYyM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYWNlOTYyMTcxNzMxYTZmZjFlNWE3YzQ4NWY5YTFiZjA4NzlkOTI2YzhmYTdkYmQxZWU0ODFkMTc4YzMxZjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4MDg4MjRiNGJiZmM1OTc1ODVjOGM5ZWI1MjY4MjU4NDhkOWU0OTMwNDg3ODNiMmI3OTM2YmM2NGNjZWRmZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzNWI5MDQzODY4ZWQ0ZmQ2MTFhODU5YjY3NWU2NTAyOTI1YWFjZjE1NWIzNzA3NzRhZmNhNDViNTQxNWNmMDQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L18-L23",
+          "version": "repo-lines-v1:sha256:5a25aeaafaf9c6e0ac19a9ffcd77a84e054381459a95708dcae67058a980e6d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODUwOGI0NGY4NWU3ODNiYzMyOGMyYzkzY2FmZDZjMjMzYWY0MDg5OTBhMDhkMjZkOWEyYzI4MTIxOTY4MzRhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWI0NDk2OGZmMDAxNzljMTk4ODhhNGU4MjM3NGQ4NDQ5MTUzOTMzYWMzYzQzYjQ2MGRmOTlkMGVmNmFlYTI5MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGU4YmNiMDJjMzM4MjFmOTE1ZDBhN2M3OGE3YjUxN2I5ZjRlMzkyN2UyZGI0ZDc2MmJkOWQ3MDU2NmM2ZmY3MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDBkYWUwZDI5ZGVjMjE0MGE5YzI2ZjY2MzA3M2E5N2M4OTAzZmE0NjliZDQ0MDNiNDQ3OWY0NTMxYThkMmUwYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install_hooks.go#L81-L98",
+          "version": "repo-lines-v1:sha256:4d4f7cd43c054966b7d65c0e36c521b699f9c9a717a1e9ce3d4b6a5608d1d674:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyNmYyYjRiZWExY2ExYjMxMDAwY2JhMTlmNGI0OTE4MGJkZjg3OTY5M2YwMTQ3NWUwOGIyYjYwZGYzYzk1MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNzJmZTM3OTIyYTMxMThmNjkzMzA5MjYyMGUzYzFmNmQ3MTRjMGY2NTkzOTg3YmY4MGZiMmE1ZDU3YjJjOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiNTFiMWU3OTc2YmY1M2E0YTdlM2I4OWNjOTY2NDU1OGM0OTRmNmQyNzZjOTU0MmY2MThmMzY2MDYyZWZkZGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install_hooks.go#L74-L88",
+          "version": "repo-lines-v1:sha256:449d044e685254edf673ca995c10cffef8abf0a0c38b6532062c51080608c5a2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmN2VhNGViYTIzNmI0ZWZhMDZlODdkYjBlZmU3OTMxMzU5Y2ViNWE0ODNiNTVmZjYzNGRjMzU5OGU0ZmEwMjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmOTQwNWI4NDc5ZTE5MTM1ODk4MGUwNjM1NmZlNjEwYzc0YjQwNTAwZGM1ZDk3ZmVlODdhZWJlNmM5YmQzNWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNzJmZTM3OTIyYTMxMThmNjkzMzA5MjYyMGUzYzFmNmQ3MTRjMGY2NTkzOTg3YmY4MGZiMmE1ZDU3YjJjOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1NDgyYmY3M2VmYWJjNDBmNTQ2NmQ0ODY0MTU3MjAxZTFmMjhkYjM5ZDM3ZTIwYzQ0NzBkYjY5YjhiNjIzMTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7745b119ec8a462f9708bed4ca0256f1",
+      "statement": "The hook CLI exposes only two subcommands — hook session-start and hook post-compact — and both merely read the static project-doc catalog and emit host-compatible JSON; they never touch IssueOps, lifecycle reminders, runtime state, telemetry, SQLite, worker recovery, or durable state, and hook output is neither an enforcement path nor ownership evidence. post-compact stays available for Omo (whose session_compact has no SessionStart re-run) and diagnosis; HARNESS_DISABLE_HOOKS=1 turns registered hooks into silent no-ops.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-27-session-start-owns-compaction-context.md#L16-L22",
+          "version": "repo-lines-v1:sha256:0ee126a08853d7e219a388464aab1fc8bdbee469a352a9ddb569ef81bfe5920f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2UyNmJkNTU1NjQ0OGU5M2UyODgyM2Q1ZGUxNGNmNmIxMTMxYWM3NDE2OGNjZGYzMTFmMjQ0OWNjZGMyY2IyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTMxMDNlN2Y0OWU2MTcyY2MxZDM0Y2RkZDk5ZGEzZjk5MWVmNjk0OTEwZDY2NGIzN2VhNjMwN2ZkNDBhNWNiOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNjYTliMTMxMWMyNDI4ZmU1ZTE3YzJkYWVlOTA3ZTE5Mjg3MDViZmFiODFjMzc2ZWNlMTNhY2E3MDRiODg3NSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L38-L57",
+          "version": "repo-lines-v1:sha256:13f86ae8cf9e31986e51f3aad398410345f9eaad56a86e573b6a0c3a1875fc8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNDc1OTU3OWZiZmJhZWU3ZTY0MWExYzIxZDdiN2RlOTcxY2Q5ZDNlYjBjMDEzNDdmMDM1YjkyZWE1YmMyYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzYmQ1ODI4ODM0MThkZDBhZWJlN2M2YTdhZjRmZjAxNjg3MmE2OWY2YzQzMjg1ZDg4NjllYzk0ODY0ODg1YzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2ZjJjNTVlM2RlMmM5MTk5OTQzNDg5NjZlOWI1ZmZkMDExZmU2NDhkOTlmOTk1MmU4YjU3OGFmZmUwYjQ5NTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyNDU1ZjgxODQzZDFhYzEyMGRjNzY5MGI1M2U0ZWQ1YmRiYzlkODk1ZDhhOTQwOGQ5OGNmYTQyOWFlYTE2MmQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hook.go#L12-L58",
+          "version": "repo-lines-v1:sha256:c99806a9e88cf7ade9d7ddf5cd16d50c818812ca33593f91762e60796fbdd43c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5NWUxZjgzMjljNzliNjhlZWE2MjU0ZGI4ZWMwYzE2NTAyYjM3ZWRiOGIwZTI2Zjk2MTMyOTU1MmViOWI0MDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMjc4NjQ5MmU5NjlhOGQ4MmE5ZDU3MjNmNWExZTRhNjgzZjI0ODA0NWNiOTE0NjExYThkYTkxYjY3YWQzM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzZmI2YzlhNmI3ODliNjk0YmU4N2E5MTNiYzMyNDU4YzQxYWI1YWQ4MzQ4MzA3ZjUzNmE5YjczNThiNjIyODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c0725eb6f8e148379175867f48708441",
+      "statement": "Host hook rendering differences are isolated in internal/domain/hook adapters: Claude Code separates the user-visible systemMessage from model-facing hookSpecificOutput.additionalContext, while Codex renders additionalContext in its TUI so the readable user view replaces the compact string and systemMessage is never emitted; with nothing to inject both hosts receive {}.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L80-L80",
+          "version": "repo-lines-v1:sha256:853297c94ea1ea9d60c2f184cf14454510750afc6f0b52ed0a9899a567dcc281:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODUzMjk3Yzk0ZWExZWE5ZDYwYzJmMTg0Y2YxNDQ1NDUxMDc1MGFmYzZmMGI1MmVkMGE5ODk5YTU2N2RjYzI4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODUzMjk3Yzk0ZWExZWE5ZDYwYzJmMTg0Y2YxNDQ1NDUxMDc1MGFmYzZmMGI1MmVkMGE5ODk5YTU2N2RjYzI4MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmQyODI0YmU1ZTljOTAzYWJiODhmZmE3YTE4NGI3NDI2ZWU5NDVlNTZhNmViNTkwYTdlNmY2NzE2Y2Q2ZGM1NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWM5ZTg1MjY0MDk3YjhjOWQ3YTI1NzE2MjhhZDVlZTI0M2I0NzI5MWNmMmJjYjU0NTk3M2UyNjIwMTExNDljNyJ9"
+        },
+        {
+          "resource": "repo://internal/domain/hook/output.go#L19-L60",
+          "version": "repo-lines-v1:sha256:8dcc9c7f94e82f20b6d815ae0d3bbd19e2a81fe40852ec9a5fc3e93075bec956:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYjU0ZTI2ZmJkNzNiMDdiNTVhMTEwZjk1YzZlOTU2M2ZjODJhYTMzNzFhMTJhNTg3MDczZTY3YzRkZDU1NTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiMGNkMTFiOTJiNGJjYTNmODZhOGYwYWU0YjU5ZmZkOTc4ZDFmOGEzM2FlZmY0NjEzYTc3YzNhZGEzNWI1YzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d32a9f72c55d4abfadeed8c215c87352",
+      "statement": "Hook and MCP registration is a merge, never an overwrite: installers read existing JSON, fail closed on malformed known hook events, replace only agent-harness-owned groups on known lifecycle events while preserving third-party groups and their order, delete the obsolete hyphenated agent-harness MCP alias, and merge agent_harness into the existing server maps (Claude ~/.claude.json and Omo ~/.omo/mcp.json, both mode 0600).",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/claude/install_mcp.go#L11-L29",
+          "version": "repo-lines-v1:sha256:26ae981c31f57b85b5efe8b65731b27f337d6158fa03c4235eb3fddc4b8b6f29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NmRmZWQxNGVlNzAyMzE1NDIwMzM0ZTQ4MWVmODU1MzIyNTY4ZmQyODk0MTYyNzllM2MyNDRlZTEwYWQ3ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyMTQ1MDA3NjVmMWFiY2VlYzlhYzkwYmZhNTRiYTkzMzMwMjliOWZhZTE2NWYxMDQ4NmIxYTI2ZDA1ZmVlYWYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install_hooks.go#L106-L147",
+          "version": "repo-lines-v1:sha256:58053a2dc3feb795c7c561bc0650f8d713fec716ca13b4a53d3d062bda150fb7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZjU5YjMzYzViMmM5MjQwN2NjZTQ0ZDc2ZjZlMmZiYWMwNGNhZTMyYzcyYjZiOGE0MDhmODY1MWM2MjU1NmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhYTE4YmNiNDE3ZTJkZTVmMTFmOTEzNGY5NGNiZjExZmQyNzI2MDYzOWQ0ZTg4NTZiZDc1NTY1OTg4NTZjYWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5ODYzNjEyMzliMmM4YWJjMWNiYTE5MGFkYzYzNjBkYzE4MWM0YzMyYjc5MWJmMTllYjE4NDNhYWEwZjc5NzgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install_hooks.go#L13-L53",
+          "version": "repo-lines-v1:sha256:12532cafc2a4b17df399712e4e4f90b348826b89dc5fa92a79fa995b76409c5b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NTE5Yjk3ZTBlZGVlYzE4NDAwMDE2YmI2ZjUwMjNiZWY0NTNlYWQ0NjRjOTU2N2MxMTVkODhmZjllOWZhZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjYzA5ZDE3ZmJlODBkZWUzMzg4N2M3NTI1NWMxMjM5MDRmYjRmMmEzY2JiZDUwMTQ4Mjg2MTNmYjkzYTc5ZDcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/hook_group.go#L9-L26",
+          "version": "repo-lines-v1:sha256:22e38243c27e7f4055f04c9b79f8f82abd741fff162363fb6884bb244947ffa0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZjA1MWQ2MjVjNzVhZGQzZWQzZjVmMmMxNmE3NTI0OWEwNzBhZTVjYzUxOWFlZDBmYzE2ZDI5NzJhZmU4NGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1NDc2MTRlYmI1NGZlMDg5NzJmZDE1ZmJiOTlmMzZhMDEzN2NlNzNhMzk2ODcyNDQzOWRiZmYxMzE2ZTFiM2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_19b06e9295e84354a9f270e5d02fa9c3",
+      "statement": "Codex config.toml is edited conservatively — backed up once as config.toml.harness.bak, stripped only of harness-owned mcp_servers.agent_harness sections, canonical block appended with HARNESS_ROOT, written mode 0600 — and installers emit two drift diagnostics: HookTargetDriftMessages for installer-owned hooks whose executable path no longer matches the canonical binary, and HookTargetGenerationMessages for the same-path-different-build-generation case (#328) including an exact recovery command.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/claude/adapter_tail_dependencies.go#L9-L22",
+          "version": "repo-lines-v1:sha256:4a69370d10b5fd5eb8ad26f2e87fd49ad4b01bf2fe7db307340d9ae2c4c16af7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNDU2ZDM5ZjZmYWExMjhmZGQ5NzU3NWY0ZDEwMjk2MWExZDYyNTY2NjczZGE0ZTNiZTk4MGMwM2E3ZTlkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5ZGYwMWVlZTI5M2NjNDdmYTI3OGU5MGUzYWI2NjhhMzY2NGY2OWFiMTRhMDlkYWI5OTg3ZjFmNzBkMGI4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install_config.go#L12-L65",
+          "version": "repo-lines-v1:sha256:ee9fa32281e285fd0e49da3ec1a9cacce2a9f78c4b5a6ff0917da8ed566158fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjYTY4YzBiYjcwNWM2NTQ2ODQ4ZjljOGMxMzZmYjI4ODNjODJkNzc2MTIxMGNlNGYzYmY4NTU0N2FkZTFkZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlYzUxN2FiMTMzNTE0ZDVlZjc1ZDNmZTQ3ZWJjYWMwN2ZjZmQxOTE3Nzk4ZjQ4YjRhNzczMWI3ZTE3NDE2MWYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/hook_generation.go#L23-L53",
+          "version": "repo-lines-v1:sha256:d968e2780c71efa3f179707a264fdc70e72efcc07db165f87904b4e5ccdf2b66:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZmFkYWQ5ODQ5MjMxNzJiZDJmMGJkOTk2NDA2ZjFkNDM3NjVhYTQ5MDAzMmI0N2MzYmMyMGEzZWJhZGQxOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlMWFmZWViOGFjMDJiMmI5MjAxM2M5MWVjNjk3OTg2MTY1MDA0N2QwNDhhNGYyY2M0MTVjYzJhMThlMGQxMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/hook_target.go#L9-L30",
+          "version": "repo-lines-v1:sha256:283f8d1da32e3fef93bb89addc8b82896a5322176b6d7269fd62d699e7bc28ec:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4N2Q1YmIwYWI1YmFhZTQ0M2ViMTRhNTc5YjhkNWVjZTViMmYzNDg5NTYyOTkxYjAwODJjOGRhYzhhZTQ1ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmYzFlZmJjNjRkNWQxOWEyYjVjZTg4OTg4NmQ5ZTVlOGFlZWY2MGY0ODMwYzZhMTE3YWQzNGYyOWExYmExNGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3119e335cbde4676bbf7f65041c5c857",
+      "statement": "Installation commits as a staged activation transaction: a dry-run preflight runs first, Begin persists a pending transition with a transition ID and candidate binary SHA-256, install then applies host writes, and Seal requires strict readback of exactly six evidences — mcp and hooks surfaces for each of codex, claude, and omo — each carrying a semantic SHA-256 of the expected surface plus filesystem identity (regular single-link file, device/inode/mode, re-stat during read); Claude and Omo readbacks additionally reject the obsolete hyphenated alias and Omo compares extension bytes exactly. Any host-write or seal failure rolls back snapshots and aborts the transition.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/installcli/install.go#L189-L245",
+          "version": "repo-lines-v1:sha256:1f99172e7372367d55f1521aa74683ab6680160a23c9148e647cb4715a42bcf6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiOWE3MmU0YmVmODdjMDE5ODU3NmRmZGI4MjA5NWE1NDJhZWEwYWIyZGNjZmUxOWVjZWE0M2IzMTc4ODRiZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2NWVjMWRjMjEzMmUzY2ExMmY4YTk5MDlkOTM2OGNiMjkxZWE0Yzk3YzNhM2UzNDZhZjAzMTVlZTYwNTllMzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmOTBjZGEyMGQ0ZDA3YzY4YjVmMWI0YjRiMjQzNWI0YTBiMmRkOTFjZTI0NzVjZDhlNTc5YTBhZDE1ZGVhNmYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/activation.go#L12-L58",
+          "version": "repo-lines-v1:sha256:09e090737425499e15c63c6cff41fa4c34646cb43583b7972ed6ed9841996879:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMGE2ZDgyMjNlMDkxMjY4NGE4NjYyYzQyMmQ1YmI4YzgwZDg1OTUyYTVkZDNiNDM0MGU5MjgzMTRlMTkzZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/activation.go#L12-L45",
+          "version": "repo-lines-v1:sha256:c6e3dd46ea83d77d99d085055870255bbcb5d13f272457343e55e6f598439cf4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMGE2ZDgyMjNlMDkxMjY4NGE4NjYyYzQyMmQ1YmI4YzgwZDg1OTUyYTVkZDNiNDM0MGU5MjgzMTRlMTkzZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/installutil/activation.go#L86-L122",
+          "version": "repo-lines-v1:sha256:d563e09ce04ac35f0858b8cd6ef30b8032d0655dab0d4a11546d24093b9847b6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZDE3ODY4NjAyOGM1MjhiNjY0YTA3MWNjZTA0OTJhZjc3ZDUzY2EyM2Y5N2FlODBiNzQ5M2YyYjFkMGE1NDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiYWExZGZiNTg2Mzk5YTA2YmU4MWViYzgxMDFhNjY0ZDFhY2Y0Y2QwNGM0ZTRkNGFkMTU4MzMxZTdkOTRiYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5NTZjNWNkZTA3NjljOWY2MjEzYTU0ZmIxYzM5MmI1MjMwMzc4YWJiMjgzOGIyNDhjNDI4MWQyZDkwZmU0OGQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/activation.go#L12-L75",
+          "version": "repo-lines-v1:sha256:e7750d3cead73207d372eec69b0b4f60e3603195a326b9b79b2c10cc85c43d04:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMGE2ZDgyMjNlMDkxMjY4NGE4NjYyYzQyMmQ1YmI4YzgwZDg1OTUyYTVkZDNiNDM0MGU5MjgzMTRlMTkzZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/application/nativeactivation/service.go#L143-L170",
+          "version": "repo-lines-v1:sha256:39488555b53d77bc6fb01e80245a313006266a8248a998764e283fd7cf249623:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyYmNlY2ZmNDRlN2I2NGE3YTI0ZDFlZGYzYmE5YzA0ZWVhODUwZWJiNmRjNzBkZjdkMjYzYTA1YTJiMjkzNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjODI1NzdhZWVlODRjM2ExZGVhZTM2YjQ5MzdmZTA2MTVkMzY5NTI4MjE0YzVjZWIzZmU3NTgxZjRmMTkwOWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhZWQ0NTM1ZTMwMjM0NzJlM2NjN2Y4MzJmMWUyMWM0MTVlMTE3OTgyYWQ3OGMyODcxNjcyNDhmMzc1ODE3YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhMjBmNTNiZGU3Yzg3MWU4ZTJlZmRmNDVlOWE3M2EwNDlmMTcwMjIxZjJiYzRkZjk0OWNkOGY4YTgyMDkxMDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7d31a9b7e1074acd8baca1e9af1703b0",
+      "statement": "Before applying any host write the installer snapshots every affected file, symlink, mode, and newly created parent directory (installHostTransaction); on failure it restores them in reverse order — including removing created parents and restoring original symlink targets or file bytes — and, when the failure happened during a seal step, marks abort_required so the pending activation transition can be recovered.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L41-L48",
+          "version": "repo-lines-v1:sha256:461a0d8dc946a8a6484d90e51b56275c44feeaffaecef8c89da6b42d1fcda884:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWM4Mzg0NmI1ZmNkMjNjYjE3ZjBhZTU1YTI5NjEwM2M5YWIwYTQ2YjdiMzZkMWQ5OThjMThlNzU2OTZlNWZlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmJlNmNmOTVjNTc3ODI5MmU0MjYwNjU1NmZjZjQ4ZTM5MDNjN2QwNDlhOTQ2NDZmNjkyNTc2M2YwMjg3YTFhZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzZjNzgxYTFlN2Y0OGUzNGJlODk0NTM3MDQyZDA0NzhiMGEzYzIxODFmMzliYTcwZmU2MGQzMzYxOWE2YzNhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2RjOTBkYWM0NTg5ZGVmYmNkYmZjMTEzZGE1ZDhmZTllM2I2ZWRkMDAzMGY5ZWEzZTg3MWZjMzllYTY0OTFhMyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install.go#L227-L245",
+          "version": "repo-lines-v1:sha256:eb525b21aa3ae4b9524c77c7de98f98c2bd0e41221ae00095614d202e500b8a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NDlhMzNjMmFkOGI1MTU5OWZlMTMwYzQyMTdkYTZmMmY1Y2JjMDJjYjE2NDkzMmZmYjBkOTg2NWI4NWFiOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2OTNiYzRlODhkOTZhZTJlMzNhMjBkOTZhNDA5MjA2NzVlYmVhOTliZjgzNmQ5ZGFkMjJhOTQwZjQ2MDAxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmOTBjZGEyMGQ0ZDA3YzY4YjVmMWI0YjRiMjQzNWI0YTBiMmRkOTFjZTI0NzVjZDhlNTc5YTBhZDE1ZGVhNmYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_host_transaction.go#L35-L163",
+          "version": "repo-lines-v1:sha256:309160750e793e2510de5b84659d71a7df8515f3ab10688e6338db32a225f383:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwOGJkODQ5ZTlkN2ZhYmQzMGU3YmU2ZTdiNWY4MTYyNTExYzA5N2M1ODdiZDE0ODQyZGM3ZDI4NzZlZjE0NGNmIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0YzgxNGVmZDc1ZWJlN2FmY2JlOGMzYThkYmM4YWVjM2MwYjlhMGJmZjUxN2QxODE1YTIwMjNmZmEzN2YwMzc1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3NzBmOGNiMTlmMWQ1ZTg0NTk3OWE0MWI1ZWNkYTYyMjExYjg4NTZjYTEzOTExNTlkMzM0Y2QyOWRhYjliZjRkIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d7326510dd249dea8dffb30354d8dfb",
+      "statement": "scripts/install-native.sh owns the staged binary activation: it builds the candidate into a staged temp file, verifies it, runs the dry-run preflight and activation begin, fsyncs the staged file and atomically os.replace()s it onto bin/agent-harness, then runs the seal-step install; a test pins that the script must order staged begin → atomic replace → canonical seal, and on exit without commit the EXIT trap aborts the transition with the SHA-256-verified binary.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L179-L187",
+          "version": "repo-lines-v1:sha256:2e24e688cd5b15c3cd4897b0bf4ecdccb9c93167ae4bd2feb75288b32c40e0e4:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQ2OWNmNTU5ZWQzZDBkZDdiOWFhMDYwYTk0Y2QwODU3N2NkMTlkOWVkZjEyYzBiNDFkNDQzZmM3NTZmZjdkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzVmMzhkYTVmNWQ5ZGE2OTVjYzhiYzkzZTQ5ZjIwMGExMTM2YjU1ZDA2NWY1OTQzYWRmMjdkNDY4MDQ2ZmRiNiJ9"
+        },
+        {
+          "resource": "repo://scripts/install-native.sh#L128-L203",
+          "version": "repo-lines-v1:sha256:121694731b3a4eb371cae5aa5cb6ac46976df1b2448b49f629e1f90edbb65936:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMjBjOGVhNjYxYzA2NGRmYjYxZTAwMTM5ZWNiOWFhNDYxZTYzMTJiZjQ1ZjI1NWJiODlmOTJkMWVlMGQzYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2ZmYxMWZkYThkZDdkMGFjMWUxYTUyYmNmMWQxOGVkNmQxNjcyZTNmODY3MDI0M2U5NDNlNjMwZWQ5YWVkMjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5MzA0NDQ1Njc4MjkyODc3YjliMzlkNjk0YzdmYWQ0NDkzZjg3NTA3YmNmOTIyYTY3NjIyN2VkYTIyYTNhYjAifQ"
+        },
+        {
+          "resource": "repo://scripts/install-native.sh#L217-L249",
+          "version": "repo-lines-v1:sha256:50c9fd5dcad71e68467db0b0bc1fdc003fa076c5ed745cdd6f92142b58f4f3ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkYTBiOTViMWVjNzFjMWFiMTcyMTlkOTg1NmFiOWRmZTFkMmM0ZGRiYzVkMzViYzZkNTQ5NmE3MWFiYWQ3NjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1NTU4MjM0ZjZmMWE4NzZmOTdkYzFlZTQ0YWQ4OGIxYWQ4Y2ZjOWNlYWU5OTBjYjM5OTBhYWZiODY5NjRkZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkM2Q3OGVhYWQyMTM4OTU5NzU0OWU5YTEzMWM2NTJkMWJhYWYyNTA3OGJmNTQ5MjI1NDcwNmM2ZGY2MTQ0Y2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1ab5026f7cd54a85b1884055857b16c0",
+      "statement": "configs/upstream.json is a declarative, currently Claude-only catalog of optional third-party plugins and Git skills (four plugins plus cua-driver) that install/update provisions when missing; provisioning runs only after the native activation receipt is sealed, is capped at five minutes, and never changes install success — every outcome including total sync failure is recorded as an 'upstream ...' message while the harness install stays ok, and an unconfigured SyncUpstream dependency skips upstream entirely.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L84-L92",
+          "version": "repo-lines-v1:sha256:e5c4c306f4cd2a733a91fdec6bedd5d2b1fee4ccc794d617788c71198720c166:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjYyYjBlNzNlOWU2MWQ5OTBmMDRhM2IzNmQ3MWNlZDE1Y2NjYTcxZWUzYjJhNzQzZjIwYWYyNjFmOTc1ZmRkMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWM5ZTg1MjY0MDk3YjhjOWQ3YTI1NzE2MjhhZDVlZTI0M2I0NzI5MWNmMmJjYjU0NTk3M2UyNjIwMTExNDljNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmI1NzQ1YzhmNTY5ZWRmNzlhOGY2MjA0OTk2MTU5Mjc1MzZjMWUzMzc0N2ZlZjMyMzIxOTRiZWFjYzFjYjI5OSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/upstream_wiring.go#L18-L39",
+          "version": "repo-lines-v1:sha256:26f7efa04f737f1ede0ad49c93093a94ec1c6f6bf85c42ee5477d69b3d7529f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNmE1Yjk3Y2Y0OTZhNjJiZTU0YTlhZWNiN2JiMmRkMDgyODg1OWFlZDc1Mjg4NTU1ZTQ0MTJlYTg5MWQ1MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjNzczYWRkZDA2MjE0MmM1YWYwYmRjNWIyNTVlYjkxZDRiNDIyMTJkZDk5ZjBiNmFhZDM4N2EyMDk3MGQzMzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_upstream.go#L11-L35",
+          "version": "repo-lines-v1:sha256:6f9596ca4e15fa3350d3a02aa20aa9cc87ba02ef0f231a1f1bb1745086e713d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlNDE2MjJjY2FjYWZhODZkMDBhNmYxOGE0OTljOGMzNjU2MmU2MTM4Nzk1YmNkMzUwYjJlYTU1NjVjYzI4NTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0Yjc5OGJjYjE0Mjg0OTBkMjQwNjAwN2Y1OWY5NGFhMzc3OGRlY2VmNzhiZGYzMmRkMzVlY2M5NDRhMmZkN2QifQ"
+        },
+        {
+          "resource": "repo://internal/application/upstream/service.go#L1-L14",
+          "version": "repo-lines-v1:sha256:f4a1fda13017bf80eb95ae084e156d60b32f41921fb16cdfc797ad89540c6adc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZmM2NWYxNGI1MDUwM2VlMWY1ODY1MmYyZGVmNTdkYmMzM2FlNjJmNzUzZmQyMDg2Y2MxZmY2ZjI3NDQxZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYWJkODQyMTE2MTMwNTIzZjQwNDZhNzE2ZTk0MGFhZjU2YzdiMThkNjkxMDIwYTc1ODEzODZhZGM4ZWVhMmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_02b8c6f69f964f0b8f7faf7697650896",
+      "statement": "Upstream planning is a pure domain decision: declared entries already present on the host are skipped (a plugin counts when 'claude plugin list --json' reports name@marketplace in any scope; a skill counts when ~/.claude/skills/<name> exists, whoever created it), and when the claude CLI is absent plugin entries become skips with reason 'host plugin CLI is unavailable' rather than failures — an unavailable host is a skip, never an install failure.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/upstream/claude_plugins.go#L25-L30",
+          "version": "repo-lines-v1:sha256:56c42dfef5a44b69a8a2ed444c73568d557fbcecb3205a876c33ac9d0fdb2074:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNmODM4OGU3ZDVmODljNzVhZmQzY2RhZDYzNzEzOTMyZDJhZGVlYjEzMDhlYzcwM2RhMzIwMDU2M2VlNzIzMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGQ1NGZmM2FlZjc4Yjg4YjBiNzgxZTQ2N2EwNWZjMDNhYTRmZGE2YmUxNzIzNjc2NjdkYjQ5MDcxMTI1NjFiNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGFhYWYzNmZjNjI2MjY4Y2IzOTBlOTE3YzgzYmRhYjc4NjFjYmIxMWFhNDhlZGFiZTY0YzU1YTgyNGE1ZDBlZSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/upstream/plan.go#L14-L77",
+          "version": "repo-lines-v1:sha256:e97865b57db93a60a2c203d8603136d032c436da34519c993b9e226324f590ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxMzlhMThiOWMzNzFmMGM1YTU2MjIzMWNkYWYyNTBkZDhhZjhiNmYwMjI2MTI1YzI2YTAwY2EzOGM5YTY4OTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4Yjg3YmQzNTI4MmM1MjRhODY2NmNhZWY4ODgyYTk4ZDE4OGY1ZjhiY2VjMmU2MDFkMWUwNjg0ZGIyMzc3N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTY5MWU1NmIzOTg3NDM1YzMxYzdmNjliNGRjMDI5M2JmNTA2NmQzNjI0YTYyYjk2ODMyYTA1MTY0YjlkYjYifQ"
+        },
+        {
+          "resource": "repo://internal/port/upstream/upstream.go#L12-L24",
+          "version": "repo-lines-v1:sha256:a65c93f5c4e966ae77e4390338095b22418af51e0e0cb99f99c412f679188136:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMDMzMzhhN2MxNzI4ZWU3MDQzZmE0NzZkOGYzZGRjNWE1MTJhNTVmMjhiOGYwMzlkMTU3NmM5NDg5ODk4MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4Yjg3YmQzNTI4MmM1MjRhODY2NmNhZWY4ODgyYTk4ZDE4OGY1ZjhiY2VjMmU2MDFkMWUwNjg0ZGIyMzc3N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhYzk1M2E2OTAyNjc0MmU0ZmNjM2Q3MWQ1OTgyNGMwMzgwYTEwNzg2MmI2ZWJkMDgyYjAzMDRlOWVkZTlkYmUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_10ee78ae62e3481e9c80858a5009dd65",
+      "statement": "Upstream provisioning treats executing the Claude CLI as a write: with --dry-run the service reports declared plugins as planned without spawning the CLI at all — not even to read its inventory — because the claude binary creates $HOME/.claude and $HOME/.claude.json on startup, which previously made install --dry-run mutate the home directory it was only describing; skills stay observed because that is a side-effect-free directory read.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/cautions/integrations.md#L68-L68",
+          "version": "repo-lines-v1:sha256:35dd48968fab8ce2d091eb2a483c58ac6ec865335d0575c67c0b6586a460bb54:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVkZDQ4OTY4ZmFiOGNlMmQwOTFlYjJhNDgzYzU4YWM2ZWM4NjUzMzVkMDU3NWM2N2MwYjY1ODZhNDYwYmI1NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVkZDQ4OTY4ZmFiOGNlMmQwOTFlYjJhNDgzYzU4YWM2ZWM4NjUzMzVkMDU3NWM2N2MwYjY1ODZhNDYwYmI1NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmJlZWMzZjkyNmQyYzYwYjNlZjVhMmFkMzM0ODhmM2ZkYzE1NGU1MzhmYzg2YjIxZjIwM2E3ZDYxNDA2OGIwNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWQzYmNiYTk5NDdlZTljNWQ5MmEyMDQ2YjY5NzAxMmEyMDkzNzJmMTlhODllZjYyMWNkYjkzZjM3MmMzNzY0OCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_upstream_test.go#L46-L57",
+          "version": "repo-lines-v1:sha256:245b65f9e17182f1c9f3356fcb7598c5900b0d117d6247c1d932f0ff1961962b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYWY1N2Y1ODcyNjExMGFmODE1OTVmZDVkNzBlMzg4ZmQxZTgwOThmMmJmNzJhNzI2NTc0ZTQ1NjFjZDVkNGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxMTYwNzE3Y2EzYTM2ZGY3NDdiNDZlMmZmYWQyNTU2MmJlYmI1MWMzODdmZDdkYmFiZjA2MTJmZWU0Zjg0Y2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5YmUwYjhmNTg2N2RjM2I1MTI3M2VmNjY4N2E5NDMyMjM4NmI2MjhmMGEzY2UzN2RlYTYwYWUxMTQ3MTc3MjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAifQ"
+        },
+        {
+          "resource": "repo://internal/application/upstream/service.go#L22-L45",
+          "version": "repo-lines-v1:sha256:88094c0805af602c55d7419e6600ac43658d9c960432e1abe8e6fa12d0e6c377:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkMTUwNTJkY2U1ZDVlZjdhMzZjMDRmMjVhZTM4ODA5MzkwN2RkMzlmMmU0ODgwYjJjMGI1ZWM2MjdmMmM0ODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjliOTY0Mjg3ODg0ZTFiYTJhMDRiZTIxZjA1OTViOTg4YWFhMmJmNTczMGMzMzA4YWZhOTJlM2Q3ODUxOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NDNjMzYzOTJmM2E4MTlkZDEyZDBjNjBhNjlmNDdhMmUyNzNkNDVkODA1OGQzOTk4MTYwMTg2MTY0ZGFkYWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8baac66a505b491c940fb359b93e5702",
+      "statement": "Upstream skills are fetched with a shallow sparse git clone into a harness-owned cache at <state dir>/upstream/skills/<name> and symlinked into ~/.claude/skills/<name>, mirroring first-party link shape; a fetched directory without SKILL.md is rejected leaving neither cache copy nor link, only a symlink is ever replaced at the host path, and because the cache lives outside skills/ the stale-link prune never touches upstream links.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L101-L119",
+          "version": "repo-lines-v1:sha256:621b3ec0a931c91550b229c11a08a986d6fb212b7c0f0662a36a33164fa68ad8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkZTE2OTUyNDA5ZTk3YWMyY2Y2MDdjYjYxMmJlNjhkNmJiYzFhNmFlMjFiNTI3NzgwYzg4NGQ0ZDBiM2YwMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMWEzNTc0NzFjZjgyN2E4NTJkMjkyNTU0NTExOGRjZTI3ZDgxMTI5ZDliMTIxMmMxYTA5OTg3ZWU4YzU1MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4MDkxOGFjNjQzMDcwNDAzMDA0MzI3OGFiYjE2NzAwMWM2ODM0M2ZjNWEzYWRmN2Y4MmI2MTY5NTI5Yjg0YWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NTkwZTAxYjQ3YzdkMzRjNjFhZjE2MzRiMDY2MTg5MzhkMjY0MmNhNjdjNzA4ODdkZmYwYjUzZWQ5ZGYyZjcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/upstream/git_skills.go#L14-L118",
+          "version": "repo-lines-v1:sha256:6b3b7d1658d1260bbb7f00b763a987ae132c4d052babe9198327f1138c3ac94d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1NDVmZTdlNTk4ZWE0OWZiYTAzZjZmNGZkYTY4MjQ5MGMxZjUzYjBjYjdiN2U5MzkyMTAwNWFjNjI0ODMxNWY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOGI4N2JkMzUyODJjNTI0YTg2NjZjYWVmODg4MmE5OGQxODhmNWY4YmNlYzJlNjAxZDFlMDY4NGRiMjM3NzdkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJhYzllMmI1YWJlZDRkMDM5YTBiNGQyNTQzY2NjYWJlNDk2OGRmZDIxYmZjMDc2YjYwNzg5ZWQyZWIyMGY3YTFhIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_87135675559a4cc7943345858a3e9946",
+      "statement": "External tools are never native-install dependencies: install, update, self-verify, and IssueOps readiness must reproduce on machines with none of them present, enforced mechanically by TestInstallNativeScriptDoesNotWireCompanionTools (which fails if scripts/install-native.sh regains any companion-tool installer path such as claude-mem, agentmemory, llm-wiki, codegraph, or npm-based installers) and by the Omo ADR forbidding the external Omo runtime as an install prerequisite or readiness gate.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-12-omo-native-first-party-host.md#L35-L36",
+          "version": "repo-lines-v1:sha256:64a417e7c464f589f020c6705129157ffbdd7d2733c80f2d0ffd013d67e7ae91:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjZlNjQxMzVkYTk2OTAwM2U2ODc5YWM3NTZiZWZkOGFmN2FjNGRiNDhiMjQ1ZTA2M2I4MjMxY2YxNDZjMjQxMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2FhZGZhZDJjY2RmZTk3YmJiOWMxYWIwYWFjODI2MzM0ODA0YWRjYzc1OTkyNjNhODc0ZDhjMGE0N2ViMjA1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDBkNzcyNDc4NjU0MGNlYTYwMzFmNTFmMjM4ZGRkNmIyNzFlOTkwMDZjOTgwN2YwZGU2M2I5YmNlOTBlM2Y2ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWY3MzI4OWRlMWJiNWUzYTg0MzRjZmYzNjE2NzM4Zjg1ZTdkNDMyYzkxMzZjYTgwOTQwYjQ1OTgwYThhZWI4ZSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/cautions/integrations.md#L59-L69",
+          "version": "repo-lines-v1:sha256:98af777ae60b3f014d07a55baefa45cd3fa8e77dc277e2319d58f9a436d6970c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MjE1YzU0ZjUzM2ZlZDllZGIxYzcyMDljZGZjNTQ1NjI4NWU5YzkwNTYzZTM5NzYzYjAzMzhkOGFjMzdlNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmOTYzYjY4YTZhOWVkN2ZhNzI3NGViN2UwNTI1NTc1YzVjOWU0YWNkNGM3MzY4MzY3MjRkZjhjOTNkMmNiNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4ZjU5MWE4YmI3OGIwNDcxZTZiNWU3NGZiMTFjMDhlODAxYzg2ZDkyZGNjNzQ0YjNmMGM1ZGI2NjgwYzg0NjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlODBhZjMxZjViZDQyYWQ2MGIwZTlkM2YxMjA4NTY0OTM0NmM4MzQ2YzkxZDcwMDg2YWZlODIxYmI4NWFmZTgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L134-L177",
+          "version": "repo-lines-v1:sha256:111331227a1a69877b2bda2c3473658ca548b500db7ba37e38b5c3cc1b1039d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMjM1NjkxYmZiNTlmMGM3YTAwODZmODYzOTA4NWJiYzQxN2FjNjA5NGZlMDA3ZWYxMmU3ZWNjZmEyYjhiZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNzg3YjIyMDIzYzJiNjJhYjcxNjk4OTYyNGVhZjJmMmUzYzQ2ZWU4OWY2YjQ2Y2M5MmRlMmEzM2U5ZmE0ZjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cfa32f9da9444e19bc265634a992bdf0",
+      "statement": "Adding a host is deliberately narrow: implement port.HostInstaller in a new internal/adapter/<host> package planning user-level surfaces through shared installutil primitives (plan accumulator, WriteTextPlan/WriteJSONPlan, EnsureSymlinkPlan, PlanHostSkillLinks, hook merge helpers, activation evidence capture), then wire it only in the composition root — append the installer to the InstallNative closure, add its VerifyActivation readback to hostActivationReadback, and inject the package's function-variable dependencies. Domain/application policy must never be duplicated per host, cross-adapter imports are banned (the dependency ratchet allows concrete-adapter edges only from cmd/harness/harnessapp), and un-injected dependencies fail closed (e.g. 'native installer is not configured').",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/installplan_wiring.go#L10-L34",
+          "version": "repo-lines-v1:sha256:6a562667124410280134ff6623268160f0c5265e7a9cc383809db9bdf6ee9500:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0ZWMxMGRkNzJiYmIxNDlkYThhMGYyYjNlYTgzOWYyMDAxNmRkZjE1ZTBkYWFlODJkMTFhMjVjOWVjOGU0ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1YTk4YzQxYWYyZTM1N2M3NGVkYTY1NTMwOWRjMDg1N2U5ODJkNTJhNDk1NDdhMThlMTNmNzUyMGJmZjgxYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/dependencies.go#L13-L55",
+          "version": "repo-lines-v1:sha256:7e703ad85496a3fa2e87ff904575b09ffa689b9be126cd3f78acf1e8c994b8e4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMjY5MmZmNGQxMDhkNTEzNzNiM2VhNzEwZTVmMzZhZWRmNzU4MWE0MjBiMTdkZTliNDUwY2M1OTU4ZmJjZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkNjQ5Y2ZmOTQ2NzA1YzJjNGU1ZDUyMmFiZDFlNTBmNjY1ZGRiYzZjMDU2Mjk4ZWYyMDJhODlkMmMxNzBiNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkNDgxMGY0NWEyNjQ5ZTQ4Zjc0NmQ2YjJkYjhlYzYzZGZhYTc1M2I4MWJlODA0MDkxOTQ3Nzc2MDFiYjFkNGQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/installplan_dependencies.go#L9-L29",
+          "version": "repo-lines-v1:sha256:2aa909163905f8a384c89b29ee69bc919cee403a932e71423b9de046e63f9188:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTZjNDI3M2FlNWQyYjdkZTI0YTBkOTRjZTE5ZWMyOTM3MzI0MGU1ZWMyNDFiZGJhMmMxZTA1YzlkYWYwZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/dependencies.go#L21-L31",
+          "version": "repo-lines-v1:sha256:d279ea005a213175ea76087a060ed923455a9dabef8bb900dad740195e0ec5d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNDU2ZDM5ZjZmYWExMjhmZGQ5NzU3NWY0ZDEwMjk2MWExZDYyNTY2NjczZGE0ZTNiZTk4MGMwM2E3ZTlkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3ZjBjNTZlMmZlYmZlOWE1YThhMTE4MGIwNjcwZGZiMTA1NjMzZDFkNTdhY2Q2NzA4ZmFhODBhNGFlMTk5YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1348-L1370",
+          "version": "repo-lines-v1:sha256:a37b880077ed6dd5c456bd940bfaf4cc8c54c2f4814c68337a3095aeb267633f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4N2QzMjIwMjI1ZDE1NTNjYTEyY2JlY2E5N2IwNDQ3ODI1N2QyYmI0MWJlNzBmZWU2MjZmMDE1MTMwNmQzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4MWZmMzIwOGRmY2E0NTBmMTQwMTJhMzMzOGEwOGQ0M2RiZGVlZDllMDE3NjRjZDY4NGQ3MzUwYTA0ZDc0NDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiMmEyZDRjOTQ4ZmEyNTFjYWFmYTYxMTgxZmVhNDE0ZjdjYmUzOWNmYmFiMmY2YjQ0MWNkMzBjZjFkOThmYWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b847b9b22684321be56e225cfa6ed80",
+      "statement": "The setup surface has three entry commands plus two scripts: agent-harness install with --interactive/--project-local/--path-mode/--adopt-command-file/--dry-run/--json is the canonical installer; agent-harness update and bootstrap locate scripts/install-native.sh, forward those flags plus --skip-build, and after a non-dry-run run refresh the shared daemon (daemon stop then daemon start with the installed binary) without ever running git pull; ./install.sh builds bin/agent-harness and execs agent-harness install, adding --interactive automatically in an interactive terminal with no arguments.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/installcli/install.go#L17-L77",
+          "version": "repo-lines-v1:sha256:341b117f42c4f953837f31a574607e6d64c7b3d3b6a0becb114629d85b4dee93:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZmFmM2I5NjkyOTU3MDljMGUzMjRlM2E3ZWRkYjdiNjczMTkxNzFhODk5ZWI4MmNiMDRiOTEyZGNmZTZjOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyNDQ4MTcxMTc0OTRiZTQ2ODE1MTVkNTA0OWZlMmRlOTQxYmQxZjg3ZGY5NDhiYWQ2NDEzZWQwMzBiOWUxOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5YjQ3ZmI2ZmE1N2M1MzMyNTUzMmJmNWQ2ZjJjYWIzNjgxNDgwZTJmMTdhZTNkYmRkMzVlZDIwYTY1OTVjZGYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap.go#L21-L84",
+          "version": "repo-lines-v1:sha256:479bc6898de274d2beb552f1bd3e9ab4dbe691ff672b66e57a355b281133c212:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4NTI0ZDdiN2M1ZTFjYWQ5NGFkNDViMTMzNmY1YjZlZTcxZjc4NmM1YjQ5YTBmM2I2YzRmYWE4MWVhNjM2MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzNzU2NTE3MmQ1YWE5MmM3MWIwNjM4OWU2MTZkZTliNGY4NzdjYWRjMDFiZjE0MzQ3NDM5Y2RhOGNhMTRlZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://install.sh#L20-L33",
+          "version": "repo-lines-v1:sha256:8ac558ad694eee72887f3f423a0af9feb6e187682aa8dc70f92a21c1d29bff03:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZTViYmZiYjcxYWQ2NjkzOTZjN2M4OGM1ODRjZGRkM2FhZDA2MWIwOTJjODM2MGNlZDQ2YjViZTkyZThhNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3ZjE5YmYyZjRlOTM1MTY2NTVmMWQzMmZhM2I0ZWU0MGRlZDE0NjExOTkyZTI1Mzg4ZjEwNzQ4OGQwZGFiM2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkM2RmN2ZjNjc3ZWFhN2Q1ZDY4MTZhYzdkMTIzODA0ZDNhMWVlMjg3MjJlMWQ4ZjU4MTViOGJkZjQ5YzI0NzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L104-L106",
+          "version": "repo-lines-v1:sha256:b5f4c1627e9109c54293b18b9a013e83e41bc979ca8e523d0e644a297c4779bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjIwMDZlOWIxZTU3NDNjN2NhN2Y2MjU2MDk1NDVjYjExMDg4MDRiNzJjYWI5MDRmMGFjNjZhZjI1NGRlODc0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTI4NjEzZDVhN2NiMDk2ZTFjZDc0YTJmYjcxNThjMzEwZDllNTE4MzcwYWRiNTc0ZTRmNDJkNzk2ZDU3MjRmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY5ZGI5YmI2NjNmNTJhN2M4NzhhYjA5N2M2ZTgxZTM2NzcwYzE3Mjg3ZTViZjcyZDllMTYzZDUzOTM5NzExYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTVhMzcxOWQyMjM0NTg1NzUwMTUxNzI0YWRkNDM2MzNhOGUzZTBjN2I1N2ZmMzEzNGM5ZTNkMTdiZThjYmQ1MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a64c5eb8fbd54bc497f0e69bc7dad178",
+      "statement": "--interactive requires a terminal and prompts for project-local opt-in and PATH mode (warning that most installs should keep project-local disabled); --dry-run plans every file and link without writing — results expose WouldWrite/WouldCreate entries, no paths are created (asserted by TestNativeInstallDryRunDoesNotWrite), and the upstream path must not even spawn the claude CLI.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_interactive.go#L20-L60",
+          "version": "repo-lines-v1:sha256:bbfc82a2a71998bf8498137185e0284dbc3e204c943f825d51def01056dfa4dd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5MmNlMGU3NThmZWQwZmFiZDVhYmI2MzYzMDQyMjExMTBkODc4NGJlOTkxZTVkNWU2NzNmN2IxZWFhMzljODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxNjkyZWEzNjIzZmYzNGIxMDA5NDAzYzNlZDRhZjVkYzZmNGY3N2Q5YmZkMWFhMmU4ZWJhNGJkMTFmZWY3NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NWVjOGM3MTkyZGFjNTFjYzc2ZTg5NWIyNTkzNDBlM2M2OWU0OTU1MTgxNjJiY2UwNjk5ZmVhMDhhZTA1MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0NjA4MGQ3ZmMwODY2ZTU1YjA2MDE2MTYzNGY4YTk0MzFhNmYzNDZjODc5M2QxZmNkNTBhODQzOGVkZWE0NzIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap_test.go#L41-L57",
+          "version": "repo-lines-v1:sha256:37f29ba2f4bed2ad6be51773b947b12526899dfad715ba6bd3cb17755fa1a686:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjZTUyM2M3ZDk1ZDQyMGQ0ZmY0OWU0MmI0ZmIyNjM4NDdiZmIxOTRkOTZlZWJiOWY5NDcyYTJiMDI2NmE3ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5ODFmZDYyNmNkODUyNTgxZGZiNGVmZDUyZTJkOGU1ODc0MjE5Y2UyY2FjNjljY2M2MmZkYWI2ZWM1OTRmNWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3YmY2YjUzZDAzZTYwZWNjNWI5ZTUwMjEzNGUzMjUzNTlmZTJiMWI0NzBjMTM0ZDNlZWJmOGJlZjQ4OGZmMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlMjE4NGNjZDRjZjRjYzcxMGZlZjRlMTU2ZDhmMWFkNTRhYWNjMjIzMGVhNTJlYjBlNTNjNjI4YzQ3MWFhNDMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L98-L132",
+          "version": "repo-lines-v1:sha256:8d0cb5cb61995fa411130239bb177d5e5c03aedc3610bfc8a0525b0579db2bf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhZTM1OWM5M2UxNDVhMDBlMzVhNzEyNTY0ZDc4Y2JhZmNjMzI4Nzc2NmFjYmUzZWZiMjg2MTllMGYzN2MzYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxN2RkMGEyMjk4Mzg2ZGU2MjhkZDdmMWRiN2JlNjE3MGY2N2IzOGNiYmMzNzAwMDViMDg5OTJjNzE2ZTA0MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzNmMzNjI0YmRlZjk1MzU0ZThhOGIwNGIxMzU0Y2ZlZTFkNjhlNTFkZDA2Mjk4YTM1OGFlOWMyOTUwYTBiNTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ad9473311f5a47e08dc1e449ad6d1efb",
+      "statement": "--path-mode controls the command shims ~/.local/bin/agent-harness and the managed ah shorthand: auto (default) also appends a marked export PATH=\"$HOME/.local/bin:$PATH\" line to the preferred shell rc when ~/.local/bin is not already on PATH; manual and skip create the shims but leave the rc alone. ah is a symlink, not a wrapper — install refuses to replace a regular-file or foreign-targeted ah, and replacing an existing regular file at ~/.local/bin/agent-harness requires --adopt-command-file, admitted only for binaries matching the static Go build identity and executed as a transaction with a 0600 backup, atomic exchange, and pre-seal rollback.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L31-L48",
+          "version": "repo-lines-v1:sha256:203119e5f152614bb5fbf7f6f9ef35becf0f7d9666c18edce8495c74229ea2fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODQwMjcwZjQxOGVhYjcxZmRkNDcxNDY2NzViZmM2MmU0NzkyZGE4YjdkNzJhYjU0YWUzNjVmYjZlMWE0YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZTZjZjk1YzU3NzgyOTJlNDI2MDY1NTZmY2Y0OGUzOTAzYzdkMDQ5YTk0NjQ2ZjY5MjU3NjNmMDI4N2ExYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiMzBkNzEzYmE2ZjQxOWI4ZGU2ZWJhNTZkM2IzZjk1MGQyZmFjMTY1ZjI3NzY0Y2RjMzI0ZWNkYzUxZmY4ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkYzkwZGFjNDU4OWRlZmJjZGJmYzExM2RhNWQ4ZmU5ZTNiNmVkZDAwMzBmOWVhM2U4NzFmYzM5ZWE2NDkxYTMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_path.go#L14-L31",
+          "version": "repo-lines-v1:sha256:3754742c4628b9e680b37ad894cf14daa59bba2899329b557e2229564902c4b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2YTVhZmQ4NmIxODUwMTgyMzI4MTg0YzZkNTg0MTQ2NmNhNjViOWFjNmY0OGMyNDMxZWVhNDYzMjg3Nzg1YzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYjIwN2FiMDYyN2IwOTY3OTgzODg0ODhmMTI2YTY2YzViMzA4OWMwZDg5ZWNiMmFmMjM0MzFjZThjMDBmMGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5MTBiOTQxNzJkMjczOWMwNWZkNTBmN2YxODM4MzNhYTY4Y2ZkNDI2NWE1NjJhOWYyMmM4NTFhNjMyYWNmOTAifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_path.go#L188-L241",
+          "version": "repo-lines-v1:sha256:016b506aaeb6ed00b01aaab5a083fb81fe44a134e3e26de8d2b6b30589dded9a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2ODRhYTU3MzJhMjdkMTlmZTA5YjJhMGFkMGZlMGU2ZWI0ZDQ0YzU0OWIxZWUyZDRiZDFlMzFlYjdmMGI1MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3ZGZiMzNjOWM0NDFkOTM0MTk4NzA2YWE2MDliODQ2MDJjM2QxYzMxOTdkMDlmYjc0ZDRkMjBjZDIyYzU4MzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5ceb01cbc90749348f09663f5f75a9d6",
+      "statement": "--sync is not part of the host-install flag set: the only state-changing --sync is agent-harness project bootstrap --sync, which refreshes a target repo's operating docs and profile metadata; the update/bootstrap flag set defines --project-local, --dry-run, --path-mode, --interactive, --json, and --skip-build but no --sync flag, even though the golden usage text still advertises [--sync] on the bootstrap line.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L106-L109",
+          "version": "repo-lines-v1:sha256:8e7153a7e332b9faa184f4b5816addfff0a2fd8c0ad1c1a53b8af62f52a8f176:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVjODBhMjJmYTQ5MWI5YmYwYzI4MDFjZTFmZTFhMjBmZDU5NDU2YzVlMjRjOGQxMzkzMmRkMGNjODgwOWY3MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODk3NTk4MWI2NTExY2Q2NzcyN2JkNWVlNzE5NzU5OGE2ZjNkOGFkMzVmOGE5MzQ0MTE0YTEwNTMwYzg2OGI1ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk5NWExN2QzMDg2ZTAwMWYzYWE3ZDA1ZTUyODcyNjU0MjE5MmIyM2U5NGEyYTZiYTYzOGY4MzAwNmVlMTU2YSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/projectcli/project_cli.go#L11-L27",
+          "version": "repo-lines-v1:sha256:dd54c0865e1f2c01be3c335a4b8e07627b8d87ecebedeebf6f4d12d9bbc6dd39:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjc2Y2M1Mjg4ODk5NGQ5ZWQxODZjZTgwNWRmOGVhNDIxMjFjYzg5MjI5MGNiNmJmMmQzMDVmMGM2OThjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkY2QxZDNkNzk4NjI0MGFhMzM4ZDgyOWUwYWQ2ZWUwOGE0ZGE5ZTkzZjJjYTU5MjkwMGJjMWJhMGUwYWJiZWYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/testdata/usage.golden.txt#L99-L101",
+          "version": "repo-lines-v1:sha256:b5f4c1627e9109c54293b18b9a013e83e41bc979ca8e523d0e644a297c4779bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjIwMDZlOWIxZTU3NDNjN2NhN2Y2MjU2MDk1NDVjYjExMDg4MDRiNzJjYWI5MDRmMGFjNjZhZjI1NGRlODc0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTI4NjEzZDVhN2NiMDk2ZTFjZDc0YTJmYjcxNThjMzEwZDllNTE4MzcwYWRiNTc0ZTRmNDJkNzk2ZDU3MjRmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY5ZGI5YmI2NjNmNTJhN2M4NzhhYjA5N2M2ZTgxZTM2NzcwYzE3Mjg3ZTViZjcyZDllMTYzZDUzOTM5NzExYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTVhMzcxOWQyMjM0NTg1NzUwMTUxNzI0YWRkNDM2MzNhOGUzZTBjN2I1N2ZmMzEzNGM5ZTNkMTdiZThjYmQ1MSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/updatecli/update_bootstrap.go#L21-L63",
+          "version": "repo-lines-v1:sha256:a789f2564923edfe0c2cfdd3d5cb2ddab6e9fa1baa1d217284a5e2a70468dbf6:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4NTI0ZDdiN2M1ZTFjYWQ5NGFkNDViMTMzNmY1YjZlZTcxZjc4NmM1YjQ5YTBmM2I2YzRmYWE4MWVhNjM2MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzNzU2NTE3MmQ1YWE5MmM3MWIwNjM4OWU2MTZkZTliNGY4NzdjYWRjMDFiZjE0MzQ3NDM5Y2RhOGNhMTRlZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhYjMxZTQ3NzMzNzYwNGQwNGZkNDc2ZmU4ZDFmOTVjN2RkYzZkZDkxZjJhYTlhNWFlMGIyYzRkOGQ0ODMyNTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_02b56d17709f4773bd225e5631fc8b82",
+      "statement": "Project-local surfaces are asymmetric by design: Claude Code gets .claude/skills/* links plus .mcp.json under the server name agent_harness_project (avoiding scope collision with user-scope agent_harness) but never a repo-local .claude/settings.json because Claude project-local hooks are committable; Omo gets .omo/skills/* plus .omo/mcp.json; Codex has no project-local surface at all.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L53-L58",
+          "version": "repo-lines-v1:sha256:eef1b3c3afa7259b305e28167f53611b7e86c3fcb8ab21da2d35a013dfb48016:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzRhMDIzZDkzYzI4YmQzNDUwZGVmNTRiN2JlYWY1NGE0MmE1MmE5YzIzN2FmZTc5MmFlYTQ5ZGY3M2E0MjViNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGI2NGFlYjUyYjQwN2NmNWU2OWI5M2NmMzgwYzlkZTMyZTdjNzNhYzgzMjA1MjI4NDczMDAyMGQxZjBiMWFkNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmJkMTZkMTljNjhjOWVmNmNiODIwOWNmN2FjODIzMjNjZjM0N2Q1NDFkZTNjMTkxZDI2ODk1ZmIxYTUwYjE2NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjI4NTE1ZGE2YzNmY2FkMjk1NGI1YzZkMGI1ZjAzNzQ0NzBhNGZhYmI4NTU5YmE4MGIxM2RmYzllNDNkY2Q3ZCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install.go#L35-L40",
+          "version": "repo-lines-v1:sha256:fdbc8f6a274c56609cd3616c14431c4395e29144cd0e0515bef9ef5583ce76d2:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQ0Njk2YTA2OTNkMThlOWNjNGQ2M2M5MWUxZmVjMTRkOTAxMDIzYWY4ZjdhOTkxZmE4ZWE5YjBjY2VkOWI5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDA4NjA2ZWI2YTc5NjQ4ODNlM2QyNTY3MzViNjA5NDAxOTkyYWVkZDFmNmRmNzY0NzMzYmY4MzI0NzFkZDA2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWVmM2Q3YjBlZmY5N2ZlODg1ZjVkZDVkMzE4M2E2M2ViYTExMGVhODQ1Y2E1YTRmZjY1MTk4MzJlNGI1ZjA4MiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/claude/install_test.go#L75-L93",
+          "version": "repo-lines-v1:sha256:552b24e11afe168526bbfc243efb5a4f8a03ec47536ab805dc0ed4036b54e4eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmYzZlZTlhZWI3YjYyMGIwZWY3MGYxNGRiYjViOTk5ZGZkYTA1N2EyMTYxMDE1YzU1ODJlNDNiYmE0ZjdmNmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4M2M4MjExNGEwYTU3NWY0MGZlODdmNjhjZDcyZDA3NGVmZGNiZWUwZmM4NGIyNmM2NTA1Yjk0MmRhODYyNzgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install.go#L15-L40",
+          "version": "repo-lines-v1:sha256:6cc8f10f17189cd968aa180bf00b60db8ba3b1175a179b34070deb442c3f3341:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZWUxMTQ1M2FiZGRhYTljMzRiYjM3NmJiYWM0NzdmNTUyMDQzYmVmNzk2NzY2OWVhNTdmODJmNmVmNTQyZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ODg5ZWRkNWU1MmU4NDczMGIyYWY1NDE0ZjUzOTljNGIzMjNlMWFmOWQ2ZjE5MDdmMGY1Mzg3ZmRiMDJiN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L680-L700",
+          "version": "repo-lines-v1:sha256:1717b0ca77bc6bba7392a0c486a9341273874ea884480ebf0556aa5ac9aea4b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NDY5NmEwNjkzZDE4ZTljYzRkNjNjOTFlMWZlYzE0ZDkwMTAyM2FmOGY3YTk5MWZhOGVhOWIwY2NlZDliOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYmY4MDVlNzI5NmFhMTdjZTcyMDJkZTRiMjk1NDEwNGY0ZmUxMGQyOTIwNTI0ZTdjOTJhMzlkN2JjYTYzZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjY2ZmNWM2Mzg5YmVmNWMwZjE5M2IxNDlhMzZiYTJiZmVmZTc3NTI1MWVkNDExN2ZkM2NhN2M2MmUwNjZjOTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4bdc43c8816b49ef94f9bbac2a43ed43",
+      "statement": "The Omo installer embeds the SHA-256 of the currently advertised MCP tool catalog into the server env as HARNESS_MCP_CATALOG_SHA256, because Omo reuses a tools/list schema keyed by its server-config hash for up to ~7 days: changing the catalog changes the config hash and forces the next session to re-fetch tools. The value is a cache revision token only and does not steer MCP handler behavior; a missing or empty digest fails the Omo MCP config write.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/install.md#L54-L60",
+          "version": "repo-lines-v1:sha256:1ed58db7ccce9bb14749afddadd569764d34efdd14f3513d0338bd6ff6ff6182:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjQ1OGM5YTFmNzAyOGYwODJhYWEzNDM3MDU0ODhmMWYwZWVhODdiNmQ0MmQ0ZjU0YzIwZTg4NjBmMjQ5MWE0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWY3YjRkNDcwNDk0YWZjODlhZjE2ZjZmODE2ODcyMTg4YTYxYTU5NjZiMTQzNjMzZmY1OTE0M2UwYzk4ODc4YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdhYzBjMTVjNDEyYTYwNmU3MjQ4NGYxZDg5MWEyOGY4ODUwNWU4MjEzOGVmMGIyZTQ1NGVlMTg2ZWFjNGU1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGFhNGY2MDk1YTljNDE5ZGFkMjBlMWU1ZmE1ZjI5OTAxN2EyOGJhYWEzNDNkYzZhNmUzZGNkZjlkMWRlZDdkNSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/install.go#L29-L48",
+          "version": "repo-lines-v1:sha256:eef029051447b3c6d97ff75e99e1f77e9013efe815c7c9c940cbceb0c3ab0d68:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0NGVkOThhOGIwNTAwNWM0ZGI5YTg5MTBhNDhhODg5OGI0ODQ0YzY1ZTgzYTNjZmMyNTdhOGQ3ZDc5YjZjMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5NWE1MzIwZGRkZTUwY2QzYTI3YjI4ZGE3YjFlYzY2MDA0MTYzMTJmNTZiNGY0OTgwMWJkYjMyNzZjOTE5MjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlYzAxMjQ1MjNiMzY2ZGU3NGYyYjY0MGRhYTMwMGRhNTk0ZTI2YjI2M2ViMjMwMjVjZDI4MDY5YWEyYWVhNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmYjY3NzI3NmNlMDk3ZTlmN2NhZjU2YjE4ODRlNmRjYjFhZWU4NWNkNTY1Yjk0NjE0Zjc2NTZiMGFjMjQxOWQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/mcp.go#L12-L82",
+          "version": "repo-lines-v1:sha256:47863340518a60d5a47d0485ac8ba9c1d030e63740eee2da6d7eb4d5dbab17b0:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlODM4ZjQ1OTBiYzJmMjEwMmY5MDdhNjVkZGJiNDMyMTQ3MDA2MjM0MDllMjFhYjc3MDE5OGVkMWQyYmJlZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5b0397f93c03460ba1ce99152134d55f",
+      "statement": "~/.omo/extensions/agent-harness.js maps Omo session_start and accepted session_compact events to agent-harness hook session-start --json and hook post-compact --json, injecting the compact project-doc payload as a hidden custom message with triggerTurn:false; hook failures surface as UI warnings and never abort the session, and the extension byte content is exactly verified during activation readback.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L140-L166",
+          "version": "repo-lines-v1:sha256:e362c9e23bc85f786b85ae4aa1cc30fe0379077581dfa5c5469b22a066a63cac:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMWIyMTc2YzcyYzNmNjJkYjg2N2RlYjFkNWQ5NmU3ZmY4N2E2OTIxMmFkOGUwNDg0MjRlMTI3YTY3MzBiYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmU5NzcxNWI0Njk1YWI1ZGJlMWJhZjljZmIwN2U1MDIxYmJmMmRmOTU1ZDY5ZjIyNDYxNTZlNTQ2OTIwYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMmMyNDU2OWFmZDI2ZGEzNDI0YTgzMDVjMGU1OWFiNTdiNTMzOGJlOTdjZTJiZGM0OTZhMDk4ZDlmMWYxNGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3ODgxNTVkM2RkOGM1OTNhOWJkZGQyYmNiMWIzZmM3YTg1NzlhOWEzOGQ4ZmViMGMzYmZkMjk4NjU4ODJiZmQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L736-L741",
+          "version": "repo-lines-v1:sha256:e75eff951c749a984232abf10016b438e89014af8e4de56410e7014f2b542c9d:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDMzZDEwMDAxY2E0MDMyN2M0MWZlNjFmYWRlNDYzZTdkOTk2MTFmODhlYjU2MzExMzJmZTFmNmFkYWU4NjQxMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmFlNDE1OGQ4NjFhMTJmY2RkNDdhNGVkY2YxZDlmMTc2M2FlNWI3NzI0MTU1MGY5NmNiYWZjN2Q2NjM1NzRjNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTZkMWExNmU1ZGY0MTkwNDk2ZTY3N2E1OTNhNjc4MmM5NTZiNWE0NDdhNmE4Yjg3N2I3Nzg5YmQ4ZThhNzJiOSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/extension.go#L8-L53",
+          "version": "repo-lines-v1:sha256:d8c988d3bd1448aa02688f2de39ab0539d7a3cd5bad54ec90b8244cd8d11fec5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZjM1NGQ2YzNmN2Q0YWRlNjcwOGZjMmViMTgzMDA5MTllNDhlMjVjMjg3YjE3YWEzOGZjZjcwMDc5ZGQzODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b6947014f8b45db958b0acc4e9fc507",
+      "statement": "Install health is observable without re-running the installer: agent-harness inspect reports Codex/Claude skill install paths, MCP configuration, and project-local state; live checks are per-host file tests plus codex mcp get agent_harness / claude mcp list, and hook behavior can be smoke-tested by piping {\"cwd\":...,\"source\":\"compact\"} into agent-harness hook session-start --host codex; doctor diagnoses install, state, hooks, MCP, daemon, and project docs together.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L8-L52",
+          "version": "repo-lines-v1:sha256:ab3842dc39a45f299f5d61c5a71629621c220ca9b6e5ad9cad1acb87c2cbc72c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhYzE4Yjg0MmE0YjkwOTE0NmE1NTA4ZTYxMDJhNTZmZTgzZGU2MmIyYTZkNTQ5YzFkZTFhN2RjN2Q5NjY2ZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2MzYzZTFkYzdhNjY2YWFiMzVlNWFkNjBlNDUzNWE0NTM5YzE3ZTY4OGQzZjJkMWY5NmI2YTcwZDE0NTRhNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2MWZmMDljYTZiMGM0NmE2ODNkMGNlN2M1Zjg0NjU2ZDEyODM2MGVjNjhjYmZiN2UzNTJjODE5MTI0NTZkZTgifQ"
+        },
+        {
+          "resource": "repo://AGENTS.md#L155-L180",
+          "version": "repo-lines-v1:sha256:7a5de6056df08e77a36cbb16d9e3760c4f98872c413ec415919e45aa12df4c98:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkZTJmNTMyOGVlNmU4MDUwZThhYWZkOGRjODY5YTA2OWNkOTU4NGVkYWFmNTRmZTU4OWQ3M2MzYjdkY2Q3OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2ODA4NGRlZmZmNjU4OTI2MjU5NWVhYWRjYjRlODQ0Y2QwYWRkOWRiZGJjOGQ5YmUxODJhZmExODkzODgyZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4YmYyNjE4Yzc1MWY5YjkwZjdiNjQxNGMzM2E2NzkyODA5YzIxM2Y1NjA2OWEzNWViNDBiZGRjMjgzNDQ2YjUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/inspect/inspect.go#L12-L37",
+          "version": "repo-lines-v1:sha256:75d2a2ddc37ec9763924a48b46f7c9b0b23892b6592aa1c1fffadd87a7548fb9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMmIyMGNlNmNlNTY5NDczZjU4MzA1Zjg4NDI4YmY4ZWJlNjM5ZDRlMjMxNDMzNDgwNWFkNTc0NmM2NmJiZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MWQwNzJhYWJhNzMzYmZhMzE1NWM2YjlhNmQ3NTVjNjUwYTYwYWE0ZWFlZTkyMzA3Y2RhZTBlYzA0ZWViMGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a76364cfa7b84121b231004257eb5dce",
+      "statement": "The install surface is pinned by TestNativeInstallAdapterContractMatrix, which runs user-global and project-local cases through all three installers, asserts semantic invariants (deterministic host order, sorted skill names, symlinks resolving under $ROOT/skills/*, SessionStart-only hooks with removed lifecycle events absent, exact MCP config content, no repo-local writes by default), and goldens the full normalized plan into internal/adapter/testdata/native_install_contract_matrix.golden.json; a standalone install dry-run smoke (temporary HOME/CODEX_HOME/HARNESS_ROOT) plus scripts/release-repro-smoke.sh verify no-write dry runs on clean machines.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/validationcli/installdryrun/validation_install_dry_run.go#L18-L60",
+          "version": "repo-lines-v1:sha256:61ca718f4f9cf9ad9bce0fbaee69642a002defe0933b206d43d4cbcbb11f1f6e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNjgyOTBkYzE0MWJmNThmMTIwMTE5OWFjN2U1YWRlY2QwNWI4NmI1ODZjMzBiNzE3ODYzMDRmMjA3YjFiOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyZDM1ZjQ3NjJlOTQxMDJkNGJiZTI1N2I3Yzc0MGM2ZDU0ZDIzZjQzMzFiZWFlNDY5MTZmNWQ4NTU1YWI2ZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljOTEyYmJmZmM1N2RiOTkxNzVmYmM1MzI5NGIxMDdiMzRmOWNhZmVlYzgzOTRlNmJmMjVkMTFiMjdmY2Q0ODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0OTlhZDVhOGIzOWZjNWFhZTgxNTliZmJlZTU1YWUyZmY1OGJjMDRlOTBkMTk1ODRiNWU5ZWFiMzFiYTBiNDUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L61-L96",
+          "version": "repo-lines-v1:sha256:c6a2438da60b865f2717674d0b71a36221421f70025577478b5604c13444ddca:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwZmU5Y2ZiODYwM2ZmM2U3NjE0NGQzNTU2NDI1NzcwZGIxM2E0NjBiMDQ4MTM1YTBhMTIzZjE1Nzk3NDdiNjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkM2ZlYjc5ZTdmNTExZjBkMzc5YWRkN2NhM2NlZjA5ODk0ZGQzNjMwMDcxMDEzMDYyMjMzZjU0MTA1N2NmMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2Y2VjMDlkNzRiZjc5YThlYTJjODRiMDc0NTk3MmYxOTk1MzliY2Y2YzQ2MTg4NjMyZmIzYjg4Yjk5MjRlNjcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go#L655-L742",
+          "version": "repo-lines-v1:sha256:899ad5b047d258a4a6c915f1143b230d03794a70d7957702facc09c20b8b8961:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMGEzNGQzYmUyNjZhNjc2NjJiOTQwZjAwODQ4ZTUyM2ExYzRhMmQ0OWNmN2ViNjcxMmM4ZTI4ODE0ZWRjNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjU5NzA4NjNkNTgxM2JmOTcwYjAyZTM0YjU1YTIxMDIyZmY5MWZiYjM3NjAwYmM5ZjZhNzY2NzkwZWVkMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmNDJjM2UyMjM1MTI1M2QwOTQ5NjUzMjBmYTlhNWI5ZWZhMTMzNGQwM2MxOTlkMWQ5ZDBiOWIwYzIxOThjNTgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/testdata/native_install_contract_matrix.golden.json#L1-L50",
+          "version": "repo-lines-v1:sha256:603a82b2f4039e9a99e919daf042ff2f3ab58167a8acc249ec447fd6e49be63e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZTM0YjliNzA2NGNlYzVmZWFjMzA2NjQwYTdjODk3OWJkNjFhZWU5MDNhNTIyMDY2MGRkNWY2MWU4N2JlODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4MjBmNmE0MTc4ZjllN2VkYTM4OTViMDQ2YzY0NTdlMWZhZmQzZDA1MjUxZWY3NmZlNjU1YTE3NGM4YmE5YmYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

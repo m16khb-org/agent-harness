@@ -1,0 +1,548 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:85927af4a1af51d074cd2197a83e161c9d94400957db0f047b6f57530782a2fd",
+  "claims": [
+    {
+      "id": "claim_2ea143cc3b82466ba6cab3d1ba10690b",
+      "statement": "Every command-execution path (policy CLI, MCP command-policy tools, worker run --read-only, gates CHECK, status verify-work) consumes the same EvaluateCommandPolicy from internal/adapter/policy, which the composition root injects into each consumer so host adapters cannot bypass core policy.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/CONSTITUTION.md#L50-L57",
+          "version": "repo-lines-v1:sha256:6af342c2066bb15bd31a12fefdddd1935127a92721b7c69fa7b0c4dac395b092:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYzYjZmYjYzMDFiODViZjgzYzY2ZTY5ZDkxZjVjNjg0ODBjNGNjZDAzMWYyYjhlZDkxNDBiOGY4NDQzMWJhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODRiYzljNDNiM2YxMDk1MDI1ZGI3YjJhNzY5MDZkOWU4OGM2ZDQzZDRiOWE2YTAxYTdkMzI3YTI2ZDQ4ODgzYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzk2NGQzNjFiMTNmMDBiYzBjY2FhZjFlMDdkMmJiMDExNWFiYmY5MjZkNmI1YWVjZWE4Y2FiMjk1YzI1MWNjZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzBmMWU4ZjVkNTljMmYzNzc2NGQyOWNhZDVjYWFiMTIzNzJlOTUzYzNkZTE3M2EyZjgxMjZmYWFkNDAwZDFjNyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/policy_preflight_wiring.go#L26-L51",
+          "version": "repo-lines-v1:sha256:142e3ff9b4bec2daa0eacc7412a83206fb7fe253210b3de8e9ddceeba9984e82:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1NWU1NTYzMWI2M2M4ZWU5ZDdiYmEzMTM2Njk3ODYwY2U2MjQxNzgwY2MwNGJmZDE5NGJiZTJmZWMxOGY3ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzZjQwNGNiMGQwMGNhM2E5OWY1MjJhODVhMzJjZGZlMmFjZjQzZDE4OThiYjU1MDNmZjgxODExN2E4N2I4MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_948813467f9f4fa3b532548692b5950d",
+      "statement": "internal/adapter/policy/policy_catalog.go is the source of truth for command classification: classification uses the lowercased basename of argv[0] plus the argv[1] subcommand against shell-interpreter, network, write, and read-only command/subcommand sets, and CommandPolicySummary exposes the catalog (plus secret-path/assignment patterns) which the harness://command-policy MCP resource serves as JSON.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/resources/resources.go#L98-L101",
+          "version": "repo-lines-v1:sha256:a9caddd24c193978dc7491938a83b0d60479b738511ea87ec8b749218aa0827e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWE2YmEwNzAyM2NiNTc0YjIwODNmYWZhNzFjMDc5NzQ3NTQxN2ViNDVmMzM3YjVlZGY4ZTU1Y2VmZGNiZmJhMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDhkZDVjZjU2NGFiZDNiNzQ5M2E3YjAyNmY4ZWQxNjU2Nzc0OWIxZDBhNjQ5NGI1YjI0NTdhNDI0ZDUzNzUwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjM3OWE4YTM3MDE1OTZlYzUwMTMxNjQ0Mjk3MDc2MTU4Y2VkNjFhMjU1Mzg4MjhkY2VhN2FjODgwMjg0MjcwNyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog.go#L12-L33",
+          "version": "repo-lines-v1:sha256:36d8f8e8a222ef6cecffa6facadce8b09cfd5840aa0653f65657964b2fea53a2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMjZlZjFjY2RjNTc1ZDlmOTYwODI5NTkxOTA2MmQ0ODE1YTlhN2YzZjBlZmMxYTY0NjViZWQ1NzkxODU1MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZDU3MTljY2FmZWYyNzZmMzI1MGZiNTg5Y2RkZDcwNDJlMzRkNTk0ZjYzYzIwNWY0ZDk2YmM0MTVjYjgwYjIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_command_classification.go#L8-L55",
+          "version": "repo-lines-v1:sha256:576075c650326fabfd8fbf5ca9368878e50da1e63c8b233c0c894071fb602d23:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2YWNlNzkwODBjYjAyZmZlYmJlMWE2NzE0OWE3ZTQwMzFjNTQ5MTc1OTgxMjg0NDNmMjA5OGZlMmMyYmE1OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_summary.go#L6-L22",
+          "version": "repo-lines-v1:sha256:f430fe6bfe1fd5ccaa57a587ca8c74a63a87a10f07d6ebf35b8af4ec43cebe23:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwN2YzYTM1ZTYxOWJjNmM5M2JmZGZiZGU0YzQxOGY3NDI5MGU0NTAyNjYyNWY0ZGRkNTkzNDBjMGEzZGUwNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YWRmMTBhNjI0ZjgzNjFlMTYzMDNiNzMxOGE2NDk3ZjE0OTYzODVjYmUwMTE0MDBkZjdmYmRkYzJiYmZjMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0ZDI4YTMzYzAwNGFkNjhkMTMyNDczNjUwY2RmM2FlZTc2MjVjZWIxOGM1NzU3ZjFlZDgxNzNkN2Y0MGEwMDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a57225828e8948958b45e923df58a99e",
+      "statement": "Workspace .agent-harness/policy.json overrides are additive-only (they can never remove a built-in entry), are reloaded from disk on every policy evaluation with deliberately no global first-root cache, are scoped to the workspace root that ships them, and a missing file is warning-free while a read or parse failure surfaces as policy_override_read_failed / policy_override_parse_failed warnings with the built-in catalog used untouched.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog.go#L59-L110",
+          "version": "repo-lines-v1:sha256:cc338ecb22be55b4a9628a1c0f5d9d6b5fce2c4c7f363ac4efa06795956a087d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYmQ5YjA3MjZkNGRlMzU5ZTE1NmY3NGU0MzZhYmI1NmJlNzQ4ZjdlZTYwNDQ4MDYxNGMyOTFkMTUwOTcxZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZGEyYzRkODVjMTNkMDc3NzNhMmExMmU3ZmE0MjhmNGRjMDcyYmY1MDY3NGYwNGIwNjQxNzkzMTkyYjQyMGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog.go#L72-L83",
+          "version": "repo-lines-v1:sha256:68e72c11f4ab7757415b48c7189967546aaf93a13d624b3fcd7d93dc882de079:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNDdmZmFhMDlkZjcyZmY0MTM4MjJhMjFiZDEyY2JmYTdkNTdiY2RlNWU4MDJhM2QwNTIyMjk2ZTNlZDM3NjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4ZWFjZTViNDQ0N2IzYzE0MzA2ZTRiNTYzZGYzZGFlZjUyN2Y4YTdiMWNmNWQ2NTQyMGE4ZjAxZTQzN2RiY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNmQ0ZGFiMzVkMjUxYTcyM2QwN2Y4MmNiODkzYTBlY2E5MzY1YWZhYWVlZWYxZTFkNzBiODc5YWE5YmZhMTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog_test.go#L108-L249",
+          "version": "repo-lines-v1:sha256:363e9883da44c0b26b0ef844e86d28abef12731c8cbd7bb890c71c1cd2e0b6f0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyNjIwYzgwOWEwZThkMTMwYjAxMTI5ODEyODVhOWRjM2U1ZWE2NWJmN2Q4Mjk4YzBmNDIzMTAwZTI3ZjZjMzM4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmMjk2NDA3OWMzYzVjODE1MjBlZjMzYTJiOWQyZTE1YTFiODRkNzI4MGRiODU5MGRjZDY1NzQ3ZTNlMDEyYTQwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyOGM4Y2Y0YmRmNjI0ZGM2NzI2YWQ4M2MyNWMwMTQ0NDE1ZjY1M2NhMmM5MGZjYTMyOWQ4N2NkOTdjNmNkMmEyIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_5d7365312ba14d2abf22b901b6eb6721",
+      "statement": "CommandPolicyRequest carries the mandatory policy fields (workspace_root, cwd, argv array taking precedence over shell strings, timeout defaulting to 30s and capped at 15m, env allowlist, network_allowed, write_allowed, audit_log_id), and the default posture is asymmetric: read-only inspection is permissive while write, network, and shell capabilities start narrow and require explicit flags.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L101-L109",
+          "version": "repo-lines-v1:sha256:26dd863a5ee5f16b14eaed21471ab3fa4faa7262f3b65881618660679e35e897:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZmYWM5NzIxYTQ4YzJmNzRmYTI5ZTZjZTNlNWRmMTZhYzkyMDMwMDBiZTg1OTk4ZTczZmQ1NjlmMjBhOTQ0ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjBmODkxOTA1MWJiOTRlMThhM2MyZjViOGNmMWE1OWRiMWRmYTQ4N2NiMTNjYjZlMWFmY2U2ZjUyOGIxZGZiOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjM4MjA4ZGI3Mjk2NDg2OGFhNDMxZTg1YzMyMDJkZmY5YjcwZDYwNDVlNWFhNzcyYWJhYjNkOWI1ZjUxOGEwYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L14-L48",
+          "version": "repo-lines-v1:sha256:4bf18ec7a492c3a93c8cc4ce845c8ecc69e609bd392387009b3d05f802373269:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNzU0OGQ2Y2I5NmYwZTQxOTgwNzJiMDk5ODEwNTZhMWI4N2JiZWE0Yzc3MGZkMmUyMjJjYjFjMTRkZDU0MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4MDMwYjk2YjJlOWJjZDdmMTFiNzBhMTBlNzE3NzU0ODE3NjIyMzBhZDIwMjM3NzllMjYxNTE5ZmYyOTFlM2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNTM0MWYzZTY4NjUxYjM1OTQxMmVkNGI4MWYwMWVjM2YwOWIzZWQxMTQ4MGY4NTcxZmJhOGU2MTUwMmU0MzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2NzRmYTk2NGE4MTg3ZjNkY2Q5ZTcwN2E1YTdmZTQwYzgzMWEzNWU3NGZmMDljZjk2MDIyY2RmM2NlOTcxYjQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_summary.go#L6-L22",
+          "version": "repo-lines-v1:sha256:f430fe6bfe1fd5ccaa57a587ca8c74a63a87a10f07d6ebf35b8af4ec43cebe23:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwN2YzYTM1ZTYxOWJjNmM5M2JmZGZiZGU0YzQxOGY3NDI5MGU0NTAyNjYyNWY0ZGRkNTkzNDBjMGEzZGUwNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YWRmMTBhNjI0ZjgzNjFlMTYzMDNiNzMxOGE2NDk3ZjE0OTYzODVjYmUwMTE0MDBkZjdmYmRkYzJiYmZjMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0ZDI4YTMzYzAwNGFkNjhkMTMyNDczNjUwY2RmM2FlZTc2MjVjZWIxOGM1NzU3ZjFlZDgxNzNkN2Y0MGEwMDYifQ"
+        },
+        {
+          "resource": "repo://internal/contract/policy/command_types.go#L10-L21",
+          "version": "repo-lines-v1:sha256:f90673cff497a384ae29cbfa5c2f7bbeb3413fdb19dfe15420e524692dcddc89:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2YjJkMTBhZTQ4MTA2MzZmNWQ3ZGRjMzdhZTc4ZWE5OGViOGE2MDJjMGI3MTQ2MDAxMWExYjM5ODcyZDFkZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4MTUzYzYwNTQ5NzU5ZGNlOTk5NDBjN2ZjYzBjZmFhZGNkMzBkYjBlNTEzN2VkMzNkNmY5ZDBhZDljZjhhZDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_249b9d47f0b747f1946c80e3cec2cdc1",
+      "statement": "EvaluateCommandPolicy accumulates deny reasons rather than stopping at the first failure and sets Allowed only when the list is empty; denied families include cwd_outside_workspace, path_outside_workspace, shell_interpreter_not_allowed, network_not_allowed, write_not_allowed, command_not_in_read_only_allowlist, secret_like_argument, invalid timeout (over 15m), invalid env names, and the IssueOps PR-target reasons pr_target_branch_required / pr_target_branch_mismatch.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L48-L118",
+          "version": "repo-lines-v1:sha256:b451d4efa2b0c1585cf34251b624f7101ff5daed1fdb58dc96212aaa7649098f:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4MDMwYjk2YjJlOWJjZDdmMTFiNzBhMTBlNzE3NzU0ODE3NjIyMzBhZDIwMjM3NzllMjYxNTE5ZmYyOTFlM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwZTJhMjQyNDUwZmJmMWFlN2VlNzdjYzFmYWQ0ZTZmNmFjMzM0MTBjOWU3ODNjNmQ3ZDkxZGFmYTM5ZTU1NDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkMGE2MGFkNjNiODc3MDg0NDI0NTk0ZmEwMzZiYTAyZjU2NDg2YTU0MzM2MzU4NTJhZWY1YzU3ODZiZDZkYjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_summary.go#L14-L16",
+          "version": "repo-lines-v1:sha256:b80782c60b9c1fdd3b79875bbe41a9f922e4eaedc71a8ff361a8d464bb34f720:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjgxYzk4ODAwNGFjMWNiODA5MDQ2ZTgyM2U5NDU3MzVlZjVhNzBjNWEyMWRiMDhkZGUyYTFhNWQwNDVkYjIxNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjA1NWVlZGZjODhiNWFmNDVhMDJlMGVjMTY1MThhYzAzYTIxM2UxMDk5ODY2MzFiZWZmYjJiNmE0NTRhODJkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjlhM2Q2N2M5Y2I0MzQ1MTBkMjFlZjc1N2MwMTdmMzkxNzIxMWE5NzdjNDNkZjIwNmU4MDhlZDMyM2Q0YTkwYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzJhNjBjYzhjYzQyZGE0NGM5NGFlYzA5OTNiMjY4MTIwNzNiOGVlMWMwNjM1ZTcyNjMyNzZhZDU1YzZkMzNhOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_dec3edcd97a44cd19e36dfedf2f0c8e1",
+      "statement": "Each evaluation reports a named privilege tier synthesized from capability flags — read_only, workspace_write, network_access, shell_exception in ascending order — where shell_exception requires shell_allowed plus a shell_reason; auto-escalation/YOLO tiers are deliberately excluded so one approval cannot raise a session's safety level, and the tier classifies what a request may attempt while DenyReasons decides the specific command.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_summary.go#L27-L34",
+          "version": "repo-lines-v1:sha256:3c9757ea61514b889ef7a8d01425e6b8f7f031e82de314c476dac8dd43bfe9b2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGU2ODlkZTZjNjM3OTYxZjdmNGFiOGViNjAxYWFmZmU5YTY2MTA0Y2NhNjNlNzFhNTFmOTEzOWMxYzA1ZTQ0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjU0MGZkMWZiYjk2ZWJkMmFiZDE5MGYwNzY1OTE5OWU3YjFlMWZlM2JhODgzOGE3YWU2OGJkZjE2ZmJhMWY3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/contract/policy/command_types.go#L23-L35",
+          "version": "repo-lines-v1:sha256:d6be93ab33dae3748f038e8ed005dc3d997932ec2dd09539157443d947b0a8d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwMWVhOTNmNjA0YjQ4ZTk0YWNhNDMyYmRjNjllZTc5YTgxMTZjYjdlMzc2ZWNkYTUwYTZhODc1YTZmM2Y0ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2OWYzZGY2ZjQ1Y2Y5NWFjM2U2Y2NiNzc1NTU3YTkzNGQ0ODU1MmM5M2U4MGNhNTdkOWY4NDkyYmJjM2ViZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1M2VhYzA0OTQ1MmI3M2Q1YmExMTZiOTY2ZjBjYTMxNGFlNTNlODUwYjFhYzQ3OWJlYWUxMjFmYjY4YzYzZTkifQ"
+        },
+        {
+          "resource": "repo://internal/domain/policy/decision.go#L7-L42",
+          "version": "repo-lines-v1:sha256:62711ad012884fd52e249f04f3a728794ccf8765cdfae1647d86cad9cabb88c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5NmFlMzM1NzZlMDc4YTI0YWVkMjQ2MjVjZTE0Yzc1YTExODM5MmRjYjQwZmRiYjQ4ZDFlYjRhNWMwY2NkM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNzIyZDNmMWI1MWJlODJjMWNiNGFiYjk3YzgxZDMyMDcyM2VlY2MxOGU2MGEyN2E3MDkyMWIyNjA0MmNjMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6a9c860d95ff43cbb5fb6ef8322c596b",
+      "statement": "The policy verdict is consumed by four surfaces — policy check / command_policy_check (evaluate only), policy fake-run / command_fake_run (prove acceptance), policy audit / command_policy_audit (append redacted JSONL, no execution), and policy run --read-only / worker run --read-only / worker_run_read_only (execute with write/network/shell forced off) — with CLI, MCP, and daemon sharing the same contract DTOs pinned by goldens.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L81-L84",
+          "version": "repo-lines-v1:sha256:bb67bc5da656e02826802ef16a504c5de89f5b5082fc0741ec2a2f092850e55d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTMyNDc4OTcyMGJiMjU5MjIzZDc2MWYzYzZjMjEzYTY1NTNkM2I3YWIzNjdhNGViNzE0OTMxNjg2Mjg1YTM4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGE4MmFiOWIyOGY1YmNlZDliODYwMjJiYmI4ZDEyN2RjZTRhYzU4MTc3ODMyNDk2YjZlNDU4Y2U3NDljODU3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzEyNWIzMTQ4ZDlmMmEwYWU0NzU1ZTA5OTIwZmRjMTgyZWEwMmMyNmIyMTY0Y2Y2MTRhMTdlNDFlYjQyYzg1NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJjZGMyMTAwZDEzMzM0YmU0ZDMxMDhhMGEyMzBlYmRkYzc5MDI3MWM2M2MxNGEwNzBiMmQ1OGY1OTgwNGU1MyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_assistant_worker.go#L58-L73",
+          "version": "repo-lines-v1:sha256:a060b0761c207773483f1a7390ba1fa8286abdb5c2e0c44f6aaf5c22080a9f25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NjQ1ZTQwNjBiNzM1N2VjOTQwOThlMDQwNzdmZTg5NTI3MWU0YmY1Nzg4ZTg1ODE2NDhhNzMyYjJiNzM5YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxM2Q3NDYzY2IxYzEzMjBiYzdiZTg0NDU2Y2JiM2ExNzVjMmRjNzQ3MDlhYmEyNmJmNzRmOGRmYzU3Y2Y5MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxNGY4YzMxMDc0ZTgzZDQ3YjI0NGZlMDIyNzAwOWM4N2Y0NWE4ZDFhNTUwMDBkMzhhZDRmOGYwZmQyOTYyOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyMzM2NTUxNDcxZTc5MmQ2ODVjMzcwMGFmZTkyMGQzODFiY2I2MDBlYzk1NjE1YjAzZWRhYzYwOTE2YmZiOGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_policy_state.go#L25-L36",
+          "version": "repo-lines-v1:sha256:f54a8f97cb3b7fc94eeeda2448894f0cc9f5ec0e16b2655e730be520c7e9ce06:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxODdmMjQyNzI1MTVlNTA2NjdkN2FmYTIxZjA4NTAyODczZmZkOWEyYjg3MTU5YTNmNWI5MGU3MWE2NDM1MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxM2Q3NDYzY2IxYzEzMjBiYzdiZTg0NDU2Y2JiM2ExNzVjMmRjNzQ3MDlhYmEyNmJmNzRmOGRmYzU3Y2Y5MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4OGJjOTE1ZjA3NGQ3OTNhN2FlMTExZjRmOWQyMTg4ZDE5YjIwNzdjYmM5ZWNiZTE5MzU1NGRmMDQ2MWQ0NTgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/policycli/policy_cli.go#L9-L123",
+          "version": "repo-lines-v1:sha256:089c4b3e37487af93f2d75745387ab8227262e35b19bd8c7b902034be5dc0b83:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmMzE4NDlkNjdmNGExMmNmMTM4MThlODI1YTRmOWNlMmUzNmUyYTNjODEyOTk1Mjk4YTYwZjIwYjZjZTA4ZDdhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0MDAxODU5YzM4ZmYyYzczNjFiZjNiYjQ4ODQzYjM4Y2Y0ZjIwYjdlMjI2OGMwNWE4YzAxMmFjNjZkY2E3NDA2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJhZWNhNWMxMGI0YjMwOTE3MDdjN2M2M2M1OGRhMTgxNWE5ZTNiNTAwMDhlNzAwMTljNDE2NTU2MDRlOTk3YjVjIn0"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/command_policy_catalog.go#L22-L45",
+          "version": "repo-lines-v1:sha256:761099572471a22e0d3b43f7638c3d853e287e78afb2ca5d83dde82565110859:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3MmNmMTk4YzRmNjIxMGE0NTA5YmYzNDE4ZjVjNDQ4NGM2NmViNWVhMDZjOWZkZDhhNTU2OTllNDA3M2E2ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bfbda8a9f8f84dffb9e1d5463bcd0e6e",
+      "statement": "FakeRunCommand evaluates the policy and returns the policy result plus an audit id with executed always false — an accepted fake-run reports that the command was not executed and a denied one exits with code 3 and the deny reasons; tests pin that even an allowed touch leaves no file behind.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/validationcli/commandpolicy/validation_command_policy.go#L93-L96",
+          "version": "repo-lines-v1:sha256:b70d998ed175fcbb42149e01b261b884dcc42162ed7fb101eaf5d5eafb4c6ec1:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWZmYjg2OGVjODRhMGQzNjU1NTdiZWI4ZTVjNjMyZjFlZDExYmE3ZWI4OGRkMzMwYmUwODUxYWE4ZmVhZDM4NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGE0YzgzMjA3MWJhZmNiZjc4ZjNjODAyZWMzNjZkYTFhODZiOWJiYjE4Y2YyNGZjZDkxMTVmN2Y4YTdjZTAwOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzgzNWM5N2M4ZTBiZmQ2MWE3ZDQzZGFmOTBlYWU4MjY3MTYwZjMzYTMzNjZkMWI0ZTU3YzYyYjBkMTk4MjE3OCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L15-L35",
+          "version": "repo-lines-v1:sha256:42e57f632fa9362e5938255aa4aa619146846bf1baa71e42f18ee78b40dcac13:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyZDU3MGYyMTYwMTYzNTZmMDBiM2Q0Y2ZiMDg1NjczZjNjNzA0NjZjMzYyMzE1ODI2ZGYxN2ZjYjFkOGMwZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmZWYxNzkxYWVmYjg5MTI5OGI1NmQyNjE2ZmYwZWM3M2NjNWU0ZDJmNjZmYzk0MmE0ODMyZTA0MDdiYWY5NTYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_test.go#L114-L129",
+          "version": "repo-lines-v1:sha256:508f18ccdd1d6b3e6e70c75d0fe3e61c681669da79ec2d3a8cbee2e52c9d81ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5ODY3M2JiNjEzNWY4Y2ZhNzNjYmRiNmU5MjI0NjliNzAzNDk0ODllZGIyNGRkMzdhZWY0N2FlZDFiOWFhMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4ZWRlMmEyMmIzZmU2MWJmYmQ3MmJmZWM3ZWI4NjZlZDcwOWIwOGMwMzZjMTNiZWY0MTIyMTExMmNhNjY3OGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c73b86190184a2b9abb94b890a42275",
+      "statement": "There is no writable command execution surface: policy run currently requires --read-only (RunReadOnlyCommand forces write_allowed, network_allowed, and shell_allowed to false on the request before evaluation, so a write-class argv is denied with write_not_allowed and never runs), and the worker plane is limited to lifecycle records plus policy-gated read-only evidence commands.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L79-L82",
+          "version": "repo-lines-v1:sha256:47f075df473ae7b7a5d8f49a3345389158eec2bb93f3b9c963d655427f179d2d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWU4NmMyZTk3MzM5Mzk0MjBmZWIwMDBhYzBlMmQ0NGQwNTM2ODlkZGM1NGI4ODg4NDAwZTk2NDU4YmRhNzhlMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQxNTE2OWY1NWM1Njk3YTk1NThlMTgxYzE0YThjZmI0YTQxYjE3NzZlY2E2NWU2OWMyNDdmN2RmM2YxMWY2YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTRmZGI4ZGI0YTdmNDkxYzg3MmU4NDhmMWMzOWIxNGQwNmJiMGM4OGU5NzVkOTUxNGU0ODc0NmJlZmI1OTY3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTVmZDI5YzNkYjRiM2E1MDFmM2U0MjE2MjEwMGRjMzg5ZTZmNjNlYmQ2OTRhZWNkNDg5MDNhMWY1NWQyNGQzYSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/policycli/policy_cli.go#L76-L84",
+          "version": "repo-lines-v1:sha256:4e2dfd61ce06f14faab7d8064cf042f81310a0e7710dbc9da5e4ab8abccd270f:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NmMmY3OTU4NzIwNGRhODE0ZTU5YThkMWZlOTQwM2NiN2E4ZWVmNmU2ZWJkMDQ4NGQyZjNlYWZlOTE3ZTg0ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmRlYTYzZjZiODZmYmQ1ZWYxMmU5M2ViODJkYTU5NWFjNmRlM2E4YmZlN2JlNzJmZDhiNmIwODM3NGY3NDllYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTYzMWI2ZTJjYTA3ZDhiYWYwZWI0NGU3NDlkYmY0OTBiMzkyZTNhNTM0ZWY2MTAyMjc3MTE0NmNkZjlhZjFhMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTQ4ZDdlMmFjOGQwMTUxY2U1ZGE0YTEyNTEyNmM1OTRlYmI2MjMwYjVjNTM5NmJjNzMwZTlkZmFlMzM5MGMzMCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/workercli/worker.go#L46-L61",
+          "version": "repo-lines-v1:sha256:f8dbd4bc6d3ffca0f6f60a1917106832edf4668f6170d74ff71cfd3c7db4dc10:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MjIwZmRkM2U1NDJjN2QwYmIxZWY3YzE5ZTExMGRlZDU0OWQ2YTEyMWEwOGI1ZDQ2MGY2N2ZmNTZlNDRjMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3Mzg5YjdmMjNjYzRjNDg4OTAzZGUwM2E2MGE3YTI3ZmM4YTEzZjAzN2EwOWU1MGZkMDcyYWNhZDI2Njg2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA5MGVkNjVlZjI0MTBkYmNiZWI4NWQ3OWI0YmVhMDc5ODM2N2Q4Yjc5NDc5YjY2ZjY5YWU4NzE1NDIyNTkyYjgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L37-L54",
+          "version": "repo-lines-v1:sha256:461e33b57813be9aed0d039dad01dd9ae74e55136073c7aa770677e6fc41bc51:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOTAwMmM1ZjA5YTkzZDFmM2M4Mzk3YjQ4NWIzMGFkZjg1YWYzYWUxNWMxZGQ5OThkYzA0ODNlZTdlZTI1ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNzlmNTA4MTJmODE4NzJiZGRmNzVjM2ZiZGRkZTlmYzJkY2E5MzBmZDhlZWFiZTFlNjBjMjczYjA3YjU0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjNjcyZGE4NDZjODUxNGMxYWQ1MTM4ZDdmMmE2YjY1NTE0Mzc3Yjg3ODFlMDg3YTY2M2QwNWU2NWMzNWU0MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d2d401e138ab4cfebf7e4f0db5c3ebfc",
+      "statement": "The MCP worker_run_read_only tool served through the daemon creates a worker evidence job and executes the argv through the same read-only runner; conformance tests pin that it never widens policy and that write, network, and shell requests fail the job with the exact deny reason, while job state transitions run under the per-directory sqlstore span lock.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/worker_mcp_test.go#L11-L68",
+          "version": "repo-lines-v1:sha256:88af1aed11996a3aa428c4217e82b4efc305c97a4658f3f2662c147475f5b94f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0OWVkNzEwNzBiNzlkMDY4YmQyYThmYzVkZmQ2N2QyYTgwZjZiOWU5OGUzMTcyNmZhMDE5ZjcxZjVkNDE0ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmOTEzZmM5Y2FkZjUyNzc4OGZkNmNiMDc5ZjQ0NWRiYWVjNGVlMTQyYzBlZjI3NzliYjkwNzYzOThkMTFmY2QifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/read_only.go#L13-L69",
+          "version": "repo-lines-v1:sha256:2ec9750b08872ab2dbc2c13af16b628cf6058bf3d9c66716e60cdb959ae52c13:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxYzdlNzE1Y2I0MWRkMGJiNGUzMWZmYWIzZWJhYjFjZGVlOGNhNjkyZjVhNTkzZDczN2QxNzkxNTY3ZmEzOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxZWQ1NzM0NGY1Yjc5YWFkYTZjMDQ0MmZlYjY1YmZiMDY3NGMxYWQ3NGFiZGRmMDE4YmQzNTk4YjkwMjVhOWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2OTY4MTYzMTNjODM2NmNmNGQ5MWE5OWRmMGM5M2M3YjRmZWMyNmQyYjllNmU1ZWI4OGQ5NmI5ZDY4NzJhMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker_lock.go#L7-L18",
+          "version": "repo-lines-v1:sha256:8cbe2e1f5be25c342c095fe6591c58790a7e443354c8f3e7205c02d7723cb6a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlNjFkYjgxMjAwMWI3ZjA5MGViYmM2NTA4NTU3MjVmMjA3N2JlNWNkMGQ1YzVkMTBkZjkxYjQxYmUzN2E1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NTNkNTU1YzRmMTFlZTk1N2QyNGYxNTQ1ZjY2YmMwOTc0YjI4YmM2YjRjZDhhM2VkNDRhMDE0MTE4YTQ4ZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_12cbdf7dcde742409d6fd3ec43c2cf16",
+      "statement": "RunCommand is the one executor that can run with requested privileges (used by gates CHECK, whose CLI defaults to --write=true, --network=false, env HOME,PATH, and a 120s per-CHECK timeout), but it always forces shell_allowed=false, and a CHECK denied by policy is reported as policy_denied on the gate with a warning instead of executing; status verify-work uses only the read-only runner for its optional verification command.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/gatescli/gates.go#L86-L116",
+          "version": "repo-lines-v1:sha256:5a5890e3a6c86307b2ae825c4517695f7391de886855db210ad4de944501754c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNzQ5MDNiYTM1YmMxMmEwMzNlMDhmNmIyYTkyZTNkOGJkYjAxNzM5NDA0MzNjNzgxNWI1ZTA2YWNhZGZmY2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2ZmI3ZDc4OTUyOWE5YTA5MjY4MmM3YWUyYThjM2U5NDNhYWVkOTllZTFkYjAwMDNlMDE2N2QzOTRiMzQ4NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkYTQwYzU4MGU0MTBhYzg2ZWNlNzBjYTkzNmFmNWRmNjRkNTE3MmVhZWRiOTQyNzMzOTAwMzY3YTZhZTUxMTIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/statuscli/status_verify_work.go#L93-L105",
+          "version": "repo-lines-v1:sha256:e65d5109e418290cc4e2fd54943295c5d10f2ef3f540a4c26f4c1c48bea7d1ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiOTVhMGRhZmMxMTc4NWI3MzBkNDZmNzBlYjhhYTBlMzY3NThjZTUwZDVjYjJlNDQyN2UzNWQxOGVjYjQ5MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1NTFkNDU4MWU5MWY1OGVkMTNkNDFmNjcyNjEwNDNkNjMwYmJkYTA0YzBjMTQ5ZTIzZTU5NzZlMTI4Zjg5MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0NGY3YzNlNzhjYTA0ZDZiMmYyZDhmMGQyZDVkMmE1ZDBiZGEzZjE2MGI1ZDQ5OTJjY2I4YWNkNDJlNmM2NGQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/gates/check.go#L156-L184",
+          "version": "repo-lines-v1:sha256:ac54493118aff9d5f43dd7cf66c28fc2cff035591a647d243efaef4d1399ed78:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMDYxNjM0ZmJiZDRkZWQ4NDJjYTExMTk0MmU0NjRkMmM5ZmVkZjczMTcwOTQ1NTJiMmE0NDQxMzgzNDMyYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiOTJjZGI0NmNiODkzOTdmYzczNzM0ZTc3OTZlYTgxMzljYmUyYzFiOTg0MmEzNDZmZjMxMjVlOWViMjBjYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3MWY5MzE1NDMxMjQwNWMzNWEzZDQ1MDMxMWNiMmNhZTQ4ZmEwOGE2ZWJiZDMzNmM0Yzg2NGQzM2YwYTQxOGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L44-L54",
+          "version": "repo-lines-v1:sha256:a1f738d413cb43f859f27f2c6aeaea5722e49a42da3c60aa7d1707ccbce68cf7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlZDgyZjQ5YzA0MjMzNzNkZmExNTQzNWFmZjI4OGY1ZTc0ZDg0YmY4OWQxNzQzZWY3OTc5ZDI4OTEwYmQ0OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3YTIzNmQwMTFmZGNjNDFiYzgzY2QzZThkMmI2YjUwYmJiNTM5MjhkYTc3NThkNTQyMzVhMTZmYWY1MWNjYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjNjcyZGE4NDZjODUxNGMxYWQ1MTM4ZDdmMmE2YjY1NTE0Mzc3Yjg3ODFlMDg3YTY2M2QwNWU2NWMzNWU0MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_99d6a7ad47154d859376e1d81e940b5f",
+      "statement": "The fence requires workspace_root and cwd to exist as directories with the canonicalized cwd inside the root, and denies path-like argv arguments resolving outside the workspace: absolute paths, ~/-shorthands expanded via os.UserHomeDir, relative paths containing / or ./ or .., and --flag=path values; remote references (https://, ssh://, git@host:repo) are recognized as non-paths and ignored.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L55-L92",
+          "version": "repo-lines-v1:sha256:0efb0605ed31afc07befd7479a217edbb9108ea46803e6a49cd56b4c4156a42b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NWIyMjgzYzNmMGU1MWQ0MzZkZjgwZmFmNDMzOGE0NTlhY2FkMzdlZTU1NGUwMGY1OGY2Njc3MmM1MjUxNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyNWQ1NzU3MDE0NmNkNjlhYzA4MjlhODc3NmRmMWQyMTU1YmU2ODhiZmVkM2QzMjUzYjFlMzRhOTJkZWMzYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0ZTI2OGNmZGFmOTgxOGE2YWU2MzdhOWI4ZjFhNDdhMjQxYmJhNWZmYzFlMWRkM2I4NDNlZGE3OTNjOGYwZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxNDBlOTdlMTkxZjVjMDlkYmRjYjQxY2E1YTkzMWNmMDU0YjQxMjQ2MGM0NGJjNGU2NGRiMDI2ZTIyMWJkNDQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_paths.go#L43-L131",
+          "version": "repo-lines-v1:sha256:abee0632e62e9b206523aaa09c7b521e4f5514bbf1810e59797beca25c343efb:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhYTkwNzc5Yzc3ZmZhZTE0ZjIxZDhjNDg5ZWQ2MjFkYzVhOTZhN2Y2MDg0ODlhOTkyNTU0NzgwNWJlOGJlOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_test.go#L47-L112",
+          "version": "repo-lines-v1:sha256:26802a4575457e028ca3c77bcd6292909a5d9d39b4540675c160b619f1deede5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiZGQ0Mzc0M2Y0N2Y0MmMwMjQxMTRkNTZhYjAzOGJlZjI2Yzk2MjEwZmRjZTYyY2FhYmUwZjdkNTUzMGZhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM1MjQ2M2M2NDVlZTJhNzEzMTE4ZWI1MzBmMmQ5N2NlZTA4MDJkNDg2Y2U0Njc4MDlhNDczMTJlOTA1NTU2YjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fad1b91fed7e49b6b28e7858aed20ba5",
+      "statement": "Path containment resolves against the real filesystem using filepath.EvalSymlinks, including a walk of the existing ancestor chain for not-yet-existing leaves, so a symlink inside the workspace pointing outside is denied exactly like a literal outside path.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_paths.go#L19-L67",
+          "version": "repo-lines-v1:sha256:74b8308a01b865ca3900d065af13641bee36075ea47fa25380d28cae372ac50f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2YTkwMjMzMjk3ZGQ0NThiY2QxMTQ1ZTljOTQxZTk0YzcwZjQ1NTdiZTNjNmQ2NDU4ODcyOWNkYmZkN2UxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3OTg3NDk2N2QwNjdlZjRmNTBmMGFlMWM3YTlhNTRkZTdmYWMzMGM5NzI2MGRjZWMwOTIwNDgzYjM5NmRkMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiNjlhMjJmYjA4ZGEzMDY1YTUwNDczOGRhMjQ3ZDZlN2VhNDQwZTQ2MjRmYmFjZGJjMWE2MjQ1NzY0MmEyMDIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_test.go#L59-L73",
+          "version": "repo-lines-v1:sha256:75495bce8d385ce0d0cd52fd86b98252c2a2e5e7cb680cbce26d9a773198c97f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyMzhiODZkMWFmY2EyMmFjZGExZTM3YmE2MzllNjU1YTk0OTQ3MTI0MGViODc2NjdiNjAzOWY3MGY0NjU3YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4NTYyOGRlNTdlYmU4ZTViMWUyYmEzMmU0Mzc1MDBkNmRiMmMxN2MwOGY1NWFjNWUxYmNjNmExMmRiNjhiMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjODFhMmE0ZDEwMzdmZmZiY2NlNzVmMTI1NGI0MTRhMGNmZDZhOWQ5ZTljOWMyMjk2NmJmZjhmMThiOTY4MzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7d6856d61a14217910c533d5feb3831",
+      "statement": "When argv[0] is a shell interpreter the evaluation requires both shell_allowed=true and a non-empty shell_reason (denying with shell_interpreter_not_allowed or shell_reason_required and warning shell_interpreter_exception when granted), but every executor forces shell_allowed=false, so even the exception tier can never actually spawn a shell through harness surfaces.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L92-L100",
+          "version": "repo-lines-v1:sha256:d8ed7b67535e5177325a93374ee8abb781f4cddf981889042a4da304d4995817:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzI1ZDU3NTcwMTQ2Y2Q2OWFjMDgyOWE4Nzc2ZGYxZDIxNTViZTY4OGJmZWQzZDMyNTNiMWUzNGE5MmRlYzNjMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmM0NGFkZmE1NjU0NjAwMGE3NzBmMGFhZjkzMzdjMWYwMDAwZmIxMTNjMGJkMjQyNWRkNWM4YzIwMjgxMmRhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQxNWM0MTY5OWFkZmU4YjQ0YTA5ZTcxYWI2YzNjMTJhNDI5ZWJlMDMyMjE1ODIxMGExNzZlOWQwYTk3MGM2YiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L37-L54",
+          "version": "repo-lines-v1:sha256:461e33b57813be9aed0d039dad01dd9ae74e55136073c7aa770677e6fc41bc51:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOTAwMmM1ZjA5YTkzZDFmM2M4Mzk3YjQ4NWIzMGFkZjg1YWYzYWUxNWMxZGQ5OThkYzA0ODNlZTdlZTI1ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNzlmNTA4MTJmODE4NzJiZGRmNzVjM2ZiZGRkZTlmYzJkY2E5MzBmZDhlZWFiZTFlNjBjMjczYjA3YjU0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjNjcyZGE4NDZjODUxNGMxYWQ1MTM4ZDdmMmE2YjY1NTE0Mzc3Yjg3ODFlMDg3YTY2M2QwNWU2NWMzNWU0MTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fc1b933635764eeaab9dcf0356be3187",
+      "statement": "internal/domain/shelltoken provides purely lexical shell analysis without executing the shell: SplitCommandTokens tokenizes with POSIX quoting (preserving empty ''/\"\" tokens and canonicalizing unquoted escapes), and detectors distinguish active shell syntax from quoted/escaped literal data — control and background operators, command substitution, input/output redirects, parameter/tilde expansion (active even in double quotes), glob/brace expansion, ANSI-C and locale special quoting, zsh =name expansion, and word-start comments.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/shelltoken/tokens.go#L451-L491",
+          "version": "repo-lines-v1:sha256:851184c419d1af351ea596a31c7d38f26e3421306ec9b91d48fadd7823d0271b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhYTM4MjE1NDZiYjM1N2EwNzc0YWQzYmIxMWM3MmFhMjY5OTBmYTU0OTQ4NTMwMmQyOWQ1Njk4NzJjYTNlZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1NWY4MThhYWE3ZjgzZDMzMGQ4ZmUzZjE2ZDYwZWJkN2ZhNGE3Y2EyNzAwNDZjYzA4OTc5NTQyMTgzYjc2M2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3YTU0ZDdiN2JjMGMzMmZiODIyOGM3MDczYzhlMTkwZGE2YzA1ZDc2Zjk3YzExYmIyZDQ0YWZmZmM3NzljYmUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/shelltoken/tokens.go#L5-L59",
+          "version": "repo-lines-v1:sha256:ac411a7a1296d50716c4b6ce682072e006a33811d73286b3f8c11ddab09926c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1YTZmZThjMDE1NGY3NTRkNDQ1ZTU1MGEzZjUxZmFmMzYwYmZiYmM4N2I0OWMzNWMxZTYzNzYxNjBmN2IzOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0NWFmNzJkYmE2Yjc0Yjg3YWVjOWFkMGMyYWM0MTAzMGZmNDdkOTM2YjBmYjEyZGViODU4YTA3MDA4MmY2YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5ZDk3NmIyMjAzNzYwNTljM2E5NjgxZDVmNzk3MjAyMTBkZGFjOTgwY2U0ZGMxZjIxMTM0OWM5NGQ1NWM0ODAifQ"
+        },
+        {
+          "resource": "repo://internal/domain/shelltoken/tokens.go#L61-L367",
+          "version": "repo-lines-v1:sha256:a443079aa9084df2b6935f56c3102b6e12ba937aad930007f6c76d038685e12d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzA3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlMGE3ZTJlYTNlNjI3ZjFhZmIxOGZkY2I4MjAwOTMwYzhkMzk4ZTFlMWFmODEzNGZiY2ZiMTczNzIyNDdhZjU3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5ZmVlYjBmMjgzNzc4ZDNjMTMzYWU2YmUyMDgxYWM3YWRmMTg1NjQ2YmIyNWEwYjUyMTNkNTM0NzhmNDFkZThkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzYmRkNzcwMGRjMTA4MzFiNDg3MjBlOTI5NDI4MzA1NTliMWQxNmY4MzVhYTA0MTIyMmNjNjJhZDMyZDJjZDhhIn0"
+        },
+        {
+          "resource": "repo://internal/domain/shelltoken/tokens_test.go#L44-L189",
+          "version": "repo-lines-v1:sha256:f2724dfd9c6893fb907f73e0dc9418e145ac0a44cc3c210bb5c8cecb1027577f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzMDg0MTdkZDdkNWFiYzZmZGRjZDczMDgwMmE4OGM1NjQ5ZTA5Y2UyM2ViMTIyN2ZhOTAyZTlkMjJmZjg4MzFiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmMjk2NDA3OWMzYzVjODE1MjBlZjMzYTJiOWQyZTE1YTFiODRkNzI4MGRiODU5MGRjZDY1NzQ3ZTNlMDEyYTQwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3YzNiNzg0MmIwYTY1MzQzMTZiOGU2MmUxYzM4OWQyMTFiNjFhY2NjYmIyM2FjZDNhOWFkYmZhMGI4MjI0MDRkIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4d208b2ce254a049bfcdb4eb0d0b5d8",
+      "statement": "Gates CHECK fails closed on shell syntax: a CHECK command containing an unquoted control operator is rejected before policy evaluation because argv execution would turn ;/|/& into ordinary arguments and fabricate false met results, gates init refuses to scaffold such a spec, and met is decided by exit code first with the EXPECT output anchor second.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/gates/check.go#L156-L212",
+          "version": "repo-lines-v1:sha256:4632f33dd8d9216dc207baea9fb0128738188610efa9f6d043e7e03e4257c9b8:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMDYxNjM0ZmJiZDRkZWQ4NDJjYTExMTk0MmU0NjRkMmM5ZmVkZjczMTcwOTQ1NTJiMmE0NDQxMzgzNDMyYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyMmJlNDBjNGFmMWI5NTE5Y2UxNDQxMzU2YjYwODBiNmRlNWU5Yzk5MDg3OGQ1MDU4YzhjMzUxZjQzMmQwNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiOTJjZGI0NmNiODkzOTdmYzczNzM0ZTc3OTZlYTgxMzljYmUyYzFiOTg0MmEzNDZmZjMxMjVlOWViMjBjYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3YzdkYzkxYzEwYzgzMDQ4NjdiYTZlODQyYTY1NmM3NDlmYjU2NDlhNmZkNmI0OWU3MWZjZTVjOTEwYWQ2NDcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/gates/init.go#L86-L117",
+          "version": "repo-lines-v1:sha256:931fd34a6784e8e70c2f080c9816a257e27b022ed92d57896e149ccbe67b8888:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0ZjhjMDVkOTA1NTk2NzdmNGIwMDM0ZWQ3NjIyZTQ1NmEyMjEzZDg3ZmEwZDU5ODgxYmYxZTYyYmEzZDAzNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3ZjBjZjc5NWUwMTlhZmRhOTJmYmU0ZjlhZTNiMGYwNmU5M2JiMmY0OGRiOTE0N2UwMDIyZTZhZWVmNWU0ZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmODE3MDYzNzZhYjg4ODc2YjhiMTFkNzNjNDE3YjliMzkzMjcxNDZlMzhhZTZiYjFiM2VmOWYwNWI0NjUzNzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_afb1f0a945af4c0eb831b8067c6a409e",
+      "statement": "commandparse.ParseExactIssueOpsCommand refuses any generated IssueOps command carrying active shell control operators, command substitution, redirects, parameter/tilde expansion, pathname expansion, special quoting, or zsh equals expansion, returning failure rather than attempting to parse it.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/commandparse/issueops.go#L14-L47",
+          "version": "repo-lines-v1:sha256:df1722b72037948e946f7800e663f06dc7b482c670329fbc8d04509a5ada15d2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNDU2ZDM5ZjZmYWExMjhmZGQ5NzU3NWY0ZDEwMjk2MWExZDYyNTY2NjczZGE0ZTNiZTk4MGMwM2E3ZTlkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYWQ2ZWM1ZTNlYzE2OGMwMzM4ODhhYTBiMGRjNDY1MjdjZmExNGMzYTRlNzQ1YjEyZWI0MzhhOTk1ZDUwNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlOTU0YjE3YjU5ZTcxMzIzMTMzNzBjZjQ3YzEwNDQyMDFlODI1ZTQ5YTA5NTgyYzliOTY5NmQxN2FmNGM4NDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4cbb39cb4af4341a309c32bb9cb4ea6",
+      "statement": "scripts/verify-skill-shell.py scans shipped skill shell fences without executing snippets and rejects: syntax errors (checked via <shell> -n with placeholders substituted), failure swallowing (|| true, || :), fabricated zeros (|| echo 0, ${VAR:-0}), destructive commands (git reset --hard / clean --force / branch -D / rebase / force push / rm -rf) without a destructive recovery annotation naming verifiable rollback evidence, dynamic shell (eval, source, sh -c in any launcher spelling, command-position expansions), unquoted word-splitting loops, and symlinked skill trees; skip annotations never bypass the destructive policy, and missing paths, zero contracts found, or symlink violations exit 2.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L93-L99",
+          "version": "repo-lines-v1:sha256:917eef9509a7cbb9a4dc03f66d85ecdece3ac39863519915c1e3825d7ba2fe7e:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjRmNmZkMDlhMzc2MWZjMGQ5YzI0OTc0YmY1MzlhNzMyMTk3NTdhODY5OTllMGUwNmJmMjRiOWEyNjY0MDk5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjA2ZDAzNzY4ZmE2NWFlMGFiMWNkMDA4MTA3YWMzNWQ1ZjdmZjA3ZGI2YWZjYjI2ZjIzMGNlMmNjMWU4NmQzZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2JjZjI2MDFkZmE3MTYyNzFjMmYyM2U3NmI2N2VjMjVhZGJkZDY4NTcyZWYxZmYyOWM0ZThhYzM4MmI3ZmNiYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTA4NTY3MGYxMjIwM2RlM2ViNWJmM2RiZGM2YjMwYzZiNzk0YjI4MzU3N2UyYTc0NWFlNzI1NWY2Y2FkODQwZiJ9"
+        },
+        {
+          "resource": "repo://scripts/verify-skill-shell.py#L209-L288",
+          "version": "repo-lines-v1:sha256:54f830d026f83fd54d956369cc66dffd2c80a0a2b32471a58c8bba59202eaa4f:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZGVhNzM2NjNkNGRlOGUzMTBkZTYxZGJiMzgzMmY5ZjFhM2ZhN2E3MGZkMTNmNjMxNzQyNjAyNmZjZTZmZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0OGNlODBiNjgyZmQzMzcwNmU1ZjkzMjlmNjA3ODBmM2VjOTQ2NDg5YTRlYTI2NjZmMmUzOGZhODYxNmRkYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU2N2E5NGY3M2RjNDgyMWQ3NzhjZTc3NmQ1NWEzOTk2MjZhNmQ5ODEwOTEzOGI4NDg1Y2NhNjIxMDhjNzI3YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZDRiNjhmOTkwY2M5ZjFmYzc2Yzk2MWY5YTkzYWFjNzkwNzViYThlYjdmMjg4MWZiYmQ1ZTEzN2ViZjczMzQifQ"
+        },
+        {
+          "resource": "repo://scripts/verify-skill-shell.py#L36-L46",
+          "version": "repo-lines-v1:sha256:f97083e140783468dd5673adde65a81dc1b6766db9ba58e84d93b1304d956d4c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMmQ5ZDRhZGM5ZDk4YjBmNzJkMWI5OWE4YzI1ZjI4NzU3YmQyZmMyYzU4NDI5OTAxMzJhNzA3MzYxMGI2ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzZlZWEzMjkxNGY4MDIzMmM1NjAzNGQwMTNjYTFlMjcxYjc0YjQ1OTk1ZGJlZDAxODkyNDhkNDQ1MWY4ZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyNTlmNjg2Y2VjZmI0YmU1MTJkYzA2ZjE4NDI1MWU1Y2JkYjRlNjE1ZmU2OTA0MTliZDU0ZDM4NGZjNmMyNTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMTU3MDhkNzQ2MDUyMTVjNGYwMTRkMmEyZDg5YmE2MDIxMmQ4YTNkYWM0ODk0MmU4NzVhNDhmZWQ3MDExNDUifQ"
+        },
+        {
+          "resource": "repo://scripts/verify-skill-shell.py#L446-L482",
+          "version": "repo-lines-v1:sha256:aefe403d5862843adc95f1611942224c7fd87751923a8899d5d0474b7eba66c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2OTIzOTgxOWQ3YTEzNTM0NTcyZjBlZjJhZWExMDMxMWY3NDg2Y2VlOTY1M2NlNGY0Y2JiZjk5ZTJjMTVmZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2MjMzYjNmZmVhMzJhMjNkZjUzMDY1MzQzNDhmMmRlZTc3NmE1YTZmNzRmYjUzMzE3NWRkYzUzOWE4ZmU0NjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0MmI4NGFiMGM0NzYzZDMzNWU1OWIxMTdlNzBiOTk2MTU2OWE4ODU2YmQ5YmZmMmU1ZTMwN2U3ZDZhZmI5NTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
+        },
+        {
+          "resource": "repo://scripts/verify_skill_shell_test.py#L31-L110",
+          "version": "repo-lines-v1:sha256:10945ef7cafc1fca1c99774f0459a27c7483577c53f70d8c594c30a44581a402:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZmViZjU1NzFhYWEyMjNhMDkzMzA0YTAwZjAwNTg1Y2M0YWY4YTA5ZjUzOTQxYzJkM2YyOTNmNjlhZmJkMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxMzQyZmYzNDQxZGM0OTcwMmZkZDEzY2NhODQ4NWE2ZGFhMWVlZTIwZTA2ZTFlNWI4ZGU3ODZjOGI5ZTQ4ODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhNTAxZWJjNThlMGEzMzNjM2ZmZDFmZTllZjY5YjhkZWMwM2Y3ODAyMDYyZGU3YWVmNWFhYzdmMzM4YmQwMzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8ae4039d66bc41c487ebc73251ba573f",
+      "statement": "SecretLikeArg flags secret-like arguments (token=/password=/secret=/api_key=/credential=/authorization= assignments, Authorization: Bearer headers, and secret-like paths such as .env, id_rsa-family keys, *.pem/*.key/*.p12/*.pfx, *credentials*, *secret*); such arguments are both denied (secret_like_argument) and replaced with <redacted> in the returned evaluation's argv and shell_reason, so even denial reports cannot leak the value.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog_test.go#L11-L35",
+          "version": "repo-lines-v1:sha256:c629da48851d922080ab965759ec1800217b27d9246162a9f082c7d42f4aa52d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4NTc3YzJjMDVkYzVkOTBhMzc1MjM3Yjk5NGE5NGFkYWZiMDkxZjQ4Y2RlYTk3Njg3Y2NlMWUxYmE3ZGJjMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzgxNGY0ZWYxZDY4ODJmOThlMmM1YTViMDNiNzg3YWYwMDAyMjNiYTY3YzcwYjdiYmRkNzA3ZmU5ZGI2YWMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L82-L87",
+          "version": "repo-lines-v1:sha256:f649ac37418ba42449e9210d601fde8905bcfb1dbecc08cc15173800a432813e:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjY4NTJlNTg1M2IwODU3ZDk0MGRjMzcyOTM0OTQxZGFjOGFkMzNhMzhkYWVmZjgwZDRkM2VkYmZiYTU2MTM3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGMyMDY5Y2RhMjU4ZDMzMzI0MjdkOWUwYmM1MmNlYjNmYjY3OGU1OTI0M2JlYzRlNTY3ODYzYWU2NDNkYmIzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDYwNDE5Y2ZlZjc4NGIzZjZkYTA5YTlmYzIyY2UxNzBlMWI4ZjlkZTBhNjg0ZWI5ZDUzMGU5NmE4ZTQ3OThjMSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/policy/redaction.go#L10-L82",
+          "version": "repo-lines-v1:sha256:82db1aa1e7e7efda7aa57d325073955483bdc99b94f9ac437a31a32ccb966ced:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5MTRkOTkwZmEyMDQxZGNlYWRiYjRhMmVhNmRjN2ViZTU3NThkNTQwZDQyZjBmODMyYjdhNGM0MzE2MTMzYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_29b25c6db1f14aac9841b15be9ecdd83",
+      "statement": "Executed command stdout/stderr pass through RedactFreeform and are capped at 32 KiB per stream with a <truncated> marker; worker enqueue redacts the payload before persisting; diagnostics rendered into responses/traces use RedactFreeform / RedactDiagnostic / BoundedDiagnostic (which also redacts URLs and caps length), so no secret plaintext reaches CLI/MCP responses, state records, or audit logs.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L84-L135",
+          "version": "repo-lines-v1:sha256:6c140a4a901edfe76aa5e730b2bfaf88f8af0f629df4d513c8df51df70497248:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwNzE3OTdlMDM5MWNiOWVkOWYxM2MxY2MzMzA3YTlmNGUyYjUwMTQ0ZDM3MjAzMGEyMzA2MDI0ZDI3Y2M1YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI5MmU4YTM3MjhiNWYyYWQzMGU3MGQzMzk4ZjgyMDFhZmFjNzI1MWZmNTY3ZjRmYjUxYmYyMTg3NDhhZDdkMTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker.go#L29-L42",
+          "version": "repo-lines-v1:sha256:1927eff1cae9754f3c8fa7c481ddf482de03da51a059720b58eac800d8051db9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NDIxNDVjMmUxMDEwZjI3NzM1YmVmMzUzMGYyMWRlZTk1ODlmYzU2NmVjZjcyODNlMjYwZjNjMDE4ZjhiMmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkMDU1YjNhNGY2NzljOTM1MTRhMThhZTkxM2IyMmVkNTVmNzE1MDY5OGM3YzFiMjJiNDk2ZGQ4ZTk3NTJlNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyMzQ4MzFjOWZlZDBlZmZkMDZmNDNlNDdhZGEyMzBjYTQ2NGVkYmIzZWU2Y2ZkM2JhZGJhN2Q2MzljZDE0NTgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker_test.go#L61-L70",
+          "version": "repo-lines-v1:sha256:81aba92d16940c84c8b97a680893e016cac9cb0bf7c959e8c0ef47d2bf10b436:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyOGU1YjlkNGJlN2M1NDNiZDUwMGY4ZGIwYzliOTFhN2UwOWIwYmJjZmM3Yjc3NzRiOTQ5YTQyNzkxYmU3NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NmEyNmY3YjhhYzM1MzdjYjRlYjMxMWUzYTAzZDc4YzhjODE5NTRkNjhiZGUwNDIxNWZmN2ZiOTgzYTM3NTAifQ"
+        },
+        {
+          "resource": "repo://internal/domain/policy/redaction.go#L62-L78",
+          "version": "repo-lines-v1:sha256:abf4cb278650f655fd65903f89e0f98b291074ca486e40711cd14761a8e8938f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlZDgxNjEwOWRiOTIzZWQ4YWQ2NzU5N2Y2OTJmNTUzYjdjMmZkNmJhZjllNmM1ZTc0NWUwZWUzODU4NjZmYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4N2MwMDUyMWIwMzg2NzkxYTcyNzViMWU1N2RmYzhlNWM4OWViZjkxMTRkOTQyOThhYWU5ZGRlNzBiZjcwYjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExNGE2NjMyYjA5YTA1MGExYTgwNDQ5MzVjODA3NDQ3NTYxM2U2ZThhMzg1ZDVjMTJmNWEwNjFiNThjZjZjYzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b6d998040a54835aed43a7b02f182d4",
+      "statement": "secretdetection.Contains (assignment-like key/value pairs, PEM private-key blocks, ghp_/glpat_-style tokens, JWT shapes) blocks IssueOps artifact staging, decision bodies, and remote PR/MR titles/bodies before they are written, keeping secret plaintext out of durable docs and state; IssueOps remote failure diagnostics are stored bounded and redacted.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/execution_remote.go#L125-L131",
+          "version": "repo-lines-v1:sha256:412fd15fd8e5291fff02c64d41cd0e3680033942abeaa9494b45e19c3ef6ebcb:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQyMGJhNmE5MGRlNzA4YTllYjY3NzBjNzdiZDFmZTYwNzY4OWQ2ZjFlYTRiOTFkNWUzZjE5MGVkNjk1MTkzMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzRjMWE1NDFlNzhlNWE5Y2RkN2Y5MTU1ZWJkZTE2YTJkNjg0YzRkMDZiZWU3MjRmYTE4MTRlN2I1Y2Y5NWU1YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWE2OWQwMTc2MThiYWEwOTZlYTljMjIyODg0M2MzMTg5MzI5ZjY4MDcxMjBlMTlmZWVmMGFiMTI2OGFmZTE2MiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_remote.go#L235-L237",
+          "version": "repo-lines-v1:sha256:49f23de9bfd8c83729e866caf5c49952eca177011f598dde9d83705c10859827:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDQ1NDMxZGZhMWY4NWJmY2Y1YmVmNGRmMzJlNTU4YmYyNTFjOTQxNWFiMTY5MWYxMDVjNDg3NDMyOGJjYjAzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODY4Njk4ZTFmMjM4OTc1OGJkOTZhYzRjNGQ2Mjk4ZjE1MDdmZGY4ZjBiNzI3MDQxMGM4YzY0YTg3ZDQ2MWRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjc4YmVhZGE1MjY2N2FkODhkNWUxOTQxNzliNjI5NjZhODA1MDE5N2QyZDk3NzBkYTBlOWNjNTliMWU1OTJmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2RlOWE5OTUzMmEwYjE4NDY1NWRmMzEzNGI3N2RiYWE4ZGI1ZjUwM2VkMGRhOTJiYTRjNDFmZjZjZWY0YjE2YyJ9"
+        },
+        {
+          "resource": "repo://internal/domain/issueopsartifact/artifact.go#L21-L32",
+          "version": "repo-lines-v1:sha256:52307b866a17f51a8fcd5cf295e7ecabb99e10f08f138d13dd8acde5c2b5d123:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmNDg4N2FmZmY3YTZiYjM1NjY5ZGEyYjVkZTM5ODA3ZjIyMGE4NjVjZThiZjIyN2U4OWMyZWU3ZWQ1MGQ2MzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4Yzk4MmMxNzQ3ZmNlOTNjNGJkMzM1NmM0ZTNjNTQ3ZDNiMDU2NTFhNjg1OGViNjMwMzk2YjM0NWI0MTgyNzEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopsdecision/decision.go#L41-L45",
+          "version": "repo-lines-v1:sha256:d107675549efc8a578e0946cad257498a92c4c225aa5a9d92338dd53045c4c04:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjI5ODU4M2Q2ZjE1OWIwOGQ2YWYwNTlhMWM0OWYwNmYzZTA1N2Q3MzQwNjU0ZTY4NzlhYWQzYjlkOTA5ZjYxNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTEwZDM3ZTBkOGUzMWM5ZjdmYzRjM2Q4MzFmYmM0NjMwYTM2NDYwOGQyZDEzYTFlYWEwNGI0YTQ3YmI2MjFlMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTU2MzYwYmQ1YWNhYmU0Yjg4YTQ3MGQ3YzU5NjEzZmNkZjE0ZGI2ZmJiZWE1MTA5YjUxN2UzY2FjN2JjMmEzYSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/secretdetection/secret.go#L5-L19",
+          "version": "repo-lines-v1:sha256:df567d9d5646cfb6729b2769fb74e9e86e75aa06e7a4165e1b2ff8f6564f0877:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkMWM1ZTg5ZTI3ZTMyOTdjMGFiNWJhMDMxYmIyY2YxN2NjZDljZWE2Y2YwMDFlNGM1YzJiNjBlMzM2ZjMyOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3NWJjMDY4ZWQ4ZjRhNjMwOThiMmZiMDdlZmUyNzc4Nzc5MzYwMTk4MTlhMWY4YjhiYTFkYmRlZWYwNjgyMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b7aac0d1c8274bd5969a4ac13376a5a5",
+      "statement": "The audit JSONL log records redacted policy decisions at <state root>/audit/command-policy.jsonl (HARNESS_AUDIT_LOG honored) with mode 0600 in a 0700 directory, never executes the command, and audits denials too; tests pin that a token-like fixture appears as <redacted> and never as the secret in the log.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/audit/audit.go#L14-L61",
+          "version": "repo-lines-v1:sha256:9bdc2dacc73cae5f6eef6ec3d101b81bd3d5e679011b334763aef1f50e74f10b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjMjI4NmNlNzRmM2Y4NjEzMjEwZDJiNTVhZWYxOGVhZjA4YTdiZWUwMTZhOGMxMTZmYTgzYmEyMjFhMGY1OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2OTY4MTYzMTNjODM2NmNmNGQ5MWE5OWRmMGM5M2M3YjRmZWMyNmQyYjllNmU1ZWI4OGQ5NmI5ZDY4NzJhMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/audit/audit_test.go#L12-L29",
+          "version": "repo-lines-v1:sha256:3d72613cbe6eae92b08ce261337760ce3184714389b25fe60820f722f1b3cdbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4M2I0MGJjMDk0ZTYwNGJiZTIwZWQ2ZDU3ZjZiZTVmMTM0NTM5Y2I3YjEwNDBkODNmMGM4NzkxZTc4YmY2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxODg1MDM4ZTZiY2MzYThhNmJiOWM5YzExMjFiZjgwNDZiYTcxNGU2MDFiOWVkZjBlZTMyMmY3NzQ0ZmJhYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3cd9ecba38ad4251a90c6166589360a6",
+      "statement": "Every evaluation carries an audit_log_id — caller-supplied or generated as audit-<UTC nanosecond timestamp>-<16-hex atomic sequence>-<8-hex FNV-1a hash of workspace root, cwd, and argv> — which lets any surface's decision be correlated in the audit log.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L25-L28",
+          "version": "repo-lines-v1:sha256:9aaba7eb8e6176d44410a9a2026ebd1d32434c5f66184d72364d5148d277132a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRjZjUwYjAzNDQ4ZDhjZmVjMWQ3ZDExM2M5OWI2OWIzNmI5MzNhYjFlOGUwMjFiNDE4NjBjNGEyZjdkZGRjYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTU5NTI4MzUzMjUzNGQyN2M4N2Y0OTFkMTQ4ZmFiYTg4ZWJmOGRjNzZjNzI3ZWNjMzgxYjg4M2JjNjA4MjExNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmYwODg4NmQxNGIzNGUyYTA0YTI3YzAwNTdlM2QzNjAyN2QzMjRjNTA4YjcxYjc2ZGFkMTQ4YTMyZWM3ODFiNyJ9"
+        },
+        {
+          "resource": "repo://internal/domain/auditid/audit_id.go#L11-L21",
+          "version": "repo-lines-v1:sha256:3faa6bca6ae0c5f944c7608c4c91d8b55d60a15c95d67ed86cf8a1a6079ee9b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiZDM1ZGEyN2MxMGE1ZmJhNWVmY2FlMTcxYzgzZGIzY2M0YmYxYmMxN2UyYjg2MzEyOGRmYWQ2ZWJjZDIxODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_feb003cfb03947efab9c9d568969405a",
+      "statement": "Executed commands inherit an empty environment unless a variable name is on the request's env_allowlist (names are trimmed, sorted, and validated against [A-Za-z0-9_] with a leading letter/underscore), so parent-process secrets do not leak into children; a test pins that an un-allowlisted env var is invisible to the child and appears once allowlisted.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L114-L127",
+          "version": "repo-lines-v1:sha256:513a6458a0fea026db31497d919f3ea4ee9653d60a689a24cc26f6e16964ed1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlY2Q1Y2RmY2IxNzE0YjcxNjY1MWQwZDM5NTk3NzYyOTU5YTUyZWEwNGQ4YzI1OTJkMTUwOThmNTQwYjhjYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNzlmNTA4MTJmODE4NzJiZGRmNzVjM2ZiZGRkZTlmYzJkY2E5MzBmZDhlZWFiZTFlNjBjMjczYjA3YjU0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlNjRjZmRjZDE3ZmJiY2Y0MjhlNTg5NWE5NzMwMzIzN2ViMGQzNzNiMmRkMjQyN2U1MDYxODNjZDRlZGJiYzIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_test.go#L160-L185",
+          "version": "repo-lines-v1:sha256:9af4af18962b4b60bfad14539c8c798cd5befd9574e1d7fe683934d32d9b34fc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwMDJhMzk3MjM0MmRhOGM3OTc1OWE5ZjNlNmZkOTgyNGIyMTU0ZTRhNzljYmJiYzgyOWU0NWJhMWMzNThmZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/policy/redaction.go#L17-L45",
+          "version": "repo-lines-v1:sha256:813976b524aed7351f1d7bc86267f7cb53964041659ef54107b24ac7c1650756:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNzA3OTlhZjgxNWYwNTc3OWJhYzY5OGUyN2Q3ZjZmN2NjZjg2ZDhjYTAxMDFlMGI1ZTgyMmUwNDQxMjM2NmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1MWMxOGE3MmI0NjFjNzI3NjRmY2JiMTI1Nzk5NjIxZmVjNTE1MjkzN2YzODI3MjIyZGIyNWZkZjBmNGJkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmYzhkOTkxODEyYmZiMjI2OGUzMGQwYmRhNGFkY2VmNzlhMzBkYmRlYTQ4NDEwODcyNjUwNTY4NWRmOTI1OTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b01e452984145068de2fccae8853ae7",
+      "statement": "Ambiguous or unverified external outcomes fail closed rather than retry on a guess: the IssueOps remote PR/MR create persists an exact operation intent before calling the provider and records external_operation_ambiguous with invocation state (unknown vs not_invoked_proven), retry count, and known URL instead of retrying an invocation whose outcome is ambiguous.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/execution_remote.go#L214-L240",
+          "version": "repo-lines-v1:sha256:41d9808d9c892c4a1289ae119065ec59fd1b632a3a7ac6b7054e31da80b48abc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkZWM0OTkzNGE2N2ViY2QyMzg2NTIxNTA2MjI4MTMwNWQ0MGU1ZjUxZjljZjM4ZTI4Y2M3OGVhY2EyODVmMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNWZmMTI0OGM0OTY4Mzc3NjgwODhmODgxOTAyYTc1NDRjMGIzYTliZWNjOTE0MzU1YThlY2QwZWU0YzExYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0Nzc4MzA2MjhhMmNiMzM4ZDc2NjgzNmUxZTQzZGVlODk5YjcxNzEyNWY5NjNmZGJhMTQ3YmE1MTZhOGExNWEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_remote.go#L50-L65",
+          "version": "repo-lines-v1:sha256:d1a2ee6202d8403675f468059b881dc33ec72e436e3ee0d59fbc7af320690da4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NzBkNWQ5NjY3M2UxZTFhNjU0OWIzYWE0NjA0NjNmODgxYjk4YzYwZjBjNGMyZmJhN2E5OGVmMDQ0YjZkNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5M2Y2NmIzOGY1MDQ4MzdmM2YxMDI3MmQxZjc0Y2FlMzcxN2UzOTMwODIwOGU1OTA2YTQxNjhhMmU1YWEyZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2N2QxMTJkZjIxNzAyYWMxYzU5ZmE2NjRlMWE3ZjkzYjY0ZmJlM2E5MTUyYTViNmQ5ODJkODJkN2U2NTlkNTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_14d660da70694a50aaf16301689cae39",
+      "statement": "Publication reconcile inspects the provider before choosing an action: adopt only exactly one live-verified candidate; preserve (intent retained) on multiple candidates, non-authoritative zero, unproven non-invocation, or exhausted retry; retry only after non-invocation is proven and the one-shot retry budget is unused — and a retry whose outcome is again ambiguous is not retried again, preserved as remote_reconcile_retry_ambiguous.",
+      "evidence": [
+        {
+          "resource": "repo://internal/application/issueopspublication/reconcile.go#L21-L97",
+          "version": "repo-lines-v1:sha256:311cc0f1d25b7fafd307765d0dfcd349d24b8a8790facada07805b502eadcac9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMzJhY2I3ODU2ZjU5OTc0YjVhZjg3ODBjY2ZkMzBmMjZiMGIyODg3OWM4OTM5YTExODliMTk2NmZmNzA5ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZjVhYjUyMjVlM2Q3YWU0OGYwOTViZTg3ZjY5OWZlNmE0OGExYTNiM2NiOGZiZWM5NGRlMmE2YzgyNmYzNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxOGY5YzIzZTc4YzdlNjU4Y2IyMjc5MGZmZTdkMjRkNDA1MzBiM2JkODVkMjhmMmU0NTkzYjI3NGYzN2QxOTMifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopspublication/decision.go#L30-L50",
+          "version": "repo-lines-v1:sha256:68080b0dd2558cb12cb46e44c9e88cf7e7dea908eac4e94513a12c1f512572ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjJlNTQ2Mjc3ZTM2OWQyODM3YTliMTNmYTk0MGUzZDVhNTM3NDM3YTM3Mjk4NzgxNjk1MjkyZjU5YWY4Y2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZjlkNmVlYmRjYjJiYjQzMTYzYWQ1MjNkNTk4ZWEwMDAxNjdiZDYyZTFkMGVmOTY2ZDIzNGQwYjIyZTgzNTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2ZGMyMmY0OTNkMWZmOTEyMjMwMTBmMWQxY2U4YjhkZTFhOTQ4M2U5YjRmMzVhZGQzNThmYTAwMzhhODYyODEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopspublication/decision.go#L85-L106",
+          "version": "repo-lines-v1:sha256:1336f7aef1b2d70ae5fdb752867e83f54a75573369fa80bc506a8614abb3ea05:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4NDRlYmY1ODVmOTM2MDBjNGE5NmM5N2UyY2RlMjc4YzYyMGE5MjE3ODkzN2MyMmRkZDZmN2Q0NmE0M2FiOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YzVmMDI2NDFkMTE2NjVhZDViYzYyMzhhMTk2MTViMzAzMDM4ZDJkMTkwZjNhNThlYWU2MjY5Yjg2OGE3MWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_33f4294771e44acf8ee0092d4cd99275",
+      "statement": "When an active IssueOps cycle has a prepared base branch, the policy denies gh pr create / glab mr create commands targeting a different branch (pr_target_branch_mismatch) or with the target flag missing or empty (pr_target_branch_required), with the expected branch surfaced as a warning; with no active cycle the guard does not judge ordinary PRs, and the guard wiring is doubly guarded by a harnessapp wiring test plus an integration test after a prior regression where a single missing wiring file silently removed the guard.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/policy_preflight_wiring.go#L26-L28",
+          "version": "repo-lines-v1:sha256:a5aa0e15330c01a1bef415f1c782a770917c933f58707220fcbfa56f8f1dfcf1:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTU1ZTU1NjMxYjYzYzhlZTlkN2JiYTMxMzY2OTc4NjBjZTYyNDE3ODBjYzA0YmZkMTk0YmJlMmZlYzE4ZjdlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWIwNjk2NjgzNTJmNjc2NDhkYzVmZDFmMWMzMTc5MzIwNWRhYTMyMTYwNTc1YWEyZGFiMDEyODJlNDQzNGZkYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTNmNDA0Y2IwZDAwY2EzYTk5ZjUyMmE4NWEzMmNkZmUyYWNmNDNkMTg5OGJiNTUwM2ZmODE4MTE3YTg3YjgxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGY0ZDEwZGE5MDE0YzMxODdhZmE4MTExZGMwY2RjYTZhMmExYmI5ZWI3ZjQyMmI1MDU1YjI0NWQxZjBmMmQxOCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_evaluate.go#L110-L113",
+          "version": "repo-lines-v1:sha256:3d2243b7e99c4f3d1f9e41156c9f9d7fa7d91348fbb2d0e81eb85ee839a5ab6a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDYxMzYyMTg3ZmY0MGY1MmZkMTk2NzdhYWNmYjlhMmYxZWM1Y2IwZWU2Mzc1MmViNzAzZWZiN2FkMTlkZTk4MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmE4YjEwNGE5Mzg4NjA3OWEwODE3ZWM5MDRkMWNiZTU1NTEzZWMwMDFjZmUzMmNiMGZkMWZjNjY5MDYzOTI3OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmZkOTAzYTU0MTY4NzE1NTA4NjRhZjFlOGZiMzU0NWM0MjlmMTg1YTRlMmMzN2ZiODM5NzFhMDYyN2NmZDRiYSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_pull_request_target.go#L9-L52",
+          "version": "repo-lines-v1:sha256:6d5e59e4a5cc78ac32e91a81ebc3fab0c72c548fa4d3d977182570f9187f0f63:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3ZDFjNTU2MTJlNWE4NTZhMjQ0ZjQyNWZkODA0Zjk3MWIyYmEyOTQ0Y2VlZjFlNzlkNTU4ZTI2NjhhOGFmMDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0YThjZjJmNjhhOThlZmEyMTQ2ZDNmNWIyYzVmN2ZmNzU0N2ZlNTRkYWQ5Y2E0ZTdjNTQzMWMyOWNmMDUyZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/commandparse/remotepullrequest.go#L26-L58",
+          "version": "repo-lines-v1:sha256:f393af70aa830fc304503ed5f9fa4f95d07f1a2a8a08836b92b9b59cea5eea04:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlODQxNDZkNTYzNDZiNmYyNDI0ZGY1MDMwZTFkNTZkNjQ5NWUyMjVkYzYxMzIzNGYzOTc2NzUyYzFlZDg4NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlY2ZjNmJiZTdiOWE5NjhmM2NjMjI5MDMzNjU2ZWNmMGZlZDcxZmRiZjA3ZWZjYzQ0NzcyNzVlZjVhZjFmYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzNWJhMDVkM2VjMzlkZTUxYzc0YWIwMTBkNDliYzY0ODc2MWE1YzkyOGQ4NTNiYzBiMzU2ZmE1ZDU5MDY4NTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1b500a59510b48e0baf117de1ded8252",
+      "statement": "runCommand applies the request timeout via context (default 30s when unparsable), reports TimedOut with exit code 124 and a bounded 'command timed out' stderr note on deadline, and propagates the child's exit code on failure; the worker job records the failed timed-out state under the span lock.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/policy/policy_run.go#L75-L111",
+          "version": "repo-lines-v1:sha256:5db7212fe19a5bdb99969b0fce3e1b4e921faa6469c0d65d423ba8a2e58afc6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNWMzMzUwNTNjYzcyYmE1NzZjN2VlODU0ZjE0NDE5ZGZiNGMyODc4ZjViY2JiMzc1ZmM3NmQ5YTZiZTUyOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwZTJhMjQyNDUwZmJmMWFlN2VlNzdjYzFmYWQ0ZTZmNmFjMzM0MTBjOWU3ODNjNmQ3ZDkxZGFmYTM5ZTU1NDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5NTE2MDg0N2UxZDI0MzA1ZDI2Y2VmNjA4YmYwYTg2NDBiN2UwODI4NDU5YmE2MGM0NmI2ZTg3MGMwMGU1MDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ZGEwN2FkYTUyNTEwOWEyOTgyYjg3M2YyYWRiYzg0NDJiOTllMGZkYWY1MDcxMzM3MjIzZDE0ZDg5MmFjZTMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker_test.go#L182-L212",
+          "version": "repo-lines-v1:sha256:003a49c23c1196d8af38a57c1cf7f50c44497d34b6d50dba576133a90b34298b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNWRmMmI4ODBjZDU4NjM3YzBjYjRhOGE0MjIwOGFkNjA1N2Y5YTc1ZTA1NTVkYTZkZTQ3NTM1ZWQxMTAyYzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwZTZiYjQ3MzZmYjY0MGE5YjYzMzIyNWExYzZmYjUyNWU5YTEzYzM2NWM5NmQ1MDAzNTllMWQyM2Y5YzZkZWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6591c5ecc1a34ade9abf3ae6206f2d26",
+      "statement": "The safety behavior is pinned by focused tests runnable without network or credentials: policy tests for catalog classification and path escapes, catalog override semantics including no cross-root leak and invalid-JSON fallback to built-ins, CLI/route tests, the self-verify command-policy smoke replaying allow/deny/fake-run against the built binary, and preflight fuzz seeding a secret-like file and asserting preflight reports it; contract goldens keep policy_check and policy_audit response shapes byte-compatible across CLI, MCP, and daemon.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/testing/unit-and-contract.md#L85-L105",
+          "version": "repo-lines-v1:sha256:9540843a780d680b4e378be27d2505a7e1f1e14e8720ddb6390d89fbeeb1cbd7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZmM3NmIyODVhOWU2YzhkMjNjZWJhZGNlN2U2NjdiYzY0ZDAwM2NjYTg4MjFlNWIzY2FkYWU2MzEzNjA3NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZmRlN2IzNmI5ZmUzNWQyOTk2ZTI1OTc1MTg2MGQwM2ZkZmY4NzJiZjBkYWY5YjkwOTY1YzBlYTg0ODk0NzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0MmEwZjEzYmRmZjBmYjIwMDJiYmRlN2EzNWVlN2I0MWEyMTIwYTMyNDA1YWY4YWI0NDM2M2QwZjA5NTMwODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZDk3ZDVhZWZlYjBlZTMwNzNhMzZkYTRkZDA5YzdiNTdkNzQ0NTVhNzJkNTQ4NTM5YzIzYmJlYzVkZjhjZTMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/policycli/policy_routes_test.go#L14-L105",
+          "version": "repo-lines-v1:sha256:9faf1093d36e88ae8f1f302b3dd170c4b13c78013a3b9a59c56add8aaadbf995:eyJzZWxlY3RlZExpbmVDb3VudCI6OTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MDk1M2ZhMThhNDRkZmU5MmFmYWFlODg3NGI3N2M3OTdmZjliOTFlNTVlZmE2ZjY5ZDg0Yzk5YjQ4ZDcxZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyNjhmMDA5ZGJhM2RlNGUzMzg4MTZjMGU3YmZkYThjNzkxNWU0MGZhOWNiMmVjNjJkZDdiNDczODM3NmFjOGIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/testdata/response_contracts.golden.json#L3960-L4020",
+          "version": "repo-lines-v1:sha256:e86944c7db4bf51d0bd77689402d3acf36812721d98d5c0f13c53cf4d0bc911e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmN2Q4YmE2ZjI1MWY5ZjIxYjE2YWZkMDRjZWI0MDFkYTIwMDVmNmI5NzJkNTQ2YjRhZDgwZGNlZTdlNDllODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4NTdiZDVmOGZmZjRkZjY3ZGFlYWE3MTA5MjUzMWQ4ZDY3YTMyM2U5YTNiNDc4NzkzMDU3YjJhNjJmZjU5MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1Y2ZmOTUzNmY4NzM2YjgzYTgzYjEwMzY2NTA4Yjk0NGZkYzhmN2I5ZTY1MTIxZDE2M2Y5ZDBkZjk3YWVjZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZGFhYmIzNDEwM2NhYzllNGE5MWRhNmIwYWZlY2NhMDc4NThiNjQxZjA4MjkxOGE2NjMzM2RiYTA1M2JiZTcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/validationcli/commandpolicy/validation_command_policy_checks.go#L25-L102",
+          "version": "repo-lines-v1:sha256:14afed0a94a7cb687e2f8e7a0592fcc304aa311c12bdb293b292ec2ad15ef61a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1NDYyZDM4MmEzZmMzOTM1M2Q3MjU3NTg4NGExMTVjNTIwYmI0N2YxY2UzOGFiMmMyYWVkOGFiYmExMTY2MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjU5NzA4NjNkNTgxM2JmOTcwYjAyZTM0YjU1YTIxMDIyZmY5MWZiYjM3NjAwYmM5ZjZhNzY2NzkwZWVkMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/validationcli/preflightfuzz/validation_preflight_fuzz.go#L19-L69",
+          "version": "repo-lines-v1:sha256:49ab56bd13bec9b44e7c7b0a0eb53f64bd3b1dc09c22ba737b74684a4a8ce754:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0MTE2NzlhNTBjZWM3ZGI0M2YzOTFmZTY0ZDQxNjBmZGYxNTljYTBmMDFjMDhkMzM4ZWJlNjVlNDcwMjM2M2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MzBmZTllNGM3Zjc3MjFjMDNhZmJiNTE3OWVlODliOGJmOTNmMGFjMWI1NGNmYWVjNWE1NGJlNjI4NTU5MjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkNDNhZGU0ZjZiNDJkNzhmZDgyNWU1MWU3NzE2MjIzZTA0ZjA1MzFhOGE4ODRiNTNiOTgyOTRlNDQ4NGFjZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

@@ -1,0 +1,538 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6c10de643ecddc085c2a17eb87352fb0d32ee0f842a5839e8398429edc103008",
+  "claims": [
+    {
+      "id": "claim_f904672bc8b14d9fb063dbb5f505ac62",
+      "statement": "All durable harness state lives under one user-level state root, defaulting to ~/.local/state/agent-harness/ and overridden by HARNESS_STATE_DIR (resolved to an absolute path), with a temp-dir fallback when no home directory resolves.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L44-L50",
+          "version": "repo-lines-v1:sha256:678bb1d0ccb308f92dd7597a62a6b7067e984043f34aa61f8bdd899254c6a882:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGYzYmU4M2IwZGE3NjgzMDBkMWU3MGUwNDM3YjYwOWE3MWY3NmQ4ODkwNWRkYmM2YWMxOGQ3MTdjNTc1MWVhYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzlhYzFkYmIwMDNmMjk3ZmE0MjQ1NTU3NmY3OWVkMThkMzVjMDFlMTVkZGY5NzRlYjE3NjhjM2MzMDVlNmJmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWQ2Y2U4MWVkOWEyZWQ4Y2E5MzFmOGE5NDc4NTY1ZTMyMjEyMDNlMGYxOWMzMmFkMGIzODY2YWE4MDBiMzVkMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTZjM2U0YjBkMDUyODU1ZmYwYTQ0NWQ3YTg0MThhMTAxYmExZDgwNjQxNjA3NzJiMjdhMzRmMGNkZmFiNmQxNiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_maintain.go#L13-L22",
+          "version": "repo-lines-v1:sha256:deac4f03b8a23bbf841cb8bc3a895fe008a4b8da65dfee520cc0bf7b982a7e66:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MjU1Y2U0YzJlYjcyNWY2MGI2NWE5YjZkYWI2MjZhYzYzNTNmODNiZWE1ZTE1MzgxNTlkYzdjZGI3NDM2ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YjEwOWQzNmNhOWZkZDkwZjQwMTFjYWZmZjc0ZWI2YzRkNGNiZjBiODA3ZDQyZmM1NWZkOGVjMzllYzI5ZTQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/statedir_dependency.go#L19-L31",
+          "version": "repo-lines-v1:sha256:cf68461f6cc6891ac561ea9dd50789cabf663629a3a828efecbb15468a9723a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2OThjMjAwZDc5YjJhOTRjMTk3NTAzZDRkZGJiNDRjNGFmZWNiYTIzNjQ3NDU1NDg1Nzc1ZDA2YTdjMjgwODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40938430e6884034949d05a634fe3aa3",
+      "statement": "Each store root that holds records owns exactly two SQLite files: harness.db holding every record as a (bucket, id, data-JSON) row, and harness.lock.db used only as the cross-process span lock, with -wal/-shm/-journal sidecars appearing transiently; the data database uses WAL journal mode via the pure-Go modernc.org/sqlite driver.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-07-sqlite-state-storage-migration.md#L9-L11",
+          "version": "repo-lines-v1:sha256:10931b7afcd11f9f984617980b3c2fed883eb986c4ec2aa7f1655f356b1a1be0:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzFkM2YyZDcyMTUwMGUwNTJmYTA1ZTdlNDk3MGE3OTliYjEyNzc3YzJlZTRlMWNmZWU0Yzk3ODIzOTlkYWIzNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmEzYjBmMTY1MzJkOTVjOTYyZGZhNDIxNDlkZDExMDZkZmUwYjViYWVmMTM2OTU4NTdkNTUwN2EzZDBiZTdmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGRhOTc0NzlkYWY0NDU5MDZjZWExMTU4NmMxN2E3Nzg0ZDkzOGQ5ZTA0NDAzMjgzN2VlZmNkODMyODZiNWVjZCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L190-L240",
+          "version": "repo-lines-v1:sha256:1e0505f4580dc95ed0b2701b461b05a22d95088e6c732acf38395e388e0983cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0ZGFjNzI1ZDYyN2E5NjAwZTIxMzM3YTI1ODk0ZTM2MzQ1ZWIxNWI4N2UxN2NhZWZiOTFlNDliMDFiMjg2ODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NDc0ZDhlMWZiM2UxYWYwNzllODc5MzdkOTYyN2M4YzVjYzExZWU1MGQ2MGJlMzFlMWNhNGEzMjg1NmY2YWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhMTYwMzJmZjgxZGJmMGE5ZDRiNGNmMjM4Y2I0NDZmODFhZDFiN2M4MzY1ZjQ4OGUzYTRlNmQ2ZjE0ZTljNTYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L33-L48",
+          "version": "repo-lines-v1:sha256:983d36cf0aba562ca4a743a85968cf821b272ad0df7097db9bd8d42b06bc831b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjYmUwNmVkMDc4MDZlMzU1YjhiYzU4NTExODFjZGJhNDU3Yjg2YmVlOGNkYzhiNDhkN2YxN2FhOTdiNTUwMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4NDNiYzFmNmY5ODFhYjM2YmM0MjVlODBlYjhhMzY3ZGE3NzMyNmZjOTBhMjc2NDhiY2Q4YmU1MWRhZWFlNDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_367682152c074aee80c72022a00f76a6",
+      "statement": "The state root segregates capabilities into per-store directories with distinct buckets: the base root holds the `state` bucket, issueops_v1/harness.db holds the IssueOps v1 cycle (plus lease_holder_v1, external_intent_v1, and artifact_stage_v1 buckets), loop/harness.db holds the loop bucket, worker/harness.db the worker bucket, channel/harness.db the channel_v1 bucket, and native-activation/harness.db the native_activation_v1 bucket; project lifecycle namespaces live under projects/<repo-id>/, and the daemon directory holds socket/pid/lock/log files, not a database.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/channel/store.go#L23-L46",
+          "version": "repo-lines-v1:sha256:a8528e09f62d1137a77d7bdb721dfb1decc3e939139b0a8176b549232b6d52c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNjE4N2VkMWU5YmQxYTFlMDFjZmM5ZDgyOWM2YWJiOWY3ZDZhOGU3YTQ5NDE4ZWU2ZWNjZWY3NjM3ZjkzYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2YzkwNTBjNDg2ZmVkNTllNzEzZTlmMmVmZjFmNjQ4YzJhMmMwMzliOGEyMGU4M2JiMjZhMmNlMzQ4ZTk5YzcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_state.go#L179-L181",
+          "version": "repo-lines-v1:sha256:886d8c710b06d402fe9cbe10f683d5d67bfd3de83868b3b644a2cd55dcd1df12:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjQxNmIzNjQ1NDE3MmFlYWNmOWU4ZTZjMmRlNDk3M2Y0ZGI2MjBmZTM5M2VkMjE0NGJlZDk3ZGVmNjA3ZDlmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTNjOGM4N2U1Nzg0ZjdiYzZkNGE1MmQ1NDlhN2RmNDcwZjkyYTE0Y2JhN2Q3OTE1YjllYWNlYzkzZjY2NTE3MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTMyNjZkMThkZjJmZTg4ZjEzMDk0YTllMGY4NDFmNzUwNzJiOTA2YmRjMDIxMGYzMzMzY2ZhN2NjNWI1NmRkZiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/looprun/store.go#L16-L24",
+          "version": "repo-lines-v1:sha256:98b0f910aa8bb5317830c68966770c8d24a673a27d23a60a5987394f497be743:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2JjOWRjZWMyODFmZjFhNWRlMzM0MmVhYWI1YTgxN2EzODhhN2Y2MzZlOGY1YzUzMTdjMTc4NDIxM2U5Yjg4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzAyMmM4OGYwNDAwNmQ1Y2EzYzBiMGFlYmFkMDI2ZGZlYmEwOTA0MzJjMjk0MGE5NDU3NzA5ZWE1YzlkMzFjOSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/nativeactivation/sqlite.go#L24-L30",
+          "version": "repo-lines-v1:sha256:4c6aa4ffb6b91dd1d9de746f7e2b72b55bead6f32c29f060627173de297ea176:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2Q2NDljZmY5NDY3MDVjMmM0ZTVkNTIyYWJkMWU1MGY2NjVkZGJjNmMwNTYyOThlZjIwMmE4OWQyYzE3MGI1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTc4YzQ4NGI4OTNjNGI0OTI3MjFlNGQzNGIyNjgwNmQ2NjBmZjYzYTc3M2NkNGU5ZTNkNDdlMTM0MDcyMjljNSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/store.go#L124-L137",
+          "version": "repo-lines-v1:sha256:2ee4d4135faa346a4aa53484a2262c684a76ba44ad7ffee6e7f5192e0cca7efd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxOWMxMmY3OGJjZmM5YjE2MjQyNGRiOTBiNGQwZGM1YTYwNGI2YWUxMGYyNTZhYzk4N2NlMjQ2ZjliZDYzMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNmMThkMmM3OTMyYmQ1MWUxYTY1OGNmYmI4OWY5MzEzZmNhMmNkMjVmOWU4NWY0MTRhZDc3NDViMzA4MDJjNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3YjRiODU5NDZiYzZjMDYyZDZjY2U4ODE3YmY3ZDg5MTMxOTFlMTIyMjYwYmQ3ZWQzODliNmJhNWMzYmM0MzgifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/service.go#L20-L20",
+          "version": "repo-lines-v1:sha256:a24253373f942bdbe2a6e7482c0e4ed5d295464ddc6f2537a3b6e1b09ad04abd:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTI0MjUzMzczZjk0MmJkYmUyYTZlNzQ4MmMwZTRlZDVkMjk1NDY0ZGRjNmYyNTM3YTNiNmUxYjA5YWQwNGFiZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTI0MjUzMzczZjk0MmJkYmUyYTZlNzQ4MmMwZTRlZDVkMjk1NDY0ZGRjNmYyNTM3YTNiNmUxYjA5YWQwNGFiZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODU3MzA5N2EyYmZkNTZiNGYzNzlmZjc0NmFhYmQ3ZmU5MWNkNDNlZWQ1YzBiZTZlZDRjNmI1ZWI4MDI5MDY4NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRhZTQzZTI2ZWJiZTg1ZWVkMDZjODUyMjMzNDVlZmZhNGMzMjlkOGUyNTkzYjA3ZTc0Njg0OTM0NjZiNTA4MyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cf57a07898ce4db6b1e7a5c2ca15e381",
+      "statement": "The daemon directory resolves as HARNESS_DAEMON_DIR, else <state root>/daemon when HARNESS_STATE_DIR is set, else ~/.local/state/agent-harness/daemon, so the daemon surface moves with the state root override.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemonpaths/paths.go#L19-L42",
+          "version": "repo-lines-v1:sha256:71267f2acb71146e87039368465f294dd55bcb8166612a318244f28d01182d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyYmJiZGUzYzU1OGE3MWViZGU2OGEzZmEzYzYxODViNjQ1YmVhZWIyMDJiOWYzNDZlNmU5ZjE3MTExNjg0ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1YWY2ZTIwNWUzYzEwZTkyODU1ZGJiZTc2NzQ0ZjNkYWJlMjEwYmViMTczMzBmMjJhYjIxMDljMDFlNGYwNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiODE5ZjZmZTkzNDNjZjY4Nzc4MTIyYmY2ZWUwMjFiMjVhOWE4ZDlhZWMzNTc2YzUyZmJhOTc2YmQ0OWVlYWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e05228b9cf8f49e088386c77a253cb57",
+      "statement": "sqlstore initializes harness.db with a records(bucket,id,data) table keyed WITHOUT ROWID and harness.lock.db with a single-row span(id=1 CHECK) table; the data connection opens with busy_timeout(10000), journal_mode(WAL), synchronous(NORMAL), and _txlock=immediate, while the span connection disables the busy handler so WithSpan implements its own typed, context-aware retry.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L197-L233",
+          "version": "repo-lines-v1:sha256:f99682e659753b414e9ba1cf70861b6e0fdd78f2d3eea019425e0f777e976a89:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhZjM1MTY0M2E5NTVjYWE0MDQzMDZmYWMxOWI1Mzg4NWJjZGVjMjVmMTNiYWQ0Mzg4MTQzNTIyNGIxOWFlOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczNDMwMDEzNTU0M2RmNGViODE3MzFkZmI1MDZkMjE5ZmFkOTIyMGUxMDViNWJjMzlkNDM3YjVkYzQ1ZjIxZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1NzYyNjJiZjdiMGQwYmQyNDFiYjZjMWY2YTEyYzUxOWEwMjU2ZDkyY2I5YzRmNmZjZGUwMDc0ODVhM2Q1MDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_15b6be4feb334c90b99efb5d9e4cf62e",
+      "statement": "sqlstore caches DB handles per absolute directory so all callers in a process share one in-process span gate and connection pool; repeated opens return the identical handle with stable connection counts, removed roots' handles are closed and evicted on the next Open, and CloseRoot drops the cached handle so destructive maintenance can remove the files.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/resource_test.go#L10-L57",
+          "version": "repo-lines-v1:sha256:5b09d08b81b6b84303a7d797755cadf934d202abd36aaf0f3b75a1d6d1762f0d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkY2Y0NTY2ZmEwMzQ4ZTQ5ZjBkODEzNjg3NjczYTQzYjgxMjc5OWNiNGJkN2NkZTJiZDRhZjNmZTc3N2ZhZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1YmU3YzIwZDM1MDgyYmM2MTI1MmIzNzAyYmE3MThlMDhlNmI5Y2Y1Nzk1MmE1Nzg4NzVlMjAyYTg4ZjA3ZTYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L104-L148",
+          "version": "repo-lines-v1:sha256:59bed2c65082158795447b7d37362a35c121810ce0eefc1a1c27dd66809ead48:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNDU2ZDM5ZjZmYWExMjhmZGQ5NzU3NWY0ZDEwMjk2MWExZDYyNTY2NjczZGE0ZTNiZTk4MGMwM2E3ZTlkMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMzAzODRmMGVjOTNlNDVlZDY2NmU0MTdlMDg0N2IzYmU1NjYxZmRhMTYyNWJiZDY1OGY3ZjdhN2IwNGMyNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxM2UyMjBiODcyZjVjMDMwMzI0MDI4YWViZWIwMWNjYWE4ZTcxOWExYjZlMjlkOThiZmM4NDczYzhhMDgzZDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fcf6232407004d80a5ad1517a3f9764d",
+      "statement": "The *Existing read family (GetExisting, ListExisting, GetAllExisting, InspectExisting) opens the data database read-only without creating or repairing state, returns fs.ErrNotExist for a missing store instead of materializing one, and InspectExisting additionally reports buckets and non-internal schema objects so maintenance callers can refuse unknown layouts before deleting state.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/maintenance_test.go#L47-L60",
+          "version": "repo-lines-v1:sha256:8fcc4c994acaf28f739d0bccd52f02ee4eab998ac025de0bf4506611958f83db:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4YmNhN2NlOWZmZDkyMjNmNjdkODc4NmRlYzhhYzI4OWMwMTM4OTM3MGViMTkxNDg5ZDQwZTlhOGVjY2UyMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiMGI2ZjE0MGFjYzRkYTAwN2MwZDU0NjE1NDcyMmQyZjZiMTQwNTU2NDgxNmU1YjQxZDg2OTVjZjFmMTlmNGIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L487-L506",
+          "version": "repo-lines-v1:sha256:be3c03ec757c4a47c83cca8242bb0330efa349ca897dca2ef299f42d47e9bed3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkYjg2YzRjOGQ2ZDJkN2M0Y2QyODY2MmVjMjkwYzQzOWJlNjlmNzZkOWRjNjM0ZjBhYWQxMjQ0ZTdiMTNjYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEyMWI1MzliNTNmYjA2M2Y2NmYzNzg3ZjFmYjVjMmZiN2Q1N2EyN2NlZjQzYjU2YzM3ODkzNGNlZTczZjZkODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczNGU4ZTQ3MjkzN2Q2NzVmYzMzNjM4MWFjMjE3Njc0YjdjMDQzZTEwMzlkYWVkZmQwNzQ0ODg0Zjg4NGZiMGYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L633-L646",
+          "version": "repo-lines-v1:sha256:56e5938ca71037b24535ead5e3d9796a0bd1b59723e516a4c1f41d2afa2102d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZGQzNjgxOGE1NmM5M2YzYWEwNTI0ZDRhZmNiNmI0ZDJjMWU5OTU0MTIzYjI5NTM2MGRhN2I5OWU3YjkzZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0ZTZjYjJkNzk0Y2U0MmFjMTZhYjc5NzI3NzAwZmUxMzMzYTJlOTU5ZTYyMjNmYTFlNjY4MDMxNzZkMDc4MmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlOWJmOWJjOTc3OTNhYTU4ZDgxNzc5ZGMxYmZiZDU5MGNkMmE5ZDA5ZDY5YjJmNjc1YWI4Yzk1MWExMGU5YjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa05ac00e376414daf50c4251939a4d0",
+      "statement": "Read-only existing-store lookups wait at most a bounded 2s busy timeout during transient SQLite contention (writer commits, daemon WAL checkpoints) so lifecycle-hook queries stay responsive without spurious fail-closed errors, and remain bounded under persistent contention.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L41-L47",
+          "version": "repo-lines-v1:sha256:71f85a02f3124cbe8b17784deed30533774d4184a25b315696dd8e0041150cdb:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2I2YTQ0YTQ5MjM1OTg2YmE2ZjE3MDc5NGFhYWVkMmMzNDM3YjBmNDBkYjY2MDJlZDc3OWQxMTg3YjdlMWE0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2ViNDQ3NTE1MzRiNzgyZGE3Mzk3NTgzY2VjNTNjMGRiNjk2NDlmM2E4Y2U4MTBiMGRhZDQ4OTEwOWI0ODVmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjAwYTAzNDdlNzczYTczYTZlNjE1MzhlZjJjNTE2YTk4N2QyMTNkYzIwMTQ4ZGVkYjZhNzk2M2IzOTkzMDEyMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2VhNjBkNDNmNzUyZDFlZDkyY2UzNjViNjA0ZjgzMGY2Mzg2ZDVlOTEyYjQ1YzA4ZjhmNDVjMDdhZjM2NmRjNiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L487-L491",
+          "version": "repo-lines-v1:sha256:0c7035e59a49fc69bfb56ee7bb57d48eec0a2cfb899acd992122999e3a5d9d79:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmRiODZjNGM4ZDZkMmQ3YzRjZDI4NjYyZWMyOTBjNDM5YmU2OWY3NmQ5ZGM2MzRmMGFhZDEyNDRlN2IxM2NhNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNlNjZhODdkNGY1YmFhNmZmMjdiMzM3MzJkOWM4MjAyYmQyMGRlY2NhNTJlZWNmMDRkZWVjYTFhNDc3OWQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTIxYjUzOWI1M2ZiMDYzZjY2ZjM3ODdmMWZiNWMyZmI3ZDU3YTI3Y2VmNDNiNTZjMzc4OTM0Y2VlNzNmNmQ4NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzRiY2Y4YmIyNjUxNTU1NGFkOTIyMzJlOTRmNDljZTA1OTU3Y2ZmMGUwMWNlZjAxZjVlNWZkYTc4ODM1MjM1MSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore_test.go#L81-L138",
+          "version": "repo-lines-v1:sha256:8fdd1e4264f9caad912f669cf0b89ac169fdf65baf29fc50941affd2e8aabb0a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NTg5YjdhMDg1OTZlZjdkMGUyNzEzMjRlNjkxOTJmM2RkZGFlMWNlNWMyZTNkNWMyNDE2NzQ0MTNmZWVmYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmN2E3YzVjMDM2NTljODNjYTBlOTRhZTM5OGU4ZDE1MmY3YzZlOTMwMTZjOTU1Nzg3N2I0NGQ5ZDVkMDk3YTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f24574ac8fe477880ec4efeac397b5c",
+      "statement": "sqlstore.Open validates the state root as a real directory (rejecting symlink and non-regular known SQLite paths without touching their targets), repairs a permissive root to 0700, and repairs every known database file and sidecar to 0600 even on cached opens; databases are pre-created at 0600 so -wal/-shm sidecars inherit private modes under any umask, and unrelated files are left untouched.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/permissions_test.go#L108-L143",
+          "version": "repo-lines-v1:sha256:76da03c6abe8e668b39e04dc7c4a286f6ba7a1920a369eaeeff704739d464b4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMDNjZmIzNWUzYzgyMTY2ZTE4ZjNmZWNkMDMyZGRiYWUzNDVmZWUxNjdiMDVkYzNjYTBhY2Y5Y2I3NzI4ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5YWYwOWIxZWI1NWE1NTc5NjVmNmNhMGJiNmIwMjM2OTU5NmI0OTA2YWRhYTIxMjExNzU4ZWI0Yzk4ODdkYjkifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/permissions_test.go#L12-L70",
+          "version": "repo-lines-v1:sha256:44cb1c3645805e306d9439481d5dc9a0a847f210bebd8c69e4693d0cd3ea3772:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjYjU4YjVjNzYzMzgzNjA2ZmI4ODM0YzJhNGE5OGRiYmQ3NzdhMGExMGNiMGY2YTYzYzljYjA0Mjc3NWFjNzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhYWU0NDExYTliMzM4NDFhOTQ0MzQ4M2I4ZDgyZjljZTRmOTIzODczYTJhM2ZiZTZmMWU0OTY5MmI4Yjk1MWIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L248-L318",
+          "version": "repo-lines-v1:sha256:1c9506aab7f441b905f363e36a812e11da0c5f675923898d31a647195e4310a1:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmNzUwZDAyNTkyOGIzNTBmN2U3ZTM4NmZjYWFmNDkwMTdlNDBhOTkzZDFhODQxZjhkMGQ4NDRmMzRjNmQxYTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5NmUxNzU2Mzg0YmUxNDYyMDA0NjFjNjM3NDBlZGFiZTZmMzNiNGE1Zjg3ZGFlOGQyYTcxYjU1YjQ3MGEyMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiNTM5OGY0N2FhYjg5NmYyMDZmZWIyZjBhZDMyNjVhOWU3NzllYjBmOTAwNjIzYTAyMWIxYjViOWE5MjE0YTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_88c6432a214946f78601c47a5660e44b",
+      "statement": "WithSpan serializes a read-modify-write span in two stages: a per-directory in-process gate token acquired with ctx cancellation, then a BEGIN IMMEDIATE transaction on harness.lock.db held for the callback's duration; data writes inside the span autocommit so the span's own writes stay visible mid-span, matching flock-era semantics.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L332-L407",
+          "version": "repo-lines-v1:sha256:36ba28f3baa9f91bb601497f3bf619f88f1106844a339e22f12571b3222d4f7a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGViZmI2YWNmNTNkNzMxZmExMGViN2E5NGUzOWI4ZTU5Njg5MjE5ZTlmODg1MmViYTZlOTAyZDVhNjMxMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0NjY4NDZiMTIzZGYwZDFiNGJiZDA5MzNjMzUzMThmM2NlOWRjYjA1YzZmMjc1NGI0OTFiYzA1ZjIzZWI0ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MDM2OTkwZGQ5NzA0MGNkNjhhNGZmYzdmNjI5Yzg3ZjZmNWQ1Zjc2YjFjOTI4Y2E4OTVjZjY0MjEwNzg0ZTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7acd4c1177c64abd8f400ad8b87294f9",
+      "statement": "Because the span lock is a live SQLite write transaction, it dies with the holding process: a subprocess test kills a mid-span holder and proves a second-process contender acquires the lock immediately, and a separate two-process test proves total-order mutual exclusion across live processes.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-07-sqlite-state-storage-migration.md#L9-L9",
+          "version": "repo-lines-v1:sha256:825fc28e77531fd42a8c9383d5914f6e2bace754b31c8a37f2cb997491cdc18d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmEzYjBmMTY1MzJkOTVjOTYyZGZhNDIxNDlkZDExMDZkZmUwYjViYWVmMTM2OTU4NTdkNTUwN2EzZDBiZTdmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJlZGFjODA5ZWI5ZmU4NzIzYTNkYzYwNGRlN2ZmOWQ5YWYyZGMyNGYzYTEyZjlmNzM4Mzg1ZWU0M2IzYTY0NyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/process_crash_test.go#L160-L194",
+          "version": "repo-lines-v1:sha256:79b9556d3edc735fc69ea1628951a9c30877324ef2f947f1b5b572c9b3aa67c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkYzYyZTEwMzViZmU1NWE3M2Y4NmE4NjcwOWE0NjZlNjcwMWI0MDY3ZTk0OGMyMjhlMjI0ZjAzYTllMzc0ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/process_mutex_test.go#L36-L110",
+          "version": "repo-lines-v1:sha256:68f9c73acd564cbb0aab6408d52c90a64a60f0a05a03dd8e640fbefc1b36f2d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxMThlMzQ5MzRmZWYyOGNjMmNhMjNiY2Q0YjkxOTcyMGQyNmIwN2VmZDc3NjgzNTI3OTFmYzdlOGI3Yzc3MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NmQ2ZTBhZmIwNzFiMGJlNWUwYmQ2ZmIwOWQ4NmZiNjM4Njg5Mjg4ZDI4YTVhOWM3OGRiOGVlNDk4N2EzOTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5M2EwMzlmNTk4N2VkNGZjODNlMjE4OGZjMjJhYzk0YjVkMjkzYzA5ZWM0MGIwNDMxYmQ5Yjk4OGI4Mjk1NjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyNzcyYTQyOTIwNWFiZDgyNDk0NmMwZjI1NTAzZmEwYzcwOGRmM2UwZDk0OGIxOTQ4NWNjZjM3ZDJmYjZjZGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b64fb1ed54eb45e4a940544e99c03210",
+      "statement": "SQLITE_BUSY/SQLITE_LOCKED during span acquisition is retried with bounded exponential backoff (1ms doubling to a 10ms cap, up to a 60s ceiling) that always selects on the caller's context, so cancellation or deadline expiry aborts the wait instead of blocking behind the lock; Open's initialization path retries only typed busy errors for up to 10s and never masks permission, symlink, or schema errors as contention.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/span_backoff_test.go#L11-L27",
+          "version": "repo-lines-v1:sha256:a5740ed52ef823380d98f502916af80421955a622b111f657c414ea3e9fd428b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5ZTY0NmU0NzhjZWRkN2E0MDc3ODhiMzAzN2ExZTMyNGVhMGQxYzdkMTcyMGFiMGRmNzA4OTdhZmJmZWJjZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmNDQ5ZDNhY2JmMTRjY2NmNGJmMDUwYWVlNDFjODM0MDM3MmE5ZGZkMTBiNTJhMDYwYzI1MzE4NzYzZTJjZWEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L39-L48",
+          "version": "repo-lines-v1:sha256:d7b7c2cc3d57310b411ff2b42d001ba20e1f097be88bad63e870b35028989d38:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwYzg3ODg0Yjg4ODRlZWE2MDk3OTEwMjU0MzVhZThmNmRkYThmNWNkNjM2NDdlNzQ2NGRlYzUzYTNhMGQzZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxYWU0NWNhM2RhMGE3ZDk0MDZhZjFjMmFhNGYxOGJiNTg0ODc5YmY1ODY1MmU3OTQxNGNhZmVmMWY3MzlhN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4NDNiYzFmNmY5ODFhYjM2YmM0MjVlODBlYjhhMzY3ZGE3NzMyNmZjOTBhMjc2NDhiY2Q4YmU1MWRhZWFlNDYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L414-L472",
+          "version": "repo-lines-v1:sha256:62742037be19bad8c65cb2d0d23067598445342177412cd8d83fec44fe495cdf:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjhlOTQ4ZjM4NDY1ZjY5OTRmMjE4ZGI3ZjA0ODM5YWU3OGVjY2E5MTg1NzgzMGQ4Mjk4YTllNzQyZWU1MDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmNWI2MzQzMWZjMDA0ODc4YWVlNzlmYThmZDQ1OGM1YTU4Y2Q5MjhmODAxY2UxYzMyZDA1ZWM0MDkzYjk0MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjMGJkMmY5ODc4NTg2ODA2Njk1YTcyMjU4MjYzMmU4NGMyMzg1MTgwY2Y2MDZjMzIyZjZlMjY1MTZjNTA2NjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b40062103244e6683c22cb2aff3a3e0",
+      "statement": "WithSpan propagates an ordered active-root chain in the span context; a root may appear only once, so same-root or cyclic re-entry returns *NestedSpanError (naming requested and active roots) before any waiting, and distinct-root nesting is permitted only in a documented acyclic order (the migration ADR's retained production order was the remote-create-live/<id> child root followed by the main IssueOps root; the legacy remote-create path has since been deleted while the generic acyclic-order rule remains).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-07-sqlite-state-storage-migration.md#L9-L9",
+          "version": "repo-lines-v1:sha256:825fc28e77531fd42a8c9383d5914f6e2bace754b31c8a37f2cb997491cdc18d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmEzYjBmMTY1MzJkOTVjOTYyZGZhNDIxNDlkZDExMDZkZmUwYjViYWVmMTM2OTU4NTdkNTUwN2EzZDBiZTdmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJlZGFjODA5ZWI5ZmU4NzIzYTNkYzYwNGRlN2ZmOWQ5YWYyZGMyNGYzYTEyZjlmNzM4Mzg1ZWU0M2IzYTY0NyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/cautions/lessons/2026-07-07-sqlite-sqlstore-span-discipline.md#L13-L14",
+          "version": "repo-lines-v1:sha256:35978be0ed285c82ab3125b11c00b360d92cb25a76352458eaee0a5ec06437c3:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjAyMjhmMjlmMWQyMTlhY2ZlZTg4ZjgzYmEyM2ZjNmQxNTk2MWFmZjIwMTlmZTdjZmYyNjdjZmRjM2E4NWI4MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVjOGFiZDhlNWIyMTc4NjEwNWZjZTcwOTA5MGUzNGJmODEzMjk4MjQwNWZjZGFlODM5NDBiODBmYWUyZjM2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjdiNzY2ZDIwOTQwZjExOGU3MGIwMjg3MDIxZTQ3YjdjYzQ2MjBjZWRkZWYxYzY1MzNmYTZjOTFjYmUxMzVkMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjgyMGYzNjAxMzQxOTRiMDIzNmExYTk5YTExOTg3NzAyYzExNTI4M2EzOTUwMDI5NGU3ZjJkMGFiYjA3Y2M2NCJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/span_context_test.go#L24-L50",
+          "version": "repo-lines-v1:sha256:083173dd0df9ad981899891b28b3d8a1876067214f4bee62687e9ce1a6c41cdc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3YTZiOWEwMmZhMGE2ZjZkM2MyYWVjZWQzNDAzZTk0ZDZkMDhlMGY2MDA2NmZkNGU4YTkyNjYzMmE2MzdjZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkMTkzYWI5YTYyZmZlMjAzNDg0Mzk1ZjNmYzYzYzE3NjRlOGQ2YTM5OWE3MWQ1NDk2ZGMwYTAzZDUyMGZlYzUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L332-L407",
+          "version": "repo-lines-v1:sha256:36ba28f3baa9f91bb601497f3bf619f88f1106844a339e22f12571b3222d4f7a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGViZmI2YWNmNTNkNzMxZmExMGViN2E5NGUzOWI4ZTU5Njg5MjE5ZTlmODg1MmViYTZlOTAyZDVhNjMxMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0NjY4NDZiMTIzZGYwZDFiNGJiZDA5MzNjMzUzMThmM2NlOWRjYjA1YzZmMjc1NGI0OTFiYzA1ZjIzZWI0ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1MDM2OTkwZGQ5NzA0MGNkNjhhNGZmYzdmNjI5Yzg3ZjZmNWQ1Zjc2YjFjOTI4Y2E4OTVjZjY0MjEwNzg0ZTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2e2ebd8436df45b5b5176e0be6f53d27",
+      "statement": "Apply and CompareAndApply/CompareAndApplyFunc are the narrow exception to autocommit visibility: they commit multiple record mutations (upserts, deletes, RequireAbsent insert-preconditions) atomically in one harness.db transaction, surface stale raw-byte compare failures as RawCASError, and by design bypass the span gate — so destructive paths that must order against concurrent spans wrap them in WithSpan rather than moving the gate inward (which would self-deadlock).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/cautions/runtime.md#L76-L81",
+          "version": "repo-lines-v1:sha256:53546c48a136a47c2f5ba53caf19bda054957554fdfbe9ab8d75ed87aa10fceb:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg4MTkwYWMwMTJkYzY3MDViZTczZDk3Yzk0MzlmMjIwMTIyM2Q3MjkwZWVhYWFiNjczZTIxYmJjNDZjNmUzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzM4MGNhMWRkYWM3ZWY3YjMyMzY5M2ViNzgyYTY3MTMzNjUzZGI5MDJkNjIzYTJiN2ZmNmFiOTZkOGI1ZGJjNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGFhODliMTRhYWY3Mjg3NWI5ODY3OWFiY2IzZTY4ZWRiNGNhYWRmZmRlODIyNTFjNzdiNjcyNjFhZDllZTIzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTljOTllZmE1OTdjY2JhMDdhNWJiYjNmNmE1ZDhmZGUxNWU0NjM3Mzg3MjUxN2NlZDU5Njc2OGY4YWYyY2JlYiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L648-L698",
+          "version": "repo-lines-v1:sha256:11ad91d096641feb2abef4ef1de0953b4b23b57f8ecb13af9ed6fb2f33455b1e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMDQ5MWMxOTI1NTQ5M2JmY2E2NDUwZjFmY2Y4MTQ4OTA5NWZlNzAyZTc5NzQzM2ZhMTBhNDIxOTE2Y2ZlOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2NTE4MzA1Y2VlYWMxNDI5ODFlZTI1MjI2OTllMGNkNjRmNTAzMTQzYjQ5NGY5Zjg2YTNjM2U2NjZhYWIxODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmZTc2MzZlOTYxMGVkN2I5MWJhYzY5NzQ4NGM1OTE1OGRlNjNhYTgzNDJkNjU2NDIyMTQ4ZDIxOGZjZGI2YmIifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L754-L778",
+          "version": "repo-lines-v1:sha256:a40b0d8497169ae1c19baea7da827712c390323e1ce3847af1c6f860809f1c5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MGI4MTFjODVhNDJiZGViNTg5MDkyY2M1MDExMTNmZjIwN2MxNGM1ZjdiMWY1NGE4YmVmYzhjYzNkMjJkMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxOGIxOWI1MDY5YzkzMTYxZTczYzcyNjY1MWYwODAyZWU2OWFlYzcwN2IzOGVlYjE3OTRjZWI0MjEyMTc3NjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4f0fa18db8f4a06a5a513feb185ae2c",
+      "statement": "Consumers reach spans through the port/state Store interface (Get, Mutate, List, WithSpan), composition-root wired to sqlstore; the IssueOps cycle lock, worker job lock, loop lifecycle, and the state service's Update/WithKeyLock all serialize through the same per-root span primitive, whose granularity is deliberately per store root rather than per entity.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/sqlstore_wiring.go#L11-L24",
+          "version": "repo-lines-v1:sha256:66c5b133d44edaa42ba33751650526991fbf0762be97ee0efef2cb6238392e71:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhYWM4YWViNDgzODRlMmI2NGM4YjAyMmFlMmExMDljZjU5OWE0Nzc1MjU1ODNiOTk1MTI1MTVlODU1ZWM3YjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlNGQxNWYxN2QxYjhkMTk0OWUzOGVhYjI1ZjAwNmJmNmJkYmVjOTU3YzI1NjY3ODMzZDE5MDNjNDc5OTUwMWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_lock.go#L14-L40",
+          "version": "repo-lines-v1:sha256:efec35b6c1d56d5f237d23ab0cbdbdeb853034c8e0b3318e6069389da3dd8bad:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwYWEyMzMzNTllN2M0NmQwZWU2MDY3NzFmOGJlMmNiOWNiOGUzZTJhNDRjMTczNTEwMjgwYjJlOTEyODFmN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YTliNWU5MDE5YzhkYjg3ODNlYzljM2ZlYmIwYTJjOTg2MmY2MWEwNWMzMDhmZTg5NWU0YTliZWQwM2VkYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiYzg2MzYzMDRkZjgxZDUzMzMzODRkMTI1MTIzZDc1MWJjZGJiZDk0YTE5ZmY1NTYwNzdlNmUwZGM1ZGVlZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiYjBhMDk0ZTdlNzhjYzMwZDMyNzZhNGI0MWNhMTc2N2UwZWQxOTlmYWFlYWU0NjE3OWEwYzNlNzY5YWVmOTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/worker_lock.go#L7-L18",
+          "version": "repo-lines-v1:sha256:8cbe2e1f5be25c342c095fe6591c58790a7e443354c8f3e7205c02d7723cb6a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlNjFkYjgxMjAwMWI3ZjA5MGViYmM2NTA4NTU3MjVmMjA3N2JlNWNkMGQ1YzVkMTBkZjkxYjQxYmUzN2E1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NTNkNTU1YzRmMTFlZTk1N2QyNGYxNTQ1ZjY2YmMwOTc0YjI4YmM2YjRjZDhhM2VkNDRhMDE0MTE4YTQ4ZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/service.go#L190-L233",
+          "version": "repo-lines-v1:sha256:085be39ac17aff9cc90f6b87ffbe38247ae81dc4fea94d33f657eea4231b37c1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYzcxMDBiMmMxNWQyODI2MzYwMGQ2YmEyMmUzMjBkNjEwNzg5YmJmN2MxMjg4NzYwODU0YzIxODRmODZhMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlODkwZDFmZTAxOTliMGM3MzA5NDRmNjJiYjU4ZDdhNTZjODU2NjdhZjBmOGI1OThkNzliNGYxYTQ1YTY5OTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1MDJlMjVhNjgwZDZjZDg0YTZlZTVlYTk5MjMzZmRlNWFiMWE2ZDZkYWJhODlkMzRmZTNkM2RiYjVhOWM1ZWYifQ"
+        },
+        {
+          "resource": "repo://internal/port/state/state.go#L13-L22",
+          "version": "repo-lines-v1:sha256:dad0c466e62686dc5d84be2c4ec1c3f96c3c05f3a1ee4b416f6309d980ec1980:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZTlmNzU0MGQzZjlhNzI3Njk1NDNhOTY1NTMwYmMyZGE3YTBkODg2Y2NjM2IyZTJkZWQ3ZTM0YTY3ZWI4NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0ZWZlMzMyYjUwNjBiNTM2OWM4YjQ2ZGI3ODhiNjdiMDEwMzk3NjlkNDllNzIwZDM2ZWVkZGI1OGU2MWRjNTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1OWQxMzlmZTU3ZDFjNWU0OTZjYTdhZGZiMzhjMmIzNzgyMWY1Y2JhMzE1ODc3YTdmOGQ1ZWIzZGQ2NTBjODMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_619087062554458fa8aaf3e8a41bcb8d",
+      "statement": "WithSpanObserver attaches a callback receiving SpanObservation (outcome success/error/canceled/nested, contended flag, wait and hold durations) after lock release; the IssueOps record store wraps it into a JSONL observer that logs only contended or slow spans (default 100ms threshold), making contention measurable without a hot-path tax.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/issueopsrecord/observer.go#L16-L94",
+          "version": "repo-lines-v1:sha256:7be6593a7198f69acf36deb2b0a3e28a08bd58297ef7c61454c96707a0b73c4e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZDJiYmZkNmEwN2JiMThkY2EwMzIzZGY3ZTM4ZGFkMTgxOTliMmY2MWM4ZTU0YWUxMDQzMzVjYzlhYzEyMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyYzNhNGM3MjA2Zjk5ZWJjMTMxMWQzYjY4ZDNlMmQyZTg2YzdhZTE1Y2IwYjI3OTgzODk2MGIxY2U3NWI0MzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/span_observer.go#L8-L31",
+          "version": "repo-lines-v1:sha256:09288dd1147408304a411b38522a52235261931c8bd554882039878898986b17:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlYjQwNjk4Yzc1ZTRhN2I3MjFkMjBkZDEwNTgwNTQ3MjE1ZmM4M2Q2OWQ2MGRhMTFjY2U0MDYzYTVmMzcxM2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e419862fa0904267a6c0a83cca852ffa",
+      "statement": "State KV records are RecordEnvelope JSON (schema_version, key, content, updated_at in RFC3339Nano UTC, bytes); ValidateRecord requires schema_version to equal exactly 1, the record key to match the requested key, and bytes to equal the content length, with strict decoding rejecting unknown fields, malformed JSON, and trailing content.",
+      "evidence": [
+        {
+          "resource": "repo://internal/application/state/service.go#L91-L106",
+          "version": "repo-lines-v1:sha256:557c615257baa1bf697190f1ce5850cbb8431ad2a2e5ef6080d3f7da497d9eda:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjMmFiN2U0MDk1Y2YzNzE0OTNmOTQ4OWQyMzQ5NjZlMjVkMjkwZjUyN2FmNTI2MWI1OTFkMWFmOTk3YmFjYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxOGI4MGU4ZTA4MjFjNTQzZGQ2MmM0MmJmMjU2ZDJhNDY0ODQwYmQ2NDY2ZDgzZDgxN2JmMzA4OWY4ODVmOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwYzNlMTk3MjY1Njg0YjQ2ZTBkMzZlNTIyNzg5YjkwZmRmYmQ3ZTEyYTQ3ZjFlNTIyYTdjZWNhYjIwMGYxMTEifQ"
+        },
+        {
+          "resource": "repo://internal/contract/state/record.go",
+          "version": "repo-file-v1:sha256:4e3230134f08ba0dffc32ebae9649338d30f88219b5e5b8ee7d9b87127c208a4"
+        },
+        {
+          "resource": "repo://internal/domain/state/validation.go",
+          "version": "repo-file-v1:sha256:1c6cc391bf7096641e53814fdcc0c0caa7fff360caf7a8d49c5ca93cceadf149"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c2324577f5241bfad2f440ea9d08471",
+      "statement": "Schema validation is current-only and fail-closed: records with missing, zero, or future schema_version are rejected as invalid, there is no promotion path, and the state migrate surface has been removed — the invalid matrix (missing/zero/future schema, malformed JSON, legacy field, key mismatch, byte mismatch) is pinned by test, with every failure collapsing to the single generic ErrInvalidState ('invalid state') across CLI, MCP, and application projections while an absent record remains a distinct plain not-found.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L52-L52",
+          "version": "repo-lines-v1:sha256:b720eb98712bebabcfe7829fc9384feb8700b6913d63c07876cc378732a55b7f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjcyMGViOTg3MTJiZWJhYmNmZTc4MjlmYzkzODRmZWI4NzAwYjY5MTNkNjNjMDc4NzZjYzM3ODczMmE1NWI3ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjcyMGViOTg3MTJiZWJhYmNmZTc4MjlmYzkzODRmZWI4NzAwYjY5MTNkNjNjMDc4NzZjYzM3ODczMmE1NWI3ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzc4Yjk4ZjA1MDJiODIyMjQ3Y2Y2MzkzMDA3ODRkNGNkMGU0Mzg5YzY1YjYyMjRiMmY4NmM4MjRlNjM3YWJmNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWFiYTg0MmY4MWQ1YzhiNTc3NTU5MGViMmI5Y2FjYmViMTBmYTgxNjQ3YzkxMGVkNmVhNmVjYTRjODViZjBhZSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_doctor_test.go#L51-L75",
+          "version": "repo-lines-v1:sha256:72ca992e9364c7a910d06a4b5d9a41b43d50feae3a3efe8564c39c0fc37141fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3ZDMyMzhlM2VkYTZmMTQxODhmMWQ1ZTU4NzJmODJhMDYxODRjNTM1N2UxN2VhNDg0MjA4YTY0NzYzN2VmNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjMzg0MWNlMTRjMmFkMDk3NGVkNThiM2M4YTQ1YmE4YTVjNDBmNzFmZTE4MmFhOGU3YWZjMTc3ZWIyYzcyNmEifQ"
+        },
+        {
+          "resource": "repo://internal/contract/state/invalid_matrix_test.go#L13-L66",
+          "version": "repo-lines-v1:sha256:d0447fa158f49cf9d7bec58240facd6ffcf1d9650f69aed7332d008102110f53:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5YzZlNmFjMjY1N2JiYTkxOTQyZDczMzc4ODNlYzcyNjE2NGYzMDM3NDZlNzEwMmM2MTNjNzRlYWIxOGM1ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_23f7f73c59594f42a04cb78efcd8623b",
+      "statement": "State keys are normalized by statepath.NormalizeKey and must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ (max 128 chars, trimmed), with path separators / or \\ and any '..' rejected, so a key can never traverse out of the store.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/statepath/path.go#L10-L21",
+          "version": "repo-lines-v1:sha256:3e82693452eeb68b09fb458958e051feacb41cad1a9d686289c2573fc38e7f11:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhYjNmNDgzMjQzZTY3Mzk1ODU3NGE0MWVmZTYzYzc4NWQ3Mzc5NzcyODcxMTI5ZTFjYjEzYjg0N2VlMDdiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1YjkyODE2NzVkY2QxYWMxMDMzNzgxMmFiZTZlZmY3OWQ2N2JhNWQ0MjFkZDExYTIzNzgxYTYyZjliZjg1NzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eda04ac3496f45a5b52b8c921a9a9875",
+      "statement": "Although records live in SQLite, response path fields keep the legacy <dir>/<key>.json shape as a stable per-record identifier; the SQLite migration changed no record JSON schemas, IDs, or CLI/MCP response shapes, pre-migration JSON state was not migrated (fresh start), and legacy *.json/*.lock files are inert — never read and ignored by the state doctor.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-07-sqlite-state-storage-migration.md#L9-L9",
+          "version": "repo-lines-v1:sha256:825fc28e77531fd42a8c9383d5914f6e2bace754b31c8a37f2cb997491cdc18d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODI1ZmMyOGU3NzUzMWZkNDJhOGM5MzgzZDU5MTRmNmUyYmFjZTc1NGIzMWM4YTM3ZjJjYjk5NzQ5MWNkYzE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmEzYjBmMTY1MzJkOTVjOTYyZGZhNDIxNDlkZDExMDZkZmUwYjViYWVmMTM2OTU4NTdkNTUwN2EzZDBiZTdmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJlZGFjODA5ZWI5ZmU4NzIzYTNkYzYwNGRlN2ZmOWQ5YWYyZGMyNGYzYTEyZjlmNzM4Mzg1ZWU0M2IzYTY0NyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/cautions/lessons/2026-07-07-sqlite-sqlstore-span-discipline.md#L14-L14",
+          "version": "repo-lines-v1:sha256:0ec8abd8e5b21786105fce709090e34bf8132982405fcdae83940b80fae2f36b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVjOGFiZDhlNWIyMTc4NjEwNWZjZTcwOTA5MGUzNGJmODEzMjk4MjQwNWZjZGFlODM5NDBiODBmYWUyZjM2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVjOGFiZDhlNWIyMTc4NjEwNWZjZTcwOTA5MGUzNGJmODEzMjk4MjQwNWZjZGFlODM5NDBiODBmYWUyZjM2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNThjNmY1MGIyZjBlMzMxMDllMTc2MzRmYzdjZjIwODBhYmY3NmFkM2QzMzk1ZjcwYmRjNWQ1MmE0NzNhMTZmZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjgyMGYzNjAxMzQxOTRiMDIzNmExYTk5YTExOTg3NzAyYzExNTI4M2EzOTUwMDI5NGU3ZjJkMGFiYjA3Y2M2NCJ9"
+        },
+        {
+          "resource": "repo://internal/domain/statepath/file_path.go#L5-L8",
+          "version": "repo-lines-v1:sha256:33e4edfd11574623c7c9c92b7d944620e53c9f216e9effe8501c96d53e130296:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGY2NTg1NmZhNDlmOTAwNDJmZWFiMzdkNzlkNTRiZTg2YzQzZjAxZWMxNzdkOWMzZTM3ZGE5MTkyNTkwNjViNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTgwZDM2ZDU3YmFiOTNiMDcyOTE0MmI0Njk4MDVkYTZiZjZhMjg0NGNkMjNiMDU2OGViODk2YTA1ZmVlY2I1YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2baba55ce7ff484a9e43a95206f9263a",
+      "statement": "The `state` CLI (write/read/list/prune/doctor/maintain) and the MCP state_write/state_read/state_list/state_prune/state_doctor/state_maintain tools share one composition-root-injected store adapter so transports know keys and result shapes but never storage mechanics; state write requires exactly one content source (--value, --input, or --stdin), and the harness://state MCP resource returns the same JSON index as state list.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/state_store_wiring.go#L21-L48",
+          "version": "repo-lines-v1:sha256:37cc39549902c570b485574ebba566359cd245dacb76a6b8812b4e01ea6a5063:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Nzg3MTc0YjM5NWY2MzMyZWFhMTVlMTVlMDIyODdhNjA0ZDIyOTI2MTExNjBjOTZiYzBlY2M1ZGYyZjczNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2YTg4MmRmNzcyZTJkZWZhY2I2YWE0NWFlY2Y0NDc1ODZhMDE2MzRhZDg0NzBhYjhkYjI3ZmFkNWM0NzA0NmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/state_wiring.go#L12-L21",
+          "version": "repo-lines-v1:sha256:83473e9f1e0194947066e9ee73d6a378d0c812a7dc0fc3219c6400e74fca1b75:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzNTIxYjA5MTg1Yzc1NTY5N2U1ZjEwNGViMjk1YzgxYmMxZmRlMGFmYjE5OGUyZDMxZTE5Zjg5MjlhMzc2MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3ZTU2ZDk1MTQwMDFmMzI3NDk1MTNhZDdiNGE0MTAwYjYxN2FhZWY5YzdkMjE5MGZiYWRjZDVmMzI0Y2VkYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_policy_state.go#L37-L76",
+          "version": "repo-lines-v1:sha256:685bc81bd5bb7d67b528ccc305e6fdfe6061aa6105f242f425f0ce404bece36c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYzcyZWE4MWY1ZjIxMmFjZThiYTY3YzMyMGIxYTFkMjc2OTk5MjQ3OTg0MDNhZGU5NWIzNDhmZWU5NTFmOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxM2Q3NDYzY2IxYzEzMjBiYzdiZTg0NDU2Y2JiM2ExNzVjMmRjNzQ3MDlhYmEyNmJmNzRmOGRmYzU3Y2Y5MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyM2JiZWU4MTU3M2I0OWFiNWFhNjFjNDkyOGI5NjEwNTZiODI2YWJmNTFhNzdlZjY2NjRlNzY1MjU2MDg4MDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZjNGM4MjYwM2FlM2VhNzM3ZDZmMmU1ZjJlZTQ1OWYxYjQxNjY2Y2Q1MDVkNTAwZDAzZmUzNGVkMGU0ODc1NDgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/statecli/state_cli_router.go#L9-L42",
+          "version": "repo-lines-v1:sha256:116b382609db759e233004d402b4722134020f95cf8c3d1805bfb925bb3e1e80:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhYTdhZTNhZGQzZTY0MGM2OTNjODRhOWI4NGE5ODA5NWYyN2ZmNGYwM2IwMmE2ZDdhYTNmNjUzMzUyNGEyNzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA5NTE0NGU1ZWE4NDM3N2U0MDk3ZmVkNTY0NTRmYzNmNmE4YWU4MzVhZjk1Mjk2MTAyNjA0NjQ0MDA4NTgyNDEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/state_catalog.go#L3-L43",
+          "version": "repo-lines-v1:sha256:95f1d6a15c524a30b62ee7e007d9dc6c56dd0ce81061a41207c0f02c85160e40:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxY2IwZGU2MTVhYzhiOTQxZTY5NzhhMjM3OTRiZDQ0M2JhM2M0YzliZWZjN2JiOWRkOWYyNWRkZDBjYTRhYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkYTM3Zjg5MDdlOWFjNjlhMzAzMzQ4NzMyNDgwNDBiYjMzNjRmNzY4Mjc5OGM4YTE1Y2MzOWIwZjVjY2U5ZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e1c9e63dbe7a4c2cae89b61bf6c36750",
+      "statement": "state prune computes cutoff = now − max_age over record updated_at values, selects matching records older than the cutoff, reports pruned/kept lists sorted by key, and deletes only with --confirm; the result always records dry_run = !confirm so callers cannot delete implicitly, and a prefix-bounded variant with a retained-count cap (PrunePrefix) serves self-workflow retention while the CLI exposes only --max-age.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/statecli/state_cli_maintenance.go#L8-L32",
+          "version": "repo-lines-v1:sha256:876af7af1498f118e2b82d518350234f5ed8d9fbb6487a7470087d28972d8dbe:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2MmQ0N2U3N2JiOTg5ZWIyNDk0MGRlZTQwZDlkYzdjNGE3ZGQwM2ZiYWQ3MjVkMDZiNzA5ZWY1MTZiZWJlOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZTRjMTE1ODcxMDc2MGRmOTEzYzM5ZjAyZjkwMDcxMGNjYjVlZDAwY2EyNzU2NzVkNzIwYWQ0Y2RjZDQ0NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjMDZmZGZmYjM1NzA2NDNmMTg1NmVlZGNjZjNkYWMwZTEyNDllZjU5Mzg2ODI1MmEwYTliMGMxNzNkNWY5NzcifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/prune.go#L13-L66",
+          "version": "repo-lines-v1:sha256:54dbedcb02f02efc85f2ae85e9086bd231e6f2dd928f777452eb0686fbc4fdff:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZTI3NGZkOGM4YjMzY2FmMjhiZDIyM2U1MWVkNTMxMGVmZDcxZDQ0YWQzNjk2YjlhNjdjM2EzNjhjZjUzN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5OWNlZWVhNmRhMjFiNTZlZTlmNjA0NTE2Mjg5OTdlNTE4MzIwYTM4OWUwYTg4NzE1ODE1ZGFhYjVlY2M2MDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4ZmQwNGY5ZDdhNDBjY2JjZmNjNTgzNTEzNDQ1MjhhMGZkNDQxN2Q5Y2Q0YmU1OGYwZjI5ZGZhYzFjMDNlZjkifQ"
+        },
+        {
+          "resource": "repo://internal/contract/state/results.go#L26-L37",
+          "version": "repo-lines-v1:sha256:50ebd11176536710652b62a4e7e14d0c1ed53bc07b7ce6c385862d324c83a5fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExOTYxNzdlMzhlOTVhOGNmMmEzZmZiOWUwNmMwM2M2MjNjNTI3ODk3NDk1YmYxOGEzZjAyMzBiNjI5ZDdkZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlOTg1ODdmNjZmNjRiZGQ1MDI3NGJmOGQ1YjUzMjIwNDE2Y2E5YjcxZWE3NjQ3N2ZiZjBmNjcwOTY0NTEwODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YjljZmQzZjExZmRkNjNjZThlNzc5MjcyNGRmOTA3ODljZGU2NzRlYzdmOWMwMGY1NWViZmQ2YzZmYjNjNTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d48c5905bd04075844cc6deb3d0b127",
+      "statement": "state doctor reads the state bucket through the non-materializing existing reader (an absent store is healthy and empty, never an error) and only reports — it never modifies checkpoints; it flags invalid_state (error) for rows failing strict decode, record invariants, or timestamp parsing — which is how missing/zero/future schema rows, byte drift, key mismatch, and malformed JSON surface — invalid_key (error) for row IDs failing normalization, and unexpected_file/unexpected_directory (warning) for entries outside the harness-owned allowlist, setting healthy = len(issues) == 0 with deterministic issue ordering.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_doctor.go#L14-L43",
+          "version": "repo-lines-v1:sha256:273b319b5421d546a21c83199fd2232c66d14b06811540e7d8a55f8e08e92b84:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0YWYzMDI2ZTI1YmQ2Y2U5ZTQxOTM2Zjc1M2FjNmJjYTcyMGI0MTVmNWQyNjlkYmM0YmEyZGFmZmY5YTQ2OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlNmI1ODI0NTljYmRlZjJjNGFkOTljYmZjOGI0MjEyM2M3MjdhODE4MmYwZTQwMTc1YmE3ODMzYTMzMjU4MDEifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/doctor.go#L25-L95",
+          "version": "repo-lines-v1:sha256:a64d45d3b4e12d69c39df3f82ca23dd0c47e95754a609959dd2a5535f00eda84:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZTFjZDk5NDg2OWU5M2M2YTQ0ODJiOGE1ZGZjNTI0NDdkN2YzZTgwNDg5MzY0MTlmYmJhNmUyMzY2ZTAxNWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwMWU5MmEyNmZiZjNiZmE3NTYwM2U4NmEyYTM3NDI4OTFjMWM1MjMzZjI1ZDBlOTJlMGNjNWY1Njg5ZDU5NDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkNWMxM2U1NmYyMWIyYjFkYzgwMjQzNjc2ZThmYjM3N2UxNjA4ZTUwZmE0NmE5MTIwMDIwMjk0NWIxYzBlMmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_07a7981a4ef2419ba2d2abe5daf7fd17",
+      "statement": "The doctor's harness-owned allowlist covers harness.db and harness.lock.db plus their sidecar-prefixed names, hook-failures.jsonl, hook-metrics.jsonl, the .last-store-maintain sentinel, and the owned directories (projects, daemon, worker, loop, issueops_v1, native-activation, audit, issueops-benchmarks); anything else in the root warns as unexpected, while owned artifacts never do.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_doctor_test.go#L96-L138",
+          "version": "repo-lines-v1:sha256:7169457fc85ac0d0219465c3a67cd9959dbc0e4e18d0f17d3874f4f5d53ed007:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhMGJhNDQ1NDViYTI5MTY1NmQwZjhiZjc4MTk2NGIxMzlhZDQ0NGM2ZGViZmNmZDgxMjI3NGQ1YzczZTMwNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/doctor.go#L97-L118",
+          "version": "repo-lines-v1:sha256:aedb2f50e43d9f017c0136d0b652e56087a9a95b5dd6f5999d0a9b43eca8c828:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhNzNmZjRkZmI4NmY3ZDk1NThiMzJlNTlhZmEzYzE1OWEyODllYzRkOTVmOGM2YWQyOTYyMWUyNmMyNDExMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4MzJiYTk3MjVlNjY0NjBmYThjNjc2ZWViOGM2OWMxZGFlN2M1ODBhOTAxYjE1MDcxZjEzYjZhNmU5YjA0M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9a253cdb97574ff8b5de717271125480",
+      "statement": "The comprehensive agent-harness doctor embeds state doctor output as its state_store check (surviving issues become state_* issues) and, when the user-state store cannot be inspected at all, raises state_doctor_error with the fix suggestion to check directory permissions or point HARNESS_STATE_DIR at a writable location.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/doctor/doctor.go#L36-L47",
+          "version": "repo-lines-v1:sha256:08c03571b40afdb1ee1a4a991e1eee5d6307a79a3ba4cc5eac581d2a8f7e969a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1OWU3NWZkMTczODgyY2FmODYzNDBjNDhhYjdmYTlkMGU5MWIyZjMyMjEyOWNmMTkxZjQxMmU2MmJmMDkzZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmMjlhYTA1MTliZTBkZTM1YWM1ZmVlMWNhZjk5MzljNDBjZTFlNzU0NGIxOTE4ZmM1NzJmMWY0YjJjMDE2ZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhYTQyNWE5YWUzNDNhMzFlZGRhNjQ5NzBhYjAyZmQ1MDcwYjNmMTgxOTg3M2RlOTQyN2NkOTkyZmYzNzQ1ZDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_865b5b5bcc5d458a87b124bc542496db",
+      "statement": "state maintain runs sqlstore.Maintain per store root: PRAGMA wal_checkpoint(TRUNCATE) truncates harness.db-wal (reported as wal_bytes_before → wal_bytes_after), and the fixed known set of database files and sidecars is re-asserted to 0600 with repaired names listed in permissions_fixed; maintenance is safe concurrently with readers and writers — a busy WAL skips the checkpoint for that pass (checkpointed: false) rather than erroring.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/maintain.go#L11-L36",
+          "version": "repo-lines-v1:sha256:226ad5c9efa30cd2c97a1333fcc42dae073d1be3818e028b2c0d483901fd8f89:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjZDUzMTIzNGE2OGMwOGY1MjljMmY5NTNlOTdkYzJkODZjYzM1NTIzODM3YjVmNjQzMDAwNGQyNzAyNzdjNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_maintain.go#L13-L85",
+          "version": "repo-lines-v1:sha256:4fbc4b5dc046f8de80b8c1a84d3edb2c5409d19683c1826b55c7db8b071a19eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MjU1Y2U0YzJlYjcyNWY2MGI2NWE5YjZkYWI2MjZhYzYzNTNmODNiZWE1ZTE1MzgxNTlkYzdjZGI3NDM2ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_aa92e8fa736f46179e13039492d196f6",
+      "statement": "state maintain covers four fixed roots — the base root (state bucket), issueops_v1, worker (honoring HARNESS_WORKER_DIR), and loop — plus every projects/<repo-id>/ directory already containing a regular harness.db; roots without a store are reported as skipped and never materialized, lifecycle-only project namespaces (profile JSON with no database) are neither listed nor created, and project symlinks are not followed.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_maintain.go#L13-L65",
+          "version": "repo-lines-v1:sha256:a90c32b3fea167e76a84d6a29a6048af91d4186687e2568deda16e7cd999f9b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MjU1Y2U0YzJlYjcyNWY2MGI2NWE5YjZkYWI2MjZhYzYzNTNmODNiZWE1ZTE1MzgxNTlkYzdjZGI3NDM2ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjZmViNmZiOWI2NjA2ZTYyMzE4ZjZhOTg4ZmU1YTRiNTlkY2NmNmY4ZTFjYzY4MGQwYjM2NGJkNmNhMjA5NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNzMzNmJlOGI3NzUyMzgwY2FhYjdhMzFiMmJmNzhiMmYzODlhZTQwZDYzMWZlYjE5YjNlMzg1NmI3MTIzY2UifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_maintain_test.go#L24-L131",
+          "version": "repo-lines-v1:sha256:53e899f83cd9bda3d588a30fb92b29a3b512d8e8c24af5d1195e8ea39ad43c9f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4NGEwZjhkYTBhODQ0ZDhmODFlNmU0M2NiZTMxMDdmNGIzMDQ0NmFlMjQ4Nzk5YTVkZDhhMTI4ZDA1MTI0MmE5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmMjk2NDA3OWMzYzVjODE1MjBlZjMzYTJiOWQyZTE1YTFiODRkNzI4MGRiODU5MGRjZDY1NzQ3ZTNlMDEyYTQwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIxZDZlYWY5MGYzMmYxODIzMWRhMTg4ODZkMWMzNGFkODQ4NmI3NmI1NzRhMjlmMmRkZDk0NzI3OGM0Yjc2NGRhIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_17c7d78f0b9c4af79a1bde326e04b7cc",
+      "statement": "Hooks never auto-run maintenance: the registered SessionStart context hook renders only the static project-doc catalog and performs no SQLite work; the 2026-07-08 ADR originally amortized maintenance onto the session-start hook via a .last-store-maintain sentinel (at most once per 24h), but with the hook surface since reduced to thin static context, maintenance is explicitly invoked via `state maintain --json`, and the sentinel remains only a recognized harness-owned file; VACUUM is deliberately excluded from maintenance as not worth its exclusive-lock cost at typical store sizes.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-08-sqlite-store-maintenance-policy.md#L7-L16",
+          "version": "repo-lines-v1:sha256:0509211135967f6b9e6494c8adcaeba015c43e3c3cd2213c613cfbf5a929f399:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYTAwODdkODE0Y2NiZjJiYTI3NmY4MDQ0NWRhMDc4ZGI3ZDg0NGUwNTM2YWY2N2Q1ODFjMTg1MjEzOTg0MmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViYWY4YjkwZGIyOTMzYjVjNWQwZDE2NWExYmNjYjU1OTYyODk2NmMzMGU2NDhjODkzMDYzYTQ0Zjk4YWM4ZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwNTk3MWQ5YWU3ZTdkMGE1MWQyOGU5YjJhNWVmMzMyOWJjYzliYWY0ZWFjMDM3MGMyOGI0NDYzN2NlMzYxOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ZGM2MmMxNjI1YzZlZjVmMDQxMmJkYzM4YjEyYTBhNjBjOGQxYWJlMGNhODBjYzQ4MzljZDI1N2EwZTRhZTkifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L57-L57",
+          "version": "repo-lines-v1:sha256:fb333271bb07048dc79ee1750c64e0d00b29b18fded77e922ff956eae635af7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmIzMzMyNzFiYjA3MDQ4ZGM3OWVlMTc1MGM2NGUwZDAwYjI5YjE4ZmRlZDc3ZTkyMmZmOTU2ZWFlNjM1YWY3YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmIzMzMyNzFiYjA3MDQ4ZGM3OWVlMTc1MGM2NGUwZDAwYjI5YjE4ZmRlZDc3ZTkyMmZmOTU2ZWFlNjM1YWY3YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTZmOTU5Y2RhNWMyYjE0N2EzMWY1NTVlNDlkOGUyMTExZWZhN2VhMTFkN2RjMDY3ODkzODgwOWQ0NWNjYWI4NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2I2YmQ4MDY4ODhmMmI0NTUyZWVkYWE1NDAzZjMwYjQ4ZDQ3NTBlOTliMzc0MGI4ZTcwNzQ2ZGI2NTMyYjljNSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/cautions/runtime.md#L67-L74",
+          "version": "repo-lines-v1:sha256:c71fc1589a0020f1259e133394005d33a17435213ea1e171f07fbeccc25816d5:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjQyODZkOTg1ZGExYjNjYjc5MjI2MDNmMmRlODU5ZDJkOGU5ZTlmNDBkMmY2ZGIxYjM5NjM0YmNiMDNmMjM5OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmU5MjkxMmY5N2YwYjgzMTlhYjcwNDhhMDhiNDY0OTRjYTFhZjM2YTRjOWFlYTQ4ZmRmZTUwM2YxNzM2NjJmOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmMzZmNhMjA2ZmY0ODFhYWI5YWM3NDZhNTViN2VkMjcxOGE1NDQ1ZWIzZjg5M2RlMDczZGRhMDVhOTA4ZTU1NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDY1MGZlNzIwNTYwYmMwMjNiMmI4YmZlZGE2YzE2ODhkMTdhYjY2OWU2MDU2NzcwZTVjMjI0M2NmMmIwMTA1MSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/hookcli/hookcatalog/catalog.go#L18-L42",
+          "version": "repo-lines-v1:sha256:83ea765b9883b474829367b2c5d2d0114a0b18eb95143d632e8563eb81527f73:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MDhiNDRmODVlNzgzYmMzMjhjMmM5M2NhZmQ2YzIzM2FmNDA4OTkwYTA4ZDI2ZDlhMmMyODEyMTk2ODM0YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlOGJjYjAyYzMzODIxZjkxNWQwYTdjNzhhN2I1MTdiOWY0ZTM5MjdlMmRiNGQ3NjJiZDlkNzA1NjZjNmZmNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjNWFlZGRiOWUwNTY1MWU4YzM4ODRkODQwOThiZTc0NGMyYmNlNGQ1NDg5ZTlhMGU4MjAzZGUzNzE4NTM2NWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6e685e0c10d54cc58f1766e0800a11c5",
+      "statement": "state read is a read-only GetExisting lookup: a missing key returns plain not-found (distinct from invalid state), and reading never creates or repairs the store.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/statecli/state_cli.go#L65-L84",
+          "version": "repo-lines-v1:sha256:0b0889c062cf4e36f40f1c3bf82c0db194c222bcf731c26afbe3cb83443defda:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZjViMzg3MTE1YmQ1ODVhYTFiZmNkZGIyMWQ5NmVkZGQ5Y2E0NTNkZWViMjZkNjdmYjVkNmFiYzc0ZGRiMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlMTRmMmJiOTcwODE4OGFhZjQyY2FkMGZlNGM5ZjNjYzNlNzZkZGU5ZjA5NzQzODk5YjFkNTZlOTU3MmQ2NTAifQ"
+        },
+        {
+          "resource": "repo://internal/application/state/service.go#L75-L89",
+          "version": "repo-lines-v1:sha256:9ffed377db13a009d64d8d578caf1599dae3940a5afef0c6e1896f0dcc1a9308:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiYmQ3YzFhZjY5MzcyMDMxNTg4ZGEzM2IzOGI4ZWEzNmM0NTdiODkyMGYwNDg0NTUwMDFjOGRmZTNlMWNlMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyNmM5ZTVlZjNhYjgxZWUwNmM0NDFlNTE3MmU0NWQyMmY5ODI4ODlmMzgyNmIzOThiNjhkOTY5Y2Q4MTcyNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4MDIzYWE3Njc3NjdiYmU3ZWM4YjA4M2YwZmVlYzFiYTViMGI1ZDZiNDEzZTRjZTc4ODkwZDAyMjA2MzgxZGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0267829acc6476d9197d19d893042e1",
+      "statement": "The behavior of this subsystem is pinned by focused tests: span_context_test.go (nested-span rejection, acyclic distinct roots, local and SQLite waiter cancellation), process_crash_test.go and process_mutex_test.go (lock death with holder process, cross-process ordering), permissions_test.go (exact 0700/0600 repair, symlink/non-regular rejection), maintain_test.go and resource_test.go (WAL truncation, sidecar restore, handle stability across 200 opens), state_maintain_test.go (root discovery and no-materialization), invalid_matrix_test.go (fail-closed schema matrix), and state_doctor_test.go (corrupt-record detection, healthy-empty, owned-artifact allowlist).",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/maintain_test.go",
+          "version": "repo-file-v1:sha256:4307b58c96ab3918e6c61c8adba16da26ed514a6f51db7c0ce5c5e1dc15324f8"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/permissions_test.go",
+          "version": "repo-file-v1:sha256:3d80526f61e60d8746bf4f9f3da0717cdfdaa1d6fda79a1335e088f66c1ee884"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/process_crash_test.go",
+          "version": "repo-file-v1:sha256:3eb3983980007be792fa0d5565e76ced9d99be1d2cf45fb77b5623c704b46893"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/process_mutex_test.go",
+          "version": "repo-file-v1:sha256:5e403adb3756156e93fc6389d0655b1cf48b78e4babd5df849d7703633c41677"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/span_context_test.go",
+          "version": "repo-file-v1:sha256:a88a46f836a6497eb9726f813fe0722a2a26f0e50fe9cca8bb7f8047744db3aa"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_doctor_test.go",
+          "version": "repo-file-v1:sha256:070c21fb7cd1b2754f460d8d17d6b025a5c40324a65a0cc587b0b2e2b3b43769"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/state/state_maintain_test.go",
+          "version": "repo-file-v1:sha256:7a276280a1d63e36a630799f16371c9c4b8d57fb34a5c1dff656de47425d960d"
+        },
+        {
+          "resource": "repo://internal/contract/state/invalid_matrix_test.go",
+          "version": "repo-file-v1:sha256:baf2afcb415c7d9084be3bbf2d817bd27ffd1eda22e8a6a0885647440d63cb56"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

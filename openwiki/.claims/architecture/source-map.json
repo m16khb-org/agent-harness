@@ -1,0 +1,546 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ba5fd8ec9897743d6616723c5573b687bf51a8edde2676064268d4e111e12390",
+  "claims": [
+    {
+      "id": "claim_8e1048e4d28d4c4caab16b89965f2790",
+      "statement": "cmd/harness/main.go is a thin shell over harnessapp.RunRootCommand, and cmd/harness/harnessapp is the module's only composition root: the dependency ratchet's isCompositionRoot admits exactly this path for concrete-adapter imports, and wiring happens explicitly via wireDependencies() under sync.Once (mirrored by harnessapp's TestMain) rather than via init() side effects.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L15-L33",
+          "version": "repo-lines-v1:sha256:85b09b0964829f1c7d3f3a67d60132382a93656da6baef15ff053ea074d6754d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2VjNGEzOGFlMGViNDQwODNkODNmYjkwZGZhNDc4M2NlZTBhYjRiMTliNDU3YTkyODhkNzhlYmMwZmViMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmZDM5YWI4ZGMzZDA1ZDI0MzNkNjI3YzJjNjI2MzZjMDVlYzQ1ZWVhMzFiOGNiZjYzOTUyMjM1MGVlMDhlZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyZjExODQ2YzE1Mjk1ZTA4Zjk4ZDQyZGUyNTZhMWJmYmE0NWZjMzQ2ZGE3NGZkNGU1NjY2YWEwZTljMjBmZGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/wire_test.go#L8-L15",
+          "version": "repo-lines-v1:sha256:7c1151314a4e3cba27772dc4162386419e7ac81a056b935ddae62c0f7e0194a0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTlmNjJlNWI2YjcwNjVlMTM0NmIxOGIzOTFkODA2YWY4ZjA2Y2Y3MGE5YTYxODAzYWQ5ZTk0ZjM1Y2Y5NTg2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/main.go#L11-L17",
+          "version": "repo-lines-v1:sha256:a306d7085443a32e3a14838c3ee32ead25c26f3311a2aa0540b814b2748ebd71:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzE1ZDY0Zjk3MWIyNGY3MDFkMzRjNzdmMTI1YWQ5M2Q3MGI3YjQwYTAyYzAyMzZiMDQ1MzkzZTI0YmY2YjVmZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGU5YTBiYzY0ZjlkNWJmZTAwNWI0NjFhMGE5ZjRjY2M0ZTI2ZmQ5NjRlMDM5NTk3NGVmNGVhMTc2YmUwM2ZjYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1471-L1471",
+          "version": "repo-lines-v1:sha256:36c6ceb90dd8a62fa5eacdffcf82dd3215979f00c004c4c60773393f4f0f7607:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzZjNmNlYjkwZGQ4YTYyZmE1ZWFjZGZmY2Y4MmRkMzIxNTk3OWYwMGMwMDRjNGM2MDc3MzM5M2Y0ZjBmNzYwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzZjNmNlYjkwZGQ4YTYyZmE1ZWFjZGZmY2Y4MmRkMzIxNTk3OWYwMGMwMDRjNGM2MDc3MzM5M2Y0ZjBmNzYwNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjAyYmQxZDhiODE2NGYyMWViNjJiNzk1Njk0MjUwNGY3MjJkZWQwMTAwZWY3ZDZhNTc3YWQ4NTAyYjEwYjJkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTVlZWE3ODcyZTgwNDJiZTBkNDU3ODBhZTMzZDZhNzQyNzlmZmU3NzNkM2MyNWY3MDFlYzQ3NWIwNDc0MzFhMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_5e6a0c2701364f21a9446f7a33cc24d3",
+      "statement": "Per-command flag/parse/render/dispatch lives in cmd/harness/*cli packages (issueopscli, mcpcli, daemoncli, policycli, installcli, workercli, gatescli, channelcli, loopcli, and others); the rootcmd.Command runner map in harnessapp owns only dispatch plus exit-code policy (policy/guard denial exits 3, gates usage error exits 2), and CLI packages must not re-own host policy or domain judgment.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L54-L64",
+          "version": "repo-lines-v1:sha256:53d95fdcc7237e6387956a8c77522ed22447e7f8211725f1513878820ae62e35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzMzg2OWI2MjIyMWQ3NjVlODMzOTc2MTRhNTZjM2JiZGM5YWE1YmZiNWNmOTQxY2M5YzM4NDk5NjE4MDVkZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRhNDc3NGZhNDRjMjUyMDk1M2U4NmRlYzY1MjhmMzRlYmIyNjM5Nzc2NWE5NTA4ZDc2ZmRhZTViOWFhNWNlMzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxYzVkNGE1MDFjZTdhMmZmNTg4NzI5MGFlMWRiZTdkNTNlNzJkZjkxNTU2YmY2ZDI3OTc4MWRhOTgwZjk2NmUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L35-L95",
+          "version": "repo-lines-v1:sha256:1bb3e8127719ddf3f7f61266e1a19c2cca23b51019d9c936aa716cf394f752cb:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4MGY0YWZkMjRlNTY2ZTAxOTZmMDRjYzU0YjVmODQzOTBmMTA0Y2E0NDZlNzgwNzhiYmJhOWVmMzM2ZGM1ODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_19152fa691dc4f15858548bd73cf5e25",
+      "statement": "internal/domain/cli owns the canonical top-level command catalog (Commands()) and the human usage text (Usage(version)); harnessapp only renders it, the issueops usage lines are composed solely from issueOpsUsageCatalog so a command cannot be hand-written in two places, and the contractgolden suite pins the rendered usage text against a golden file.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractgolden/contract_golden_test.go#L18-L28",
+          "version": "repo-lines-v1:sha256:2daa222c0973e9c20b162d1b05d40350b3700ad5f303dfd469d7c15b59969336:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxODE1Y2I0MTg5NWQ2NWFhOTJlYmI2NTBjYmE3ZTI4MjY5MmIwMTA3MWU0ZWQzNmNhNWE3NGRmOTY5YWEyZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjMyODk0YWRlZGNkMTRjNDNlMGRhYjQ1YmI1ZWU1NGI4ZGJiZDQ3NmNhNDI0Njc3YzdiMWI0MTg0ZmQxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjYzMTZmN2YxOTIzZDZlM2M1ZWQyOGQ5M2ZlNjc1MzA2OGY3ZjZmODkyMDUxMzM5OTUxOGFlNjAyMjE1MjcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/app.go#L18-L28",
+          "version": "repo-lines-v1:sha256:395c76fd583e1f3be2d073bb138e5d319b5c846b2628d8dde4cfb1389f56cf23:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzZjkxYzYzYTY1MzJlNzA2OWIyNmQyYmZiNGM0ZjI5MDU3M2QyZjBmYWI0YmM5M2FlYThmOTM2NzFjMmU5ZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3YTIzODI1NGZiMzdhYjJmN2E2YzcwYjJhY2IxM2FjNWE2Y2ZiNGNhNzE2YzE4NTc1ZDY5NDI5MTczNmE4ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg4MmI3ZGUwMDA0MTEzZTc3NTQxNjU4YTkwODIzYzY4YzZkNmNhZmU5MDYyMjNiMWFiMWQwY2NjMjAwMzM3OTYifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L11-L54",
+          "version": "repo-lines-v1:sha256:b9c40cc73c5e12b2ac01eea701eaf9f7ffc5f2b2805fbfcb1cf049ed721a2b42:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNTc1ODFmY2MwOWZlNTNkZmFjMWZmMDBkOWI1YWY2MGI1YmYzMjlmNzY4MTAwZmIwYmQwMDY3YThhMTY3YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NWRjODVmNjBlY2QwOWNmNzkyY2Y1ZGQzODRmZjljMjAyYmEzYzFlMDA2ZDI3MDhkZGI3YzVlOTA1YmQ4MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ZTI4YjQ3ODlmZTIxMzQ5MjIxNDljMjY1YTJkMWY5Yjk1MDMyMTAwOGRlOGYyZDM0YzU0M2Q0MTkyOGMyYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmUzMjc0ZjI5MzYyNjBiZmUzNjJkZjdhYWNmYTEwNjQyNTcyOWI1MDc2MzRhYWU4OTI5Zjc5MDllYzk2YTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e383a9dc04ae4d708780099b8c6aa12a",
+      "statement": "internal/domain/mcp owns the MCP tool vocabulary: both the advertised tools/list (AdvertisedTools) and the name-to-handler routing table (DispatchMap) derive from the single ordered catalogSections() slice, so adding a tool to one catalog function makes it advertised and routable; cmd/harness/mcpcli owns only the stdio/JSON-RPC transport and handler wiring.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L111-L115",
+          "version": "repo-lines-v1:sha256:098171b8083ff84537e559e86684486a6db7c5ed50a993fd45b0018bcfc7c75d:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjY0MDE2OGM1NGM3NjBjZTU3OGRkYWFjYzM0Y2UwMTljZGQ5ZTAwOGM0MDBiMzkyZDhmZTRhNzg3YWE0YzZkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNThiMjllY2JjMmNmOTg0NTY2MTEwZTdiOTY3MDQ0ZTJmYTBkOWQ4MjkwYjM4OWRmNDJhZjM5MmU5NjQxNDA2OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzE2OTY0Y2U1ZDkyMzhkZjg3MzI3ZWRlMzM0NmU0MjJhMmMzZjAzYThlODE1OTdmOTExNjg4ZmNmNTY5MDY0OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L40-L106",
+          "version": "repo-lines-v1:sha256:e86096e9019d4deecc15e74fc98d26c7efc14a8396e9cb4a73ef746e9b166bac:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmZGEzMDQzZmU0MmU0MTBiMTY3NzJlZmJlNDk2ZjUzYjBlNjFlYTFkNGY4NjhhN2E4MDQwYTNjYTkxZTY2ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiYTExMWMxNjIzMjc2OGEyYmZlOGNhNzhlNTQ1ZmQ5NTU1MjczMDM2NzljMzljYzhlMDhmMjlhNzU5M2M2NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5NWI0N2UyMTJmYmI4ZTUyMzg2NzA3NGE1NTZlNGE2YjUxYzJjYjUzNjVjMDE3YzFhMDBhM2E2Y2NhMGU0MTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_52d7b955e7844e9caae1f38c96d944fa",
+      "statement": "internal/adapter/mcp is restricted to a capture-only conformance probe that advertises one tool per episode and never registers or invokes production catalog handlers; schema semantics and gate decisions live in internal/contract/toolconformance and internal/domain/toolconformance, and fixture I/O plus replay live in internal/adapter/toolconformance.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L92-L95",
+          "version": "repo-lines-v1:sha256:a07a77a8a37cf0a92041f2d4de8b7958ea8e5fd2901d8e008daa8bc7afea08e4:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJhZDhjMzE1N2Y5Njg0NThjODQ2ZjVjMGM2ZWMyOGMwODA3ODA5ZGI0NWNkYWQ2OTFmZTljMjdiMjJhNzZjNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzM3YTJmMTg1ZDU3MjJlZjdjNjMzMzgwYmJlNTZhNDgxNTY3ZGFjNTU5ZGYxMGQwODczNDJmZjY2YjI1NGZlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGQ2Mzk0YjhmZWIzN2VjYmRjZDhlM2JjYjZkMGQxNjMzNjg3M2U4ZWY5ZWMzMzJhYzc4ZWFjNDE0NjY1M2M1NyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/mcp/conformance_probe.go#L1-L23",
+          "version": "repo-lines-v1:sha256:3b99055a1e298227c480b45416afa8d8b86af9b5501e85c1a14ed7df41d8a572:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiZTQ4ZjIxMGM1NjU3NjgwYjk4YjJkMjM1ZWI5Mzg4ZjkxNmVhZjhhZTFlOGU5YWRmYjE3NzExMjQ5YzZkNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZWQ2YzY2YzliM2Y2MGNlMDgxZGY5ZTQ2ZWVhYmU5N2M1MjA5YjYxOTM4Mjg1NjI4ZGVhZjVkMmRlNDJhM2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiNzY4YTgxMGJlMDA4MzBjM2E1YThiYWU0MjU4NmJmOGZmNjQyZWM2MzE0NjUxMGEyYzkyOTI1NzRmY2E2MjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_62dcf6dfd3f9419da176661e2023fced",
+      "statement": "cmd/harness/daemoncli owns the daemon lifecycle and the MCP stdio proxy, which fails explicitly on daemon restart with JSON-RPC error -32002 (daemon_generation_changed) instead of silently retrying; the worker plane is one-shot lifecycle jobs plus a policy-gated read-only executor, and there is no long-resident job daemon — the daemon backs only the MCP proxy.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L114-L114",
+          "version": "repo-lines-v1:sha256:1fcdbdacd593559779543c36036cfd506aa621c88fbcc490ecfa79c3fab549e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZjZGJkYWNkNTkzNTU5Nzc5NTQzYzM2MDM2Y2ZkNTA2YWE2MjFjODhmYmNjNDkwZWNmYTc5YzNmYWI1NDllNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZjZGJkYWNkNTkzNTU5Nzc5NTQzYzM2MDM2Y2ZkNTA2YWE2MjFjODhmYmNjNDkwZWNmYTc5YzNmYWI1NDllNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2JiYWIxODZmYmIyN2MwOWI3Yjk4M2EwYjYyZDZkM2VlMzdmZjNhZTEzNTY0YjMxOWJhYTc3YWQ1ZTkxM2QwOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNThiMjllY2JjMmNmOTg0NTY2MTEwZTdiOTY3MDQ0ZTJmYTBkOWQ4MjkwYjM4OWRmNDJhZjM5MmU5NjQxNDA2OSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/daemoncli/daemon_proxy.go#L20-L28",
+          "version": "repo-lines-v1:sha256:edf873c01d79579fdbdda3fa0e9ba4fc32b08d86d101483af6b2e5714c3abc45:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzllZGQ3MmJhNmI0MDA4M2NlOTUyNjlmYTU2ZmNmM2FjMWJkOTgyMjFhYTY2MjFhNjgzZjdkNTYzMmJiMjFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzQxMGNjOTBjMWIzMzI3YTY4MzE1Yjc4MmRhZDllNjY3ZDBjNzY3MDQyY2RlMzYyNDdiM2M4ODRkZWJlNzUyYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/worker/read_only.go#L13-L47",
+          "version": "repo-lines-v1:sha256:b4a9d393e80a281bd690258e224f17300b199ee401f5841f51fe153ea958a75c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxYzdlNzE1Y2I0MWRkMGJiNGUzMWZmYWIzZWJhYjFjZGVlOGNhNjkyZjVhNTkzZDczN2QxNzkxNTY3ZmEzOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkZWE2M2Y2Yjg2ZmJkNWVmMTJlOTNlYjgyZGE1OTVhYzZkZTNhOGJmZTdiZTcyZmQ4YjZiMDgzNzRmNzQ5ZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2OTY4MTYzMTNjODM2NmNmNGQ5MWE5OWRmMGM5M2M3YjRmZWMyNmQyYjllNmU1ZWI4OGQ5NmI5ZDY4NzJhMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlOTRiNjFmMWFkMGM4NGFlZDViNzgxMjQwOTJlNzY4MjIxMzU0Zjg2ODdjODg5ZTk1YzI0NzE2OWQ2MjBlMGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_588e48bd7dbf4a988c6190a8818c56f8",
+      "statement": "The command/tool surface is mechanically pinned: cmd/harness/contractgolden goldens the CLI usage text and MCP tool/resource catalogs under cmd/harness/testdata, and the harnessapp response-contract suite runs the full CLI+MCP surface under a temporary state dir and goldens the combined snapshot, so CLI/MCP response contracts cannot drift silently.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L199-L201",
+          "version": "repo-lines-v1:sha256:637be71220c3000b5142603b85c31893dc68d09d257f4dc39ddb6216c39e456f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjhhZjEyZmNiYTVjNWFiNTAyNzU0MDRmNTZiNTUwOTBlNDAyZTc1YWU1ZGYyOGJmOTFkY2U4MzhmYjliMDZiNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTEyYzE4MWExY2ZjN2M5Y2ViMzZjNjcxZDZiOTA0YjA4MGExNWZiZDY2ODFjZmY4NjBhYjIwNzllMjJhODFmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTFhNWM1Y2RlZTUzY2EwYjE1ZjIzMjQ3MWY5OTQxMTY3NmEwNTgyZWVlN2JmOTVlNmY3OGZiZDE4MjhjYWZmNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTY1MGQ1OWQ0ZGI1NTJhYTBmYzM5ZjQwNzY1Nzk2ODE0ZDI3MjI4N2M1MGFiZTQ0MjJmYzkzYjA1MWU5YjFmNyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L19-L71",
+          "version": "repo-lines-v1:sha256:a1f96dd4316e579d1596ec8cef0dd6c132b4293977eee9e5fa429a1143c4fe0a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmNmU5MWMxY2M0N2E4NWMwNDllMWVmZWQzZDE5MDBiNTU2YmM2MjE3ZDRiODg2MzM5OTdkMTFiMjVkMzk1ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjMyODk0YWRlZGNkMTRjNDNlMGRhYjQ1YmI1ZWU1NGI4ZGJiZDQ3NmNhNDI0Njc3YzdiMWI0MTg0ZmQxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0M2Y1ZDZmYzAyZmQ0MDVmNzY1ZGFiZDM5ODYxMGVhMzJiNDgwMjE1N2Y0MjAwMmZiMTUxYWU3NTE0NDQxNzgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/testdata/mcp_tools.golden.json",
+          "version": "repo-file-v1:sha256:334aba33a6a804898b859622f7c5941529b28a3cc7ed4b71302b34ab10d1afc7"
+        }
+      ]
+    },
+    {
+      "id": "claim_ac743cf29e9a4cfeac5450ddabc9e83b",
+      "statement": "The layer contract is: internal/contract holds versioned DTOs and error vocabulary (no judgment logic or I/O); internal/domain holds pure rules/reducers/classifiers (no adapter/cmd imports, no filesystem/process/DB I/O, clock injected with internal/domain/auditid as the recorded exception); internal/application composes contract/domain/port and never imports concrete adapters or cmd; internal/port imports only contract; adapter/inbound maps requests to application calls and must not import outbound adapters; adapter/outbound implements state/SQL/webfetch I/O without duplicating transport policy or domain judgment.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L59-L89",
+          "version": "repo-lines-v1:sha256:c6f36b90f70321c4e11541a1fda45e86e2f7d9882e7c3b84d7a95fad9d77723b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZmZhOTQ3ZTM1M2E2MzBiYjc1YzcyMzMwODE2MjNiNGViYjc1ODJmY2I0YzMxZDk3OWU3MWUyNWQzZTI3ZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NmZiYjJiMTZiMDVkNmJjNTA1MGU4OTMzMTc2Njg3MGY5NGZjNzQyYWJiYzgwYWY2MDkwM2E5MzgyYTJkZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIwNjI4ZTRiZDY0MDgyMWUzZjJhZjk2MTIzNjRmZTEyMzlmNjA3NWY0YmJmZjQ1YmM2ZGYxOWJjNDZhYjc3NTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlNGRkNGYxMTViODRlNjVlYWZiNWRmNDNiMjQ1YzVhMmFhYWJmYTBjZWUzMTk1NTdhZDkwYmZjNTA3NDgyNTQifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L46-L63",
+          "version": "repo-lines-v1:sha256:3f67d96c7cd510b862d6426495c422fc01400be7809533418d2f0632b06c8e96:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjODhlNWNiOTk1YWJjNmZjMzkyY2QwZTZmZTg3YjlkY2E2YjhmNDFmYjg5NmJkNTcxNGNjNzE1ZDlhYTI3ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0YTcxNjg2ZTFmYTZhZWYyOTI2NzNhOTM3M2RiNzRhNDMzYWQxZGJkZWE5ZTk1MmM4ZjY2MGZiMzQ0NjE5ODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1bc2bc7c3a584c169977e431e03796f9",
+      "statement": "Contracts pin durable bytes without implementation knowledge: internal/contract/issueopslease/stable_v1.go re-declares the persisted v1 record shape with no implementation types so canonicalization cannot drift; the ownership rules fail any contract-to-implementation edge, and per-vertical rules additionally forbid the lease contract from importing production IssueOps code.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1107-L1112",
+          "version": "repo-lines-v1:sha256:f7c956eb59e913e8a9b452f1f8892f1afddfd1a6611e92f978506e68ddf07902:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzcxMzg4NWVkOWFlNDExNjEzNjg2ODRiNjYzNDYxM2QwZDI5OGRmMGEyNGU2YzlkMTk2YTA2ZjBhOGQ1ODM0MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzEwNmFjYmE0NTNhMjM2NWNkOGVlZjk3ZDU5MWYxNWFkMDMwZGVmOTIzMzNiYmNjNWIwMzVjNzFmZTQ4ZjZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTBkZGMwNmI4NDNhNjU3NzVkNDlkZTI5Y2IzNGYzNjVkMTc2NGYwNzE4MDliZGFhZjVlNTFiYzFiOTEzNGJiMCJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L56-L70",
+          "version": "repo-lines-v1:sha256:bc983bbb007d3ed36103319643f2f181555b2ac96ed19d189b35e94613bb29de:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3Y2Y2ZjhkZTFiYWJjNmZhOTEwOWNhZGM4Y2E2NGUxNTYyNGJiYzNlODJhZjc4ZTZkMmYyMWVlOTcyNDc4MjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmNThkZjE1YWE3Y2UwY2E0NDc4YjFhZWZmYjkxNDY2Nzk1ZjM0MzVmZTMzMzVhNmIxMGFjMDA2OTI0YjljMWMifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueopslease/stable_v1.go#L1-L5",
+          "version": "repo-lines-v1:sha256:21a2b9775ff13162479c2663d3cd71fc6c4e0bafff770774563751ca723c2732:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjcwODgzNmQwYmFhZmU4YzEyM2VjMDFmYWZhODM4Y2U2ZWYwNjcyZWNkMjU3YWUwNzM0ZWFkM2RkYmEzOTFlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA5Mzg1ZDcxNTZlZmViZDU2N2M5ODA1MzM2YmIzYzU2NmQ4Zjk0Y2M1NzQwZWFhMTlhOWU1MjYzZWNiZTgzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODAwYjUxMjg2OGY2M2U3ZGNiZmZkZjZmMTc4YmE2Y2NiNWFjOTk0MTg0ODNkNWRkODQwYWE1NmJjNGU5M2NlNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b87030e528f44905a0982c93fec1cca7",
+      "statement": "Domain packages carry no I/O: the ratchet bans domain imports of application, adapter, cmd, contract, os, os/exec, net, net/http, database/sql, syscall, and anything sqlite; clocks are injected by default with internal/domain/auditid's timestamped audit IDs as the documented exception, and internal/domain/pioneerskill pins the 12 canonical pioneer skill names.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L65-L65",
+          "version": "repo-lines-v1:sha256:25d98df084effd8015b80c00c2308e7e05dd2b9f8c12efce6844f97a562b655c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjVkOThkZjA4NGVmZmQ4MDE1YjgwYzAwYzIzMDhlN2UwNWRkMmI5ZjhjMTJlZmNlNjg0NGY5N2E1NjJiNjU1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjVkOThkZjA4NGVmZmQ4MDE1YjgwYzAwYzIzMDhlN2UwNWRkMmI5ZjhjMTJlZmNlNjg0NGY5N2E1NjJiNjU1YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTVkNzE2ZDAxMGViNGFlNmRjZGQxYWRmYjAyZjU4MWY0MzJkMDgzMjg1ZjBlMjJkZDFiYTEzYTg0OWQ1NmRkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY0ZWJjOTRlMzQwYTdkNGNkODEzYmQyYWYzZjY0NGFmYzZhN2NiNDQxZWVlODgyZDFkNmFkMjliNGY5NjNhOSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/auditid/audit_id.go#L13-L21",
+          "version": "repo-lines-v1:sha256:5e5d016b1701ba7a04eaefbb71bfe4eee440786b0951f7af8baac111db5cff5e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjc1MzE2MGNlOWMyYTIyODA5NGQ4ODFjMDU2MTY0Y2U4ZDJkZTc3N2ZiODJiOTIxMThkZTljMTNiNGRiYzI0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzlkMzNiMmUzMWQ2ZDNjYTExYTZjZDk4ZGVlYTlmM2ZiYTQ1MmNlYjA5MjlmYzg4N2YwOGI0NmNiZDkxMzI0ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/pioneerskill/catalog.go#L3-L20",
+          "version": "repo-lines-v1:sha256:739cdf4dfb589945a041b5ccf698697d2e5cb13a74d653e4ed1d1c1f9ab5f45d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiY2YyMzM2MTFiM2I4OTQwMDY4OWI3YmM1YWU0MjI4ZmVlMGQ4MDc0OWVhMWEwM2M0NTg2NTlhODc3MjUyNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwYzNkZTE4ZmUwOTMxODkwNjEwN2M0NGI1MTRmZGQzNGRlMWNlNjNhOTcxMmM2MWQzNDcxMjBiYTFhNDcyOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMjJjNjVmMzcyYjEyMGQyYzExZmIyZGZhOWI5N2MzNzVmODMxYTQzNTEyM2NiZGZiYjdkYjljYzgyNTU0YmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b0db390392f94da0aa1b8a76c90c9ec5",
+      "statement": "Application use cases may not import concrete adapters, cmd, or transport stdlib — application_must_not_import_implementation fires even on path/filepath — and the ownership lens additionally rejects application-to-adapter/cmd edges, so use cases declare their needs as narrow local port interfaces instead.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1050-L1115",
+          "version": "repo-lines-v1:sha256:e65174868c202b3259b23f9e6d6656e0bd49008d141ab5bb5e7db3f6c4960cb7:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhMzU4NTYyOWYyNWZmNDkwOGQwM2Q0ZjhlOTc3ZTMwMDdiM2RlYmYzMTIxZGFiMDMyYTQyODA3YmJkZDRkMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2YzRlMGMxZDM1MDBiMmMyNjAzYzZiMzUyZTA1MDU3MmMzYTJhYjRlZmQ5NzQ5OWVmZGY3YTcxZjEzNjI2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkMWRlMTcyZmJkOTc2ZGNiZDI2NGRmNWEwZmQxN2RjOGQ1ZmI4ZDMzMDVkOGFlYTJmN2JjNzRlOTJmODZiYWMifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1473-L1483",
+          "version": "repo-lines-v1:sha256:beaaa6a1c71312d0f759add0d5e1660918860cd587d6cab2a5ce6a569e22a084:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwNTEzZTAwZjE3MDdjMWVlOTQ4NWQzOTcyYWYyMzIxYjFkZWFhZmMzZDA2YjA0NzMxYzJlZDRmYmE0NTJmNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhNWQ0YzgzMjBkODVkYzA0MzU3MWI0YzYxZGEzYjJhODMzZjdkY2I5N2RjY2RmNzVhMzhjN2NmYTU5NzMzYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjZTVkYzQxNTA3M2EyMmRhOGY1MWUyNjk2ZGUzMWI5YTMwZTEwYmNmZWUwNmUyZGNkNzJlYzA5ZjQyZWU4OTgifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L8-L54",
+          "version": "repo-lines-v1:sha256:bd7427071095cbe1d42a0c61d47e4992d66f63516e5e243bebd145917ac2ae10:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkM2QwNjYyMDkxNTJkZDRjNWI2NjE1NmVmOTNmNjM0NjUzNTQ3MzZjODk4OGQwNTdkODgyNDQ0ODU5Mjk3YjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3N2M1NDdkM2U1YjUwMTQyN2ZhMTE2ODA5N2ZjOWZjMDU4MjQ3M2MzMzI1ZTc1MjRkYTVjY2E3ZTc1MzA3ZGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bdd20abe54c7412cac42dad4244db5bb",
+      "statement": "internal/port speaks contract vocabulary only (port->contract and port->port allowed; port_must_not_import_internal blocks domain/application/adapter/cmd) and holds deliberately narrow surfaces: TransactionalRecordStore/RecordCASStore span+CAS operations, IssueProvider request/result DTOs, port.HostInstaller, IssueOps owner-model defaults, and issueopsbasesync restricted by test to the types Request, Receipt, and Inspector plus a single context import.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/issueops_base_sync_boundary_test.go#L14-L56",
+          "version": "repo-lines-v1:sha256:7d39cdf76dd8236f01196bc86b25474e629afc2d7ce972eb557038339f29a743:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0Yjg3ZjRkN2VhYjY1OWE4MmFjYWYxM2Q5ODcwNGYzYjEwZjI4ZTRhYTI2ZjRjOWNhNTVjZjA5ZjA1ZDVhYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/port/install.go#L96-L100",
+          "version": "repo-lines-v1:sha256:15708791a5d767d63345226ac2cb26925d1d57dc12a7f2c92f5a009a03fb70a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWEyMzNlOTk5NmM3NjY0ZTdlYzAyZWE0Yjg2YTc3N2UxZmQ3OTczYTllMGJlZmY4MDg3NDE2Njk0YjYzMzM0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGE2NTVjOWY5NTAzNDMxNWUyNmQ3YzUxNTRjN2IwYTNmMTE0Y2UzYmNmZGMwM2NjY2U2OWNhNjZkMGNiZDc4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/port/orca.go#L11-L57",
+          "version": "repo-lines-v1:sha256:bbb34c884573e7b60638d899713c8f2d5b43629c6eca328d274d5dd2f7716355:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxM2YyNDA5ODljYWZiMzFhOWZhYjU5YjBmODExZWFmMWZiMWZkZDY0MTZkZTg1OWI1NmJkMzU1NGQyZWE2MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2Y2VhNWJiMGI3M2M3ZWE1ZDQ1ZGRjNjdjMzQ3ODEwMDgzNWNlNTk3ODM4YmQ5ZDUyYzk3YTc1YTUxNjA1ZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1NzFiNjhjNWIzNTJmZTVlYjJiZTJlNmI5ZWJjMzRhODNiZmU1ODZiZTEyMmNiMGEyZTdiNWNhZTkyNjM2N2IifQ"
+        },
+        {
+          "resource": "repo://internal/port/provider.go#L43-L63",
+          "version": "repo-lines-v1:sha256:b77a6996c02b2100ae5d4b43ac835d9d9c73c9907f77252834b649794fc21ef1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNTczN2VjMDMyODRjYThjMmMxYjk5YTVmZmU2MGUwMWE2YjliYzA2ZWFkZWU2OWFmNTk1ZjIxZjRjYjI0NDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4NGIyZmE4YzYzNmE1MTFjNmZjOWQ0Nzg3ZTQ2ODFhMTIyZmYyNTdmOTM4YjNjOWI5YTc2ZWRjYTNlNWM2ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiOWEyOTU5Y2Y0MjBlNDJkMWEzN2QwNGRkYjVjMDkxZTAxNjczMmViYTQzNzE1NGIwNGFiMTc4YzA2MTYwMTkifQ"
+        },
+        {
+          "resource": "repo://internal/port/transactional_record_store.go#L5-L23",
+          "version": "repo-lines-v1:sha256:576be264d27507073b8f47f7145e840aad0a616fd0bb92618c0471e00930c51c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlYjA5YTIxNWVkMzA4M2ZiNmFjNmJlOThlNTQ0ODZmMmU2ZjA1Nzk3N2UyMDg2MzFhNzViYmY5YmI2N2VkYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkMDAzYjVkNjRkZWM5ZTliYjdjYjA0OWNjNjdjYzk2NDdhZjI1NjJiZDkyNjk1N2IzOWUwNmQ0MDdkZTgzNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzgyZWJlZmZkNDNlZWEzZGUzODVhZDRkMjk2MjM5ZjEyY2Y3NGRlMWM2YzE0NzYxN2VlOGY5Yzk2NzdkMmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f7865519b1d4e458308b6609fd5a271",
+      "statement": "The only non-composition-root concrete-adapter edges are the shared storage primitives: internal/adapter/outbound/sqlstore may be imported by any outbound/* adapter and by internal/adapter/issueops, and outbound/issueopsrecord (the shared IssueOps record codec/lock primitive) only by outbound/issueops* adapters; cmd, inbound, and domain reaching the engine directly fail, duplicate per-vertical record codecs are rejected, and the ratchet's isSameCapabilityAdapter treats same-capability subpackage edges as implementation cleanup rather than coupling.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1444-L1461",
+          "version": "repo-lines-v1:sha256:e36c6b6532d6ea35f2e8b7f3eb3004f5dac4aedb1c61a8b4953ceddce0ea5cc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZDJkZjgwMzRlYjYxYWQ1NTMzYjZmOGY4ZjhkMjYzYThjMDQyZjdlYTk3ODdhMjJkNjcyOGYzNzE0MmM3NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3ZGY1ZGYwM2YzNDczMjEzMmI5YmE5OWNkODk3YTQ4Y2I3MWM0MzJmMGNiNWI4NGM1ZDcwYWNkZjMxNTg3YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM4MjQzN2Y1YzQxYzZlZTVjNDFmMDY0MTczZjUwYjAyNTBhNTU0MjgwNmUxNDVmMWIwYWRmYWQzZGRlOGU5MzYifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/issueops_record_store_test.go#L11-L51",
+          "version": "repo-lines-v1:sha256:c829a73550eb3052d1f8012a29165998bf267888277ab199cc75064e017e6d42:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNTlhNWUwZmM0MjNjZDlkZDg4NWRiM2Y1NmU0MDdlZWM4ZjE5NzczOGYwMmQwMTQ5NWE5ZGYxZWFjMTc5MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/ownership_manifest_test.go#L87-L105",
+          "version": "repo-lines-v1:sha256:2581d46fdb4a17c092cd5af4dfda7707afcae68c31b28699e61c6322c20d61b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MTQ1MGUyZThiMWQ3ZWU2MmViMWUxODk5YjQ1ODdjYmY5Y2UzNzc2MzE1YTE1Y2ZiMWRlZWQ2NTMyNjA2ZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5YjI5NDkzZmQ0MzY1M2RiMTZiYTU1ZjQwMjY5MzVjNTA1MjYzNjM3ZmRhOGQyMDVmNDhiNTIxZWY5Mzg5ODMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_00b663928e404d97880675845947d8ff",
+      "statement": "internal/adapter/outbound/sqlstore is the shared SQLite engine for all harness state: each store root owns harness.db (records as bucket/id/data-JSON rows) and harness.lock.db (cross-process locks held as BEGIN IMMEDIATE transactions for the duration of a read-modify-write span, so locks die with the holder process); handles are cached per absolute directory, nested spans are rejected, and it satisfies both port.TransactionalRecordStore and the port/state store interfaces.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L44-L57",
+          "version": "repo-lines-v1:sha256:cad0492489e2999c9458c75819bff5c0c61a6293be0a62e9c7c13bb7a285f282:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmM2JlODNiMGRhNzY4MzAwZDFlNzBlMDQzN2I2MDlhNzFmNzZkODg5MDVkZGJjNmFjMThkNzE3YzU3NTFlYWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiMzMzMjcxYmIwNzA0OGRjNzllZTE3NTBjNjRlMGQwMGIyOWIxOGZkZWQ3N2U5MjJmZjk1NmVhZTYzNWFmN2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkNmNlODFlZDlhMmVkOGNhOTMxZjhhOTQ3ODU2NWUzMjIxMjAzZTBmMTljMzJhZDBiMzg2NmFhODAwYjM1ZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiNmJkODA2ODg4ZjJiNDU1MmVlZGFhNTQwM2YzMGI0OGQ0NzUwZTk5YjM3NDBiOGU3MDc0NmRiNjUzMmI5YzUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L1-L48",
+          "version": "repo-lines-v1:sha256:d70b60b871005f7b2e0f83d73fc43e646c188395278552fd50b506c809fc0d41:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxNThhY2ZlMDBmZTNlM2JkYTk0OGQ4MDhkZjAxYmMwNWQ1ODE1NDU2OWM1MzgwNDlkOTQzNGUyZjg2NzNiOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4NDNiYzFmNmY5ODFhYjM2YmM0MjVlODBlYjhhMzY3ZGE3NzMyNmZjOTBhMjc2NDhiY2Q4YmU1MWRhZWFlNDYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/sqlstore/sqlstore.go#L100-L113",
+          "version": "repo-lines-v1:sha256:4b3953bd16fd8ba8465973442bbcfcd5fb0eb5963814d6b30db9c9313a29fa80:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4MGEwOWRiNmNmZmRjMmQ5MmYxOWRmNGI0YThhMWUwY2I5YTVhZjg5N2I3ZjdhNDkyY2I3Y2IwMmNjYzFkMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3MTIyYTBhMGRlMzQwZDRmZGE5NTk1YjdlMzExMWFlMDQzN2Y4YzUyNmEyZDYwNDNjMzg0MTU3NzRiNWM1NmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI5OWI4ODYxYjYzMDk4MmZmN2NhYjI4NGE0Y2YwMDM0NjRmMmNhOTI1YzEwZDVjMzIzZWZjZjRkOWZmOGY4ZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlNzlhZmEwNjNhNGYzN2IwMzczNDc3NzU2YmM5YjMyM2RiZDFiOGQ0YTc3MGUxMzQ2MTFkYjI4NjFlY2QyYTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1102ac6f270945da9de622026257af9f",
+      "statement": "Host installation follows the port/adapter shape: install.InstallNative is the host-neutral engine that normalizes inputs and skill lists and delegates to port.HostInstaller implementations; harnessapp passes exactly the three first-party installers (codex, claude, omo), and each installer (e.g. the Codex adapter) writes only its own user-level skill symlinks, MCP registration, and SessionStart hook config plus configs/ templates.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/install_wiring.go#L18-L35",
+          "version": "repo-lines-v1:sha256:2a8f13dfdb99d06561cf6f898705ff999cd4bafff36bffe1924511b0d03c6b5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkYzMyNjE5ZDJmNDFkZGI2NjA5YjE3OGE3Mzk0OWYwMGFkY2MwODE5YmFjZmYzZWI3MDZiZjU5ODZjNmY5ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkNjQ5Y2ZmOTQ2NzA1YzJjNGU1ZDUyMmFiZDFlNTBmNjY1ZGRiYzZjMDU2Mjk4ZWYyMDJhODlkMmMxNzBiNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkMDQwZGUzODYzYjdmNzk3NTQ1ZTdmZDcwN2Q3ODZiMjIyOTJiZTUwOGFiMjMxZTYyYzQ1ZWQ1ZWJmYjk4YmQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/codex/install.go#L15-L39",
+          "version": "repo-lines-v1:sha256:652a138ad8a727b36395803290d61fb73ea491e25326679e02c1b322f1927d28:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZWUxMTQ1M2FiZGRhYTljMzRiYjM3NmJiYWM0NzdmNTUyMDQzYmVmNzk2NzY2OWVhNTdmODJmNmVmNTQyZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNWU5OGUyNzhhZTUwN2IyYTVkNGM1YWFlMTk4NDMzNDAzOTg2MTVmY2Q2ZTUxMTFkOGE2Yzc3Y2IyYjI5OWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ODg5ZWRkNWU1MmU4NDczMGIyYWY1NDE0ZjUzOTljNGIzMjNlMWFmOWQ2ZjE5MDdmMGY1Mzg3ZmRiMDJiN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/install/install.go#L44-L113",
+          "version": "repo-lines-v1:sha256:543cd0f8494ea69c1fc2d8086fc674790327c45fbea9a8e9d23585b59a94ecb8:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3ODNlMDE4OTgyODNiOTk5Y2MxZTJmYmQ3Nzg0NTI2ZTUzN2QxYWJlNDcxYzVjMzcxNWQ4YmNiMWI0OWM2MjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/port/install.go#L96-L100",
+          "version": "repo-lines-v1:sha256:15708791a5d767d63345226ac2cb26925d1d57dc12a7f2c92f5a009a03fb70a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWEyMzNlOTk5NmM3NjY0ZTdlYzAyZWE0Yjg2YTc3N2UxZmQ3OTczYTllMGJlZmY4MDg3NDE2Njk0YjYzMzM0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGE2NTVjOWY5NTAzNDMxNWUyNmQ3YzUxNTRjN2IwYTNmMTE0Y2UzYmNmZGMwM2NjY2U2OWNhNjZkMGNiZDc4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_997495255d7f43f39e349d10ebddd479",
+      "statement": "Adding a host means implementing port.HostInstaller and adding composition-root wiring only — host domain/application policy must not be duplicated, and the install contract matrix test detects surface drift across hosts.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L43-L46",
+          "version": "repo-lines-v1:sha256:9c65f38541c84ad74d37c50ebb064646fd9b7991af1763a24435175eb452357e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjI3MTM1MDZjYjBkODc3ODAwMGE3MmRmNzhkNDBmYzY1NzA2Njg1ZmQyODA3YmFiNjI3ZjU5N2UyOWE1NzRiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGI2MzYxNGI1ZmY5NzU4NWMxMWUxZDRhMTMyOTBhY2NiZjM5ODM4MzI4MTg4MmE2MTllYjkzZDgxYTBjODM2NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDcwMTQ1NjFlZTI2Y2YyYmU2YmJkZTUzNDcwMDIyMDNlMjY0YjI5YmQxZmExOTNlYjA2ZmZlNWUwZGFkZjNhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODk5NDc1ODJhNWU4Mzg1Y2RiMzA4MmM3MzUwODMzNzI1MjBlZjRhYTAzYTNjMTFlM2FmYjZkMzkwYmViZWNhOCJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L57-L57",
+          "version": "repo-lines-v1:sha256:bedbdc72152b422ff6b54db5fe04196d412e8866680ff0d611c5bcfa21163ad4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmVkYmRjNzIxNTJiNDIyZmY2YjU0ZGI1ZmUwNDE5NmQ0MTJlODg2NjY4MGZmMGQ2MTFjNWJjZmEyMTE2M2FkNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmVkYmRjNzIxNTJiNDIyZmY2YjU0ZGI1ZmUwNDE5NmQ0MTJlODg2NjY4MGZmMGQ2MTFjNWJjZmEyMTE2M2FkNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTUwZGM0Y2E2MDIyNDFjMThiZDc4OGE4N2MwZGE3ZGMwODFjMzdhMjViOTMxYTUxYWU5NGMyZGQ0NWQ2MzgyYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEwZWNiNTNhOGIzNGM3ZTM4YmZhNmU0MzI2MzVkNTY3Zjk5MTYyNTE0NThiY2U0Yjg4NTBhYjNiNDdmNWIyMSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/install_contract_matrix_test.go",
+          "version": "repo-file-v1:sha256:0b5f36b0fdacd97245ee0f283929790b70853e1bf597149d586525f344eef9cb"
+        }
+      ]
+    },
+    {
+      "id": "claim_36590a20bbdc42d29a58ff2d9d26f5e7",
+      "statement": "Because cross-capability adapter imports are banned at zero tolerance, consumer packages declare needs as package-level function variables in dedicated adapter_dependencies.go files (issueops's GitCmd/GitCmdRaw/GitOut, gatesgate's DiscoverGateFiles/CheckGateLedger) and harnessapp wiring functions assign implementations; there are no default implementations — an un-injected dependency must surface as a structured fail-closed error — and tests inject the same concrete implementations that production wires.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/conventions/go-and-packages.md#L99-L104",
+          "version": "repo-lines-v1:sha256:adc69ab778e50b65e80a3cb7704966da8961495f13ff5e36621a2e87daf05176:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTY5YWFlZjk4NzQxOTA3NDc5MWEwMjAxNGEzYTM0YmIyOTUwNjVkOTM1NTE0OWY2MGVmYjQ1YjFlMWM0YWIxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI2YTc0NzVlOGYxZDQzOTM3NGI5MjIxNGM5OTZkZGM3OTFiOWFjYzU5ZjMzOGQ2ZDVhZGY1OWJmYjg0ODc2NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTVhN2I1MzAyYjNkOGU5NjE5NDFiYTlhZDY0YWQxODQxNzhkOTM5NzEwYzdlYWY1MDAzMzJhZDNiN2ZkNjZlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDAxZjJlYzE3NTkzYzEwNTRlYjQ2MzY3ZDg0NTNlZjI0YTE3M2NlOTZiNzExN2Q5MWY5YTY4ZDQ0ZmVmOGIwMSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/policy_preflight_wiring.go#L22-L51",
+          "version": "repo-lines-v1:sha256:ee1313e6a1eee09cf83a1d324b088aa40559a1af542d75b741c87d11e552a5fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZWUwMzRmMjE4NDFmNGM0MDRhZDk2ZmM0ZjI2Y2Q1YjI5MWQwNzY1Y2E5NmI1ODRjNTJmMzZiNWM0MDAyYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYzODMwYjlkNDgzNTdhNDBlZjc5ZTlhNDFmZWY3ZDcyNWNmYWFmZWRiZTYzNzIzYjhmOWM5MWE3YjcwZGU1ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/adapter_dependencies.go#L1-L9",
+          "version": "repo-lines-v1:sha256:dd0f24aa35f43b7613c13b49bfa9a2e07ff536edda8f05ed9d0d81d89391ae03:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyNmRjMDJmY2UzMzgyOTk5MDk2ZGM5YWUzNzU3ODcyNmU3ZmE1ZTdiNWUzNTNhMjExY2NkODNiYjllYjRkMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L1-L40",
+          "version": "repo-lines-v1:sha256:2dca7d596df0a3a5a28a9ee86a3aa634036fd37bfd1ca9ddc3a7613dfd001478:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmMDdkOTVmMGFjODdmZTBjNWI5ZTk2MmMyZDkxOWQ5NGVmZDhhODM4MzE5ZjBkYjFlOWIzZmNjNzE0NjEzOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3MTIxMTZlMzc2ZDAxZjNhZWYxNzY2N2Q3M2JiNjMyOGJhZWMzNGQ4ZDk0NDdmMTE3MjE3Yjg3ZWZiZjkyOTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_56b3f8ee505544b4ad28034779e1d4d3",
+      "statement": "internal/architecture is a test-only fitness boundary: it loads direct production import edges via go list -json ./..., enforces the unconditional layer rules and the zero legacy-adapter baseline over the whole graph, and additionally guards against orphaned packages (TestProductionPackagesHaveImporters, motivated by a wiring deletion that silently disabled a PR-target guard), stale canonical documentation paths, and coding-convention drift such as errors.As instead of errors.AsType.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L1275-L1303",
+          "version": "repo-lines-v1:sha256:ee80fa39e6a086952d7cbc20bc819685bc0fd1cba277cfd3115b630b0f9f1b4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMWYzMTNhZWZmM2IzZGRhOGJmOWZjOTViN2M3OTMzYTM2MmViYWNlNGI1MDhkOTU5N2UwOGU4Y2U5NDYxODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNjU5NzA4NjNkNTgxM2JmOTcwYjAyZTM0YjU1YTIxMDIyZmY5MWZiYjM3NjAwYmM5ZjZhNzY2NzkwZWVkMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQwMTA0MjhhMGRiYTVjNjFlNjYxMDRiYjAyOTMxZWQ1NzEzY2E1YzBmNWQ3NjAxMDdlY2E4NTA3ODZiZGE3NWIifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/dependency_test.go#L225-L242",
+          "version": "repo-lines-v1:sha256:4ebf364e3d529abcd93bd0a3ad8fe25c8de74b46846697f558269325339e644e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTAyNTcxMTFiMDEyYTM3ZjliZDkxOTY2YWMxYTU1ZGNkZjk1NjVkM2NhYzJhM2EwYTQ1YTFlY2JjNTM5YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlYTI4NjdjMmI0MTA3MTMyNTJkNmEzZmYwMWE4Mzk2OTA2NzFhOGU0MDFlMGVkY2ViYjc1NTM4ZjI5YmI4NWEifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/documentation_test.go#L10-L71",
+          "version": "repo-lines-v1:sha256:d0e8f389b67f11526b51c0ce18c0620b34f9ec195550f52699cd658d5b5978fd:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMjFiMDA2ZWNkYjZlNGJiOWFmNTM3NDQ5NzhjOTY0MmVlN2JiMWIxY2NjN2FmOWVkYTJlY2IxOTBiMzI4MTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5MjJkMDdjYTBmMzc4YzE3YmJmZGRjOGE1MmI2YmVmNWVjZDViNGRmNWMyMzA0MjNiYmNiMThlZjY5ZDQ0ZTgifQ"
+        },
+        {
+          "resource": "repo://internal/architecture/errors_astype_test.go#L15-L23",
+          "version": "repo-lines-v1:sha256:05c929c2e7df3bfb84139c014a3c4b1463cc9a6934f653a826bd09a50b98da9c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2U3MDk5ZDljYTVkMjgwMDBlMzEwZmE4Mjc0YWU1MjE0ZDZmMDNlNGViODQ1MjYyNmEyMDA2YjUwYjY5ZWUyYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFhODc4NWU2Yjk1YWY1YjcxYjYwNzM5NzYwNWI3YTAyYzczNTJlNDAwMjRmNjIyNmIyMzc4OTcyMzNlY2VlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2QwNDIxOWM3NzA1OGE0NTFhMTYwNTE2ODVkMDQ2MTk0NDA0OGI5YjY1M2NjZmMzNDNkOGRlOTEyYjFjMmI1NSJ9"
+        },
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go#L19-L70",
+          "version": "repo-lines-v1:sha256:e6c5ab43f7a8251ee4e190cd7359474fc54b23ee172a30e5966f1fcb8304b77f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MzFiYWFhNzI3NWVkOTQ5NzkxNmNlMzY0NjNjMzM4ODlmNWZmYWZhODA1YzU0NTU5M2I5NjA3MTNjY2RlNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNmMWEwNzU1MmU2Nzk0YTE2NzI0YWE5YmUzOTRmNmY2OGU0MGJmZmM2ODVhMTEyMzYxODdhMmNiZGQzM2ViZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxNDM1NWMxNDEyZDM5Nzc5OWUzYjg2N2IxODZjMTFhNzk3MDQ3MGFkMzU0Yjg0ZTMzZDJkYThjYzRlNDgzNzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d35e1061854b4bf9b5c808568997db0a",
+      "statement": "A capability vertical packages one capability across five layers — contract/<cap> for persisted/request shapes, domain/<cap> for pure decisions and deny codes, application/<cap> for orchestration over narrow ports.go interfaces, adapter/inbound/<cap> for transport mapping, adapter/outbound/<cap> for persistence and side effects — with cmd/harness/harnessapp as the only place they are wired; fitness tests require all five layers for migrated capabilities and forbid them from importing the legacy internal/adapter/issueops root, and the issueopslease execution claim is the worked example: harnessapp opens sqlstore, builds the outbound preflight/repository/clock/process-inspector, composes ClaimService, and hands it to the inbound handler, whose errors map back through domain deny codes rather than string matching.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L29-L38",
+          "version": "repo-lines-v1:sha256:cd70a931899a10b7c2409ba8ab84eb0152b2789a11c9cf21d2f9cdf98c7ad31c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0NGY5N2VjNzUzNGE4OTBlNDRlYmE0Y2Q3Mzk4ZGZiN2RjMzNmMmRjZjZiYjhlNTJkZWNlMjZmOTYzZWM3OWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MGU1NDI1YjJmYjg2Y2VjMDYzNDZmODFmYmU3MDAyOTY2Y2M5MmI1YzQ4NjU1MDFlOTcyMGZmM2UzNGRlMmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1ZDUyNWQ5MDE4MDdmM2RhNGI1ZWMyZWNmY2MyYWUyYTkwYmUxMzRkOGE1N2MzZTBlNjM4Njk0NjAzNTcxODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiZDM2ZDA1MGQ5ZDI0OTkzYjU3M2M4MTdiM2ZlYWYzMDdhYTQ3MzY3OWY5NTYxNzZlZThjNDkwODVlOTRlZjMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/issueops_claim_wiring.go#L18-L43",
+          "version": "repo-lines-v1:sha256:634b2b41c5c633d3436be8cb0a1037a112ad2871b9ea9ba2800613e9e0ed0e83:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmYjc1YzA1NzNmNWIyNjQzODA5ODgzZmM5ODhlZjRlYmQxZGZkOGMwZGFjMmNlYmU3MGI3MmE1YWM2Zjg5NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxOTg0M2YyNmYwNWEzYWQ0NzM0NzA1YWZiZTRiMzNlNjFlOTRhYzEzNDI3YWEyMzYxNDk4YWY5MGVmYTVjYmMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/inbound/issueopslease/claim.go#L14-L49",
+          "version": "repo-lines-v1:sha256:ae082fdeb7b2de9e8d297bb0e7fceb3b0f73fd86ac71b79bcde58bbdc08a5fe5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiM2Q5OWJkM2Q4NWYzOGVlMjY1NmVhOTEwMmJhZWI2OTZmZjU2MzgyZWI3ODc2ZTdkN2M2NDE2ZDYyZmYxYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0MDU3ZThjZDY4ZmYzNWFlZDdkOTAxYTEzNjNlZDNiY2Y2YjJhOTYwOGYxMjljZDhmOTdlNjVjNTlkMWVkYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/outbound/issueopslease/sqlite.go#L20-L54",
+          "version": "repo-lines-v1:sha256:e87c90751f493ce9620cb7c6724dfa8f1d73a472886e8fe02b7510a78fd89f11:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2M2M3NjRlYjBjZDI1OGI0NDJkYzU1YmU2NmJjYTVjYjA1NmNmYTBiODg2YTI1ZDlhMjk5OTQ1NzU3ZTVkNDMifQ"
+        },
+        {
+          "resource": "repo://internal/application/issueopslease/claim.go#L29-L61",
+          "version": "repo-lines-v1:sha256:f52da1de3a1bcb8f2c41335de06c195145839254b8ced01e48c7e4756c2e2119:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwYzM1YTRiYjAxMDgwMTEzZWEyMjA2N2U5Y2E3MzYyYWJjNDRmZjFlNDI1ZmNiMmZmNjI1NDg3MTFiNDg5ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwMzE0NDQ3MzRmZmM3MTRjZThiNzhlNmJhYTQwNmYyOTgwNGY1ODc5OGY1MjExOGNjYTkxMDY1N2UxZTk0MzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopslease/claim.go#L32-L55",
+          "version": "repo-lines-v1:sha256:6969a8f372441cbaafb2769fa2af8cbc83ef0263cff72a8f074ae252b5af8f4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMmJiZWQyOWNmODBlNWZkZGI4MmI0ZDM2OGE0YWU3NGFlNjc1YzAzYjAyMDllYTdiN2E5ZWM0MTA5NGJiMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4YTlkYjJiZDM4YmE2NzljNGUyZTk1YjExOGNmODczNzQ2N2VlMjY2NmNhMTE0NTRjMjljNGZjMzNmYjhiMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d2826ea8750d46899572d0d0ed27b31c",
+      "statement": "internal/application/issueopslease declares only the operations it uses (ClaimRepository, ClaimContextPreflight, Clock, ProcessInspector, Reseed/Resume fences and repositories) in ports.go, and its ClaimService composes preflight -> actor resolution -> repository claim, with the outbound claim preflight validating sealed issue-body and context-packet SHA-256 digests against the stored record and the live remote issue snapshot.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/outbound/issueopslease/claim_context.go#L34-L70",
+          "version": "repo-lines-v1:sha256:fe0f4f4192ec41da9216cc56162099af8b1979892e879b6a530f0df2ba3aa423:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMDVjOWE2NDZkYTEwZWUwZGI5MmQ4MGU3OWRhZGQ3YjZmMWI0ZTU4YjkxOGIwNmRiNmY5MzA4NzhmMDZkMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4MWE4MWQ4ZWIzMjgyNzg2YmJlOTlhOWFiMDljM2Q4YjNhNjIwNjYxNzhiNjMxNzBjZTY2NjY5ZjAwNzExNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2YTM4NjI5MmI2YzcxNjIyMzNjZjdhYTRiZjZlMmNkYjU0YzY2ODc1MDVkODg5NjdjNzRjYTA3Y2QzNTYwMTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0NDdmMDI0ZjU5Yzg3MmI1OTJmMmYwM2IyYThkZmM4NzVjMDgzYWI3M2QzMzk5ODc0MTZkMzkyODlmOTI2M2MifQ"
+        },
+        {
+          "resource": "repo://internal/application/issueopslease/claim.go#L40-L61",
+          "version": "repo-lines-v1:sha256:e0ee9d41d2c67b9d092f4c930ada8b388d30ca9a52c9ab6a141497cebb2c11f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0YTVlYjg0OTFiMzlhZmEwOGIwYmMwOThkMjJlZTIwMTgwZmIxMDBkNDMxMzE4ZGY0ZDdmZjY0ZDk3ODU1MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkOTZhZjIxNTBiMDU0MmI0YzFhOGVmODdlZGQyYzczMWZhMTAwMjJmYTEzZWY5MGEyZGI2ZjFmNmI4NzY0YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/application/issueopslease/ports.go#L11-L122",
+          "version": "repo-lines-v1:sha256:eedd0321e84ba388b7a3cfa85b89ef4e7dafaaceeb24b14520d667af270a513d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhNTg5ZGI3MjZlYTJmZmNiMDJmY2ExN2Y4MzE2NDhhMzliNTZhNWZmZjNhYzUyMzY1YjAyOGYwYTVlNzY5ZWQ1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5MDRjYWY3YTVjNmM4Yjg5NGI2MmU0NTZlMGYxMmM5MDA1YzY0MzRmZTkwODExNTY3Yzc3MjViYWYwY2EwOTdiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzZjljOWE0MzcyNjBjZDJiZTdmNDNjYzk1Y2ViNWFhNzlkYWM5NzM4NjQ4NmYzMTg2NTEyMTcxNzg5MmVmNDUxIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b2df71b24f84ede99bce2bf0877ae0f",
+      "statement": "issueopspublication (remote PR/MR creation and recovery) demonstrates the vertical with a fail-closed domain decision: the application declares narrow Repository/Provider/Verifier intent-lifecycle interfaces, the domain's DecideReconcile adopts exactly one verified candidate, preserves on multiple candidates/non-authoritative zero/unknown invocation/exhausted retries (only a proven not_invoked outcome is retryable), and harnessapp composes the outbound repository/gateway/verifier into CreateService/ReconcileService wrapped by inbound handlers so CLI create and CLI/MCP reconcile share one request-scoped handler pair with no legacy fallback.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L31-L31",
+          "version": "repo-lines-v1:sha256:e4c16699dd7fcb148015db5373f40f64ffea0bff163641b24b7a5fe4b0032257:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTRjMTY2OTlkZDdmY2IxNDgwMTVkYjUzNzNmNDBmNjRmZmVhMGJmZjE2MzY0MWIyNGI3YTVmZTRiMDAzMjI1NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTRjMTY2OTlkZDdmY2IxNDgwMTVkYjUzNzNmNDBmNjRmZmVhMGJmZjE2MzY0MWIyNGI3YTVmZTRiMDAzMjI1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjNkMThkODdkMGFkMWNiYWE1NWYzY2ZmODVkYjliZjk1OGQzYWZmNzljNzA4ODdmNWFlODljMmVlNTUwZDA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDUwODhhNWU5MjVmNmU3MjA3ODMwZDQyNGRmMzBlZmMyOGNkNDc3Y2I2NzhhZDRiODgxYWE1OGNiZjU3NGFiOSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/issueops_publication_wiring.go#L36-L63",
+          "version": "repo-lines-v1:sha256:6d11caf4900739619be3bb81982ef98898b48f6dbc2125a9773267b9769e47da:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ZmM0OGE4MGI0NGJlMzdjN2JlOTc5ZGFmMmNkZWI3MzNhZjk5NzllZTc0YmI3MWMyMTNhMjkzYjQ1OTRhMmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2ZTk2YTZiYWYyMThlYWFkOWM1ZTY3ZmNiNzQxZjEyZGU2YTg0MjZmNTI3MjFlNDNlZTcyZGM4NzJiZTI2OTQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/inbound/issueopspublication/create.go#L13-L42",
+          "version": "repo-lines-v1:sha256:14bc159a5907d99e3cbd1ec43822ca78d6cad900b7afdab708fc77c066365634:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzZWRlYzNjM2VmY2VjMTZhMzNiNzFlMjJhMzRhNjZkMjZlMWE1OGJlODZhMDVjMDhkYzUxNjhiMWRjM2NmNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzMTM0MzQwMDE2ODYwNTFkZTc4M2JiMWVkYTlhZDEzYTA1NDFjZjk2OTQ0YzVlNDIyZDU1MWY5ZTc4N2E2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5Mjc0ZGYxMTg4MDk3Y2ExMDFmNDBiY2QzZWFlZGJiZDE4MjQ5YTFkMTk5Zjk2YWY0YjViNjgzYzI0NWYyZDIifQ"
+        },
+        {
+          "resource": "repo://internal/application/issueopspublication/ports.go#L9-L27",
+          "version": "repo-lines-v1:sha256:d87aeb4111f9296ef782bb6fb4366c6f952b83824c057bcca554770bf7638632:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1ODlkYjcyNmVhMmZmY2IwMmZjYTE3ZjgzMTY0OGEzOWI1NmE1ZmZmM2FjNTIzNjViMDI4ZjBhNWU3NjllZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmZTYyYjUxOWI1ZDc3MDMwY2ViZWVhY2Q1MmExY2E1ZmRmZjgxOTI1OWI1YzFlYjdlMzhiMjFmZjdhYjBhZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiYjVlMzljZjJjZGIxODg1NTMwNGRlZjllZWVkZTY5Nzg2YTEzZWFjYjZmYzE3MGEzM2EzYzM3ODQ3NDY2MDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopspublication/decision.go#L30-L50",
+          "version": "repo-lines-v1:sha256:68080b0dd2558cb12cb46e44c9e88cf7e7dea908eac4e94513a12c1f512572ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjJlNTQ2Mjc3ZTM2OWQyODM3YTliMTNmYTk0MGUzZDVhNTM3NDM3YTM3Mjk4NzgxNjk1MjkyZjU5YWY4Y2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZjlkNmVlYmRjYjJiYjQzMTYzYWQ1MjNkNTk4ZWEwMDAxNjdiZDYyZTFkMGVmOTY2ZDIzNGQwYjIyZTgzNTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2ZGMyMmY0OTNkMWZmOTEyMjMwMTBmMWQxY2U4YjhkZTFhOTQ4M2U5YjRmMzVhZGQzNThmYTAwMzhhODYyODEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_826990406a06482e901678773bfc4597",
+      "statement": "internal/adapter/issueops remains the record-backed IssueOps capability adapter (with same-capability subpackages such as loopgate and gatesgate) and is one of the two allowed direct users of the sqlstore engine; internal/adapter/provider resolves github/gitlab provider implementations behind port.IssueProvider so no core package imports concrete providers.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/package.go#L34-L57",
+          "version": "repo-lines-v1:sha256:df559d934d0f71ca1584b2f0c60dc505c9e5b0373fc81d3bb683c7ff32e5d5f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwYzQ4ZDU2NTEwMjUwOTgyZWRkZDNmZWYwYWY4YjE2Njg5NDM5OTU3OWMzZDgxODU0ZTkzN2JkYmRlYjhhYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0NTFkZTA4ZDZlOWRkOWZhN2UwZTI0NDkxOWJkNzRmZDQ2OThlN2Q0ZDU2MzE4ODg5OGU4ZDE3MjU2ZDczY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMzk0NGJmYjgxMTQ5MjVmOTkyMDIyZmUxOGVjMmQwODdjYTlkYzJjMzg5MGQ5M2Q0YWY3MjU2Mzk2ODljM2YifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/provider/resolve.go#L1-L27",
+          "version": "repo-lines-v1:sha256:dfc378cb507ed78b5001d197e1c0fb5f162433081805076e0a780fbff76817c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNjMwYmVhMTNmZGIyOWEwMGVhNGI2ZDI0MmFmNDAzNTU3YTg4OGUyNjJlODBlNGYyZmU5MDkwOWNkZDMxYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3NWRlNmE3YTI3NDNlOTk5ZDVmYmNkOWRkZjY5NzdiNWVhYTNmYTNiZGRkYzA0OTNkNWZlN2IxNjdhMDhkMTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c1e20bde59a94b69884a37a70e0ae952",
+      "statement": "configs/ holds host configuration templates (configs/codex/mcp.config.toml and hooks.json written by the Codex installer, the claude and omo analogs) plus configs/upstream.json, an optional post-activation Claude plugin/skill provisioning catalog whose network or CLI failures must never fail the native install or become a core dependency; the repo-root .mcp.json is dogfood-only project-local MCP configuration that default installs must not copy into target repositories.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TECH_STACK.md#L34-L40",
+          "version": "repo-lines-v1:sha256:568dc3cd339dc815cd42d98b2f7e867b7e999d2f9416cb40503a7c4d37dd5dd8:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmFhY2U0Y2YwNTU5NDYyNDQ1MzcwOThlMmZhYjY1ODNlNTBiMWQ1NmY2YmMzYjk0YTAzMTg0NGQ0ODY0ZDAwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTgzZjQwZTA0ODkyOTViMzgxM2VjZWEzMThhMTU0ZjdkY2U1ZTRjM2YyNWQxMDFmZjliNjczMzU0MDg2NjRiMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg1Mjg2OWRiZmEwMDEwOTJiMWU1NDZkYjAxNjE4NWZhOTk1Y2M1YjJiZjdmMjUyMGI3ZjI1ZDZiODQ5ZjkyZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmNjMDg4Njg5NWE0OWJmMGVlMjY1YWZlOGY5MzY5MzdiNGQwNGUyNjk4M2JjZWQ3YTM3OTg2ZTMyYTU3NDBlNCJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L86-L89",
+          "version": "repo-lines-v1:sha256:7f33876f296fd8ab400f03e9cba67be5d03f2e3b23db1d672ab742b7d0eb0a66:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2M5NmZlODEzMjNhMDExZjAzNmUxZmNiYmI2MjY5YTFkOWJiMTc4ZDRmZTNmZGI2NGUwZmViMTVhMTE2ZTJhMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODU2ZmJiMmIxNmIwNWQ2YmM1MDUwZTg5MzMxNzY2ODcwZjk0ZmM3NDJhYmJjODBhZjYwOTAzYTkzODJhMmRlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjJjNTJiODRmYTQyYzE2MDBmNjA4ZWQ0MjM4NGM2OTIxYTkwNGE1MjdhMTYxOWIxODQyM2YwZjMyNzRjNDRmOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWU0ZGQ0ZjExNWI4NGU2NWVhZmI1ZGY0M2IyNDVjNWEyYWFhYmZhMGNlZTMxOTU1N2FkOTBiZmM1MDc0ODI1NCJ9"
+        },
+        {
+          "resource": "repo://.mcp.json#L1-L14",
+          "version": "repo-lines-v1:sha256:106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://configs/upstream.json#L1-L33",
+          "version": "repo-lines-v1:sha256:7e9a2e42473168dd8b8d6192919527ed995289eacd3d98fcbb3733790a658fa5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3db5d12538254242a025dd0fecfc6931",
+      "statement": "skills/ is the single host-neutral source of truth for 34 shared skills (12 pioneer-namesake plus 22 operational); default installs symlink the same sources into each host's user skill directory rather than copying, host-specific skill copies are forbidden drift, and internal/domain/pioneerskill enforces the pioneer catalog in code.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TECH_STACK.md#L46-L79",
+          "version": "repo-lines-v1:sha256:486770b4122ea07400e5c817df78153d1176731563abc1110be57b1bfe6fc634:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMDdiNzFiZjIzY2VkMGY0MDVkZTkxYThjYjkzNjZmYjg1OTI1Y2U4Mjg0ZTM0MWY3MzZjOTA0NGM0NDg4MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiZmZjNDgyNTk0OTczM2E5N2FmNDQ2ZTcwOTQ5NTQ0Yzc1YzAyMjE4NWE0YjBkN2I1N2ZjYWQzOWExZjVlMDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMzhjNmI4MmExMDQzMDBkNDkyM2Y2NWVlYjI3NGY1MzVmYjA0NjJlZmJlMzZkZGViMWNkZGEzM2I4YWQzZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L87-L87",
+          "version": "repo-lines-v1:sha256:9e2b2b8eb98bc55bfd937745f0fe7aa53faa147fe01d77191adc0292692c4098:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWUyYjJiOGViOThiYzU1YmZkOTM3NzQ1ZjBmZTdhYTUzZmFhMTQ3ZmUwMWQ3NzE5MWFkYzAyOTI2OTJjNDA5OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWUyYjJiOGViOThiYzU1YmZkOTM3NzQ1ZjBmZTdhYTUzZmFhMTQ3ZmUwMWQ3NzE5MWFkYzAyOTI2OTJjNDA5OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWYwNzMyNGIwNmFjM2M1Mzg3NTRjNTU0OWJmNTE3NjU0ZDk1NTVhZDc2YTU5OWMwMGNmYzZmZTdkNzBlZTIwYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmYyOTljOWYyMzkxMDhiYWY4ODNjYjRmYTdjNDdlZjdkNDVhZDM3NzA1ZjlmN2FlNDQ1YzMwMzE3ODA4ZmIzMCJ9"
+        },
+        {
+          "resource": "repo://AGENTS.md#L195-L196",
+          "version": "repo-lines-v1:sha256:bc9e809d6346e932cedc66476add4739a92c3a10f313f97cc111683a0119fad9:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTdlNjE0YmNmM2YyMDY3MmM0NGNhMzkyZGUxMGNlZTNiMTcwN2JlMDA0OThhM2JiZDQxODlmNjZmZWVkMDBmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGRhYTlmMzg2NTM2ZDJiZjk3NWRiYjA4N2UwOGQyZDU0YmNkNmUyMjViZGI3N2Y1ZmI1MjgyZGFmYjU0ODg4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmY2ZjFiZTE3Y2IwZDc1YTBhMGNmYWE1MGExNWVmODQxNDRkOWYxZjg5MDUwMmZjMDY4YzE5NzE3M2FmYzViNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjAwNjE4OTBhM2RiNWZhZTdiODUzMTI0ZTgxZGFmMWFiNDVjMjUwMDYyMTQxNDY5MTk3MDAzY2ZkZmZlNWU3NCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_efc69e9093254e5d8578ae4a365a66f6",
+      "statement": ".agent-harness/ is the git-tracked agent knowledge base and lifecycle layout: canonical architecture/conventions docs (kept aligned with layer paths by the documentation test), ADRs, cautions, evidence, and per-issue artifact folders .agent-harness/issues/<issue-number>/ whose gates.md is the canonical task-gate ledger that PR readiness reads (with duplicate canonical-plus-legacy ledgers failing closed as duplicate_issue_artifact:<n>); project bootstrap manages only its marker block inside a target repo's AGENTS.md.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/CONVENTIONS.md#L85-L111",
+          "version": "repo-lines-v1:sha256:890e7b5d70d7a9e6a62da04c2397e02347230b5f1ce8d48b87581c283600c13c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNDQ4NjQ4NGRjZWEyMDMwNTVkYjk2NjJiMzQyYzM3MjJlOTUwMGNlNjZlNzFmMTgxZDMwODUwMzA4ZDdmN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MzYyY2RiNGJlODE2ZDkxOTk2ZDVlM2Y0NDUxNGRiOTY0MzYwY2VlZTEzZGU2ZTkwOTUzNGQ1MjU5M2IyMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmYTk1NWQxZTdmOTE4NDc2ZGIyMmNhMWYyNTE4ZDE2NzYwNmQ3MTE5ZDUxNWExNjcyYmMzMWNlYjllNzg5MDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiYjRjYzAzMjdkMDliODdkMmIyMmEzZDgwZTQzYTkzYWQ4OTU4MzcxZmIzZTZjOTVjZGQ4YTY1NDZmYjFlODkifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L14-L27",
+          "version": "repo-lines-v1:sha256:be071e789aad784d7570b83a8e74832bf15cf37b29a469c104db453164bb974c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwOWQxZjAzZTY2MmIzZDdmZTE0MTgxODAyYzQwODFkOTYwNTZiNDhjODU3ODZlYThkZjAzZTFmODg0ZjYyMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmZTRmYTVjNjY2YjYyNjM3ODBjMzc0MTQ0NjY4YWRlMDM5YjJhM2U1OGJiMzU4NDJiYzNhNDBjMWU2NDc5OWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2YmYzNDg0MzBiYTFlOGExYTJmNjMzZDJmOTBkMjM4NzZhMGJkZmI2ZjkwNzhmZmM3OTc1N2UwNDZmYzUxZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZDE4ZDg3ZDBhZDFjYmFhNTVmM2NmZjg1ZGI5YmY5NThkM2FmZjc5YzcwODg3ZjVhZTg5YzJlZTU1MGQwNDgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L53-L82",
+          "version": "repo-lines-v1:sha256:722aca97978e8e35219b83256552d8e151ba22f68530d476663b38b94f40c1da:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhYjJiODgzOGJmYTI5MDNhNjVjNTYxZjFhNWVhZjRlNGFjMmM1ZDIyMTgxMzMwMzJhMjc5NzRhZTljNzdkNTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0NTY1NTgyYmZlOGMxMzk3MzU4Yzg4OTk5MjdjNzZiZTc5MmEwYzgzZDdjMDQyOGViZjlkMmY2N2FlM2ZlZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExNTc2N2YzODNlN2EwOGM0Yjg4ZDczZjVkYmY0MmY2NDdhYTRjZDZmMDBiOTY4NGU0ZjFmOWQ2ZWU0MmJlNjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd19be99955d40f9a2461a5a124b144f",
+      "statement": "scripts/install-native.sh builds bin/agent-harness and drives agent-harness install as a staged activation transaction (begin/commit/abort with SHA-256-verified binary candidates and recovery via a pending transition on abort) while forwarding install flags such as --project-local and --dry-run; the remaining scripts validate skill contracts and shell-skill behavior, and install/update paths stay independently runnable without provisioning external tools on core's behalf.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L197-L197",
+          "version": "repo-lines-v1:sha256:6cc822b9423d53d519e4ef2171a6c08c648e9f61e1c176da20654ed7378cbb73:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmNjODIyYjk0MjNkNTNkNTE5ZTRlZjIxNzFhNmMwOGM2NDhlOWY2MWUxYzE3NmRhMjA2NTRlZDczNzhjYmI3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmNjODIyYjk0MjNkNTNkNTE5ZTRlZjIxNzFhNmMwOGM2NDhlOWY2MWUxYzE3NmRhMjA2NTRlZDczNzhjYmI3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWEyNzU5ZTQ4NTVlYzQ4NDRjZTczYzlmNTUxNmExYmFmMDI2MzQyNzYxNDMyYzIwZjk1NDY4MWQ4YzI5NWUwNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTU0YWMyMGYxOWU0NjA2NjRmYTdkYzU4MTZlMWZlMzM1MjgwZTIzYjU5YTFmOTM1MTFkNTAyZGI5N2FiMDc5MCJ9"
+        },
+        {
+          "resource": "repo://scripts/install-native.sh#L23-L47",
+          "version": "repo-lines-v1:sha256:c8b18d741849147e79f31bf3378134e765e9654568ba08449dd44d49af06fccd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3ZGJkNWExYTVkZDNiNGJkZTdmNDQzYTI0NjRkOGVlYzZiOGY4ZjI2NWJlNDAxMmY3ZTM0YTg1YzJlYzk0ZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzZTA4N2FmNWFkZTU0ZDQ3YTQyYjc0NjAwMDBjMTVmZDM1ODRlNzFkZjBhMzZjMWFmNTBhY2YzNTgxYTNlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwYmFmOGQ0YTY4NTI1MjJmODdlNzZkMmVlNjllNjFlNjkxN2I1OTY4MDhmNzQ5NDNkMDA0NmFkMzdlOGVkODYifQ"
+        },
+        {
+          "resource": "repo://scripts/install-native.sh#L64-L99",
+          "version": "repo-lines-v1:sha256:933069e40d76b81bbc4de9b7c6234eb2d6964afa2e6953e6941e8a40b65f2f13:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwMTFhN2FhYTdhMDM1ZjkxMmE5NjYwMjJlZWEwNTFhODIzNGQ5MzNiM2ZiYmNhMDFhZjJjZjhlY2UyZjE0YjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MGJhNTMzZDE5MzVhMGEyYTIxMDA5NzIzN2VmM2Q3ZmY0YjU2NTEwYmIzMWY4YWIyOThmODRjMWQyZWVlZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxNWExYTNhZGY0MzgxMzM2NThiNzEyY2VlMTdkOTUyNjM0YWVmNjMyNjA1YjdhYzY5MWFiMzhhMzY0M2U2OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2ZDMzODBjNjYzOTc0ZWQ4MjE2MGZkNWFlNDJjNDE3NGZmMTRlY2E5MDY4NmU5ZTFlYmYzOGRlOGQ1MzAxNDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3a7e391e2b744f769f1d1e16ec3c5335",
+      "statement": "testdata/ holds cross-cutting fixtures (issueops/fixtures, webfetch/live, pioneer-holdouts inputs) and cmd/harness/testdata the contract goldens; internal/testsupport provides shared stdout/stderr capture helpers; internal/holdoutdeleak mechanically guarantees the committed pioneer-holdout fixtures contain inputs only and never recorded answers; and intentionally unimported test-support packages are admitted only through orphanPackageAllowlist with a written reason.",
+      "evidence": [
+        {
+          "resource": "repo://internal/architecture/orphan_package_test.go#L11-L17",
+          "version": "repo-lines-v1:sha256:a1510d69af2d2c841ca6fbc903b3ccb9425e83d6eb9a88dafcf86ca0e761505d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2UwZTZjMGUzZDhjNjU3NGNkN2E1YzFmZjdkMjE4YjQyNTVkYjYzY2FlZTA4M2Q0NjQzYzliMGQ0N2VkOTU1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzAwMzUzNzk3ZTZlZGEyNjg5M2M3MzgxNjQzOWU5NTM3YTA4ZjMzZWI3NGYxYTdkOGZmMjdjNjIwMzViZDA3YiJ9"
+        },
+        {
+          "resource": "repo://internal/holdoutdeleak/deleak_test.go#L1-L32",
+          "version": "repo-lines-v1:sha256:3f913185dad2eaf3595d9bb4b875fd2d3fc8aae307d4ac759beb487d41e151e6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiZTAxOTQwMDljNzA4MzQ3YWQwNmFiNmM3OWRkNDQwNjQ2Mzk0YTQ4ZjNjMDMwZDVkNTUxNDliMzdiYTE5ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyYWE2YzllY2I1MjI2ZDlmNmYwNmEwMjdmODI4MWM3MjFmYjVmMTQxN2Y1OWM2ZmEzNWY4YTliMjkwMjMxNTkifQ"
+        },
+        {
+          "resource": "repo://internal/testsupport/capture.go#L9-L39",
+          "version": "repo-lines-v1:sha256:f3035be3d39dda0ed496ef457628bd36f12a446590e9224773b52ac923382da7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjZTg1M2YzOGU4OTVkN2U3ZjExYmIwNTQyYzlmMWU1NzBlNGM5NzcwYmEwN2U5Njk3N2U1ZDg1NWQxYmQxNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZTljYzQ5MGMxMDE3OTYwOGZiMGI1MmViMjZkMDM2NGRiYjM3Zjg0YzMxYjQ1MDhmMzZlNjg3Zjk4YjhiZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2ZGNmNDA2ZjM3ZGRlOWFkMzA3ZmVhY2NjNjUzMWVkMGQwM2YxOGM1ODA0NDZlMDExZDIyZmVmMTAyN2MyM2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3333fd333528400dadda86dbae0de7ef",
+      "statement": "The extension points mirror the map: a new command is a cmd/harness/<cli> package plus a harnessapp facade and a canonical description in internal/domain/cli (the usage golden forces agreement); a new MCP tool is one catalogSections() entry in internal/domain/mcp (adding it to a section makes it both advertised and routable); and a new IssueOps capability is the five vertical layers plus a <cap>_vertical_test.go in internal/architecture, with shared record access via outbound/issueopsrecord.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/cli_facade.go#L34-L95",
+          "version": "repo-lines-v1:sha256:eabbe1af2b944af344885cb0604c0af5435c344fc62cfa8476ee1c0dd23c7010:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5NGEzMjBjNTNiZjE0YzY5MmNhZjcyYjYwN2JhMzdmZWU1M2QzMjAzNGNhNzY5ZWE3YzRmYTNiMDY5ZWY5NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmMWZmZTZiODJhMzY1ZDcxODhmNWU2YmY4YjA1N2Y5YmRhZWYyZTM5MmIyNTVkNTNjN2QwYTA3M2M2OWU0YWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlNTNmNjg0NDc4NjM2YzQ3YzIzNTk1MGI2OWFjNDhmNmY4ODU0ZjhjMDE0MzExNTE2NDE0NzAzOGM5NmJjZTEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L14-L46",
+          "version": "repo-lines-v1:sha256:40fbb9670a8d50da404471a86e0afaec33d655ddfa606c443a59ada76db184cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyZjg0OWFjMDM3NmI3MDk0ZTY2OThhZWIxODNmMjM2ZjdhMWIyN2M1YzhhMTQxNmM1ZTNmMzc5ZDQ0MDdlZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZjkyNWM0YjJmZWRiNTY4NTc3MjE5ZjE0MjNhODlmOTljOGZjNWM0NWFkYzQyMWNlNmQ1OGZmMDQ3ZThiNTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMjkzYTI4YTM2NmZjOWM3ZjIxN2Y5OTM2MjVkYTUwNzAxZmMxNWM1YjZjZWMyYjEyYzNkMDY2MDE2ZTJmZDgifQ"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L45-L61",
+          "version": "repo-lines-v1:sha256:cb2a9818d61f747fc3b55d690652f656fae70bbb254e810c0652c941cf00e039:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiZDMyNTAyNjllZTBiYzJkNjAyNmU0MzRjODU0ZmM3YTI3YWI3YjcyOWIzNzkwNWI3MzQ2ZmQ3OThjMTg5MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1ODdlOGJlOGY5YTQ4ZDkzMWZhMjUwOGUwOTNkYWQ3ZTE4OWNkOTZiNzQ3ZmEwOGZjMGUyZjA3YzBkNDRlZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0YzIxMDRjZjU4YzU0YTIxOWU0NWU4Y2I5Y2Q4YTg3YmI4NDQzYTdiMjZmNWU5ZTJhNzFlMjQ0YmFjNjhiMGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

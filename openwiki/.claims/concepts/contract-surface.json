@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f2a232d6ae79a8108e683c020cd183066bc8c8099f73a241109275efc8c72398",
+  "claims": [
+    {
+      "id": "claim_dce16f51a75a4fe4be4afa7f94a6e33f",
+      "statement": "`BuildCompatibilityContract()` in `cmd/harness/contractcli/contract.go` assembles the whole CLI/MCP surface into one `CompatibilityContract` named `agent_harness_cli_mcp_compatibility`, version 3, containing the CLI command list, sorted MCP tool names, per-response required fields, adapter-owned tools, verification commands, and a SHA-256 `hash` over the name, version, commands, tools, and response fields only.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L107-L174",
+          "version": "repo-lines-v1:sha256:947e89838361af09eaf6ef8440c9472c1c51037201b1971f6ecea14287007437:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhNjZjNDRjOWY2YTMzODkyOTRmMzFiMjRmNDcwY2JiZGQ4ZmVjYjQzYWUyN2M1MDA3MTk2YjkxZjBlYzE3NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlNzlkN2NiMTgwMjQ5OGY3ZGFjNGE1MmQ5YWQyMjUwOWM0MGEzNTFlYzIxNmVlNTk4NWNlYzRlMjhjOWNkMDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMGYwMTE2ZWUyNmQxYzdhMzU1Nzc3YjYxYWEwZTAzNTYwMDRkYzRiMDAyMjEyYjYzZWY2MjJhZjIxMTIzMzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5NzJjMThmZmQ3OWY1ZjUxYzMwOTU0ZDNjMTllZDUyODI4N2M5MGJlMGQyZDE1Yzg2ODNmYzE5YWNlZjc2NzEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L23-L34",
+          "version": "repo-lines-v1:sha256:96730a380f03cf06b260eecb9d9d62f471ee3b131b0ccd7ac0e3c14905a437ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiZDk5MjFmYzc3YWM5Y2ZjMmExOGExZmY3N2U1YTVkY2JmMjc4YWRkZTA0YTFlYjc1MjQxMGRlNTljMmFmNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiOWIyZWMxOTMxNzJhY2UzYmVmOTgyOTEzOTlhNjYzMDgxZTA2ZTUzODg3YTU0M2ViODQ0NTYxZmZjYmQ4ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlOTExMGViMWFjZGEwOGFhNmEwYWI1Mzk4MDZlN2Y4OGJmYTk1MjM5MDY2NGJjZDc4YzMzN2NkODMyZWZmNzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_972355aa48dc4583850c6d29167c0797",
+      "statement": "The `agent-harness contract` CLI exposes exactly three subcommands: `schema` (prints the contract document, text or --json), `check` (prints `contract ok: <hash>` or fails with warnings), and `conformance baseline|live|replay|serve`; unknown or missing subcommands fail with usage on stderr.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L36-L60",
+          "version": "repo-lines-v1:sha256:aed174bcb8d3187e298a863d17cab0e86a817cb15e7895ed6aa98b3b82999a0f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3YzI3NTg4NDEyMTNhNzc1MmM1ZDQzODE3NTZkZmYxYjFlOTMzOWY1MzJjMDE0M2E0MGQyMDkwNzBkN2MzYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwNDA1MDk2Mzk2YTMyNWEwNmRjNWE3MjlmY2VjMmFjOGI1NjkxZWQxNGY3YzZhYTcyY2IwYWNiMDU1ZWNiMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxYjJmNjhiNjE3N2JhYzg5NTk3M2NlYWYzOTdmMTdmN2RhOGM4MzczZTZiMTkxZjVhNGMzYzYwNThhOWY4MTAifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/contract_cli_test.go#L11-L34",
+          "version": "repo-lines-v1:sha256:7a5f6240248feb02513ec23eae3d87123b9c6a9b48514d2dbd2db54e7460c709:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZjU4OTRhMTA1N2UwMzk1MGQ2ZWMwY2FjNWRmNzMyN2NjNTM2NzliMTViNDJjYTE4ZGUwZDk1Njc4MTRiMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlMDM4MGE2ZWNhZmQ5ZmUzNDZjZGU4NDFkM2YxYWM0ZWVjNzQ0MjQ0NTE2MTJhMGY5YTJhOWQyZGFjNmY0MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlN2RkNDU3ZmM0YzU1OGE0ZDUyNTJkZTE2NzFjNTkwODc4NDQxMGRlZGM5ZWNiY2QxZmNjODA3YjRkMzU0MjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_16464d4b52674055b743ebb7595ec1d6",
+      "statement": "The MCP tools `contract_schema` and `contract_check` return the same compatibility contract as the CLI subcommands, letting an agent read the surface from inside a host session without shell access; both route through the assistant-worker handler to `CompatibilityContract()` injected by the composition root.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/misc_facade.go#L28-L41",
+          "version": "repo-lines-v1:sha256:17b96417680e6cb729118d4101bed45fd497f33b22be779197a1e75b96cc2685:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMDY3OGFkMGMwMTUwY2FiNWEyOGYwYmE2ZTY2YWU5OGRmZjNmYzkxMTAzMWY2ZmMwNDZjMDFkNGYyMWQ4ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2NmU5NTJkMDZiY2JjMDI2YjYwZWMyNjM3OGQ3MjUzNTMxMzc3ODUyNjMwMmRjMWM5YTIwODI3MDI2YmM2ZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmMzNkMTIxYWFiNjhkM2NhZGMwNGJiNjJiMDFiOWE1ZDExNTViMDI3MjQzYmYwZDE0ZWIxOGUwOTYwNDdlM2QifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tool_assistant_worker.go#L50-L51",
+          "version": "repo-lines-v1:sha256:ba708031967cf7b838fe6f091471fd07c8df90d29310dfd72f8ae520c49c5670:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMThhOTg1Mzk3ZTQwNDllZjAxYzZiODFlOTJkNzgxOWFmZGU5YzM2MDBjMTY1MmE2NWI0YzRlNDgzMjc3MGQyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDFiZjVjNGY5M2IwYTRkNjcwMjk1YWJmNDliOTg5ZjNmYzA5OGViZjgwZGMyNzc3ZDdmNjMxNzIzNjFhZDQ5ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTRjZGFmMzhiYzBhNDY1OTdjNTQzMThlMTg5MzQ0NDQ0ODdlODRjZWUwNmUyMjljYjUzYTY0MGUwNDhkMDA1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjI3ZWY4ODk5OTVhNWU1YTYxZGVmZjRkMjhhOWI0ZTJiNGU0NDY4ODhiMGFiYmIwZWQwNDBmZDgwNDA2MzIxMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_53f198074a1f4214b1cd642571d8d794",
+      "statement": "`contract check` fails closed on two drift families: the required MCP tools `contract_schema`, `worker_enqueue`, and `command_fake_run` must exist (missing_mcp_tool warnings), and the issueops_* MCP surface must be exactly the single tool `issueops_execution` (issueops_mcp_surface_mismatch warning).",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L149-L164",
+          "version": "repo-lines-v1:sha256:5469b076e2fe76f151a23929b0e649f2126dac7506efc7a1475b14a244654a81:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1ZTNlMDM2NDI0M2Y1MjZhMzhmMGFmZjY2NDBlYjcxY2Y1OTRmZTdlNzMyZjQwOTYwODZlNGU1YWQ4YTRkNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2M2IyZTcyY2QxOGY2NzI4NTA2YmVmNjhlMmZlY2JhYzBiYjIzOTQ5ODM5NDExOGVmYTYzZTRhN2YzMGM2ZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhN2FkNzVkMTUwNGQ1YmM1NjBiYzMyMzE2NDA3YTAzZmQ2OTRiYWQyNjc1NzdhMTI3NzRlYjI0NDAxZmRhMjEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/contract_cli_test.go#L61-L69",
+          "version": "repo-lines-v1:sha256:4194da09670c6a3c30011778fbada9ca208ad089318744efcc4045df25d1a050:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTdhZTAzZjUyOTQ0YmMyZWUwYWVkYWM1NjIxYzQzYmRhODY1N2ZhNGE1NTcyN2FkNmMyYzVmMTlkMjRlMTAwYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDM3ODJhNmQ3YzI1MGFiMDBkZTM5ZmJlNmM4NTBjYWY4ODZmMWE3NzMyM2Q4MTJiNGZmYWE5ODYwYTYxZTBjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWE1M2Y3OGE0Y2ZmYWMzZWFlMzhmZWEzNDkyNGIwOGRkZmU3ZTgwM2VkYjFjNWNkY2ZhMzNkOWU1NDk3OTI5YiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e84da2628c0d428793f8edc1eca32cd0",
+      "statement": "The compatibility contract embeds its own verification list — `go test ./... -count=1`, the contractgolden+harnessapp Golden tests, `agent-harness contract conformance baseline --json`, and `agent-harness contract check --json` — which downstream install-validation consumes, treating a failed or hash-empty `contract check --json` and a non-baseline_passed conformance baseline as validation failures.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L147-L147",
+          "version": "repo-lines-v1:sha256:f6a59cc3dcfc73acfc7e3018ca075dbfbb12bb9e2a78ac251a04a1674aa4e4f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZhNTljYzNkY2ZjNzNhY2ZjN2UzMDE4Y2EwNzVkYmZiYjEyYmI5ZTJhNzhhYzI1MWEwNGExNjc0YWE0ZTRmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZhNTljYzNkY2ZjNzNhY2ZjN2UzMDE4Y2EwNzVkYmZiYjEyYmI5ZTJhNzhhYzI1MWEwNGExNjc0YWE0ZTRmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjE0OGIwZTIxM2NhZmI5NzRmMzIwYmQyNmE1N2RmZjc0OGQ0Mzg1N2QzMWI5OTk5MDU3NTc3ZWVhMjUxZjJkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzFiZWVlY2M2YzI1YWY4YmM4ZWM5NGVkZjE5YWRhYjY3OGEyNjQ1OTBmNjYzYTMzMTdmZWI3MmFiOGRlNmM3MCJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/validationcli/contractauditworker/validation_contract_audit_worker_test.go#L127-L168",
+          "version": "repo-lines-v1:sha256:913ab91dc43754cb599b9bf335e58292010ee69f4724fcdf408bb3b92d7dcf9a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4ZGQ2ODRhNGRjMzUxZjBkNzNlOTBkNmMxMTViZjc1N2VmM2I4Y2VkNGQxMDg3N2YyZWMxMDg4ZDk2MGRlZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3OTg3NDk2N2QwNjdlZjRmNTBmMGFlMWM3YTlhNTRkZTdmYWMzMGM5NzI2MGRjZWMwOTIwNDgzYjM5NmRkMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4NDRlOTMyNzBhZmE0YTZiYzA2Njc4NWE1YmY0Y2NkMmUxMThlNzlhMzdmM2VkMmMxZWZhNjNiMDM1ZTg3ZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fcbf10acd0114905a9fc008fe3a409c9",
+      "statement": "`internal/domain/cli` owns the canonical top-level CLI command list (`Commands()`) and usage text (`Usage(version)`); the issueops usage lines are never hand-written in Usage() but rendered solely from the `issueOpsUsageCatalog` single source, filtered to abridged keys — a design that prevents a command missing from both hand-written lists from being invisible to all checks (the #167/#188 lesson).",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/cli/issueops_catalog.go#L5-L18",
+          "version": "repo-lines-v1:sha256:367ef65600e007f8c4b6e56c1e0de935385dfd92da08544a758cb7df524c1312:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzMDQ4YjU2Y2ZiYmJhNDEwMjFhZTA2OGViZDg4ODY1ZmYyOTFmOTA1ZmUzYzEwMjg5ZDI3NDM4ZTc2OWIyYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZDIwZGUwZGQ0OGVhYzJlODMyMjBhYWI3OGVkYjI3NDg4YjAxNWEzYjQ5N2M5ZTI1ZTEyYTM0Mzg4YjA1ZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0NWFmNzJkYmE2Yjc0Yjg3YWVjOWFkMGMyYWM0MTAzMGZmNDdkOTM2YjBmYjEyZGViODU4YTA3MDA4MmY2YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5NGViMjc3YzAwNmQ3Zjk3YTE4Zjg1ZmNiZmFhNjg1YTY3OWI0ODRhNmQ2MmZkOTVmYTFlNmUzYThkMzYzY2UifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/usage.go#L11-L54",
+          "version": "repo-lines-v1:sha256:b9c40cc73c5e12b2ac01eea701eaf9f7ffc5f2b2805fbfcb1cf049ed721a2b42:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNTc1ODFmY2MwOWZlNTNkZmFjMWZmMDBkOWI1YWY2MGI1YmYzMjlmNzY4MTAwZmIwYmQwMDY3YThhMTY3YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NWRjODVmNjBlY2QwOWNmNzkyY2Y1ZGQzODRmZjljMjAyYmEzYzFlMDA2ZDI3MDhkZGI3YzVlOTA1YmQ4MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ZTI4YjQ3ODlmZTIxMzQ5MjIxNDljMjY1YTJkMWY5Yjk1MDMyMTAwOGRlOGYyZDM0YzU0M2Q0MTkyOGMyYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmUzMjc0ZjI5MzYyNjBiZmUzNjJkZjdhYWNmYTEwNjQyNTcyOWI1MDc2MzRhYWU4OTI5Zjc5MDllYzk2YTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_03309094b3494f838348c4966a7043ed",
+      "statement": "Two focused tests guard the abridged issueops usage rendering: every abridged key must match exactly one catalog line (a typo otherwise silently drops a command from top-level help), and `Usage()` must render exactly the abridged key set — closing the remaining risk of the single-catalog design.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/cli/issueops_catalog.go#L156-L178",
+          "version": "repo-lines-v1:sha256:16546f6936f9457899711f066a6a00c4bc3a63fe37e00dcc6fde88b9fa87bdb7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0YmFiM2QzNDQwMDIxOWMyNDMyOTQ2YjZkYmFhNDViMmI1N2I4MzFhMTE1MjczNjQxMTMxYjg2YWI5Yzg0OGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzN2M1NjhkNjQ3YjA3OTBiM2M5ZjhjODc5N2Q1MzA1ZWQyYjYyMzBjMzlhNTIxNzYyZDE2NzEzODFkZDc1MWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/cli/issueops_catalog_test.go#L20-L53",
+          "version": "repo-lines-v1:sha256:eceacaa2d5ef6650324da1a699afbbffa56097cf54b83744ab109a4e7d015cb4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTMxZGUzMTc5MTZhZjVhYmU4NGZmMTU3ZWY1NWQwOTYxZDRiN2RhZmEwOWM2MDU3ZGM1ZGM2MzY2MGY4YzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzNDk4MjhkMzJmMGM2NGU4YTk3MjkyZmRmZTZjZDMzMDY2MGIxMjM5Mzk2MmVhY2E0NjA0YTliYTA1Yjc2NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyY2Q5YTY4ODdkM2Y2ZmY0Y2M0ZDc1NjYzZjE3YWJlMGY5YjBmNTkwNzQ5NDNlMDljNzk0ZDY2ZTRkZDU2ZjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_018fb3af08b34541af9fa32980dbacf1",
+      "statement": "`catalogSections()` in `internal/domain/mcp/catalog.go` is the single ordered source of truth for the MCP tool catalog: each section binds one catalog function to a dispatch group and an `advertised` flag, and `AdvertisedTools()` (tools/list order), `AllTools()`, and `DispatchMap()` (name→handler-group routing) all derive from it, so adding a tool means editing exactly one catalog function to make it both advertised and routable.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L40-L106",
+          "version": "repo-lines-v1:sha256:e86096e9019d4deecc15e74fc98d26c7efc14a8396e9cb4a73ef746e9b166bac:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmZGEzMDQzZmU0MmU0MTBiMTY3NzJlZmJlNDk2ZjUzYjBlNjFlYTFkNGY4NjhhN2E4MDQwYTNjYTkxZTY2ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiYTExMWMxNjIzMjc2OGEyYmZlOGNhNzhlNTQ1ZmQ5NTU1MjczMDM2NzljMzljYzhlMDhmMjlhNzU5M2M2NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5NWI0N2UyMTJmYmI4ZTUyMzg2NzA3NGE1NTZlNGE2YjUxYzJjYjUzNjVjMDE3YzFhMDBhM2E2Y2NhMGU0MTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e5d4aef63fd14b3f8c7086db18e28f1a",
+      "statement": "The catalog supports routable-but-unadvertised tools: `selfLoopAliasTools` is registered with advertised=false, so alias tools such as `self_augment_history` remain dispatchable without appearing in tools/list or the mcp_tools.golden.json snapshot.",
+      "evidence": [
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L290-L294",
+          "version": "repo-lines-v1:sha256:0c7f5bb8984ed5c93815fb8cd322b78945c0a2b6653aa068bd20b3db45f0eacc:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDA5ZjkyNzEwMGE5M2ZhMzU4OTVmODFkZmQ5NjM2M2FiYTg5Yjc3NjM4YTYxZjk3MmQ1NjI3MTc2NGYxNDU3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWQwNWZlZDkyZGQ4ZGE0YTRmNTVkMTIxMzYyNmNjM2M0OGFlNDdhZjI3YWZlZDllNWFiODYxNzYxMzM3YWJiOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmMzZTM5NGJiMTVlZmZiNWQ5MTg5YWJjOGQwYTcwODM3MTcxMjA0NzliOWNhMGY4NzgwYTgxYTVlOTcxODQ4MyJ9"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L57-L59",
+          "version": "repo-lines-v1:sha256:61f21956344fd5b7c1004039836a78d6df8ad4df28dfa79c35387f1bb68e03ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTg5OGY4ZWNlYWU1OGI1Y2NiODQxOGYxNTdjZWE5MjA5YzQ2MGI4ZDljNzA1NzMwM2NjZDkyMmViNDEwNGIwMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWUyODZhODJjYzBiZTYyOWZkYmM5YWM3NTc5MGQyNTY5YTE5MTllYzE1OGZmOTg0YmZmODI3ZDI3NTAxOTgxMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWI3NmM0ZjAwMGVjMTY1M2Y5ZmIyZTdlODMyNDM5OTcyZTVhOWNmN2YwZjZlNWIxZjY1NGE5ZmVkNzFiMzg3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_003d343bcea3436490da9a7c19a559ce",
+      "statement": "The MCP transport layer re-declares nothing: `cmd/harness/mcpcli/catalog/tools.go` builds the tools/list payload from `mcpadapter.AdvertisedTools()`, and the Go-SDK server registers every advertised tool with a handler resolved via `DispatchMap`→`handlerGroupLookup`, keeping registration stable across tool additions unless a new dispatch group is introduced.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/catalog/tools.go#L5-L10",
+          "version": "repo-lines-v1:sha256:8e633a2238d3ba6ee21778d71c6077770a3fdcf877e0116bacf6136ba9b2ba3f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTliYWM0NDBjZGZkMzc1NDVmMzFkZGExMGEwYTA5NzRlZWM2NWJiMDQxYjM0OGY5N2NlZjc5MGI1YWQxZTA2YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWRmNDZiMjhjM2I2NjU3ZDgwMzE5ZmMyMTliMGE0MDk0MTA3OTAyZjNiNDc3ZTY3NzhiMWM0ZWMyY2NjMDg0ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_sdk_server.go#L122-L160",
+          "version": "repo-lines-v1:sha256:8744c1a78cf90034dbe95b3c6e90ce82b06cc6afee4ebda5c60c4c5148601aba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0OWU5YTJjNTA5NTkwYTI3YzQxNjZhZTVhNDIxMDJkYzMyZDI0NzViNWU4NDZkNWZlYzFiMjBiNjIwY2M5YzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyMDc3M2E3MDNkNmUwYTdkMGFmNWNiZjNkZTk2YWEwOTk1M2VkM2Q3Zjg1NmRiMTNmMWMwMWU1OWUxNmI4ZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4bfcf11166754e0daf961f980cd10982",
+      "statement": "Every incoming MCP tool call is validated against the advertised inputSchema before dispatch, using the toolconformance validator over the schema's closed projection (additionalProperties:false on every object); unknown keys, missing required keys, enum mismatches, and type errors reject with JSON-RPC -32602, while tool-level failures mirror the CLI {ok:false} body as an isError text result rather than a protocol error.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tools.go#L128-L155",
+          "version": "repo-lines-v1:sha256:33fcf5cf3e3f251a0cac97dfd1cf00d308c6cd7e41b231420a1f9c9d48f81aa8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0OGE4ODdkZDRhYTM2NDhjYWEyNmZmMGIzMTE4ZWI2YWI2NWJhODExNGIyYzgzZGNhNjg1N2VhZmZlMDI0OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3ZjM0ZDRmZTVlNDA1YWMyYmVkYTlhYzE2NTAwNDMzZTdkY2ZiZDZiYmNhYzZhZjRkYjM3MTJlZDQzOTU5ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIzNTUyMWVjOGNlZmJhYjhlN2NlMDdiOWQ4MWE1MTQ2NTRmNzliM2M0MGQ2MmNiM2VkMDVhNDM2OWVlZDY3YTIifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/mcp_tools.go#L47-L58",
+          "version": "repo-lines-v1:sha256:6d09f97efa096aa3cc1a30c3f6cec7af6bfc9143361300039c2aa1cac06840e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzN2UyMDJiZDlkMmVmOTBjYTg0ZGVhYTJkMjE5MDQ3N2IxNGMzODMzMjNlZmM5YmExYWZmNzBjNmU2MzBjYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkZTJiMGNhNDc1YzI4MjI4MmUwMjc4OGYwZmExMzkwMjFiMzQ2NGIwYzA4ZWJjNWE0NjkyODFmYWUzYWE2M2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlODM3YjQ4MTg4ZTE3MGZjNzgyMTY2NDA4MzU5YTY2ZTJmY2FkZjRmNjJmZGM3ZmNiNGNmNzg5OGZiNmMyYTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/toolconformance/schema.go#L130-L162",
+          "version": "repo-lines-v1:sha256:55e19a479d206bd627b607ce148d2ce164c7dc3949fa1e0638bbb294cf7677bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyOTIwZGRkYTVlMzVkYzI4YmNiNzA5YjNiYjRiNzBkNjY4N2U3MzkxYjNkYWQ0M2Y1MmY5NWMwOTIwZmNiMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmZWRiMmE5YmI5OWM5MDFkNzc2NzY0OTJiM2FjOTRmNzI2YmQzNDc5NGUxMjJiOTVmNjhhNGM5MTgzYjI0YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMzZkMDMzYWU2MDgwNmZiODQ5OTU4MmIwNWI1YWZlNGQ1MTI2N2Y3YWMxNDc3ZTRiNzNlNzNhMzE3ODJjNmUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0445e6121bb7468b907e0a4b7a820a29",
+      "statement": "`BuildCompatibilityContract().ResponseFields` is the machine-readable registry of public response shapes — mapping named responses (self_verification_summary, harness_doctor, command_run, guard_check, trace_analysis, tool_conformance_report, worker_job, the issueops_* family, command_audit, verify_work, web_fetch, and others) to their required top-level fields; registering a new or reshaped response here is a required step of the add-a-command/tool checklist alongside the DTO in `internal/contract/<capability>`.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L113-L144",
+          "version": "repo-lines-v1:sha256:b414d641db67e87f713e3b2c81c63c4ba3f680475566948ef75a5d46d17ab053:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMzhhZmY5NWVmZTliYmNmMGQwMWQ3OGY2Yzk2M2IwNzAzNzQwZjgwZDYyNTM1MmNiNjU5NDBkODIyM2E5YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViYWQ3Y2MyZGZhZmMyMTc1ZmEyZDk3MDRlMDIwMmY5NDA4M2E5ZGE2OWE1ODViMGIxOGM0OGJlYTIzNjI3NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2OTU5YWQ5ZDIzMDAzM2M1NDU1NjU3MjEzNDFiMmFkN2ExZTU5MzhhNWUxZDk3MDE1M2ZmNzk2M2ZlNzczNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMDVmOTI2NGRhOTk2Nzk1MjY3MzAxODkxODI0OTZhODZiMDNhNjA3MTAzYzg3NWU0M2NhYjliZDk3YjEyNjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c41f60933311456684cc6057387bab4b",
+      "statement": "`cmd/harness/contractgolden` pins `usage.golden.txt`, `mcp_tools.golden.json` (the full advertised tool catalog), and `mcp_resources.golden.json` under `cmd/harness/testdata/`, with `-update` regeneration reserved for intentional contract changes.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractgolden/contract_golden_test.go#L18-L55",
+          "version": "repo-lines-v1:sha256:e492b2b9f10cf9891eca816b212dc647fd66de89b1ff6361a025ba16baccd159:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxODE1Y2I0MTg5NWQ2NWFhOTJlYmI2NTBjYmE3ZTI4MjY5MmIwMTA3MWU0ZWQzNmNhNWE3NGRmOTY5YWEyZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjMyODk0YWRlZGNkMTRjNDNlMGRhYjQ1YmI1ZWU1NGI4ZGJiZDQ3NmNhNDI0Njc3YzdiMWI0MTg0ZmQxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_58d37988f6d84c39bfb4ed20b3c22cb1",
+      "statement": "`TestResponseContractsGolden` executes the live CLI and MCP surface (inspect, docs, daemon status, preflight, policy, state lifecycle, the IssueOps lifecycle sequence, self-verify/augment, trace, worker, web-fetch, and ~25 MCP tool calls) inside temporary state/workspace/git/home/worker directories with fake gh/glab binaries, normalizes each JSON body, and asserts byte-equality against `response_contracts.golden.json`, reporting the first structural difference as a JSON path.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_fixtures_test.go#L20-L95",
+          "version": "repo-lines-v1:sha256:269c3411a9eacc8ef9cfc76423fa341a0bb01aeda34b5a52fbf221b1ac923c7b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhZWJmMzE1OGVlZjdmMDUxZjdiMDAxZGZhYTE4MmUzZjQwZWFiOTY0YTcyNDllM2I4YjFhZTIxZjM0NmY3ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYzhjODdlNTc4NGY3YmM2ZDRhNTJkNTQ5YTdkZjQ3MGY5MmExNGNiYTdkNzkxNWI5ZWFjZWM5M2Y2NjUxNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyZDAwYzE0NTg1MjdlN2Y0ZmU3YzVmMGRkZmNiNDc3ZWQwMmViZTViNDc0N2VjYWMzYzYzMWUwYTdhZmExYTgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L19-L71",
+          "version": "repo-lines-v1:sha256:a1f96dd4316e579d1596ec8cef0dd6c132b4293977eee9e5fa429a1143c4fe0a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmNmU5MWMxY2M0N2E4NWMwNDllMWVmZWQzZDE5MDBiNTU2YmM2MjE3ZDRiODg2MzM5OTdkMTFiMjVkMzk1ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjMyODk0YWRlZGNkMTRjNDNlMGRhYjQ1YmI1ZWU1NGI4ZGJiZDQ3NmNhNDI0Njc3YzdiMWI0MTg0ZmQxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0M2Y1ZDZmYzAyZmQ0MDVmNzY1ZGFiZDM5ODYxMGVhMzJiNDgwMjE1N2Y0MjAwMmZiMTUxYWU3NTE0NDQxNzgifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L215-L280",
+          "version": "repo-lines-v1:sha256:294fed45bd0543a98843a534f0e822f236ca94ca338112d9a2a11f1b78e959d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxZjVjYjM0YjRlYzEzYmU4MjhiNDRjZmRiYTgzMjg0NmZjNmFmODM1Yzk1NmYyNDgwYzc4NTk1ZWEwNjEwNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dcfcd4ff68604033927fd4ce1eed8676",
+      "statement": "`responsecontract.NormalizeContractValue` keeps goldens deterministic by rewriting dynamic fields to placeholders: time keys (updated_at/generated_at/cutoff/started_at/finished_at) and RFC3339-like strings to $TIMESTAMP, duration_ms on command-run shapes to $DURATION_MS, state-record bytes to $STATE_BYTES/$STATE_RECORD_BYTES, audit_log_id to $AUDIT_ID, pid to $PID, git heads/shas and git-subject-prefixed strings to $GIT_SHA, job-/io- ids to $WORKER_JOB_ID/$ISSUEOPS_ID, gitignored project skill presence to $PROJECT_SKILL_PRESENCE, and score floats to 2-decimal rounding, plus longest-first string replacements of test-supplied paths.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L12-L110",
+          "version": "repo-lines-v1:sha256:6e8469a73d0433c98a02bb92c1e545fdefe1bb8e57a7239812ac34e65d68be80:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1YjQxZTVhODdlODgxNTRmOWUyNmRkZDE1NWU2MzMwZjFhMTI4YTAzZWExMTRmZmIzZjA1MWE1ZmQxYWMzZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5ZWRkNzJiYTZiNDAwODNjZTk1MjY5ZmE1NmZjZjNhYzFiZDk4MjIxYWE2NjIxYTY4M2Y3ZDU2MzJiYjIxZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcxN2JjZjRkOGM0NWFiZGM0ZGZjMmU3N2U3NDQwZjYwMDNhZGEyNmI4NWE1YmEwNThlNzQ4YjQyZmExODNjYzQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L167-L193",
+          "version": "repo-lines-v1:sha256:3cf2de8fe313807e11a2240d901564f215232f84770b9403ddc6cd7683c55859:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MDE1YmE0YTg4Y2M4OGE2ZjQ1MjgzZDZkMGM3M2MxODA3OTk2MWVmOWQ3NGQ2NDIyYjFjMGEwODRmZmI2OTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNWZmMTI0OGM0OTY4Mzc3NjgwODhmODgxOTAyYTc1NDRjMGIzYTliZWNjOTE0MzU1YThlY2QwZWU0YzExYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0MDkzMTQ1YTczNDVkMDQ2ZTZhM2I0MDM5N2UxMTI5MDc4NWMzYzRlODQxNjRkZDZiMDJmODBmOWY4ZmRmNjYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L223-L240",
+          "version": "repo-lines-v1:sha256:d8bb7d768a4fb6bf5158f16ff7876b07e8ca2cb14a587a64a47edbb6ce349190:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0M2I4NjY4NTNjNTQ5MmEyMTVhMjkxNmU5NTVjY2Q4MGE1MjNkYWEzNTAzYjhmZTJmYWZiY2EyNjAyNDQxMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_89d64f59ee1647fc94afdf5659bc3fd7",
+      "statement": "`NormalizeMCPTextJSON` detects JSON-encoded strings in MCP `text` content and unwraps them into a `json` key, so an MCP tool result and its CLI counterpart normalize to the same shape in the golden snapshot.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_runners_test.go#L26-L30",
+          "version": "repo-lines-v1:sha256:48785239ebc5b2616723f179df1ea09c6361e8bb2634883a6cd686d9c08430a5:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDA4MjJkMDRmMDM1NDVhMDczZjYwMzMxYzIyMmI4NTc3YWQwYjVlN2MwZjc2MjgzZjAxYzQzNDlhYzA5NzJkNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjQ5MWU2ZjMzODZjODE5MDlkY2MwYTUzNTI5NDg5MjdjMzk2NzliMDg3MzhiOWQ0M2I2MWI2NzQxMzBhN2NjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjViZTA5YTZhMDE1Yjk0NTc3ZmI4OWFlMDNkMTU1ODg5ZDFiN2FkNDI0MDZkMzAyMWQxOWM2YTUzOWFjZjA4MiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/responsecontract/normalize.go#L195-L221",
+          "version": "repo-lines-v1:sha256:0324772ce6c31aa8e255c0c3f041c7b25600a96ed22cd19a1da846a4412235ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjMDNlNTQyNWFhNTM3N2JlYWY3MTM0Y2IyZWFiY2FmZTI1YTQ0NmE3ZDA4N2M2MzRhOGUxZmZhNGNkMjVkYjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2YmI3ZWNmY2E5Y2U2MGY0ZTBkODZkNzIxOTc0ZTFiODAyZTllYzJmNDE1MDQ1YTNiZTNlMmYyYmNlZWMxYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkYzQ1NTZlYWYxZGQwM2YwZjQzODcxOGVmZTQ0NzcxYzBjZDIzMGYwM2YxY2Y4NmJiZmE2YWI0ZGVlYzU0M2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fe498586c27e498faea7cdd9e4412cbb",
+      "statement": "On top of the shared normalizer, the harnessapp golden applies shape-only normalizers for known non-contract volatility: numeric docs_count/docs_indexed become $DOCS_COUNT (leaving non-numeric values alone so type regressions still fail), the self-augment implementation_delta working-tree observation (evidence/score/passed) is placeholdered, IssueOps state keys /issueops-v1/<16-hex>/ keep only path shape, and docs/inspect projections drop raw byte counts and non-required documents while keeping schema and required-doc presence.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_docs_projection_helper_test.go#L23-L74",
+          "version": "repo-lines-v1:sha256:2d7fea6139e7d129159963d52db85e06fac3f4bd882b5dca17bc2eb227a320a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1NWE3NmMwZWNiOWQxNTJmMDM2MTE5MmNmYzYzYjA3YWNhMWRmM2U5OTVlMWU0ZTJlNzc1YzhhNzU4MzZjZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmOTZiNzlkNmYzZmJlMTBkYmQ4YzE1M2Y3YjYyZDcyODZhYTA4NjMxYmRkM2RjYWUyYmEzY2I2ODFkODZkZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwYzJkNTJlMDFhZWZkMjFiNzQ2YTMwYTgyMjhiZTQ1ZDFmMWUxMzRlN2YzYzQ2ZmM4OThmMzMwYjE2MDUyYzYifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L148-L186",
+          "version": "repo-lines-v1:sha256:f45303aed3f448d504bc069a1ceffbd2b491d798671726351c7cb1b6e89e0eaa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlNThmOGU2YTUyYTczZmE3NTA2MDFhNGYxNzkzOTBmMzdiODE2NTY3YzFmNjQyM2ZlZjE3YjMwM2M4NTkxZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJkNjYzMTZmN2YxOTIzZDZlM2M1ZWQyOGQ5M2ZlNjc1MzA2OGY3ZjZmODkyMDUxMzM5OTUxOGFlNjAyMjE1MjcifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_golden_test.go#L69-L146",
+          "version": "repo-lines-v1:sha256:473bc00dc25fe5615bc4e57b15060451a13fce4165fb70c4633b3d434aa3fea3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0Nzg3YjdlMGRmNzM0OGQ4NGJhZGY2ZDllYzI0MTdlYTljYmQ0OGY2ODE5ZmE4ZWUzNTJmNWU5M2QxZmI3NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjNzA2YjY0ODI5NzE3NTlmMWIzMDBkNGZhMzEwMDYzMjQ1NjE0Y2FkNjk3MmNlYWM4MWY1MTQ4MmNiMDliYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlN2Q2ZTY0ZmEyYWRlMzNiNDk4MzdjNDM4NmE0ZTA4ZmQ5YTgyZTI2NjQ0NTk0MDdkZDgyYTA0YTg0MjY3OGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a59a6d4d704b4b8db1de2c3ae1cfa1cd",
+      "statement": "The dynamic time-key vocabulary normalized by the golden test is mirrored by `internal/domain/contextregion.VolatileContextFields` (updated_at/generated_at/cutoff/started_at/finished_at) so the immutable-prefix determinism contract and golden normalization cannot drift; byte-determinism tests cover both the MCP tools list and the contract schema's immutable prefix.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/context_determinism_test.go#L8-L15",
+          "version": "repo-lines-v1:sha256:965f38762786168923820c58f82723e0c04779fb20b771c004659df26b0740dc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzFjMTBmNmJhOGIwMzI0YjRkYjAzMWFkNzczNzUzYWY4YzU2NjM1MjFiNzE4YjE4ZmYyNzg4ZWI5MGY3NWFmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/mcpcli/catalog/context_determinism_test.go#L8-L15",
+          "version": "repo-lines-v1:sha256:ee02a3d708d661a4ea41df4359fc9534a1754687a2d6c35d190cd6e3d202dbc4:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDhhYmVhMDkwYWU3YTBiODk1YTQzMTA2NmExNmJjNDdmZTg3NmIzNzJhOWJmMDI1MzFiMDcyNTdiZTNmOGQ2ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNlOWNjNDkwYzEwMTc5NjA4ZmIwYjUyZWIyNmQwMzY0ZGJiMzdmODRjMzFiNDUwOGYzNmU2ODdmOThiOGJlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/contextregion/context_region.go#L27-L38",
+          "version": "repo-lines-v1:sha256:a090f4bb15a344e60fa02e3e18a5184e8267d5e3a15121cc8cf11c04275f6286:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4MjgyMTc4MDQyYWQxNjEwNDRmMGQ1ZTYwOGFjOGVmNWEyNmI0MzY5ODhhMDViYTkwYmM3ZDEwYTM2NjJhMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3MzMyMzkzMjgwMjM0ODE3MWUzZDA0MzQ0ZTYyM2I4MWYwNzUzMDc0Yjk1NTQzODg4ZjM2N2RmMjk1NzQyYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlZDU5MDFjMDkzYmM1ZTc5Y2ExNTBkMWE1MGRmZDhhOTAxZDZiYmY5OGMxMWI0M2IwN2U2ODgxZWVkZmQ5NDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a61a4f76aed24f85bd48f5860e0b45e5",
+      "statement": "`contract conformance baseline` is the deterministic, CI-safe gate: it classifies the 10 synthetic baseline cases from the embedded fixture manifest (each fixture pins the exact CanonicalSchemaSHA256 of its production source tool, and load fails closed on digest mismatch) and replays every tracked regression fixture under internal/adapter/toolconformance/testdata/regressions/, requiring zero handler calls and an unchanged state digest — failure yields the inconclusive gate decision.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L184-L209",
+          "version": "repo-lines-v1:sha256:4acd78b1911ea84694a2cc71538b53a3ca42d77395d11910ef408300667971a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1NzA4NTk5OGNmZDUyODk0ZWZjOTk2NTQ0ODFjMWQ1ZTlkYjhlNmY0ZGNjOWZkMmI4MGQzOWJiMzkyOWEwZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwNjkzNGE4ZDE1YzhkZDc4ZWZlNDZkZjhhZGMyMzg2MTU0YmNhNDNmMzFiY2Y5ZmYxZDA2NTM2MGFhYzFmOWYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/toolconformance/fixtures.go#L27-L79",
+          "version": "repo-lines-v1:sha256:e34685bbf82e43ba5bc276f3501ce5deff2c22c0cd57957fc8a0fdbcfb51dfb0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2N2UwM2ZhZGFiNTc0MjdhZDFlYjQyZjU1Yzk4YTNkOWU5NGFhMDUwZTE5M2RjNzkwZmYyNDhhOTdmYTEzZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmNmViNTZhNzJiNTdkYjkwNDhkZTM2NzYyZGNiZTMwY2M0NDE0ZTJjMTg4MjE2NDFlNmQ4ZmQ1NzQ5YjIyZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1ZjBiYTNmYjgwMzdiYjIyY2Y1MDJhMmUyNDE5MGRhN2MxMWZiNGM0MTg1ZjgwZTM2Y2ZjNzcxYWNhNGU0NWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b474c776faf94be092958bbc25eb4388",
+      "statement": "`contract conformance live` requires HARNESS_TOOL_CONFORMANCE_LIVE=1 and a passing baseline before driving codex/claude host probe runners over AdvertisedTools() descriptors with clean/context-pressure profiles and bounded attempts; reports persist under .agent-harness/evidence/tool-conformance/<run>/ with 0700 directories and 0600 files, and only a diagnostic signature confirmed by at least two completed episodes within one host+fixture authorizes a new tracked candidate regression fixture (authorize_hardening).",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L233-L297",
+          "version": "repo-lines-v1:sha256:c1f9e6f6be8668140b445f7d8cc7be48aec7e64908f27cca07541922fdf4002f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1YzQ4YWRmMjc4MTc2ODYwMTQ3NzM4OThkMzEwMTY3YTA2OTI5NzQ1NjIxNGZjZjM2YmNlYjJhMDNkMmIwMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxNDUwOTdhOTE3NDc3MDdiNDI3Yzc2NDgxZTVhNmQ3OTUwODQ3NjliMzk0YmM0NjI2YzFmZTJiNGRhNTNlMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmN2MyYWIwNTI2OGNjZWMwYzdkZDc2NWM4ZWEyMzI3NzFmYmZkMzlhY2VjZWY1NDE1ODI4NDYzZTRlZGY2ZjEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L314-L346",
+          "version": "repo-lines-v1:sha256:31741ae8037f38cb8b87ba29b15a0674974d4209d8676f284f5c8df5fb880ca0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYjFlYTE4YzExZTgzMTFjOTQ0YTBkOWI3NzYzOWYwNmM5ZDJkYWMzYmFjOWQ4Y2ExNjc3ZmFlODNkZGQ0ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmZjRiZDI5ZTNiNWQwYjZkOTRhMTU4N2YzMzRhMzE5NGIxZWFlOTc3M2VmNDg0ZDI3ODViODE5MGRhODRiYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0NGVlOTRiOTgxZWRiMGI0OGIyNjI3ODg1NGZiMzJkMDg4NWYzNzZhNDRiNzA0MzkxODA2NWEyNDlmODFkNjMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L394-L461",
+          "version": "repo-lines-v1:sha256:afc7d94e8fe5cc2899d53adf2c030a4f6d1a37b12156cdd633ce39e8864c40c8:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyNTQ2NDgxMzI3MjI5M2YwZmYxZjJlZDQ0OGJlMmJkZjQ5ZjNmOWRkNTRjZGViOTgxMDk3ZjVjNjU4NmQ1ZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZmZmNTM2ZTVkZTVhODE2ZTFkZWI4NmJjN2RiZGJiYTI5ZmFhMTFlZWZmYzNkZGQzMWUzNjE1Yzc4ZTIxYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM4ODAzYTJmZmRiNjEwNGUzMjI0MTBiMjkxMTQ3NDY0NWU2MDVkODAyYjNhYjM1MTcxNWJhOGYzOTIxNGFkZjQifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance_test.go#L188-L220",
+          "version": "repo-lines-v1:sha256:537084067f4947f31c9fad53bf9bbc800fa79c3741aa38b653a132419f651456:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYWFjZjYyZTg1YjZjNzNlNmZiMGYyYjFlMDI5ZGNhYjI1YWRiOTQ2MWExNzk1YTQxMmIzOTZjZmVjMGU1NTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjOGRjN2FmMjUwOWM3M2ZhNjBlYmY5MzhmYjc2ZGVhMTllNjJjNzVkODMzMzc5ZDljZGFmZGMwYzFjNjg3ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQwMzk5NDVmNzEzY2VjY2MyYTJiZTk4MWFiNWM1ZWVhMzdmOTVmOTc2OWU1NzVjZDhlZDlhOWZjYmFmZGYwNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4696d4208ab41dabbea9dad46f505db",
+      "statement": "`contract conformance serve` spawns the capture-only probe MCP server from internal/adapter/mcp: it advertises a single harness_probe_* tool, is intentionally isolated from the production catalog and dispatch path (a test asserts the production catalog never advertises probes), enforces single-call semantics, run-token binding, and schema-digest equality, and captures redacted canonical arguments plus the toolconformance.Classify verdict.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L520-L541",
+          "version": "repo-lines-v1:sha256:ab91cb49904e13ded0565d5cd8a04b4e16e28cd167d0e729fda6aa7476937bc9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4OWI4NjFmODQ1M2JiNmM4YWNkOWQyZTgxNjg3MmQ0NThlM2NiNTg2YTgzMjZlNmQxNzBlMDYzNzc4NzA1ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZjY3NWEyYzMyYjhhNGZiZjc1NTliNzQzYWJhMDE3MWVlZmU3M2I1MmRiMWIwZDZhNzc0MDg4OWZjNGVkNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzZDYzNjIzMjI4M2ZjMjA4NmI4NTBkNTdkMDk5YjE4MTFiM2QwMWY2NTc3ZjA0YTc3NTgyMDU1NTEzOTQ1ODMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance_test.go#L169-L175",
+          "version": "repo-lines-v1:sha256:24148bb4c9dd186f0cff98d63f2b6cc7ed159b0032c2117969c507ce665fbd19:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTgwOWU4OWJiNjVkZGM0ZjkyNWY1NjllOGEwMjRmYmQ5NjNhNDY5YTcxZDgwNWY3YTRjNTExMDAyODU5MTc0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGQzYmUxNGRkODg3MjQxZDk0YTI3OTEyNmQ2ZTRkM2Y2ZWYyZmJlM2Q0MDI2ZmE1NzZhYzIwMGZmNTI2OTBiYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/mcp/conformance_probe.go#L44-L118",
+          "version": "repo-lines-v1:sha256:81b43989182a6b35c56cc68a2d589be2ef501379b27dc1e8f32f6846cb60e75b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3YTExZDQ3MGNiMjhhYTMzYjAyMWMwY2M5YzlhMmJmZWY4MDYxOWM0Mjg3ZmI5YmRlNDVkYjNkNWYyNzdjMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NDBhZmZjZjU5NjZlYTJjMTZhNjg0ZjkwMjAyYTJkYjNmNTgyMTA2ODg4MDJmZmI4Njg3ZTZlZDdkYTA0ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMjBjNDU2MWM4OGI2ODYxMzIxZWRkZDdmZGVhMjRjMGRhNDExMGViNzkzMDNkMTc4NmY2ZjNiMmFhZTBhMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4ZWQ5ZTQzZGM1N2U4NjkwMGRjNTJmZDE0YTk0MjRjOWUzMjNhYzMwZTQ1YWQ0NjRiYTExNjRmODMwMDliMmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b32f63b4dafc4ac1b9df1c8d7346d335",
+      "statement": "toolconformance.Classify produces the cross-host drift vocabulary — exact_valid, unknown_key, missing_required, enum_mismatch, coercible_type_drift, noncoercible_type_drift, valid_but_semantically_different, plus the structural invalid_json/no_call/multiple_calls — comparing observed arguments against both the advertised schema and its closed projection with expected canonical arguments.",
+      "evidence": [
+        {
+          "resource": "repo://internal/contract/toolconformance/types.go#L10-L23",
+          "version": "repo-lines-v1:sha256:4b7bbd49c28e8b35f2628d0c6c95bcd9b6d25f883fd6666e9032138ca5e471b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZDk4NmIwZGY3ZTljNDdhYTc4MmIwNjYwOTQ2OWJjOGVlY2E0NzYxMmI4MzhjZjgyOWRkYTRiY2RkZDMzMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEyMjQxMTNiOTVmNTczMmQ0YzdlNjU2OGRhNDNkNjVlMDU5M2FlZDc3MTcwNzAxZjlmODYxNzdhZGQ0OTQxNmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1MzkzM2RmY2NjZjk5OGY2N2U5MjkwNWE5MzU4MjJhMGVhYmIwODVmODQ2YWE5NjAxMDcwNThkMDJiZTQyNzEifQ"
+        },
+        {
+          "resource": "repo://internal/domain/toolconformance/schema.go#L15-L61",
+          "version": "repo-lines-v1:sha256:9e0e9b0be2f99b2fd5badaa138c9a9ccc023716bbd7a9c88cfe7103c76619ab1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhOTYyYTc4YTk4YzQ4OGFkZDg3MzNhYTkwNDZiNGVkZGJhYzU5ZGM4MDhkYjczZjE3MTJlNmEwZWQ4YjFjZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhOTlhYmMyM2E0OWMwMzA3YjllMTdkN2M4N2U1ZjMwN2ZmODI2YjA5MjQzMzQwZGRiMzIyZjAyZjY3NWEyODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4OGVmOTlmYzg2NGRkNmEwNWY2MGRlYThmNWUxYzg4MDUxOGQ4ZGM3MmZjMDQwNmE1NmNjZjE2NWExMTQ1MjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f5bfc7c0e634ea7ba0d625a4f3a32c5",
+      "statement": "Two downstream consumers share the AdvertisedTools() catalog source: conformance descriptors default to mcpdomain.AdvertisedTools, and the Omo native install computes HARNESS_MCP_CATALOG_SHA256 from the same AdvertisedTools() and bakes it into the installed server environment, tying install parity evidence to catalog drift.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/conformance.go#L54-L57",
+          "version": "repo-lines-v1:sha256:5d8fc126b0668c16009ff7ab36bec9b69af1a0cb85eb153995907ed2470c33de:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzRlN2Y2NjQzZTIwZTJjMzg1MTRkYTYxODA3ZDMxYjg0MjE0OTU2NDMxZWFlMWYzOTRhYTc3MzI3OGVmY2M2NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjdjZTIwYzVhZGJiOGRiMDg3NGNiOTNlNGQxNTQxMjk4Y2NhMmFhYjNiYjk4ZWY2NTZmODYyNWFlMjQ1MzA5ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWU4NDQ4YzQ0MGZkYmQzOGUxODk0ZDZjMzE3OTk0YTFhNGYyZDg1MDQ2MGQ1ZjNhNDBiMTBiMDAxMDJkYjk5OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjc1MjA3MTE4Njk2MjAzMmUxOWI0NGEyNTNmMzE1ZGYxYWE3YTI0Yjg3MGUwNDZjZTBiNDg2MmU0MzFhMTVjZiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/adapter_tail_test_helpers_test.go#L58-L61",
+          "version": "repo-lines-v1:sha256:22cef6cd3317f59219328f7432ef8a1e42fdb043b9cfc91e838383626cfd6411:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODI3OTZmZTJhMmIyZGU1MzZmYTdlMGY5Mzg3MzZmNDE3MThhZjk5M2VmNmUzY2FjOTUxZWNlM2I4NDk4NDAxZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWJhZDdjYzJkZmFmYzIxNzVmYTJkOTcwNGUwMjAyZjk0MDgzYTlkYTY5YTU4NWIwYjE4YzQ4YmVhMjM2Mjc1ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODJiNWU5YTNlMTkzMjYxY2FiNmYxMWFkODMyNTVlNGZhYjc4NmM0ZjMxY2YzODNmODk3Mzk4Njg5OWZkNDJlNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODI2NTMyNWQ4ZjYwOTY1ZDU4YTdhMTE1ODI2YjQ0OTg3ZGZhZmVlOTI2MzU0OGVlN2IyNTg4NTMxOWRkNTliYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/omo/mcp.go#L63-L82",
+          "version": "repo-lines-v1:sha256:345195d2b49b4ff5abb5c5c394d84fc58b22e0121de9f2c82fbd0e33422a6122:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0MWVjMTYyNGEyODdmN2FjNzkzMDdjMjVlMjMzNDdhZTdiNGM3MzE2Mjg1MjM1ZWJjZDFhODEyMzI0YmE0ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlNGU0MmY3MDQwMTdiZmYxMWViODYxODQ1ZDMyYTA0MjRhNjc4OGJhMWU3NDQyOGFiMTI2MDJjOGEzZmEyZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_37acf9a5359c47759aed936b6d2e38af",
+      "statement": "The composition root wires the contract surface: harnessapp injects the MCP tool maps and conformance dependencies (Root, RunProcess) into contractcli via configureContractCLI, and injects the compatibility contract into mcpcli; contractcli itself owns no I/O — fixture loading, replay, and the conformance probe are function variables the composition root installs, keeping it a pure surface assembler.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/toolconformance_dependencies.go#L1-L38",
+          "version": "repo-lines-v1:sha256:0b8a4836209a6653c5cc91cf92b3ca751ddd2d082fd5649f70d9a797d0b7bece:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4YmYxNTVkZTM0YjAwZGQ4M2I2ZjJhZDYxNWUxZGUzNzZlOWY0ZjcwNDg4ZDFmMjJhMTZiZjBkZDdmMjE2N2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/misc_facade.go#L28-L41",
+          "version": "repo-lines-v1:sha256:17b96417680e6cb729118d4101bed45fd497f33b22be779197a1e75b96cc2685:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMDY3OGFkMGMwMTUwY2FiNWEyOGYwYmE2ZTY2YWU5OGRmZjNmYzkxMTAzMWY2ZmMwNDZjMDFkNGYyMWQ4ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2NmU5NTJkMDZiY2JjMDI2YjYwZWMyNjM3OGQ3MjUzNTMxMzc3ODUyNjMwMmRjMWM5YTIwODI3MDI2YmM2ZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmMzNkMTIxYWFiNjhkM2NhZGMwNGJiNjJiMDFiOWE1ZDExNTViMDI3MjQzYmYwZDE0ZWIxOGUwOTYwNDdlM2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c27008d06e14cf2981a71e05984adc7",
+      "statement": "The checklist for adding an MCP tool without drift: add it to exactly one catalog function referenced by catalogSections() (choosing dispatch group and advertised flag), add a case to the owning group's handler, place the response DTO in internal/contract/<capability> with schema_version, register required fields in BuildCompatibilityContract().ResponseFields for new response shapes, extend the snapshot runners, and regenerate mcp_tools.golden.json and response_contracts.golden.json (plus usage.golden.txt if CLI flags changed) with -update.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/contractcli/contract.go#L113-L144",
+          "version": "repo-lines-v1:sha256:b414d641db67e87f713e3b2c81c63c4ba3f680475566948ef75a5d46d17ab053:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMzhhZmY5NWVmZTliYmNmMGQwMWQ3OGY2Yzk2M2IwNzAzNzQwZjgwZDYyNTM1MmNiNjU5NDBkODIyM2E5YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViYWQ3Y2MyZGZhZmMyMTc1ZmEyZDk3MDRlMDIwMmY5NDA4M2E5ZGE2OWE1ODViMGIxOGM0OGJlYTIzNjI3NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2OTU5YWQ5ZDIzMDAzM2M1NDU1NjU3MjEzNDFiMmFkN2ExZTU5MzhhNWUxZDk3MDE1M2ZmNzk2M2ZlNzczNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMDVmOTI2NGRhOTk2Nzk1MjY3MzAxODkxODI0OTZhODZiMDNhNjA3MTAzYzg3NWU0M2NhYjliZDk3YjEyNjUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/contractgolden/contract_golden_test.go#L22-L28",
+          "version": "repo-lines-v1:sha256:3d9dcddb7bb16799ff2970d249437e717ba92089ceb02c95733f8f5067fdaa93:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTMzNzU1YzViMjRmZjI4MmRjMjU1ZGU2ZTVlMmQ5NTAwOTI4MmE4MjczYTc2YjRlOWUyNDM4MzVkMjg5M2MzYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmY1OGU3OTBjNGM0MjY1YjlmZGRiNzY5ZDU2Mjg1Y2IzZDIzZjg4ZjE3MThmZDI0MWNjOTJiMzc5M2ZmODI2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmQ2NjMxNmY3ZjE5MjNkNmUzYzVlZDI4ZDkzZmU2NzUzMDY4ZjdmNmY4OTIwNTEzMzk5NTE4YWU2MDIyMTUyNyJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/response_contract_mcp_snapshot_test.go#L5-L73",
+          "version": "repo-lines-v1:sha256:9d04b07f46a27040f790e567705be316d8acc6a287371172d1bf20356b13fb4c:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiNjkyNzhmNGI4MzMzMWRmZjQyNGI3ZTExNzhmMzFmNmNmYWNkNTY4MDk1ODBmMWVhYjE1YzQ1ZWQwNzc5MjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3ZmU4ZTFhNWIxMzQ2MWI5MzUwYzdjNWY5YWFkMTViZGUwYzA0NmViZTlkNjE2YjI2NjQzN2ZhYWM5MmRhMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/mcp/catalog.go#L40-L61",
+          "version": "repo-lines-v1:sha256:bab333b8778f279f2da222a56b87f55bda15aae0b2ae2de05729d329819939df:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmZGEzMDQzZmU0MmU0MTBiMTY3NzJlZmJlNDk2ZjUzYjBlNjFlYTFkNGY4NjhhN2E4MDQwYTNjYTkxZTY2ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiYTExMWMxNjIzMjc2OGEyYmZlOGNhNzhlNTQ1ZmQ5NTU1MjczMDM2NzljMzljYzhlMDhmMjlhNzU5M2M2NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0YzIxMDRjZjU4YzU0YTIxOWU0NWU4Y2I5Y2Q4YTg3YmI4NDQzYTdiMjZmNWU5ZTJhNzFlMjQ0YmFjNjhiMGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

@@ -1,0 +1,406 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3f606b341b091a8881456fc9f00b10f06b367bf7a8cb8803a2b87775cceedf12",
+  "claims": [
+    {
+      "id": "claim_83a2d5bfd27340f8a8163b84b1b4cc1a",
+      "statement": "IssueOps v1 state stores exactly one row per lifecycle with one Execution at a time, at ~/.local/state/agent-harness/issueops_v1/harness.db in bucket issueops_v1; rows missing/zero/future schema_version or carrying legacy write-authority keys fail closed as a generic invalid state with no auto-conversion or reset command, and freeform values are secret-redacted before persistence.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L9-L12",
+          "version": "repo-lines-v1:sha256:2fd4904a9b4e9b2ee1d2d3bb91017bcc3a93c52d9d1f50c1b5a6febc9250b97a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTQxM2IwYzA3NmQxMTExZDI1NDc0MjQwYTViNWJlNzNjNzk3Y2Y1MWYxOGM3ZGYyMzBmZTFlYjJkZDJiZjU3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQ1NGNhYTY0M2I1OWQ4MmY4NmYyODUwMzcyNjRkYTYxMDIyNGEwYzI0N2ViYzRjYzVmNDQ3NDNiOWMyNGM3OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODZlNGJkOGRkYzFmZDY4MWJjNzU1MTRlMjBjZjlmODZjZjQyMjk5MzA0NWI3ZmRmYjM2N2U2ZmEwMzg0NTI0ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzlmYjk2NjUwZTdiMTEzYjY4OTQxY2UwZjdhZjM0ZGEzYmI0YmJjZGRjNWM5NTk1NzNiZmM1Y2Y3MjJhZjBlZiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_namespace_test.go",
+          "version": "repo-file-v1:sha256:2aa659eded1a3b58e0c40020586bba6bff8e20949588a3c045602376e0506481"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L10-L13",
+          "version": "repo-lines-v1:sha256:fb8972bad31c46f2c9d47e9ffa49ee36d8f10a9aaaa4e8d2c438a425d9d22831:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDBkOTg2YjBkZjdlOWM0N2FhNzgyYjA2NjA5NDY5YmM4ZWVjYTQ3NjEyYjgzOGNmODI5ZGRhNGJjZGRkMzMyOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQ1ZGU2NzM5MGNlMzJiZmZlZjBkZTk2NGMxYzcyMDA5OTVkNjhjYTNlZWNhZGViM2RkMDliODcyYTU0ZWI3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjM1NjgwOTE4ZjM1ZmY5MDNmMjU3ZDU3MjMyOTNkNDYwYzkxODhkMzAxNjhiZTEzYTFiY2RkY2JkNDdjNzAyZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fc72c80fcf704a4fada4814c12cb049b",
+      "statement": "All IssueOps cycle read-modify-write spans serialize through the sqlstore span lock (a BEGIN IMMEDIATE transaction on the state root's lock database that dies with the process), and no Git, provider, or Orca process call runs while the cycle lock is held.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L109-L112",
+          "version": "repo-lines-v1:sha256:2e85ce002219e5d82b3e56ee2fa6541fc67f6b0c6c78c8b786b9ac796fa02b16:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODRhYjY3YjllNDUxNTQxNTIxMmJjOWMxMDdhOTc4ZmUzNzQzZTFiMjdmNzU4ZjMyYzdmMTE0NDIzODc0YjdmZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzc5NzU2MWQ0ODgwMDRiOGY4OWFiZjk5MWQ1NmRiNDRmNTM5NWM0Nzc3ZmYyOWE3Yzk3Yjg5ZDM4MjQ2Njg1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE2NGIzMDg3YmU2NWM2NGI3ZjgzMWU0OTM4NjQwOTJmYWQ2NmQ3ZTk1MjYyNmI1N2EzMTY1YmNiY2ZmNzI5MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWVjYTNlZjg1OTE0MTg4NmRkZjEzYzQwNTYxNTYwY2ZlYzZlNGYzMzA5OTQ5NDk5NTNjZGEzZmUxMDIwMjIwYyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_lock.go#L14-L41",
+          "version": "repo-lines-v1:sha256:72bd11bc618767c0b4a60bb6b90bc4bbad38ec18110d67cab3505acf230d708b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwYWEyMzMzNTllN2M0NmQwZWU2MDY3NzFmOGJlMmNiOWNiOGUzZTJhNDRjMTczNTEwMjgwYjJlOTEyODFmN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiYzg2MzYzMDRkZjgxZDUzMzMzODRkMTI1MTIzZDc1MWJjZGJiZDk0YTE5ZmY1NTYwNzdlNmUwZGM1ZGVlZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwZDBiZjdkNjZkZTEzMDZkMzVjZDIyODAxMTA2NzFhODkxNDk2NTdjM2MyNzBkYTM5Mzc1ZTdmNDcxMDQyZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b4e9775830f540d982be697880f47989",
+      "statement": "The IssueOps phase enum is the fixed-rank sequence problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done; transitions are forward-only by rank, done is terminal, entering done requires prior pr plus a verified remote artifact and a released lease, and only implement, ai-slop-clean, and feedback are resettable on a stale worktree (pr is never resettable because its work product lives remotely).",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L168-L170",
+          "version": "repo-lines-v1:sha256:6ab8dd0b9361f195fc4a2b46b0e97080cde89d930fe0ba527e1c21509aa3448e:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWU2YjkzNjQ3MmYyMzI4YTVjNWU2ZGU2MDYyMTk3MTY0NjI0Yjc2OTNkNmNlZDc0OTRhMDQwOWY3MzQ2YjI1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjdkZGMyYTM4MDE3MTlhZWQ2YzY3NTgyMDlkMzg5MzI4ODY1NGY2MDhhZDE0MTgzYTllZmE5MTE3Yzk1NzM3MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDU1Yzc4NmNjODBiYWFhOTA3MTc1MzJmOGQyMTA4NTJkN2U1NmFjZWMxODI1YzNlMjQ3MWNjMTMyZmJiMjhjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_phase.go#L74-L137",
+          "version": "repo-lines-v1:sha256:58b0e9900d5da2b54dbe95520228d7985802ea65f19fef62dd726aba1b26dfdb:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4MDIzM2M2ZTk2M2IxYWRlMGJlY2FmMDVkYzA4MWMyZGEzYzdiYjhlMWFhODdlNDRkMTI2NTFhMGVjODYwMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhMTM4OWY5YjZlOTVmZTc3OTFhNjNmNGI5NTdlYmI1ZjZkZDU2NmQ2NWRkMTQ0YzljZGYzMzQ5NDgxNzRkOWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiN2E5NDhiNTUxOTU2NmVhMmU5YTkwNjUzMmE2MmQ2YjU0ZDRiY2Q1ZjEyODliN2JhYmUyNmYwYTI0YWFhODEifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/phase.go#L1-L27",
+          "version": "repo-lines-v1:sha256:2a12e5435aa973b2c9fdde5ba7cedba76639b1218903022e2128f15a470041df:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MjZkYzAyZmNlMzM4Mjk5OTA5NmRjOWFlMzc1Nzg3MjZlN2ZhNWU3YjVlMzUzYTIxMWNjZDgzYmI5ZWI0ZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueops/phase.go#L18-L26",
+          "version": "repo-lines-v1:sha256:482cb1cde65e2d511b622704d0b216103d64f54922eea03707f60013caaf975c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDA3ODcyNmIyNjJiMDNhMTliMmFmYjM3MzI3N2ZiZTc2NTczZDdmOTI2ZmNkNjNkYThlZmVmMWMxNmRlMzZhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODcwMjg3ZjZiYjJkNjdhOGFkYzZmYTcyZTM0NjUxNTdhNDQyMGMzMTk5YTQwOTViMjMzODViYzY0ZjhkMmRkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ca03b97ea7d94f26a821ff6af5e08dbf",
+      "statement": "The IssueOps phase ledger (IssueOpsPhaseLedger) is an index over existing source-of-truth fields, never their replacement: forward transitions stamp the leaving phase complete and entering phase entered with observed timestamps, a devil's-advocate regress retains plan/compatibility-review entries as stale audit, and status derivation backfills a display ledger in memory without persisting it.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_phase_ledger.go#L202-L233",
+          "version": "repo-lines-v1:sha256:5e2f0fc223436bdd8ff64404bb7de51bd3d9c2dea42815b9b07a696e5b127a54:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2Zjc1NGZlZTQwNmFlNjA3N2Y4YWM3NzhjMWU3N2JlYWYwMWI2NTk1NGQyNWNiOTA5YTUzMDhkYWM5MTEyMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3Y2FjNjY2OTgxYmMxMGQ3ZjZiNzNlMzdjYWMxZWUwMTNmZGRlMTY2YmVhMjNiZmUxZjhhYTNlZGM0ZGI2NTAifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issueops_regress.go#L116-L124",
+          "version": "repo-lines-v1:sha256:8a4166c33a304f1e8914701b41dfcf39ec415ee6b4bb2bcc97a8687817c89b5f:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGVlODliY2E3YzM2ODI1ZWY1YWNiZDE4N2IyM2Y0ZGI4ZWQzNjFhNmNmMWI3ZjUzNDZiYmI4Zjc2ZGZiNDIyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzg2NWU3OWY4OTk4MzYyNDc2OTEyOGFmOThiNzEzMzBmY2Q3YjBhMzZiNzg5YTczOWQ4N2E2ZmQ2MTU4ZWFjMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWI3NmE4NjYyMDUxNjFmOGVhZjdlMDA4Zjk5N2Y1NGJlYTg1YjlmNmQ3Y2U1N2UyN2UyYTU5ZGIzNTYzY2Y2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmY2YjFjN2U0YThjODc3YTdjYzdmM2QyMjkwYWFjYmE1ZTE2OWY2MGY2ZmUzZmRmMzRlNTMwZWQwNjE2ZjI4YiJ9"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/types.go#L265-L288",
+          "version": "repo-lines-v1:sha256:aea847f50c5ab217e7f670d2e54e462b9e5aa1e60bc03ef15d7238b362cc17ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2OGI4MDM3ZGIxM2MzMjI5YWE1MTM2NzkyZDQxN2NjZGNmMmUzNTJmZmRkYWI0MGU1NmIwMjU2MGYzNjZkMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1MjAzMWVhMzIyYzdmODI1Mzk2ZmQ0ZmY0YWJmYTM0MWIxOTI0YTk5YTAwZDYzNThiMjIxODIzNmE2Njg0YTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NDkwYzQ0MGU4Mzc0MTE0YWE1NzBkNjQ2ODM3MWVhY2M5NDI3NGUzYmU5NDdlYmY3Y2JkZWM4NzM1N2Y1NjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0YzIxZjhlZDZiNzk2ZTM0NGEyMjJhMjIwMGE2ZjZlNzU3YmFjZDFkM2RiZTg4NzBkNWFkY2ZkYTU5OTI2MmIifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopsstatus/projector.go#L18-L30",
+          "version": "repo-lines-v1:sha256:9e679ae2862a35e889fb3c642ce061119db03cb6d8f43a28ac456402b4ddbf82:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZDQzZTFhNGNiMzEzNjMwNmEwNzg5NTZlOTRiOGYyZjZmYjBlZmYyM2ZiOGE2YjcwNTY2ZWRlZDEyYmZjY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhNzExZTEyNzYyZWE5OTIzN2EwMDJkN2YzZDc1NzE5MWNmZTU4ODlhNzdmODNjNGIyMTlmNTVhYmZhNGIwMWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3OWY1ZWRmMDU0MDRmYjYzNTkzZmEwY2M1NzlhOTdjMzNkNGQ1MmRlMDE1NDQ4Yjk4YTQ4OTM1YTdkZWVhYWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b24c475b6ca6433dac28c55e9bc783e8",
+      "statement": "The execution lease is the record's single write authority: a generation starting at 1 plus one status of claimable, active, revoking, or released; validation pins each shape (claimable = one token hash and no holder, active = validated holder and no token, revoking = fenced holder retained for quiescence diagnosis only, released = neither holder nor token), and one record has one active execution rather than one per source repository.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L154-L160",
+          "version": "repo-lines-v1:sha256:4c3b639b6a19bf33d18ebdd5025b8d17c5f1108a85177e223a67c1b84bc7ef4e:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTdkNmJlODViZGVkZjgzOTYzOTc1YmI5NDQ3ZDE3NTg5YjIwMGQyZTQ5OWQxZWJjYmUzOTMwMjIyNTdhNTUwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGVmOTYxM2JhMjc0Zjg5NjNiNDlhYjk3MzdlMDE2Mzg2MmYwNGM4MzVkMDUxMDJiZGZhNzM3MzAyNzQwNmMxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGU3YTg0MjI0YTBiYTFkNmZlYWJkZGFkYzFmMGNkYTRhZjA3ZGMzOTQyMGNiMWZhYjBmMTlkMzY5ZmQ2ODNmYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmQ2NzQwNzI0NGQwMGE5YTllMGZjNDBhZDdmNmQ5YWY3YzM2ZDFiZDkzYWVkNmQ2YWVmODBiMTBhMGQ0ZTg0OSJ9"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L22-L29",
+          "version": "repo-lines-v1:sha256:6bdee2e408af7f937abb27e666f355b31102a753512d0d6ac7a532523fdd371a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjc4ODBjZTAzNzk5MWM4MmUwOWI5NTM3NGI2ZGU0ZGIwMmIxNDI0MWE0YmNjMTU4NjIxMGFlNGU5MjUyZjFmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmFiNDA4NWI0NmU4Mjk0YzMzODFlMjg0MmE1NTRmMTAyYmI0MzNhMzhmY2QyODNkYTlhNmY2YTFlZWFmZjMxYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGYyNzVkOWVhMjQyY2U4MzZlNjE2ZGE3ZjVhMTc3YTA4NDhmZWJiNjQ5YjI2OGMxOGFiM2I1MTRhYjQ0OGU5MiJ9"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L381-L413",
+          "version": "repo-lines-v1:sha256:bfe47b3825d358444a89355d8fa996b026bec19fdded5c3268110bb7dd7ce419:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNDI1N2VjZDFiNmVlZDc1YmM0OTY3NjdjMGExZDk3MDk5Yzk2OTk2N2M1MTdiNzFjZGE0YzMyNDE2ZDU2MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyZDI5OTljNWFjNjE5ZWY1MzJkNTc4ZThiNzgxZjZhNWNlNmI0YWUxYjhiMzRjNDRhMTUyMzBmODA3ZjQ2YjcifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L77-L86",
+          "version": "repo-lines-v1:sha256:207aff2b00e86102d2355a84101a6c38d4c0a8e0824d15798e1beb8ee56e9e25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNjk0ZTVlNWRiZjg0NDEyNWEyODdiMjYwN2EyNDEyNTM5MmZiMjdkYTMwNjE5NTBlOTRmNmJkYzIwZmYzODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4ZjdkZWQ2NmViOTA3NjU4OWZhY2ZkN2Q2ZTJiZGFlYjYyMWZhZjYwYjk4ZjVlZDI3NzVmMGI4OWE0NmY0OWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NTY2YWQwNDQ3YjVmNGI3ZWIzODYyOWE5OGMyZDkyN2Y1YmE0YThjNWY2NjFjNGJlZDkxN2U1YmJjMjNhY2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f18af8d685645a0a3b75dde6c0dbb1a",
+      "statement": "Every mutating transition requires the currently active generation plus the matching native actor and canonical cwd, with stale generations rejected before the record CAS; replacement/reseed advance the generation, post-completion sync authority binds to the released lease's stamped completion generation, and generated next_command embeds the same generation envelope.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L88-L98",
+          "version": "repo-lines-v1:sha256:5f195c27e0cc4720b3d12f68bacac2bf86d22624a7413649f437b4c65dc1fdbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2OGNhZmFmMWI5YjYyYmIwYWMwMjJiN2NiNDhmZDY2MmRiYTkxZDhlYzUyZGI5ZjFiNDk2NDEyZjYzYmMxNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MDQzNzhkZGY5ZDI4YjVkMzU5NmQ4NjNjYmMwZGYxYjI4ZWEwMTExZGQzNWEwNTQzMTc4OGRjM2MxYjhiYzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1OTZhYzYzOWJlNzUyOGUzNWQ0MWZjY2IxM2M4MWU1M2UyNGJjZWUyNjU3YzA3NTdiNzE1NWQ1YTg1OTZiYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjNTQ1YmMyYzFjOTA1NGRjMDI3YTNjODhlNzlkNzhiMDBkYWFmOTBjMWJlMzlkYWU2NjkxMGM5NDEyM2UzYWYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_lease.go#L433-L442",
+          "version": "repo-lines-v1:sha256:c09c7c9a0f9a18467caa38ab5cd71fdfaef96e4f8430349032e8a2d65281ef89:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NDk4OWQ0MGQ1MWMzOTQ5ODg5NDMxMzI0MTdmY2ZkYzYyZWYxMmY5NGEyZjc1ZjczMGI4NDNjN2RkMjgwYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhYjdjNzMzZDJlMDU2OGYwM2E3MmQ2OTIwNDViM2JkODYwZjcyOGQzNWRmNzZlODhhOGNmNzJmNGJkYzUwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlNGU0MmY3MDQwMTdiZmYxMWViODYxODQ1ZDMyYTA0MjRhNjc4OGJhMWU3NDQyOGFiMTI2MDJjOGEzZmEyZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjYWMzNTY0YjhlM2I0OTc2ZDBmM2VjYTkyYWQyM2ZkZWJmZjhhN2RkMmIyMjI0MGUxY2RmZmMyNWEyZjU3OGYifQ"
+        },
+        {
+          "resource": "repo://internal/contract/commandparse/generated_command_provenance.go#L100-L120",
+          "version": "repo-lines-v1:sha256:cdca5b0bba2fdf9ce70418d94d3fc0665aebec0e56e0ba5f820b0955b9d66b54:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3MDExYjMyZWE5NTY1NzBlOWM2MzhiN2E5YTE3NTYzY2JjOWFlMzliNjE5NmMwNzY0MTI5YTVmNTgzZjA3NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyNWVmZjFmNWViMTA3ZTA5NjExM2YwNDIyZTdlODBjOWExZmVjOTYxOGUzYTRhNTY1OTAwYTE3MGFiMWQyMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjNWQ4NTZjNTZjOGFkMWUzZmVlNTU5MmVjZmRlYmI1Y2ExZDViOTJhZmEzNmE0ZjkyNjQyOTRiYWRjYWVhNDAifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopslease/reseed.go#L42-L53",
+          "version": "repo-lines-v1:sha256:5aa564bf1a386cc1bebd962e1d80779739686c8097368a37c4cc5ef775751bd9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3MjMwYzkyYWJhYThiZDljYTllMmY4YmE2NWZlM2Q5NTZiYzZkOWZkM2IyZWM5YmJlNjE2ODllODI2N2UwMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyM2JjMDYxZDkyNWU5NmY4NjNiZWFiMDBkYjM4OTJmZGYxNTY3MjIzNmM0YzgzYmY0ODI0ZTcyZjIxZTJmYWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmMzE2MjkxMTRlN2FhZTI2ODFlMGZmZWQ0ODk0MDRhNmM4ZmQ4MTgyYmE5ZTVmZTUyMjI3YWFhY2JhODI3MGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0afeb70cc6c74ce7a6d9dc8afbb9d52a",
+      "statement": "The native actor trust boundary is host restricted to codex/claude/omo, a session/agent ID, and a PID-reuse-safe NativeProcessReceipt (PID, started-at, executable) evaluated against the canonical worktree cwd; process ancestry is observed by first-party adapters and never accepted from JSON, and a reverse lease-holder index fails closed when a native session already holds a different active lease.",
+      "evidence": [
+        {
+          "resource": "repo://internal/adapter/issueops/execution_state.go#L144-L163",
+          "version": "repo-lines-v1:sha256:8cd13c7816922c6f3890392a8299b792f8a6f74e2348e4596b3d1aff08e6ee02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNTQyZjdmNTQxZjAxODYxNWIwZTJmMmUyYzQ4MjU5N2M2ZmM0OGExZGM1NzdlNDIwZWVjNTYzZDdlMzBjMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNmMzAwMjhiYWJmMTdjMTU1ZjkzNjMzNmU3M2UwMGZiODk5NmUzNDMyNWYwZDc0MTgzOTQ2ZWEwMjc1MDIyMzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMmIyMjgxYjE1MzBmMzA2NzViOGFlODVhOTVkNTI2OWJhNGUwMzY3NzQ4NjIwYjRlYjBjZGUwYTI0YjM5ZTYifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L415-L426",
+          "version": "repo-lines-v1:sha256:28308fbd2fa8e6212defd82b9c6c2d122663f0c46166714a6030bf7ae4d10ca0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1ZmMzZTljNzM0Njg0ZDFkZGJkNThlYjM1YzYzOTUwNTA2M2M2ZWJjY2I0Y2Y0NDAzMGMyYzM1ODZlNzc4MTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MjJiODUxYTI5Zjc5NWFlMTNmYTBmM2M3ZjE2MzMyYjRiMjczYWVlZjI0NjI1M2Q5NjI2ZmYzM2VjODdkNzIifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueops/execution.go#L88-L102",
+          "version": "repo-lines-v1:sha256:c7c8fd4a17854b5427e3ce4eeacf2acf27b2e72201eb017d58138a43eaa58284:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhMDUzNDEwZTczOTUxYjI0NjJiNGEwY2I5NjM1MmRkMDYyYmQ5ZmFkMzJiNzZjZmRjMTQ0MDBkYTcyY2MyMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2YTYyZGU1ZDMzMjc0N2NkYjA1YWI0ODNjOWY1OGY0OTY4ZDMzNzU5N2M3ZmQzMjU2NzFiZmVjNWQ4MjkxYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YzU2M2Q2YTY1MjRlMTkxN2ZjZjE4YjQ3NTMwNjNlYjVhMWUzMGUzOTg5YWJlNDVkZTM5YjFmYjZmNGYzMmQifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopsauthorization/authorization.go#L12-L47",
+          "version": "repo-lines-v1:sha256:5a0082362381060955d373e25e2a909e7f6002d88490ccffd9989d8bba3c7e93:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjZWE5MjU3NzRkYTJjYjM2ZTcyNmI2N2RhOGJkODk0OThmMTI3ZTUzZTI0YWY3NjliYjhiNGM4ODRlYmZlNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlY2RiYjBlZDZjMmQwNDY0YjhmNDFjZTlkZjY2MGFhZjcyMDlhNjkzNWFhODc0YTY2NWFlZTA5ZTU5MDQ4YWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_70a5263e1ee24480b62b8e33de279bbc",
+      "statement": "Orca preparation seals per-generation SHA-256 digests of the issue body, a private bounded 0600 context packet, and the fully rendered owner prompt plus owner host/model/effort and stable Orca resource IDs inside the canonical worktree; resume re-verifies the packet identity and digests before the owner restarts, the Orca claim consumes the current-generation claim token exactly once, token contents never enter state/prompts/logs, and after the terminal preparation intent is deleted identity version 1 plus these digests form the resume trust root without re-rendering the prompt.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L11-L11",
+          "version": "repo-lines-v1:sha256:079136c831d6c61d16f2abfdff28a2fe7c1cd6a3ea5c7bf22b90b3b6a438162d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc5MTM2YzgzMWQ2YzYxZDE2ZjJhYmZkZmYyOGEyZmU3YzFjZDZhM2VhNWM3YmYyMmI5MGIzYjZhNDM4MTYyZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc5MTM2YzgzMWQ2YzYxZDE2ZjJhYmZkZmYyOGEyZmU3YzFjZDZhM2VhNWM3YmYyMmI5MGIzYjZhNDM4MTYyZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2EzNzZkODNkZmExYzMyNzhhYjk4NGZlOGNkNDUyNWQ3MjQ3NzIwYmNlY2VjZTcxYjExNjZlZDMwMzA4ZTA0MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzlhNjM5Y2JiMTczOWRmYzExOWRmZjgzMDQxMmE1N2FjOWE2NWY5NjI0NjY2ZWFiNTRhZGY1NGYzMjFkMGE3MSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L92-L98",
+          "version": "repo-lines-v1:sha256:9994f412ce78cf5dbf9f9f496a26021640295b5fa8449160f18d0f3025ee63ae:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZmMxZDMzMTYxYmEwNWEzOTQ0ZDRiMGI3NDA5MDcyNDE2YmFkN2UwZTUwYjhiZjIzNjljYzRlYTY0MmEwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzcwNDM3OGRkZjlkMjhiNWQzNTk2ZDg2M2NiYzBkZjFiMjhlYTAxMTFkZDM1YTA1NDMxNzg4ZGMzYzFiOGJjOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTgyNjg3Y2U5NjFjOGE1ZjNhNTkyNDMwMTljZDQzMTRlNTA4NmViMWY0YWJiNmU5MzM4OTdjZDY5M2Q3NDZmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGM1NDViYzJjMWM5MDU0ZGMwMjdhM2M4OGU3OWQ3OGIwMGRhYWY5MGMxYmUzOWRhZTY2OTEwYzk0MTIzZTNhZiJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_owner_context.go#L168-L264",
+          "version": "repo-lines-v1:sha256:e057cd8cb17713ce52b4c87bd488f2b0818ea05a83387d16dd1e6a5a076fb527:eyJzZWxlY3RlZExpbmVDb3VudCI6OTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYWU1ZGI2ZjVjOTA5YTU1MTgyNTViYTY0YWMxYzAxYWY1YjI5Y2EzOGYwZGVjYzZlYjY1ODM0YmFiNDkzNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0NTY1NTgyYmZlOGMxMzk3MzU4Yzg4OTk5MjdjNzZiZTc5MmEwYzgzZDdjMDQyOGViZjlkMmY2N2FlM2ZlZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0ZGE5ZmQ2NGFmNzAxNTU2NDAxYmFmMjA2MDAxYmI1NmYxNGQ3Y2EzMGQ3MjlkOTQ5MTc0NDI0ZGUzOWJjMzkifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/execution_resume.go#L109-L165",
+          "version": "repo-lines-v1:sha256:a75b2ba810ff80b07f9bc381cbb4fe7489f1f3122e30372582b2a24bf343c830:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjNzI1NTFhNmE1OTVmY2RiMDkwNGVjMmMzZjU5ZTA2OWY1NmUxY2Y1MmVjODA5YjcxNDRhZDY5NTA4NDc5MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1NzU2OWYxNzkxNDE5ZDQwMGI0ZjAxMDQxNzA4MTc3ZGM3MGI4ZDE5MjI5OGE4ODgyYTEzNDZiMTA1NmM0ZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyOThjM2JiNWYxZWRlZGJhODQzOTFjYjA5YzExOTQyOTM5ZTcyNjFlMmVjNDY5ZjNkMzQ4NGZkNmNkN2ZjNWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40431e1fb82a4fa0b4a25bc03f1b67ff",
+      "statement": "External mutations (workspace creation, Orca owner launch/dispatch, remote PR/MR creation, parent issue creation) persist a pending intent with operation ID, marker, generation, and digests before calling the adapter; timeout or error is ambiguity rather than absence, retries and mode fallback stay blocked until reconcile proves one exact outcome, and only a proven not_invoked outcome is retryable.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L100-L112",
+          "version": "repo-lines-v1:sha256:b44ef0e3f6d2a033eeb47d90891a0b9027f2f784676cd4d7157cfb63acb158e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxODI5MGVmN2ZmNWZlNzU0OGU4MDZkMmMyYzcwMDA1NjYxY2I4NWMxYWNjZjM1ZTkzMTUxNjM5NmMwNmVhNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3OTc1NjFkNDg4MDA0YjhmODlhYmY5OTFkNTZkYjQ0ZjUzOTVjNDc3N2ZmMjlhN2M5N2I4OWQzODI0NjY4NTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljMjc1YmMwNzJlZDIyNGZiNDkyZWU0ZGE5ZDVhMjUwNzlhOTA0YjY3MmFkZTAzOGQ3ZTk2ZTBhNTdhZjkxMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlY2EzZWY4NTkxNDE4ODZkZGYxM2M0MDU2MTU2MGNmZWM2ZTRmMzMwOTk0OTQ5OTUzY2RhM2ZlMTAyMDIyMGMifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/issue_create_intent.go#L14-L64",
+          "version": "repo-lines-v1:sha256:becb8a38738ac02f27a1c34ee0191e4cc9c528990a67490e99f5214ff4b91996:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MDhjZmM2M2IyZTI2YWU1YWZiODg2NDRlZGQ4M2ZjMDgzM2NlNjE1NTE3ZDg3MTE1Nzc0MzVjZjQ3MmZhMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwMjk3NmI1MjZlOTg0OTI2NDExM2Y3YzE1NDEzNzY5OGRhZTc0ZTgxY2NhYzA4NGQ3MTIyOGE3MjA4NzRhZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhMDdkOTE1YzAzMzc0YjkzOTExMDVmYjdlOWExMjg5ZGE4Y2I2OWMzODNmMGQ2ODUwYzhjMTE3ZjlhMjIwZTYifQ"
+        },
+        {
+          "resource": "repo://internal/contract/issueopspreparation/intent.go#L135-L159",
+          "version": "repo-lines-v1:sha256:203d7e39e56b43898ce58068ed0714b3fb82da6d52703e471fa0399a0dc5997c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwNzlkYjlkYjNjYjRiZDQ3MjNiNDVjMzY4MWYwY2M5Y2FiOTcwYzg2NzBhNzM2NGU1ODhiMDIxZmU4ODM1YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MjE1Y2FhYmNjNzE0MjhjMDI2YWFhMTNiNTdjZjFiNjA4OGJhZTA0NWQ5ZDBiZjI4ZWRhOWU2MDdiODhkNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyNGFiNGM4MjY2NzZkNmE4NzEwZTM1NTNkMWQ3YzM2MTRjYTdiYTA3MDRiNTg2MzZjNGI1YjhjMjUyMDYwNzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_04e665eb98fc4f70899f956270347ea0",
+      "statement": "Reconcile is the only path that resolves a pending external intent: a pure planner (PlanReconcileStage) picks adopt (exactly one candidate, one CAS), invoke (bounded retry), preserve (ambiguous finding), or clear (authoritative-zero inventory proves no resource exists, so clearing the intent is record cleanup rather than a retry), and the application service records failures without repeating an uncertain mutation.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L29-L31",
+          "version": "repo-lines-v1:sha256:470c0bbcb330b8b517151eefe6ea5a9f1f67e6905721769a57c9f08b3dfd41ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQ0Zjk3ZWM3NTM0YTg5MGU0NGViYTRjZDczOThkZmI3ZGMzM2YyZGNmNmJiOGU1MmRlY2UyNmY5NjNlYzc5ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTRjMTY2OTlkZDdmY2IxNDgwMTVkYjUzNzNmNDBmNjRmZmVhMGJmZjE2MzY0MWIyNGI3YTVmZTRiMDAzMjI1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjVkNTI1ZDkwMTgwN2YzZGE0YjVlYzJlY2ZjYzJhZTJhOTBiZTEzNGQ4YTU3YzNlMGU2Mzg2OTQ2MDM1NzE4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDUwODhhNWU5MjVmNmU3MjA3ODMwZDQyNGRmMzBlZmMyOGNkNDc3Y2I2NzhhZDRiODgxYWE1OGNiZjU3NGFiOSJ9"
+        },
+        {
+          "resource": "repo://internal/application/issueopslease/reconcile.go#L34-L91",
+          "version": "repo-lines-v1:sha256:d203b639cdc0ba841457753ea9411ee9452722f42d25023dc0d8b36fb32ec877:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3MzZjY2Q3MTNkM2Q1MGMxYmMyNGU3YWNkZGNhOTY4NzFjNTZjZTk0YmY2ZDE3ODAwOTAyMWVjYWYzOGIyMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjNTMyZmMwODNhYzQ0Mjg2MjViMjZkODU0NjgxY2JiYjY4ODcyOGRlMjcxMDI3YjRhMjcwZGNhYWFhY2RiMTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI3NjYyYTZmZjNkMjBhMzIyOTc4ZDljNjE5YWU2N2E1Y2E0ZDA1YjM4NjBiYWU4ODAwMTVkOWNlYWM3N2ZjZGMifQ"
+        },
+        {
+          "resource": "repo://internal/domain/issueopslease/reconcile.go#L37-L60",
+          "version": "repo-lines-v1:sha256:c5512d0e2bc75e204c1e83015318717581875db62bc975d423b40592ea222975:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmOWI2MzBkOTMzNjdlNDk0NjIzZTk0ODIwZTE2NTg1YTk2NzIzMGU5NjlhNGFjOWY2ZDliN2E4ZmI4NDdkMDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZjlkNmVlYmRjYjJiYjQzMTYzYWQ1MjNkNTk4ZWEwMDAxNjdiZDYyZTFkMGVmOTY2ZDIzNGQwYjIyZTgzNTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_af2236d3cf304980878736043fe9ed4c",
+      "statement": "The IssueOps record is the single durable write authority: Orca provides only readiness, workspace, and native owner launch/inventory, branch names, source cwd, generic session bindings, terminal handles, and stable diffs are not write authority, hooks are default-deny observe/block/relay guards that never grant leases or execute phases, and next_command binds the canonical executable literal, its SHA-256, and the lease generation, refusing to emit a fallback on observation failure, stale binary, or generation drift.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L71-L86",
+          "version": "repo-lines-v1:sha256:b6d646503ab06024ddc0198c3db0c56e34cd3d9e34c0b7eb7e280e8904737070:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxYWVmZWY3ZTZmZTA1ODc3NWYwOTBmODAyN2IxMzA2YzY4NTc5MTFlYjRjNzAzMGYzOGE3NjY2ODljZTJkOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5YWE0YjIyMDhmNzU5M2VmYzI2Mzg4NGNiMmI5N2M0MDQ4YmNjNGMxMjAyY2EzMGFkNTllOTkxOWJiZGE2NjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0OGQ2MWIzNzhlYzliZjc0Mzg1NDlmYjU4NDUxZmMwMzc2MzMyNTI0YWRkODZlNmVmMDdiNGYyYjkyNDFjZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmMzI2ZDM0MDVhZDc4MTVlZjI0MDAxY2U2ZDg2NmQwMTc0YjU3OThlOWY5N2I2YjZiOWMyYjNkN2FkMDRhMTAifQ"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L44-L46",
+          "version": "repo-lines-v1:sha256:ab04a8738e757e99c7ff056893760e2958b26af174373acb8ff9092f840f8499:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODY2OWMwYzlhMWMzOTJjYzY5Mjc4YWZlODZjNzQ5MDdiNWZhOGY0ZmQ1Y2MxNjVjM2YzZGFmMjhjZjMzNDBlYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQyNWViOWIzZDQxMmQ5MGZhYTc4YjFlZmQ3MzA5Y2Y3OWFmN2E5MTFjOTc4YTM1YjBjZjEyMGVmYzk2MDMwNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTZjY2MwMzNlNWQ1MmM3YTBmOWE1ZTE5MDlmZjc4YTljOThkNjBhNjFhNDMyYzYzOTliOWJlMTY0NzE1OTdjOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjEzZGI1MDcwOTI4ZmIzZjdhMzMzYjcyMTM0ZDY1NjM0NzdkZjc4ZjQ3MTk2MjRlM2ZkYTU4Nzk5ZGVkYmMxOSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L79-L86",
+          "version": "repo-lines-v1:sha256:74a8861114ba0f8b6fec05d457d36759c2e25056a8a45e887f72c868cec56a4d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDBhNjUyNDg4NjNjZWZkZTI1MzQzNDVhNTJmOGQ3ZGJjZjc1OGViNjgwOGY2NzRlOGRhYTZmMGZjODc4MDMwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjY3MDdmNTIyM2JhYjU3NjBlOTc5MDFiYTFiM2ZiMGUxYjM3ZTZmNGE3OWI0YmI3YjI4YzlmMzk5OWYxOGYxNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDc0ZGViMWU2NTZhOWNiMWE2NDI3YjdmYTEwZjFkNjY2NmYyM2ViZDY5N2Y3YWEzYmFkZTgwNGM1MGMxZjhjOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzA2NzBkNTE0NzMyMGZiZGI0OTFmMGM3OWNhYTZlYzRmMzhhMDY0M2I2YmIyZGY2MDE4MGUyOGIzMjVjZjAyNyJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/operations/hosts.md#L168-L170",
+          "version": "repo-lines-v1:sha256:6ab8dd0b9361f195fc4a2b46b0e97080cde89d930fe0ba527e1c21509aa3448e:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWU2YjkzNjQ3MmYyMzI4YTVjNWU2ZGU2MDYyMTk3MTY0NjI0Yjc2OTNkNmNlZDc0OTRhMDQwOWY3MzQ2YjI1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjdkZGMyYTM4MDE3MTlhZWQ2YzY3NTgyMDlkMzg5MzI4ODY1NGY2MDhhZDE0MTgzYTllZmE5MTE3Yzk1NzM3MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDU1Yzc4NmNjODBiYWFhOTA3MTc1MzJmOGQyMTA4NTJkN2U1NmFjZWMxODI1YzNlMjQ3MWNjMTMyZmJiMjhjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cbaa4b04316646d1b12669937988348d",
+      "statement": "The gate ledger format is unlazy-compatible (- [ ] G1: outcome with indented CHECK/EXPECT/EVIDENCE lines plus ABANDON:), where the checkbox is a claim and EVIDENCE is the proof, checked-but-pending is judged unmet and worse than unchecked, and the parser preserves unmodified lines byte-for-byte so CRLF, prose, and comments survive round-trips.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-22-task-gate-ledger.md#L46-L49",
+          "version": "repo-lines-v1:sha256:8e3170d23dc3368a8e4aaa0b680ca003f2d4546f36c9fd935f811af2ab7ea6fb:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDI3NDViYTlmOTYyYzA4ZTRiMTZmMTk0YzRmYzc0M2JiYzEyOWFkNDM5MmRjZWNjMWNkZjk4ODAwMjcwNDY2OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTdiNjhhOTVlNWFmYjRlZjZkNDg4NzY1NGJjNGZiYjljYTJlNzc5ZTZlMWNlNjQ2NDBkOGYxYzkyYTQ1YzMwNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDFiN2I1ODg2OWQyYjE5NjQ5ZDdjZjU5NTBjNjUwZTg4MDBhNzM3MjFkNGZiM2JkNzZlMmEyMTcwOWFiOTgzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNjMDA2MGE2MGIxMjRhZTRiNzEzNjJjMTRjZDFlZDg4YTRiYzU3OWZlZTg5NGViNzQzZjY5Y2YxOTg1ZjAxMSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/gates/evaluate.go#L8-L18",
+          "version": "repo-lines-v1:sha256:e8cbabc5178683d32aac6c095312b5b3cb9dfe18f4106695d0a53cf5a4b60a12:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyNWQ5MDIxOWI2ODVmMDIwZDYyYjczOTBkZjA2MWNlM2QzYzdlZTNjZjJlMTQ1MjdlMzlhYmIzYmUyNjNjMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0ZjNlODY0ZTE0M2IxYjNhOGEwY2M5MWNhOWM0OTBjYTM5MjMwZTAxMGVlZjZmMTI3NjU4NWU2NzM2YjZjMmUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/gates/evaluate.go#L90-L102",
+          "version": "repo-lines-v1:sha256:62853b73cae802708fb8e25e366b6cd2bb71713c5d6aaac59b5c10b1c92ea865:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkYWQ5MzE2MjQxNTAxNGRmY2JhYjQ5NmZmNGMxNTZkNmRhYWE5MjczMjMwMTBlZWExN2VhMjE5YWYyZmNlZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwNTYzODNhMjBjYTkzYzRmOTY4MDYxYzY5ZWEwOTI2MmY1NDg3MWMyZTdhYzhhYTlkYTdiZmRhYThhNjJiMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVjZGZlMTQ0NTFhMmVlMjkzNGQ3MTk2ODEyNjY5NjhhNWE2YjAyYWEwZWRmODEyMWFhYjE3NzI1ZTMxYzBjOGUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/gates/ledger.go#L1-L31",
+          "version": "repo-lines-v1:sha256:a674e4228732938b40a4695618f9f0f3f1b7590d682d55e27f1bf6d17f9f7230:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0OTQ2ZWMwYzM1Njc0ODgzYWM0NjAxZmIyYzM1MWNkNGI3ZWRkYWFmMDY5OWU5N2I0NDUyYWQ3NThhMDM5MDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyMjlkMzg1NWUzNzYwNWNiNmU2ZTY2YTczMWEzNDg3MGZhYWMxNzRjZDkxYTNiZGIyMjNmNjU2ZTY0NjdiMjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d623c51b88a44dedb2c16267e62ef2c4",
+      "statement": "IssueOps gate discovery treats .agent-harness/issues/<n>/gates.md as canonical and reads root GATES.md, .agent-harness/gates/*.md, and gates/*.md as compatible legacy paths; a ledger without unmet gates or abandons adds no requirement, unmet gates block pr entry as gates_incomplete:<file>, canonical and legacy ledgers for the same linked issue number fail closed as duplicate_issue_artifact:<n>, and other issues' ledgers are skipped with a warning.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L16-L27",
+          "version": "repo-lines-v1:sha256:790e1c1ce99b0ec61b86440ae1ad430a5d8d31ae4c15b0c73345bb4d4ed6d67f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzYWFlNTQ2NmZjY2Q2MWMyOGUyNDgyMDExZDYxNWYzODI5OTA2YjA1YTc0YjYwZWNlNTY2NzkxOGFiOGJiNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmZTRmYTVjNjY2YjYyNjM3ODBjMzc0MTQ0NjY4YWRlMDM5YjJhM2U1OGJiMzU4NDJiYzNhNDBjMWU2NDc5OWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZmI5NjY1MGU3YjExM2I2ODk0MWNlMGY3YWYzNGRhM2JiNGJiY2RkYzVjOTU5NTczYmZjNWNmNzIyYWYwZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZDE4ZDg3ZDBhZDFjYmFhNTVmM2NmZjg1ZGI5YmY5NThkM2FmZjc5YzcwODg3ZjVhZTg5YzJlZTU1MGQwNDgifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/gates/check.go#L215-L233",
+          "version": "repo-lines-v1:sha256:86a9393090907aa69ae87b6cf3b22a0bfc534518cbd6e83ab2a7ceb43ee1d432:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhOGY4NmQ3YTBkYWYyNjgzYTBjZjc2NWI4NGQxNTJjODZhNmM4NGYwZjhmNmIyODk5MDdhYTNiMjdkZjhmNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzOTAwMWY5YTFiN2Y0YzJkMzdhNjg2MWFhNjY2ZjllYzFhNDg5ZWYxYWUwNmNhODQyYTYwMjc1MzhmNTM1OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5Y2M3NjIzYzU2NjQxM2I1NTQ4YmM2OWFkMmFmNjlkYWFjODExNThiZWZiYjVkOWZjMjlmZTc4MTUwY2QzMTQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L182-L220",
+          "version": "repo-lines-v1:sha256:0e926a2ecc9d7bd22b3c99bb828ebaca0ef81d9467b74d6baa713dec000799d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjMzZjZWQyNDdmMDQ4YjAyMTFiYWFhMzNlYjg2ZmYyMjMyYjA5YjIyNjM5YTU5MjhmNmI1YTc0NThmNjkzNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYzc2MDIwYmFlNzA1NzdlNjRiMzMwZGNhODNmZGYyNGYzZDc1OTNhMDE1NGQ4YWJlYzZkYzYzZjU4OTdmZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxMmFmOGU0ZDhjZTE1ZjY1MWI0YzY3MmYyNzk3NWQ5MzFjZDA1YWM3ZWE2ZGU1NjE4MTQ4N2E1ODdmZDVkNDYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L36-L114",
+          "version": "repo-lines-v1:sha256:e13a0f0548545419aee66a38574597e3de36616c20a118f3af9dc9b4616a1a06:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0ODVkYzE3OTA5YzliZmVhMWI5Y2FjMjllZjQ5YzgyMDE0OGI3NGRhN2NlNDU5YzVjYzA1Y2E1YmFhZjViNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYmJhNmM1ODM4NmRiNDlhMzRjNjZkMzkyMzc3OWE3ZGE1ZWM0ZDg3ZjMyOWYwNDI4YTFjZmY5MGM1ODkxNzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1ODZiZDZjMWZiMDIwOGMzMmEwZGJjYThlYjhmN2E5MzM4YjU2ZDAxMDNkOTE0OGEwMWY4YWI0OWRmZDczYWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee31819975e944bbbc9e8c1a0392dea5",
+      "statement": "Gate CHECK commands execute only through the command-policy path (shelltoken argv tokenization, then policy evaluation with workspace boundary, env allowlist, secret redaction, timeout, audit log, and shell interpreter denial) rather than a raw shell, and gate fill can never bypass policy; gate lookup is injected as function variables wired only at the composition root.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-22-task-gate-ledger.md#L39-L49",
+          "version": "repo-lines-v1:sha256:43b784ca9c0baafc2f6d171ed3d933be7c5d7a1282a3cea9245e26c312a35fe2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzZmYyNjAwOWQ0ODg5ZDkwNmYyOWE1YjZmNjQ3MWY0ZmM1Yzg2YmM1NThmNWJhZWY2MWY1OTljYzk1YTlhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YjY4YTk1ZTVhZmI0ZWY2ZDQ4ODc2NTRiYzRmYmI5Y2EyZTc3OWU2ZTFjZTY0NjQwZDhmMWM5MmE0NWMzMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMDFlYjNkNzE2MDlmOTU5NjBmYzdhYzk2MTZmNGEyMWNmZTVkYTE5NWNjYzQ4NDhkNjkwMDMxZDI3NmFiY2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYzAwNjBhNjBiMTI0YWU0YjcxMzYyYzE0Y2QxZWQ4OGE0YmM1NzlmZWU4OTRlYjc0M2Y2OWNmMTk4NWYwMTEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/gates_wiring.go#L18-L23",
+          "version": "repo-lines-v1:sha256:1490b4aa13e45272357e7919861ce02e77bcca9ac8ae563593aa66928537d0b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTE3OTgxYWU0OWI3MGMxNWZlZmZjMmVkN2E4MmY2ZGUwMDQwNTY1ZTYxODU3ZWIyODFmN2NiNWM5YjQwNWQ0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/gates/check.go#L1-L21",
+          "version": "repo-lines-v1:sha256:b9ba0836eaf13de6229c4b4bb49451bdddacd501e8949991ab5117e35e6984ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0M2Y1YmU2YzVkMWMyNjM3NGQ1YTc1MDNkYzE0ZmIxZjBjOTg5OTQyNWVhMTcxYjE4NjEzYTNjZDYzMDYwYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlZThiNDQzNDkyNzM2NzVmM2M1M2Y3YzNhYTM0ZTFkMzU5OTJhODk3NzdjNjU2YzIxZDFkNDAwZGVkOGUxOGUifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L24-L32",
+          "version": "repo-lines-v1:sha256:8880048db2851d0eaaef1b74d0e5a9543c24f96653ccb7112f597398680dc335:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjE3MGMxMzA5ZDI1YWQ3YmE5ZTIzMGEwOTMzN2E1NmM4NzcyYmFkNzViMDExNzI0MzQ2YzM0NjM5MGUzZTY5MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTAyOTc2YjUyNmU5ODQ5MjY0MTEzZjdjMTU0MTM3Njk4ZGFlNzRlODFjY2FjMDg0ZDcxMjI4YTcyMDg3NGFlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTNiYmE2YzU4Mzg2ZGI0OWEzNGM2NmQzOTIzNzc5YTdkYTVlYzRkODdmMzI5ZjA0MjhhMWNmZjkwYzU4OTE3OSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c51d4899c6de488d9e468c85932defbd",
+      "statement": "The loop contract is the durable verify-until-done state machine keyed by normalized repo plus name: start records verify_argv but never executes it, record-attempt requires evidence, stop --success requires the latest attempt verdict to be pass, a failing attempt at max attempts flips status to exhausted, same-repo active/exhausted loops block strict PR readiness as loop_incomplete:<loop-id>, and doctor reports incomplete loop contracts per repo.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-07-09-loop-contracts.md#L10-L13",
+          "version": "repo-lines-v1:sha256:d3f031d8730b4f59cfface77271d36112743fb8801d206c5dfd6b9837b3e1223:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjA0ZWFmMDg5OTViMGRlODFlYjAxMDYyNDkxZjRlMTFjY2Y0OTlhMzJiODUyZjM5ODA0N2QzMWE0YjdkYjU1OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODZhMGVhYmE0MTc0ZGNkMTUxY2JmZDk3MTA5NjNiNTM3NTdjNGFmOWEyMDRkNmMwMGU5ZjY0YTczMzFkMTJjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDhmYzZhNmIyZjA2ODIzNDNkNGE1MzZjMDQyYzQ5MTM1ZDVkNzkzOTIzNzg0NTU4MjY4NGNmMDZjODU2ODk3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjk1NTVhZjI3OGUzNGVhODA3MzdmMTgzNTUwYzljMWMzMTYxMmU2ODJkMzZiZDdmMjg2YTA4NjM1NTBlMWU3YyJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/doctor/checks.go#L66-L77",
+          "version": "repo-lines-v1:sha256:9b971a98f9c2a05d693ce9ef73bc50acbf60b7590caf38cf5dd2aea7f761c513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MDMyNjQ4MzgwN2NiOTExODZhM2E1MTEyZjBkNzBjN2Y0MjA4MTRjOWQ3MzcyZDA5OWU1OGJkOTExMTE4NjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyYzMyZDkxNGRmNjc4M2UwZGFiZjE5ZjVkOTVjOWQxZTQzZDYyNmEyMzM3NWE2YjE3OTU0MTc3MTExZTM4ZTQifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/loopgate/loop_gate.go#L63-L72",
+          "version": "repo-lines-v1:sha256:dc064d1cb770e1bf7b77f41b732a28ac4e1fec7ad084c7f066fa49fb9227d957:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NmY5MGRiMmI3ODkzNDA4NWUxYzJmOGIwMmJiMzdhMjc5NGU1NmNmYWIyODk3NjYwODQ5ZmUwMTVhZTRiOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxYTkzMDI3M2U0MjhiMGQ2YTExODJiMDIyM2EzOGYzYjY1MjM4NjMzNDg0Yjg1M2YxMTg4YTc4MmMwMWJkNDcifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/looprun/lifecycle.go#L20-L148",
+          "version": "repo-lines-v1:sha256:8ceab3ab0a5d5434f6ebb23f733256209e19c6e9351c1ed3c2380dd9f44f69b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMTc4ZTU4OTIxNjE5MWIxMWZiMDcyMWFhZDQ0ZGM4Mzk4NjBlNTk3MGM5NjZjMjg5N2ExNDcwZWEzOTdlZDdiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhOGEwYTYwMzkwY2JmNjlkMzI5OGVkYmJjODA1MWViZjE5ZDBjMTQ2YTczOTAyYmUzYmE2NWFiYmNmNTc4ODU3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3Mzg0YjEwMjYwZWJkMmE5NDQwOTc0YTVkOGMzMGExNTYyNWE0ZjM5YWNmYjZkMzg0YTQyNzk5N2Y3MjUyOGNlIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_a21421af8df646ff9c6d2c30fafe5f53",
+      "statement": "The channel capability provides minimal session-to-session messaging over shared harness state: send appends and recv reads with a since cursor and --wait blocking (250ms poll, 300s default timeout), nanosecond hex message IDs make storage-key order the arrival order, one schema-v1 contract serves both CLI and MCP transports, and it is deliberately not an authentication boundary.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/adr/decisions/2026-08-22-cross-session-channel.md#L25-L53",
+          "version": "repo-lines-v1:sha256:bdb8ebf3e6b528e0ddb8a334b139102d1f0535a8bf477a75ba6420d99ebef9ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkM2RiYzRlN2U3Y2JlNWRkYzg5MWIwODA3MTJmNjM1MWM5NGI3MjhlYzhiZDg1NTZmNDYxMmIwNzBkMjdiNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0NjJiODk5MTE0NWJiZWE5ZTY5OTliNTVlNDgxYTE3ODI3MDlhMDRkOGEyNjFkMWFmOWIzNjE1NDI3NjRjMTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2Y2I5ZmFhMzdhMTU2OWNmNTU0OGQ5OTgzNzI3NzFhODRkOGY1YzVkOTZlNzNkOTNkMWRhMGJlZjYzOGJhMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://internal/contract/channel/types.go#L1-L66",
+          "version": "repo-lines-v1:sha256:36908387edf00c417b946b2523247f44ad39c46d3e703090a15bf1387d3b7c25:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxYWIxNDA0NjdmZTcwNmRiNDEzNmFiM2ZmNjQ1YmRhOWU2M2IzYjRmYTdhYWUyNTUzZDM1MTg5NjRiYTk2MDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5d1b1f9dbb3f4a208f98292800d7c9be",
+      "statement": "The command-policy catalog (built-in shell interpreter, network, write, and read-only allow/deny sets owned by internal/adapter/policy/policy_catalog.go and exposed via CommandPolicySummary) is the single allow/deny source; workspace .agent-harness/policy.json overrides are additive only and cannot remove built-in entries; decisions resolve to tiers (read_only, workspace_write, network_access, shell_exception) with rationale and redacted auditing.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/runtime.md#L75-L119",
+          "version": "repo-lines-v1:sha256:5d581504ff998108109d5e4b61c0e278f1d7312e06f454f4c4193f23d1aadcb3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NDdlODkxYTk2ZWVkMTAzZDlmYmI2ZDljYWI0ZDMxNjgyZjg2ZDliNDIyNmMxMTZmMWQ2NDlmN2FjNWQxMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwZWYwYjAxNzBjMGI3ZTNhNjVkM2Q3M2MwMGI1MTUzYWE4NmFmYTlkY2UzOTExOTIwNjc2ZTZkZTMxYTc5M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczNTZmZmU5Zjk0NjY1NDBhY2ZiYTU3YjRjNTZhNDFkOTFjYmQyNGE3YmM0OWZhMDQzOTNhMTliNTE1ZDA4OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5YWI4YzliZGQyMDE5NjY2YzhmNWZiZmE3Nzk0M2M5YzUzNDYwNWU4YzFjNGIyZjMxNjBhZjJjZTRiMWQzMzYifQ"
+        },
+        {
+          "resource": "repo://internal/adapter/policy/policy_catalog.go#L12-L83",
+          "version": "repo-lines-v1:sha256:5c5046dda745f8f981a0864aa185801c2aa5bbf9d8b2e51e170f2dbeeacd48e2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMjZlZjFjY2RjNTc1ZDlmOTYwODI5NTkxOTA2MmQ0ODE1YTlhN2YzZjBlZmMxYTY0NjViZWQ1NzkxODU1MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkNWRlNjczOTBjZTMyYmZmZWYwZGU5NjRjMWM3MjAwOTk1ZDY4Y2EzZWVjYWRlYjNkZDA5Yjg3MmE1NGViNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNmQ0ZGFiMzVkMjUxYTcyM2QwN2Y4MmNiODkzYTBlY2E5MzY1YWZhYWVlZWYxZTFkNzBiODc5YWE5YmZhMTUifQ"
+        },
+        {
+          "resource": "repo://internal/domain/policy/decision.go#L7-L29",
+          "version": "repo-lines-v1:sha256:7956e1311805f9bbca272271351908efe0047589a198b8631a9cd25b0ae5b31a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5NmFlMzM1NzZlMDc4YTI0YWVkMjQ2MjVjZTE0Yzc1YTExODM5MmRjYjQwZmRiYjQ4ZDFlYjRhNWMwY2NkM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNzIyZDNmMWI1MWJlODJjMWNiNGFiYjk3YzgxZDMyMDcyM2VlY2MxOGU2MGEyN2E3MDkyMWIyNjA0MmNjMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzOWMyOWFhMDQ0MjEyN2JhNGQ2OWM3ODgzNDY3OGQ2YTdiYTYwYjdlNDBiMTQ3NjYyZTdjMGFiNWRhZmE3YzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b59b5464616e4db8a16a40798860c3c8",
+      "statement": "Each capability follows the vertical layering of stable contract DTOs, pure domain decision, capability-local application service, and inbound/outbound adapters with cmd/harness/harnessapp as the only composition root that wires concrete adapters; cross-capability adapter edges are banned in favor of injected function variables installed at the composition root (the loopgate/gatesgate pattern), enforced by the test-only dependency ratchet in internal/architecture.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/hexagonal-core.md#L101-L107",
+          "version": "repo-lines-v1:sha256:9eb91cbaf18704b74e347fc85d379290f09be2c7e55e3610bf84a56d14b29513:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDY1NGY0MmY4M2UzNTA5YWJiOWVkYTVhZTk2MTY1NGE2ZWJlYmU3MmFiOWM1NzBkMGEyNTIxYTFjNjVkY2Y2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDI0ZTM5MGIyYmM0YTYxZDEyYmVhNTNjYWQwNTdmZWM3MTIwZDJhNWZjMzU4ZDMzYjMxNmE1NmZlOTdhYWIyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc0ZTRiYjMzMzQ1YjgxMjg4ZWI5M2QxMmY1OWRjNWUzODJjNzMyYjJiNmRlMGYxMmE0MGY1ZGZjMDJiNjY2MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzE2OTY0Y2U1ZDkyMzhkZjg3MzI3ZWRlMzM0NmU0MjJhMmMzZjAzYThlODE1OTdmOTExNjg4ZmNmNTY5MDY0OSJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L29-L31",
+          "version": "repo-lines-v1:sha256:470c0bbcb330b8b517151eefe6ea5a9f1f67e6905721769a57c9f08b3dfd41ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQ0Zjk3ZWM3NTM0YTg5MGU0NGViYTRjZDczOThkZmI3ZGMzM2YyZGNmNmJiOGU1MmRlY2UyNmY5NjNlYzc5ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTRjMTY2OTlkZDdmY2IxNDgwMTVkYjUzNzNmNDBmNjRmZmVhMGJmZjE2MzY0MWIyNGI3YTVmZTRiMDAzMjI1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjVkNTI1ZDkwMTgwN2YzZGE0YjVlYzJlY2ZjYzJhZTJhOTBiZTEzNGQ4YTU3YzNlMGU2Mzg2OTQ2MDM1NzE4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDUwODhhNWU5MjVmNmU3MjA3ODMwZDQyNGRmMzBlZmMyOGNkNDc3Y2I2NzhhZDRiODgxYWE1OGNiZjU3NGFiOSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/harnessapp/gates_wiring.go#L18-L23",
+          "version": "repo-lines-v1:sha256:1490b4aa13e45272357e7919861ce02e77bcca9ac8ae563593aa66928537d0b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTE3OTgxYWU0OWI3MGMxNWZlZmZjMmVkN2E4MmY2ZGUwMDQwNTY1ZTYxODU3ZWIyODFmN2NiNWM5YjQwNWQ0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://internal/adapter/issueops/gatesgate/gates_gate.go#L24-L32",
+          "version": "repo-lines-v1:sha256:8880048db2851d0eaaef1b74d0e5a9543c24f96653ccb7112f597398680dc335:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjE3MGMxMzA5ZDI1YWQ3YmE5ZTIzMGEwOTMzN2E1NmM4NzcyYmFkNzViMDExNzI0MzQ2YzM0NjM5MGUzZTY5MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTAyOTc2YjUyNmU5ODQ5MjY0MTEzZjdjMTU0MTM3Njk4ZGFlNzRlODFjY2FjMDg0ZDcxMjI4YTcyMDg3NGFlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTNiYmE2YzU4Mzg2ZGI0OWEzNGM2NmQzOTIzNzc5YTdkYTVlYzRkODdmMzI5ZjA0MjhhMWNmZjkwYzU4OTE3OSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0e65f5313fd246e7aa484afcc83ad506",
+      "statement": "Execution completion is a single atomic state mutation requiring phase pr, the active generation held by the current actor at the canonical cwd, exact final HEAD, committed Turing report, verification evidence, and a durable verified remote artifact at the exact URL; it records the completion receipt, transitions to done, and releases the lease without merging or deleting local or remote resources — cleanup stays a separate human-authorized operation.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L119-L126",
+          "version": "repo-lines-v1:sha256:c3f3968118a68f7c8b9f2c73ec5a7a152a59cca188743b9621cc073d242893c0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWFlYzExNzY1Yjk0ZjY2Mzk3OGEyZTYyNTc1OWEzMjdlYTY1OGE1MDcwZWI1N2M5OTkyMGI3NTVjNzY2OTEyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjEzNzRmNmZiNWY2M2JmNmY1MTU0NDAwOTU4NjU0ZTI0MjU1ZDg3MDY0YTIwNTZjZTg3MDA4ZDRjNzIwZTdiOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWYyMWI3MGQ0M2JjYWVmNDgwZThkOWM3M2E2ZTc3Mzc1Y2E5MmQzMDY2ZDgyNmRhYzZmYzhjMWNmNDM0ZmVjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjRlYTY5ZmFlMzgyYmFkYTRlNGJlZmQwNzQ4YmM1OGI2NjE3NGY3ZjMxZWVjNGI1MzkwZDg4ZjhhOTY4YjczZSJ9"
+        },
+        {
+          "resource": "repo://internal/domain/issueopscompletion/decision.go#L61-L112",
+          "version": "repo-lines-v1:sha256:0526f93683f4b306804c6c73a453080748bc17bedc83fb5feef5c79c2a5f5214:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzNGY3NTAyYTkxMWNjYThiNWVjMGNhOTFmYTEyNDdkMWIyZmE3ZTg0OTQxODhiZDgxOTU4ODIyM2UxMzk2YzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0NTY1NTgyYmZlOGMxMzk3MzU4Yzg4OTk5MjdjNzZiZTc5MmEwYzgzZDdjMDQyOGViZjlkMmY2N2FlM2ZlZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmOTdkOTQzN2E1MmQwYWVkODUxYjg4OGYyMWRmZTI5ZjliYmMzNDk3NDgxZjBiMWZkMmYzODNmZTVkMmI5MDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a004871fd1eb42c483547d1376dce3ff",
+      "statement": "Direct preparation grants generation 1 to the caller immediately, while Orca preparation stores a claimable generation with a claim token that a later claim consumes exactly once to make the lease active; a completed replacement follows preview, revoke, finalize-preview, finalize, requiring inventory/quiescence fingerprints, expected generation, actor, cwd, and explicit confirm with no unsafe override.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L115-L118",
+          "version": "repo-lines-v1:sha256:679524aced4d4b542b5427afa8069dcf43dc42ff811db1b134794205b398522d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTdlMGQyNTZiY2M2YTcxNmE2YjZiZGQ1ZjU5MWIwY2UwNjBiMzdhY2Q0ZjkwMTU0NzUxZDQyOTI1OTk3NTgxZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGU1OWIxMzJlNDA5M2YyMjliYTgzNjFiYzNmNmM0N2ZjOWI4Y2NiZTk0MWIyZDgyZTBhOTQ2MzcyODI0MzNmYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2IyNTI3MzNmN2Q4NDcwYjY5NzVjODAzYmZlOGVkMTU0ZDk3NDdkNjQwMmNlZmU5M2NhZGIwYmViNThhMzg3ZiJ9"
+        },
+        {
+          "resource": "repo://.agent-harness/architecture/issueops.md#L92-L98",
+          "version": "repo-lines-v1:sha256:9994f412ce78cf5dbf9f9f496a26021640295b5fa8449160f18d0f3025ee63ae:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZmMxZDMzMTYxYmEwNWEzOTQ0ZDRiMGI3NDA5MDcyNDE2YmFkN2UwZTUwYjhiZjIzNjljYzRlYTY0MmEwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzcwNDM3OGRkZjlkMjhiNWQzNTk2ZDg2M2NiYzBkZjFiMjhlYTAxMTFkZDM1YTA1NDMxNzg4ZGMzYzFiOGJjOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTgyNjg3Y2U5NjFjOGE1ZjNhNTkyNDMwMTljZDQzMTRlNTA4NmViMWY0YWJiNmU5MzM4OTdjZDY5M2Q3NDZmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGM1NDViYzJjMWM5MDU0ZGMwMjdhM2M4OGU3OWQ3OGIwMGRhYWY5MGMxYmUzOWRhZTY2OTEwYzk0MTIzZTNhZiJ9"
+        },
+        {
+          "resource": "repo://internal/domain/issueopslease/claim.go#L32-L46",
+          "version": "repo-lines-v1:sha256:858b65c280b87712d09aef691bcb3e835e0a6545946fd74302039f0508bcbe56:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMmJiZWQyOWNmODBlNWZkZGI4MmI0ZDM2OGE0YWU3NGFlNjc1YzAzYjAyMDllYTdiN2E5ZWM0MTA5NGJiMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4YTlkYjJiZDM4YmE2NzljNGUyZTk1YjExOGNmODczNzQ2N2VlMjY2NmNhMTE0NTRjMjljNGZjMzNmYjhiMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZjZlMzc4M2FmY2E4NDAzODU5MTcwZDViOThjNzZhYTZhYTc4NjEyYzU0MDZmZGY3N2JlYzIwZTZkOWZmODEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T12:09:25.684Z"
+  }
+}

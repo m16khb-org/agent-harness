@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3fe66f0cd4a4b8c88b8aa42988a04bb44b647d3d33176e0c8926fd7e04052175",
+  "claims": [
+    {
+      "id": "claim_7e6d4fc3d8ed4069bfaf0eaa64f7c644",
+      "statement": "agent-harness is a hybrid: one host-neutral Go core (built from `cmd/harness` with `internal/...`) surrounded by thin adapters — Codex, Claude Code, and Omo native install only user-level skills, MCP registration, and lifecycle hooks that call the same `agent-harness` binary instead of embedding harness behavior.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/ARCHITECTURE.md#L12-L16",
+          "version": "repo-lines-v1:sha256:a4499270825324a7fd2927539a26edfbd886dd9298499234d9fabb72bd66ec86:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTNmM2JjNmE1NDI4NDVjOWYxMGZjYzA3OThmMzczYzExNDAwZTZiYTZhODQ3NDMwZjJhYjExZmVjNTI1NTc2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI2ZTE2M2UzY2YzZTFjMTAyZTBmNGVmMDJhY2RlNjRjODQ5NmZmZDFmOTliZjY3NDhhNWI2M2UwNzVmOTIyMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDM3NWIwOWJhNjBkYTA2ZWJiOTczZWM3OTJhMTgxN2RjYjlhYmM2NmMyYmY2NTE1ZWFhNTY4OWI2Y2NjNGY5NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzYzNTNhMWJlMjNmMzU5OTdjMzQwYzQ1YzcyY2U2MWY3MGNlMWRkMmU2Zjg3M2E3MzhlYmExYzNhMjhiZGQ2MiJ9"
+        },
+        {
+          "resource": "repo://AGENTS.md#L88-L91",
+          "version": "repo-lines-v1:sha256:26ff2a99a117fc2d51f6f6bf2ad224018b8f11e6ee8a309858273436c204eb16:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzM3MzRjMDEyMmE3NzBhMzM4ZTNjMGIzMTNhM2YzMzRhMWQ4NjQzYTJiYmE1ODg0ZjMxNzk5YmMzOTYwNzUwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZlMGJkOTc5NDUyZTZhNzU4YjRiOWYwM2Y5NTA5NDlkZjEyMDMyMTEzNDJiNmY0YmVjYjM1ZDNlYjllMzM3NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDZjMzI1OGZlZmY4MzU4ZmQ1MGJiYzY5MGQxNzk3NWQyMjYyZDc5ZDU2N2NmYTUzNjYwZjk5Nzc2YjI1YWYwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGJlMjFiNDc3ZDA4NzcwMzYyMTM1NGQ4OGZiM2Y4NjFkNjhmYWYzMzIwYzMwOGZhMjAxNzAyYzA4NWQ2M2Q0NiJ9"
+        },
+        {
+          "resource": "repo://README.md#L25-L28",
+          "version": "repo-lines-v1:sha256:ea3a0a7edc24e328ee7d1e015421d1aab72475373426d7021e93b7a2af6d1016:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDFmYzE5ZDA3ZDQ2MTVhYTgzNDcyNjljZGI3NTg5ODQxNjU1MjhlY2QyNTI1MWY4NjgwMjA0MTUwN2M3NjJmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ4NmVjN2U4YTA4YjU3Y2I5ZGJjZDY1MzA1ODJkNDg3MDkyODk2ZjNmOTQ4NzJmZDc2OWFjYTExNzhkNzZjMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY2NjFhMWY1YmIzMDUzOThmMzZjN2RhYjJmNTI0YzQxNGNkZjg2ZWYzMzAzNzc0NTJhOWUzYmJlOGI0ZTZlYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDU4ODI4NjU5YTQyMDBkM2M5ODhlMjVkMDIwYTgyYzM0OGIyNjBkMDlkMGI5ZTVlNWFiZmJlYjQ5ZjFkNGJiYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b020290c94c4b32b32704ca321ad3e4",
+      "statement": "Five boundary commitments hold across the harness: core behavior lives in the Go core (not host plugins or hooks); CLI JSON, MCP responses, and daemon responses keep identical semantics; host adapters cannot bypass authentication, command policy, or workspace boundaries; default hooks provide only the SessionStart static project-doc context and never block tool calls or create issues/PRs, edit files, or run tests; and the worker handles lifecycle jobs plus policy-gated read-only evidence commands rather than acting as a general writable shell runner.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/OPERATIONS.md#L73-L93",
+          "version": "repo-lines-v1:sha256:ced449a0801443eb9f2818d75b8952721fa5409863c817a968bccdfd07a59024:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4ZjY4MjQzMjZiMDUzYWY2NmZiYWJiNjE4ZTc2NzFhMjE0NTQ0MGVjMjM1NDNhMjMyNDllZDQ4YjJiNmQ3MjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NjgzOWQzMGM5NGUzMWEyOTljNTA0NWQ2ODM0YWM1ZGJlMDcwM2JiMTNmMzkyYTNiODc2Y2QxYzNiOTZlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhMDY4YzdlMjAzZjg0MWU0OWEzNTRlNmYzYjkzNDQxZTgxZDJjMTgyOTI1ODRjMmYwMDA4Njc4NjI5NjA3MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NjZmZmZkNDk0MDllZmEyMzlkOTBjNWVlYWYwYjA5NDAzM2Y0MWEzNTg2NGQ2OWFjOTM2ZDY3YTFlZTE0OTYifQ"
+        },
+        {
+          "resource": "repo://README.md#L163-L169",
+          "version": "repo-lines-v1:sha256:d3aea8294a8214fcef294c6113db8b4c15eaa774b507a85ddec79c5f160552cb:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2NjNDU2N2RmZTIzZWJmZGJiMjU0MDMwNWExOTI1MmZhMTU3YzNmYmQ4ZDMzMDI4OGM3OWY5ZjdiZWI1MjI1NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJmMDk2ZTgxYWYyMTQyZTU1MzVjZDg4OTc3NDhhZGVkMDVlY2M5Mjg0NjkwZTE0NTAwMTU3NmM3NzgwYjc0NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGJhM2ZjMTc0MWQ3NTdjMzc0MjRhNTBlZGRjMmMwMDIxNjFkOGI3YTkxZWQzZjkyMWU4ZDk4MjkyZDdmZGY3MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDUyOTM2N2VjMmU4YTE2NWJhN2Q0YjA1Y2I2MWYyNWUyYzIwYTc1NzMxNzA5NGFiMTRiZDJlMTIyM2Q4NTVjZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_bd0868a9f40b447dac981f0e7f28af03",
+      "statement": "Every CLI invocation enters at `cmd/harness/main.go`, delegates to `harnessapp.RunRootCommand`, wires concrete dependencies into leaf CLI packages exactly once via `wireDependencies` under a `sync.Once` (explicit composition-root wiring rather than `init()` side effects), and then dispatches through `rootcmd.Command.Run`, which owns dispatch, help/version handling, usage printing, and exit-code policy.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L17-L33",
+          "version": "repo-lines-v1:sha256:995063134bd7b95396a12aba879b9856f6e3f4c98a52759c53c4c8c37316b5ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjYmM3NGI4NTlmNTAwOGM2NmE1OWM3YzhhOTBiOTUyMzViYjBjMTRmOTA4NjdkMzZjODZlMWJmODBjMmQwMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEyZjQ4MzBiMTk4OGU0YmU1M2MyMjM3ODRlNzQ1ODg1ZWI1NjhhYzI4ZGFlMDU0ZWU3ZDVkOTMwZWUzNjM4MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyZjExODQ2YzE1Mjk1ZTA4Zjk4ZDQyZGUyNTZhMWJmYmE0NWZjMzQ2ZGE3NGZkNGU1NjY2YWEwZTljMjBmZGEifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/main.go#L15-L17",
+          "version": "repo-lines-v1:sha256:49576c7b60070ac5de29d8972fd5ef3d2e02bf63e6459bf7fcf17e1695f4e38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmE2ZWU1MjlmZWVkYTJjYTA3YmUxZjAwY2ViZDQ5YTQ5YmFiOTIyYjczYjAwYmU5NzViODgzMzNmY2NhNWE0NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTkyZDAxNmViOWJiMmI4MGQzZmNjZWFhNWEyYjUyNzUwYjQwYjA5ZDI2OGQwMTM1MDMzOGU4OGFhNzc2ZThlNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command.go#L21-L40",
+          "version": "repo-lines-v1:sha256:be4acdc439d242eb49f7ce50bc57a521b800279b90d8643dc7a9f9744fcd97db:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NjBlNDhlNDM3NjVlMDZhMDVkM2RiOTBjN2FkOTAzZDZlYzI3NzIzYzM1OGU4Yjg3ODZlZGI0OWNlNzljMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyNThhMmFjZDA5ZWI2Y2VmMmY0YTE3MGZiMjdmMGMyY2MzZDRmOWQwZDhmNzk5ODA1ZDJkYzIyNzJiNDQyYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhNTc2NzQzNWIxYmI2YjgyYzU2YWQzYjVjM2M5ZmQxNDBhZGZhODMxMTQwNGRlM2EyMzI3MDJmNGE5ZmE1ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_278275b6fd1940d4a9be1d78e91ed5d8",
+      "statement": "`./install.sh` builds `bin/agent-harness` from `./cmd/harness` (skippable with `--skip-build`), adds `--interactive` when run with no arguments in a TTY, and execs `agent-harness install`; `--dry-run --json` prints the complete change plan before anything is modified.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L49-L58",
+          "version": "repo-lines-v1:sha256:f9daabcfac5b709b7a9da60e1a0ee717bed1b116bded7b86e4017f0bc24895b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhYTU1MTc1YzhkMjRmOWE0YTVkZjVhMTNhMzk5ZjVmYWFjNzgzNGQzZGJhOGIyMWY0Y2I0MjgxN2QxNzQyODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MTlmYWQxN2QwM2E5MWM5YjEwMTUzZDZlNTZmMTk1ZDEzNDYwYjRjZGMwNDIzNWNhNjMxN2VkOWNkNjM2YTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllODk2ZTFmZDJhMTVkMDVmMDUxMTI4MDc5NTliNDliZmQ0OWYxOGMxZjNmOTc4NzliNGJjZmFiMGZmZjZiYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEyODhjNTA2OWM2YTQxYjZiNzAxMWJhZjk4YjBmZTI0MWE1NDEyNGJjODlkMDU1MGE5NzRhMmQ5Yjg1NWY1N2QifQ"
+        },
+        {
+          "resource": "repo://install.sh#L20-L32",
+          "version": "repo-lines-v1:sha256:b3ab57b56d673002e2747f4de6aa62bff6fe9c5d0d7115a448a890a7050753a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZTViYmZiYjcxYWQ2NjkzOTZjN2M4OGM1ODRjZGRkM2FhZDA2MWIwOTJjODM2MGNlZDQ2YjViZTkyZThhNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkM2RmN2ZjNjc3ZWFhN2Q1ZDY4MTZhYzdkMTIzODA0ZDNhMWVlMjg3MjJlMWQ4ZjU4MTViOGJkZjQ5YzI0NzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3ZjE5YmYyZjRlOTM1MTY2NTVmMWQzMmZhM2I0ZWU0MGRlZDE0NjExOTkyZTI1Mzg4ZjEwNzQ4OGQwZGFiM2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bee330fe8de84e5ca8e98acb99ae3848",
+      "statement": "A default install touches only user-level host configuration (command shims under `~/.local/bin`, per-host skill links, MCP registration, SessionStart hook); target repositories get files only through explicit `project bootstrap` or `--project-local` opt-in, which creates `.claude/skills/*`, `.mcp.json`, `.omo/skills/*`, and `.omo/mcp.json` but never repo-local hook registration.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/OPERATIONS.md#L75-L76",
+          "version": "repo-lines-v1:sha256:e048fc335e9c47b415bfb8a1998776945e54bae75e1ceec88e6d808f383954dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2MzYWM2NzcyNzhkNzIzN2UyZDZhOGM5OGIxNTU4OGViMmFhZGVhOTJkZTZiYWZhOTczM2U1YTQ1NzIxMjFmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxNzJhNzhhNTc4YTU4ZTgxMjAwNWI2ZmMxNzU4YzU0NTY4Njg5MDUzYzkxNDhkZjdkZTEwOTkxYTgyOWJmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDVkZDYxMzIwMTg2ODU4YTk0ZWVhNjc4OWE2NmVjYzA1MDFiN2Q3OTc4Mzk5NjliMDY2ZmNkYzFhZTMwNDY2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTEzMmE5NzFlMWY3YjIyZWIxNTM0YWU4MWQ2YzUzN2Q3Mzk3YmMzZDQxMDAxMWRhZTM5ZGUzNmZlZjU2MzhiNSJ9"
+        },
+        {
+          "resource": "repo://README.md#L143-L145",
+          "version": "repo-lines-v1:sha256:2b81352adfc6c9c355bc9cb7570e1599b66bca6b8a03f48d0df03c95fce30fa5:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzFlNzk1NDFhZTFhOWM5ZDBkZjcwNWFkYWJmNGQwYTQ5YjViMDk1ZGM3NjdlMWNjYzJiMjdjMzI1NDdkNzJiMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmVlMjAwODFjN2EyMjVmYTgxOGU5YmQxYTA4MDJiOWIzZTM2ZmQ5MTg3MmJiODZkNjU1ZDNmYTZkYTBkOWJkNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY5MTVjMWI2Mjk3ZTEwYWI1ZDNhOTE5NDZmNmNhNTc5ZWZmODY2YTlkMDZjNzFlNTA0Yjg3NWJiNThkOWFhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjVlYTkzMmQ4YTFjYzExYzFkMTcyMDgwMzY0OWM5NWQ2Njg2MDNlYWEwNmU0M2I5Y2MxODQwNTc0ZmJlOWQwNCJ9"
+        },
+        {
+          "resource": "repo://README.md#L80-L80",
+          "version": "repo-lines-v1:sha256:5b5c3e9f92c61b65a5c4694d4919fb2c8d3a01952682ebece5c36b69f773e591:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI1YzNlOWY5MmM2MWI2NWE1YzQ2OTRkNDkxOWZiMmM4ZDNhMDE5NTI2ODJlYmVjZTVjMzZiNjlmNzczZTU5MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI1YzNlOWY5MmM2MWI2NWE1YzQ2OTRkNDkxOWZiMmM4ZDNhMDE5NTI2ODJlYmVjZTVjMzZiNjlmNzczZTU5MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODY2OTZlNDZiYWJjNzJiZDUyN2E3ZTA1ODE5NWJhOTNlZWU4NDk0MjZiZWJlY2YwNmU4YTBkZGZhMGY1MjhjZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDVjNzRhYzZiZDBmODFlZTUxZGExZTYyYTVhMjczYjQwMGQwZWI0NGJmOTY1ZjcyMzk4NDE4ODkzMTlmOTdiMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4615672f7b6b45929a32d15bdd6bc12a",
+      "statement": "`agent-harness` is the canonical command and `ah` is the installer-managed short symlink at `~/.local/bin/ah` pointing at the same command path; the installer refuses to replace an existing regular file at that path or a symlink pointing anywhere other than the managed command, so `ah update` always runs the checkout's built binary without needing `git pull`.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L70-L78",
+          "version": "repo-lines-v1:sha256:59a066392b9639891635b7d647838f63cef7c34b6d831ec46817fd7aa101f126:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjkyZDk2NmVjMWQ4NDRjMmVjZTZkNDEyMmRlM2IzMzYzMWE4NmU1MTM1NTE2NzMxMjA0YWMzNWM5ZWRiYzFlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTNmZDI0YzA4N2MyNmE2NzZhZTJmNjM4MTYwZTU2YTIzMWUyMDBlMTNmOGU4YTVhOTRiNDNkNTc4ZDg5ZTExNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWVmYjA2ODgyMmIzZTE0NmRlNTIyN2RmMzE4ZmQzNjc2NzE1YjE0ZjgwZDY1NDU1ODYzMmFiMWVhMGU2YjgwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDdmNjY1NDhmMTMyODUzNDM5ZjUyYzY5MTgyZThkNDgyNmVjN2YyZDBlOTUxNDFhOGQxMjVjNWI4MzEwMDEyZiJ9"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_path.go#L221-L241",
+          "version": "repo-lines-v1:sha256:b4f8e60a5004d9f330294b0fc7b73356e916f6f782de31959682bc16e2793640:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0ZTFkYmQ0YWE5NzI4ZWE0MWU0YWJiZGI1ODQ1NzdjYWIzMDVmNjg3MDkxMWJlOTQ5NjY1ZmUyZjZjNGM4YWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MzFiNmUyY2EwN2Q4YmFmMGViNDRlNzQ5ZGJmNDkwYjM5MmUzYTUzNGVmNjEwMjI3NzExNDZjZGY5YWYxYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3ZGZiMzNjOWM0NDFkOTM0MTk4NzA2YWE2MDliODQ2MDJjM2QxYzMxOTdkMDlmYjc0ZDRkMjBjZDIyYzU4MzMifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/installcli/install_native_path.go#L36-L38",
+          "version": "repo-lines-v1:sha256:9eea8a7b543aab8adb20f191b9481197bcb1fe6cfad348b94ef3c9634f2d0c52:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJiNzA4N2IyZTc2NmRjZTA2ODMzOGY0OWMwZmFhNzAwZjI0M2RjMThhZDUzNDkzNmM4YjZkN2NkYWFjNjc3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmNmE5NzNjYTI3MDcyNjFlMmI1NzVkNGRjM2NkZWU4NTA1MDkwOTg1ZmEzMDExYTVjZGRjNTg3NmNjNGEwZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjVlYTI1YjVjNzI2OTAzY2RjOTNiMDVjNWZlYzRkMDM4OWI1MDIwODE5MjVlZDQ1NzdkYTQ5ZWQwMDE3ZTA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjE3ZTY5NDQ0ZjljMDFkZjcxZmFmMjU0NDQzMWFkMzJkNzNlMGRlYWFiZDNjZWIwOGVkZjZlM2I4MGZmNGNiNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c79fd526754c465abba9049a35754b6d",
+      "statement": "The public contract is machine-checked: the response-contract schema pins 29 top-level CLI commands and 51 MCP tools, `agent-harness contract schema --json` prints it and `contract check --json` validates the running binary against it, and contract goldens pin the same CLI command list, MCP tool list, and required response fields.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/OPERATIONS.md#L49-L54",
+          "version": "repo-lines-v1:sha256:555a7ca863e39d5050496ba0d1ba423b548b89efe8d8b57a271a190c0a6862c8:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWY0OGZiODE0OWM3MDU5YzFiOWVjYzVkOTg2NjI0NGMwNWYyMThlMmU4ZTJkZjhiODRiMDIzM2YzNzVhMmIzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQzNGY1MmY0NjZhNDJlZWRiNTA2YjVmMWYxZjc1NWExN2JmYWZkYWI1NDBhNjFlNzY1MTg3Mjg0Y2FjMzZkYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWI0ZjFjMDdmNDg1MTRkZmEwNWRjZjVmNjg2MDU5YzQ5YzE2MWRiYzIxYThkOWI0YWRlOTBkNmJjNzBkMWJjNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzAzODA4OTJmZmVlNDQ4Njc4YTg1NmM5NGZhMGZkZTBjOWUzOGM3ZGQ4ODJkOGMyZjIxOWVlNDk4OTdjMDgzMCJ9"
+        },
+        {
+          "resource": "repo://AGENTS.md#L200-L200",
+          "version": "repo-lines-v1:sha256:a3d1afbe6931da1df59f8bab58d4d6f96075aef6673ebc377595d342aaf5fd97:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkMWFmYmU2OTMxZGExZGY1OWY4YmFiNThkNGQ2Zjk2MDc1YWVmNjY3M2ViYzM3NzU5NWQzNDJhYWY1ZmQ5NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkMWFmYmU2OTMxZGExZGY1OWY4YmFiNThkNGQ2Zjk2MDc1YWVmNjY3M2ViYzM3NzU5NWQzNDJhYWY1ZmQ5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjAwNjE4OTBhM2RiNWZhZTdiODUzMTI0ZTgxZGFmMWFiNDVjMjUwMDYyMTQxNDY5MTk3MDAzY2ZkZmZlNWU3NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzJhNjY2NjljZjg4MjRjOTNlZTVkOGExMGZiMGZjOTE1NGMxZDc1M2Y3NTQ3OTM4MTMyOTY1OWVmMzUxYzM4MCJ9"
+        },
+        {
+          "resource": "repo://README.md#L185-L194",
+          "version": "repo-lines-v1:sha256:c93dfd9915487b8a9b592c88706a523679042c3daef9e077fbfc4a7068802366:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwYjlkMjg1YTI2NjRiZjIzMGJkMzhmNmFjNjJlMzBmODYwNmU2OGNjZjE0N2M5MzJkYWYwNTRmMzMyOGU2ZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YTBkYjM0MGIwYzVkY2I2YTIxYWY1NTcwZDAyYmE0YTBiZjUwNjVkMzgyNmIzMjY4NmMxNWIzMDg4ZTMwZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1ZDYzNzU1NGNkNjVmMzNlYjc2NjA2YTcyYzZjNGZmNzY4N2EyNThjZTBhMzUyY2MyM2NmODkxZGMxYTY4YjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_63151be232ef4026acb5c1617a4739f8",
+      "statement": "The docs index is a contract-pinned surface: the docs-index golden validates only the required-doc projection and count/schema (deliberately insensitive to document body/list churn), and `agent-harness docs --json` is part of the minimum completion gate.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L26-L38",
+          "version": "repo-lines-v1:sha256:3cd96065308fddb44c78b12d7c7f9aed7833a9dc404a1bc69570c3eda71c8936:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzY2RiNTg3OWU1NDA1OTdjNTdiNjU0YjIyYzQ5YjYxMzZhNmFmZDAyOWM2OGQ2NTAzZTAwYWE3OTU0MTBkMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YzRiM2EyMDdiZDRlYTJmZWM2YzA5ZmM2N2NlZThjOWUzNDUzM2M0MzM4MjY0MDI1NDA5MDJmMzMzYTJlMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlOGE0ZjU1NzFmZGU2YjhmZmJjZjdlNzIyOTNkOTcyYzFkYjAyMWFlMTRjZWMzOTY3NjRkYjExZjY4ZDZjYTYifQ"
+        },
+        {
+          "resource": "repo://AGENTS.md#L200-L200",
+          "version": "repo-lines-v1:sha256:a3d1afbe6931da1df59f8bab58d4d6f96075aef6673ebc377595d342aaf5fd97:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkMWFmYmU2OTMxZGExZGY1OWY4YmFiNThkNGQ2Zjk2MDc1YWVmNjY3M2ViYzM3NzU5NWQzNDJhYWY1ZmQ5NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkMWFmYmU2OTMxZGExZGY1OWY4YmFiNThkNGQ2Zjk2MDc1YWVmNjY3M2ViYzM3NzU5NWQzNDJhYWY1ZmQ5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjAwNjE4OTBhM2RiNWZhZTdiODUzMTI0ZTgxZGFmMWFiNDVjMjUwMDYyMTQxNDY5MTk3MDAzY2ZkZmZlNWU3NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzJhNjY2NjljZjg4MjRjOTNlZTVkOGExMGZiMGZjOTE1NGMxZDc1M2Y3NTQ3OTM4MTMyOTY1OWVmMzUxYzM4MCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3c80ba9078e54f728082b1a1beaada4a",
+      "statement": "The minimum completion gate applies to every change, including docs-only edits: `go test ./... -count=1`, `go build -o bin/agent-harness ./cmd/harness`, `agent-harness docs --json`, `agent-harness inspect --json`, and `agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json`.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L26-L38",
+          "version": "repo-lines-v1:sha256:3cd96065308fddb44c78b12d7c7f9aed7833a9dc404a1bc69570c3eda71c8936:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzY2RiNTg3OWU1NDA1OTdjNTdiNjU0YjIyYzQ5YjYxMzZhNmFmZDAyOWM2OGQ2NTAzZTAwYWE3OTU0MTBkMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YzRiM2EyMDdiZDRlYTJmZWM2YzA5ZmM2N2NlZThjOWUzNDUzM2M0MzM4MjY0MDI1NDA5MDJmMzMzYTJlMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlOGE0ZjU1NzFmZGU2YjhmZmJjZjdlNzIyOTNkOTcyYzFkYjAyMWFlMTRjZWMzOTY3NjRkYjExZjY4ZDZjYTYifQ"
+        },
+        {
+          "resource": "repo://README.md#L314-L331",
+          "version": "repo-lines-v1:sha256:6cca923cbcb6434db5fc4e0c21875132cc0573c00c5d405844511ae8dd9d1d35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5Y2FkOGNhNjQzZjA1YzMwMzBiYjM0YTg4YjZjOGI3Y2QyZDRmYTY4YmE2ZGEzNjQ3NWMwNzAwZDc1MjJmNWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjMmM0NmIyNzYzOTI2Y2JhODI5NjMxYTcyYTg2ZDYzMmI4NzhlZjZkNzZiZWFmNTUzNmM2OWNhNTM5N2YyNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NzYzZjQwZjI3ODJjZDkzYWE5YmQ2MjExMzUzOWU2ZWQ1ODQ3NzgwNzkxODcxZTJlMmNlZjIxNTI2MzQxNDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2097e7b1b3bf453d974bd50765c1ad2c",
+      "statement": "Verification is single-run: when any step of a multi-stage verification fails, earlier passes are not reused and the entire battery must be rerun from the first gate; completion evidence must come from one full passing run, never a combination of partial passes from different runs.",
+      "evidence": [
+        {
+          "resource": "repo://.agent-harness/TESTING.md#L46-L53",
+          "version": "repo-lines-v1:sha256:e327a1e3c71649f403b748a2284bca7816d8b2b0e41b883a02bc65462a5e9a68:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmU4Y2NjZjFiOGMzMTA5Y2Q2NGFmZTc2ZGI2ODVhZDg1MmQzZGFhYjRlYjAzNTE1NWYxYzk1NDhiNzQ1MWNlZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFkMDJmN2UwZTdmM2M0NmY1NzQzZjhlYjcwYjQxNjVhYWQ2NjE4MmY3MmU3M2VkNWVhMDg2Yzg4ZDQ5Y2JiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWRiMGIyZDIwOWNiNGQzNDRjMTc4MzVlYTA4ZDg2Y2ZiNmNmMTg1MTY2NzFjMGQyYmZkZDdhYzJiYmJlMTY2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTIzZjMxM2IxNmJhYTc3MDNkYWNkMDA3OWZiMzE3ODJiMDVmYjEzYjBmYWNmNDMzMGM1ZGVlZTI1YzViOTk3ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_af2cb79ecca547be89ce877329bc4caa",
+      "statement": "The self-verify gate is deterministic and model-free by default — pinned seed, LLM eval off — and CI is pure wiring of the same local gates (gofmt, vet, golangci-lint, skill frontmatter validation, Python validator unit tests, build, full and race test suites, then the seed-pinned self-verify gate after a native install into a temporary HOME) with no live-skill invocation or model required.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L3-L8",
+          "version": "repo-lines-v1:sha256:3c90452b5e5d7c17ce62cd225040d5406fe4dade14ac4a160053c858b0ff3a19:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVhNjcyM2Q4MTgzMTk0ZWYxOGRiZTUxYmJkMzQ5ZGU1NmE5NDllZTc1N2E5NmEzMjY5YTJkOTUyYTM3ZGI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjU0NDBiNGFiNjliMmY5YTZlMTUwYzM0NzgzZmI5NzQ0MmJkMTA3NTFhY2M2MmRmNWViY2RmMGU1NDU2ZDc5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWJjYjQ0MzQyMjVkOWMyNThjZTE5NTEzZjgxNTJiYzhhZDljYzExMzE3MzdmMjc1ZjAzMDNlOGU0MjA2MzNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDgwZmRjNTE0YWQ3ODhkMDBmZWI3NzBmYjFiNmFmMmM4ZDliODI2YmE5YTI1NjYwYjg1M2ZkYmRiYmI3OTI3YyJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L83-L92",
+          "version": "repo-lines-v1:sha256:f75d4d445a801d3a3c5bc6a6cc511fd3c205716d2950c0d732843b1643dd5dc2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjMzMDgwMDI0NTZlN2IyZjhjZGJiODZmODYxNTJkNWU1NTQ5YzA2ZjgyNmE1YWVkOGNlOTlmZjU2ZGQ1NDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyNDljNzE5ZGM0MGRlOTZlOWNlOWE4ODgwZTA3OTMyYTZlZTQ3MjU5ZDgxOGNiNWFiNDYxOGVmZTZjNTBmMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNTljYThmNGZmMDUyODM5Y2ZlZGJjZWJmMWQ3NGQ0MGU3OGUyOWY4M2EwYWUyYjc5ZGQ2ZjExYjI1MmFjYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://README.md#L60-L68",
+          "version": "repo-lines-v1:sha256:27abf1b6ab68e7a2f57d57965116c81e527d472d03bfa246adaaa198e124a44e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODQwNzg4NzdjNTBiZWUwYzA2NzFhMzllZGU4MTdmZWM5YjA0YWQzN2NiYzUyOTFlNjBhNGJhYTUwZDlkZjJkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmY0MDUwOTBjYmZhYmViNTFjNTZjM2IwZGIzOTBmYTUxMjlhYjZiNTY1MjVlZDRhY2NhZDk3MmNiYmVjYzQzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTA5OTZlZjBmMDNhN2NmMGE5NTc1YWQwYjlkOTM2ZTA3NzI0MDBlYWFiZTZlNGUxZmE1NzA2OTY4MmZmMGY1MyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_57bdad041aaf465cb4d8a3f2f8e3e99c",
+      "statement": "Root-command exit codes are a scriptable contract: 0 for success and for `help`/`version` requests, 2 for unknown commands or missing args and for `gates` usage errors, 3 for command-policy denial (`policy`) and guard blocks (`guard`), and 1 for generic subcommand failure including a `channel` wait timeout.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/harness/harnessapp/root_command_facade.go#L75-L95",
+          "version": "repo-lines-v1:sha256:c5d37ee8425e31782a68e6e9f92614ada29c1947f0e75ca5737907040d6aed1b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1YTZkMzM3YjRkNzAxZjBjMGNlZWQxMGY2MTE1ZTlmZDhkODA2MjhkZmYwOWRjNDE5ODFiOTlmMGIxNjlhZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cmd/harness/rootcmd/root_command.go#L21-L40",
+          "version": "repo-lines-v1:sha256:be4acdc439d242eb49f7ce50bc57a521b800279b90d8643dc7a9f9744fcd97db:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NjBlNDhlNDM3NjVlMDZhMDVkM2RiOTBjN2FkOTAzZDZlYzI3NzIzYzM1OGU4Yjg3ODZlZGI0OWNlNzljMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyNThhMmFjZDA5ZWI2Y2VmMmY0YTE3MGZiMjdmMGMyY2MzZDRmOWQwZDhmNzk5ODA1ZDJkYzIyNzJiNDQyYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhNTc2NzQzNWIxYmI2YjgyYzU2YWQzYjVjM2M5ZmQxNDBhZGZhODMxMTQwNGRlM2EyMzI3MDJmNGE5ZmE1ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_83b55bb026094d3c900788e7fda28424",
+      "statement": "The toolchain requirement is Go 1.26.3 (pinned by the module's go directive), and a coding host is optional: install, readiness, and self-verification are standalone — external tools are never a dependency of native install, readiness, or self-verification.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L281-L281",
+          "version": "repo-lines-v1:sha256:b40d6163be53404f25cfeecfad093ed3e40f5ca8e25242ff2c5b6127ce218fc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjQwZDYxNjNiZTUzNDA0ZjI1Y2ZlZWNmYWQwOTNlZDNlNDBmNWNhOGUyNTI0MmZmMmM1YjYxMjdjZTIxOGZjOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjQwZDYxNjNiZTUzNDA0ZjI1Y2ZlZWNmYWQwOTNlZDNlNDBmNWNhOGUyNTI0MmZmMmM1YjYxMjdjZTIxOGZjOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzYwNDRjYTcyMzIyYTMxNDBhYzMzYjJkZmVkNDEyZTg1MTYzOThhM2NlYTY2YTc5ZmVlY2IzYjg2MDEyYzk2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDdiN2RlMmIzODhmN2FkYjMxMzU2OTMxN2E3MmE1Mzk0MGQ4NDBjOTk0Nzg5ZTMyYWFhZmE0ZGE0Y2EzZGYxZiJ9"
+        },
+        {
+          "resource": "repo://README.md#L43-L48",
+          "version": "repo-lines-v1:sha256:70fc1dce10e0ab283dc45ae3c546378b72925f9bb62a290a85fd718593e62ace:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTNjNTYxMzJiOWU0ZDc3YjEyZDYwZWM0MmQyYmYwYzA5ZWEwN2VlYWM3YmQ5MjFkYjc2ODg2OWJiZGRjMGFjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzUwODJjZmUwZTdjZThhNGRlMWY0NDI1MmE4MjZmNzRhOTYxNDA4NmM5ZDViNTIzODkwZDM2MjFjNWZlYzJkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzBhNzY0ZjQ1ZTFlZmQ4YTY4ZmRmNjQ0ZGM5MWNhYjEyOTI3YjMyZTRmYmFkMTQ3MjNhYzU3OTJkMzQ2YWY5ZSJ9"
+        },
+        {
+          "resource": "repo://go.mod#L1-L5",
+          "version": "repo-lines-v1:sha256:36dd7fabd2994da0486311fd4cc48f2b34ae0bd37ec86a6bad011ff03f0b4cee:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzdhZTgyMDQ1NWJkMTA1ZmM3M2NkN2I2NDllNDM2OTIzZTQ2NmM3OTgzNzZmOGE4MWE1ZGIyYjk4ZTFiMTZmOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjJlMjM4YjJlY2FhOTBjMDgxODExM2MyZGI1NTEzMTYxNTJiYjhmYzFhNDQ3NWM3NWI4ZWQyZjBkODhhNjBmMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjhmNDJmM2FhOWM1NjE2MDA5MTM3NWIwMmZhZjA4MDNjMDUzYzQ1NjE4NGJkNTUzMzllZjU2ZGYyODIyMmU5MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cc119c7910dd42819b9c7e8018cd4a75",
+      "statement": "Post-install verification has distinct roles: `agent-harness inspect --json` is the detailed installation and native-integration projection, `doctor --repo . --json` diagnoses installation, state, hooks, MCP, daemon, and project docs together, and `status --json` is the day-to-day summary.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L100-L111",
+          "version": "repo-lines-v1:sha256:b58616991a5c038aefc84ae01be267ed3efcc1a1f24ae5106d0ad9cf67d5fe5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMDI0MzA1N2ZiZmI2OGI1MTY3YzUzOWUwZTQxYWY3MmMyZDBhOGQ0NDE4NzUyZDQyMGNjYjNmNGIyOTQ1OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMzkxMDY4MGVhMGVhYTVkZjc1MmE3NTE3MGFkZDhhMTA2ZjkyZDNlMjIyMDUzOWM2MGY0NGEzOTg5MDQyY2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViNGExNjgwODFlNWVhMjYwOTJjZmQyYjA3YzQ1ZTczMWQyNjAwMWNiYzZmOTMwMjY3MTY4ODljNTg0NjM1NmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwMzQ1OTI2MjE5NjhhMDNiMDQ4MDVkYTcyNGZlZDdlNTE3NDU4NjJlNzMwMTFhYjMyNmUxYWZjOWUwZmM4MTYifQ"
+        },
+        {
+          "resource": "repo://README.md#L51-L56",
+          "version": "repo-lines-v1:sha256:3481f829cdad61e740f6fcde3bf2d4c018e4ff642b88fa480b92efb60084b1ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRlMmY1MzI4ZWU2ZTgwNTBlOGFhZmQ4ZGM4NjlhMDY5Y2Q5NTg0ZWRhYWY1NGZlNTg5ZDczYzNiN2RjZDc5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWYxMWNmNTJjYmM4ZmQxMWU0ZDgzNDJlMTI4MjdiYWFlN2RiNzgxNWFmZDdlZGFkYmI5ZGM4ZmNmNmZiMGM5NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmY0MDUwOTBjYmZhYmViNTFjNTZjM2IwZGIzOTBmYTUxMjlhYjZiNTY1MjVlZDRhY2NhZDk3MmNiYmVjYzQzNiJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-08-29T17:13:20.810Z"
+  }
+}

@@ -1,4 +1,5 @@
 # Files
 
-- [Execution Model](execution-model.md) - Direct vs Orca execution modes, write-lease state machine with generation fencing, completion gate, and the adversarial multi-session threat model for IssueOps execution v1.
-- [IssueOps Workflow](issueops.md) - The durable issue-driven work cycle with a 9-phase state machine, fail-closed readiness gates, and a phase ledger. IssueOps is the single workflow authority in agent-harness.
+- [IssueOps Cycle Workflow](issueops-cycle.md) - The durable issue-to-cleanup lifecycle — rank-ordered phase machine with fail-closed entry gates, the single record row and its invariants, phase ledger, gate-ledger and strict PR readiness, intent-first remote artifacts, atomic completion, and resumable cleanup finish/abandon.
+- [Project Docs Workflow](project-docs.md) - How agent-harness bootstraps, indexes, routes, and keeps project documentation fresh — the .agent-harness doc-family manifest, safety-first project bootstrap, the golden-pinned docs --json index, MCP route/read/revise/append, SessionStart catalog injection, and the project-bootstrap skills pipeline.
+- [Runtime Surfaces: CLI, MCP, Daemon, Worker, Hooks](runtime-surfaces.md)
