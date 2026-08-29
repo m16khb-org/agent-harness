@@ -43,13 +43,15 @@ ORDER = ["low", "medium", "high", "critical"]
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
-                 "workers": {"finder": 6, "tracer": 6, "reproducer": 4},
+                 "workers": {"finder": 4, "tracer": 4, "reproducer": 4},
                  "thinking": {"finder": "high", "tracer": "medium", "reproducer": "medium"}},
     # Cheap-token host profile: wider search + deeper traces to close the gap to the
     # Claude Code (opus) run. Verdict thresholds are NOT relaxed — recall grows, the
     # tracer/reproducer rule and the inline bars still own precision.
+    # Workers capped at 4: z.ai rejects higher concurrency with 429 (measured 2026-08-29:
+    # ×10 skeptic fan-out killed 7/9 agents; every ≤4-concurrent run held).
     "omo-flash": {"finder_turns": 24, "skeptic_turns": 18, "candidate_floor": 40,
-                  "workers": {"finder": 10, "tracer": 10, "reproducer": 8},
+                  "workers": {"finder": 4, "tracer": 4, "reproducer": 4},
                   "thinking": {"finder": "high", "tracer": "high", "reproducer": "high"}},
 }
 USAGE_KEYS = ("input", "output", "cacheRead", "cacheWrite", "reasoning", "totalTokens", "cost_total")
@@ -244,15 +246,24 @@ class OmoRunner:
     def _cmd(self, sid: str, thinking: str) -> list[str]:
         return ["omo", "--provider", self.provider, "--model", self.model, "--no-skills",
                 "--no-context-files", "--no-extensions", "--permission-preset", "workspace",
+                "--no-model-fallback",  # fallback masked zai 429s as opencode weekly errors (2026-08-29)
                 "--session-id", sid, "--thinking", thinking]
 
     def run(self, prompt: str, cwd: str, thinking: str, timeout: int = 1800) -> tuple[object, dict, str]:
         sid = uuid.uuid4().hex[:12]
-        try:
-            p = subprocess.run(self._cmd(sid, thinking) + ["-p", prompt], cwd=cwd,
-                               capture_output=True, text=True, timeout=timeout)
-        except subprocess.TimeoutExpired:
-            return None, session_usage(sid), "omo timed out"
+        p = None
+        for attempt in range(2):
+            attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
+            try:
+                p = subprocess.run(self._cmd(attempt_sid, thinking) + ["-p", prompt], cwd=cwd,
+                                   capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                return None, session_usage(attempt_sid), "omo timed out"
+            if p.returncode == 0 or (p.stdout or "").strip():
+                break
+            if attempt == 0:
+                time.sleep(4)  # provider 429 backoff (zai concurrent burst, 2026-08-29)
+        base_usage = add_usage(session_usage(sid), session_usage(f"{sid}x1"))
         parsed = extract_json(p.stdout)
         tail = p.stdout[-400:]
         if parsed is None:  # one retry, the analogue of agent() schema retry
@@ -265,9 +276,9 @@ class OmoRunner:
                 parsed = extract_json(p2.stdout)
             except subprocess.TimeoutExpired:
                 pass
-            usage = add_usage(session_usage(sid), session_usage(sid2))
+            usage = add_usage(base_usage, session_usage(sid2))
         else:
-            usage = session_usage(sid)
+            usage = base_usage
         return parsed, usage, tail
 
 

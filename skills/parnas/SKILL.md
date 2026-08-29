@@ -73,8 +73,8 @@ Claude Code: `Workflow({scriptPath: "<skill>/references/workflow.js", args: <con
 workflow_args.json>})`. Omo: `python3 <skill>/scripts/omo_driver.py --args
 <out_dir>/workflow_args.json` runs the whole find+verify stage as concurrent `omo -p` agents
 (default `--profile omo-flash`: zai/glm-5.3-flash, finder 24 turns, skeptic 18, candidate cap
-floored at 40, 10-way concurrency, thinking high on every role — cheap tokens buy wider
-search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
+floored at 40, 4-way concurrency (z.ai rejects more with 429), thinking high on every role —
+cheap tokens buy wider search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
 Workflow budgets).
 Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
 from that file with the host's sub-agent tool and apply the prescreen and verdict rule in

@@ -25,7 +25,7 @@ class ProfileTest(unittest.TestCase):
         self.assertEqual(b["skeptic_turns"], 18)
         self.assertEqual(b["max_candidates"], 40)          # floor raises 24 → 40
         self.assertGreater(b["per_lens_cap"], 5)           # recomputed from the raised cap
-        self.assertEqual(b["workers"]["finder"], 10)
+        self.assertEqual(b["workers"]["finder"], 4)          # z.ai concurrency cap
         self.assertEqual(b["thinking"], {"finder": "high", "tracer": "high", "reproducer": "high"})
 
     def test_standard_profile_keeps_workflow_budgets(self) -> None:
