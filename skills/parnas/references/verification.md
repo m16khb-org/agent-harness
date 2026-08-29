@@ -61,8 +61,11 @@ This is the only place the rule is stated; `workflow.js` implements it — if th
 
 - Prescreen refusal, or any skeptic with `refuted=true` and confidence ≥ 70, kills the
   candidate; a tracer kill skips the reproducer entirely.
-- Fewer than 2 verdicts for a non-killed candidate (tool failure) → kept as an abstain at
-  confidence ≤ 50 (never posted inline; summary only).
+- A non-refuting verdict with confidence ≤ 40 or a reason starting with `미확인:` is
+  unavailable evidence, even when its JSON shape is valid; it is excluded from the pair
+  and makes the candidate an abstain.
+- Fewer than 2 usable verdicts for a non-killed candidate (tool failure or unverified
+  response) → kept as an abstain at confidence ≤ 50 (never posted inline; summary only).
 - Otherwise confirmed only when both skeptics fail to refute it (a weak refutation,
   confidence < 70, does not outvote a reproduction).
 - Final confidence = min(finder confidence, confidences of the non-refuting skeptics).

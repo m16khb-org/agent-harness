@@ -91,7 +91,7 @@ class PromptBoundaryTest(unittest.TestCase):
 
             input_dir = omo_driver.prepare_omo_inputs(args)
             try:
-                self.assertTrue(input_dir.is_relative_to(checkout))
+                self.assertTrue(input_dir.is_relative_to(checkout.resolve()))
                 self.assertEqual((input_dir / "pack" / "behavior_all.md").read_text(), "pack")
                 self.assertEqual((input_dir / "hunks" / "a.patch").read_text(), "patch")
                 self.assertEqual((input_dir / "pack" / "behavior_all.md").stat().st_mode & 0o777, 0o444)
@@ -106,6 +106,26 @@ class PromptBoundaryTest(unittest.TestCase):
             finally:
                 omo_driver.cleanup_omo_inputs(input_dir)
             self.assertFalse(input_dir.exists())
+
+    def test_review_paths_are_canonicalized_for_omo(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            root = Path(tmp)
+            checkout = root / "worktree"
+            source = root / "review"
+            checkout.mkdir()
+            (source / "pack").mkdir(parents=True)
+            (source / "hunks").mkdir()
+            (source / "pack" / "behavior_all.md").write_text("pack", encoding="utf-8")
+            (source / "hunks" / "a.patch").write_text("patch", encoding="utf-8")
+            args = {"checkout": str(checkout), "outDir": str(source)}
+
+            input_dir = omo_driver.prepare_omo_inputs(args)
+            try:
+                self.assertEqual(args["checkout"], str(checkout.resolve()))
+                self.assertEqual(args["outDir"], str(source.resolve()))
+                self.assertEqual(str(input_dir), str(input_dir.resolve()))
+            finally:
+                omo_driver.cleanup_omo_inputs(input_dir)
 
 
 class PrescreenTest(unittest.TestCase):
@@ -187,6 +207,13 @@ class PureHelperTest(unittest.TestCase):
         finder = {"lenses": ["logic"], "inspected": [], "candidates": [candidate], "verified_ok": []}
         self.assertIsNone(omo_driver.validate_agent_payload(finder, "finder"))
 
+    def test_unverified_reason_is_rejected_even_with_higher_confidence(self) -> None:
+        verdict = {
+            "skeptic": "tracer", "refuted": False, "confidence": 50,
+            "reason": "미확인: 검증 경로가 없음", "evidence": [], "severity_adjust": "keep",
+        }
+        self.assertTrue(omo_driver._is_unverified_verdict(verdict))
+
     def test_run_retries_without_model_fallback_and_keeps_permission(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
         first = subprocess.CompletedProcess([], 1, "", "429")
@@ -223,6 +250,7 @@ class PureHelperTest(unittest.TestCase):
             with self.assertRaises(subprocess.TimeoutExpired):
                 omo_driver.run_omo_process(["omo"], "/tmp", 1)
         self.assertEqual(popen.call_args.kwargs["start_new_session"], True)
+        self.assertEqual(popen.call_args.kwargs["cwd"], str(Path("/tmp").resolve()))
         killpg.assert_called_once_with(123, omo_driver.signal.SIGKILL)
         self.assertEqual(process.calls, 2)
 
@@ -359,6 +387,54 @@ class SelfReviewFixTest(unittest.TestCase):
         result = omo_driver.phase_verify(a, FakeRunner(), found)
         self.assertEqual(result["status"], "degraded")
         self.assertEqual(result["agent_failures"], ["tracer:a.go:10", "repro:a.go:10"])
+
+    def test_phase_verify_abstains_on_unverified_low_confidence_verdicts(self) -> None:
+        class FakeRunner:
+            def __init__(self):
+                self.calls = 0
+
+            def run(self, *args, **kwargs):
+                self.calls += 1
+                skeptic = "tracer" if self.calls == 1 else "reproducer"
+                return (
+                    {"skeptic": skeptic, "refuted": False, "confidence": 20,
+                     "reason": "미확인: 파일을 읽지 못함", "evidence": [],
+                     "severity_adjust": "keep"},
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "",
+                )
+
+        a = {
+            "checkout": "/tmp", "outDir": "/tmp", "skeptic_turns": 18,
+            "workers": {"tracer": 1, "reproducer": 1},
+            "thinking": {"tracer": "high", "reproducer": "high"},
+            "profile": "omo-flash", "provider": "zai", "model": "glm-5.3-flash",
+            "carried": [],
+        }
+        candidate = {
+            "path": "src/a.go", "new_line": 10, "end_line": None, "severity": "medium",
+            "category": "bug", "title": "t", "what": "w", "why": "why",
+            "evidence": [], "confidence": 75, "lens": "logic",
+        }
+        found = {
+            "candidates": [candidate], "prescreened": [], "finders": [],
+            "verified_ok": [], "usage_find": {k: 0 for k in omo_driver.USAGE_KEYS},
+        }
+
+        result = omo_driver.phase_verify(a, FakeRunner(), found)
+
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["agent_failures"], ["tracer:a.go:10", "repro:a.go:10"])
+        self.assertEqual(len(result["findings"]), 1)
+        self.assertEqual(result["findings"][0]["confidence"], 50)
+        self.assertEqual(result["findings"][0]["verification"], "skeptics unavailable (abstain)")
+        self.assertNotIn("skeptics_passed", result["findings"][0])
+
+    def test_unverified_reason_abstains_even_with_high_confidence(self) -> None:
+        verdict = {
+            "refuted": False, "confidence": 75, "reason": "미확인: 파일을 읽지 못함",
+        }
+        self.assertTrue(omo_driver._is_unverified_verdict(verdict))
 
 
 if __name__ == "__main__":

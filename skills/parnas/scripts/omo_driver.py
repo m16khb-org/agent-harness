@@ -6,7 +6,8 @@ skepticPrompt strings from references/workflow.js with the host's sub-agent tool
 apply the prescreen and verdict rule in references/verification.md"). The prompt text
 below is a port of workflow.js — workflow.js stays the single source of truth; if it
 changes, re-sync this file. The verdict rule (prescreen → blind tracer → reproducer,
-KILL ≥ 70, abstain ≤ 2 verdicts) is identical; only the budgets differ per profile.
+KILL ≥ 70, low-confidence non-refutations abstain) is identical; only the budgets
+differ per profile.
 
 Profiles:
   standard    workflow.js budgets (finder 10 turns, skeptic 8, args.maxCandidates).
@@ -42,6 +43,7 @@ from pathlib import Path
 HOME = Path.home()
 OMO_SESSIONS = HOME / ".omo" / "agent" / "sessions"
 KILL = 70
+UNVERIFIED_MAX_CONFIDENCE = 40
 SUPPRESS_EXEMPT = {"security", "data"}
 ORDER = ["low", "medium", "high", "critical"]
 PINNED_PROVIDER = "zai"
@@ -69,6 +71,17 @@ PROFILES = {
 USAGE_KEYS = ("input", "output", "cacheRead", "cacheWrite", "reasoning", "totalTokens", "cost_total")
 
 
+def canonical_path(value: str | Path) -> str:
+    return str(Path(value).expanduser().resolve())
+
+
+def canonicalize_runtime_paths(a: dict) -> dict:
+    for key in ("checkout", "outDir", "omoInputDir"):
+        if a.get(key):
+            a[key] = canonical_path(a[key])
+    return a
+
+
 # ---------------------------------------------------------------- budgets
 
 def resolve_budget(args_json: dict, profile: str) -> dict:
@@ -84,13 +97,14 @@ def resolve_budget(args_json: dict, profile: str) -> dict:
 # ---------------------------------------------------------------- prompt templates (port of workflow.js; keep in sync)
 
 def prompt_root(a: dict) -> str:
-    return a.get("omoInputDir") or a["outDir"]
+    return canonical_path(a.get("omoInputDir") or a["outDir"])
 
 
 def finder_common(a: dict, cg: str) -> str:
     root = prompt_root(a)
+    checkout = canonical_path(a["checkout"])
     return f"""You are one inspector in a formal design inspection (Parnas active design review).
-Repository checkout at head: {a['checkout']} (read-only; never edit, never checkout, never post).
+Repository checkout at head: {checkout} (read-only; never edit, never checkout, never post).
 
 How to work — this is a budget, not advice:
 - Your pack file (named at the end of this message) is the whole context for your slice: the cumulative diff of every file you inspect, the definition headers enclosing each hunk, files that historically change together, the definitions and one-hop callers/callees of the symbols they define, the rules that apply, existing threads and prior lessons.
@@ -144,10 +158,11 @@ def skeptic_prompt(a: dict, sid: str, c: dict, prior: dict | None) -> str:
         prior_txt = (f"\nThe tracer already examined it and did not refute (confidence {prior.get('confidence')}): "
                      f"{prior.get('reason')}. Do not repeat its trace; attack the scenario itself.")
     root = prompt_root(a)
+    checkout = canonical_path(a["checkout"])
     return f"""You are a skeptic in a design inspection. Your job is to try to REFUTE this candidate defect.
 refuted=true ONLY when you actually neutralised the scenario with evidence (a definition, a boundary, a run that shows it cannot happen). If you could not test it (no runnable environment, missing DB, tooling absent) or could not find the hop, return refuted=false with confidence ≤ 40 and reason starting with "미확인:" — inability to verify is not a refutation.
 Budget: at most {a['skeptic_turns']} assistant messages including the final JSON message; batch independent reads in one message.
-Checkout (read-only except throwaway test files you delete afterwards): {a['checkout']}
+Checkout (read-only except throwaway test files you delete afterwards): {checkout}
 Start here, in one message: {root}/hunks/{hunk_slug(c['path'])}.patch (the diff of the candidate's file) and the "## <symbol>" sections of {root}/defs.md for the symbols in the claim (grep -n "^## " to locate). Open other files only for a hop those name.
 Lens: {sid} — {SKEPTIC_TEXT[sid]}
 Candidate: {json.dumps(blind(c) if sid == 'tracer' else c, ensure_ascii=False)}{prior_txt}
@@ -257,6 +272,7 @@ def extract_json(text: str | None):
 
 def prepare_omo_inputs(a: dict) -> Path:
     """Copy review inputs under the Omo worker's checkout permission boundary."""
+    canonicalize_runtime_paths(a)
     source = Path(a["outDir"])
     checkout = Path(a["checkout"])
     input_dir = checkout / f".parnas-input-{uuid.uuid4().hex}"
@@ -337,6 +353,14 @@ def _valid_verdict(value: object) -> bool:
     return value.get("corrected_suggestion") is None or isinstance(value.get("corrected_suggestion"), str)
 
 
+def _is_unverified_verdict(value: object) -> bool:
+    """A valid JSON verdict with low confidence is an abstention, not evidence."""
+    return isinstance(value, dict) and value.get("refuted") is False \
+        and isinstance(value.get("reason"), str) and _is_int(value.get("confidence")) \
+        and (value["confidence"] <= UNVERIFIED_MAX_CONFIDENCE
+             or value["reason"].lstrip().startswith("미확인:"))
+
+
 def validate_agent_payload(payload: object, kind: str) -> dict | None:
     """Accept only the fields later phases compare arithmetically or dereference."""
     if kind == "finder":
@@ -380,6 +404,7 @@ def validate_omo_cli(executable: str = "omo", timeout: int = 30) -> None:
 
 def run_omo_process(cmd: list[str], cwd: str, timeout: int) -> subprocess.CompletedProcess:
     """Run Omo in its own process group so timeout cleanup reaches its child engine."""
+    cwd = canonical_path(cwd)
     process = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, start_new_session=True)
     try:
@@ -536,7 +561,7 @@ def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
 # ---------------------------------------------------------------- phases
 
 def phase_find(a: dict, runner: OmoRunner) -> dict:
-    units, cwd = a["units"], a["checkout"]
+    units, cwd = a["units"], canonical_path(a["checkout"])
     usage_all = {k: 0 for k in USAGE_KEYS}
     finders: list[dict] = []
 
@@ -587,7 +612,7 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
 
 
 def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
-    cwd, candidates = a["checkout"], found["candidates"]
+    cwd, candidates = canonical_path(a["checkout"]), found["candidates"]
     usage_all = found["usage_find"]
     agent_failures = list(found.get("agent_failures") or [])
     print(f"[driver] verify: {len(candidates)} tracers (×{a['workers']['tracer']})", flush=True)
@@ -595,18 +620,20 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
               "permission_preset": "read-only", "payload_kind": "verdict",
               "label": f"tracer:{c['path'].split('/')[-1]}:{c.get('new_line')}"} for c in candidates]
     tracer_results = run_batch(runner, tasks, a["workers"]["tracer"]) if tasks else []
-    agent_failures.extend(r["label"] for r in tracer_results if r["parsed"] is None)
+    agent_failures.extend(r["label"] for r in tracer_results
+                          if r["parsed"] is None or _is_unverified_verdict(r["parsed"]))
 
     repro_tasks, repro_idx, stages, skipped = [], [], [], 0
     for c, tr in zip(candidates, tracer_results):
         usage_all = add_usage(usage_all, tr["usage"])
-        t = tr["parsed"]
+        raw_t = tr["parsed"]
+        t = None if _is_unverified_verdict(raw_t) else raw_t
         stages.append({"candidate": c, "tracer": t})
         if t and t.get("refuted") and t.get("confidence", 0) >= KILL:
             skipped += 1
         else:
             repro_idx.append(len(stages) - 1)
-            repro_tasks.append({"prompt": skeptic_prompt(a, "reproducer", c, t), "cwd": cwd,
+            repro_tasks.append({"prompt": skeptic_prompt(a, "reproducer", c, raw_t), "cwd": cwd,
                                 "thinking": a["thinking"]["reproducer"],
                                 "permission_preset": "workspace", "payload_kind": "verdict",
                                 "label": f"repro:{c['path'].split('/')[-1]}:{c.get('new_line')}"})
@@ -614,11 +641,11 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
         print(f"[driver] {len(repro_tasks)} reproducers (×{a['workers']['reproducer']}, tracer killed {skipped})", flush=True)
         for idx, r in zip(repro_idx, run_batch(runner, repro_tasks, a["workers"]["reproducer"])):
             usage_all = add_usage(usage_all, r["usage"])
-            if r["parsed"] is None:
+            if r["parsed"] is None or _is_unverified_verdict(r["parsed"]):
                 agent_failures.append(r["label"])
-            stages[idx]["reproducer"] = r["parsed"]
+            stages[idx]["reproducer"] = None if _is_unverified_verdict(r["parsed"]) else r["parsed"]
 
-    findings, refuted = [], list(found["prescreened"])
+    findings, refuted, abstained = [], list(found["prescreened"]), 0
     for s in stages:
         verdicts = [v for v in (s.get("tracer"), s.get("reproducer")) if v]
         c = s["candidate"]
@@ -626,6 +653,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
             refuted.append({**c, "verdicts": verdicts})
             continue
         if len(verdicts) < 2:
+            abstained += 1
             print(f"[driver] abstain: {c['path']}:{c.get('new_line')} had {len(verdicts)} verdict(s); kept at confidence 50")
             findings.append({**c, "confidence": min(50, c.get("confidence", 50)), "verification": "skeptics unavailable (abstain)"})
             continue
@@ -662,7 +690,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                                   for v in r.get("verdicts", []))]
     carried = list(a.get("carried") or [])
     status = "degraded" if agent_failures else "ok"
-    print(f"[driver] {len(findings)} confirmed (+{len(carried)} carried), {len(refuted)} refuted "
+    print(f"[driver] {len(findings) - abstained} confirmed, {abstained} abstained (+{len(carried)} carried), {len(refuted)} refuted "
           f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk, "
           f"status={status})", flush=True)
     return {"findings": findings + carried, "refuted": refuted, "partial": partial,
@@ -703,6 +731,7 @@ def main() -> int:
         thinking["reproducer"] = ns.thinking_reproducer
     a = {**args_json, **budget, "thinking": thinking, "profile": ns.profile,
          "provider": provider, "model": model}
+    canonicalize_runtime_paths(a)
     print(f"[driver] profile={ns.profile} model={provider}/{model} finder_turns={budget['finder_turns']} "
           f"skeptic_turns={budget['skeptic_turns']} maxCandidates={budget['max_candidates']} "
           f"perLensCap={budget['per_lens_cap']} workers={budget['workers']}", flush=True)
