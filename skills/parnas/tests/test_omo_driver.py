@@ -100,6 +100,7 @@ class PromptBoundaryTest(unittest.TestCase):
         for prompt in (finder, tracer, reproducer):
             self.assertIn("Reserve the final assistant message", prompt)
             self.assertIn("no tool call", prompt)
+        self.assertIn("reviewed_files is a coverage receipt", finder)
         self.assertIn("Allowed tools: read, grep, find, ls", tracer)
         self.assertIn("Forbidden tools: bash, eval, webfetch", tracer)
         self.assertIn("Allowed tools: read, grep, find, ls, bash, edit, write", reproducer)
@@ -219,6 +220,31 @@ class PureHelperTest(unittest.TestCase):
         self.assertEqual(merged[0]["confidence"], 80)
         self.assertEqual(sorted(merged[0]["lenses"]), ["logic", "security"])
 
+    def test_coverage_report_requires_every_assignment_exactly_once(self) -> None:
+        units = [
+            {"id": "behavior@all", "files": ["src/a.go", "src/b.go"]},
+            {"id": "intent@all", "files": ["src/a.go"]},
+        ]
+        finders = [
+            {"unit": "behavior@all", "reviewed_files": ["src/a.go", "src/a.go", "src/extra.go"]},
+            {"unit": "intent@all", "reviewed_files": ["src/a.go"]},
+        ]
+
+        report = omo_driver.coverage_report(units, finders)
+
+        self.assertEqual(report["expected_assignments"], 3)
+        self.assertEqual(report["covered_assignments"], 2)
+        self.assertEqual(report["gaps"], [
+            {"unit": "behavior@all", "missing_files": ["src/b.go"]},
+        ])
+        self.assertEqual(report["duplicates"], [
+            {"unit": "behavior@all", "files": ["src/a.go"]},
+        ])
+        self.assertEqual(report["unexpected"], [
+            {"unit": "behavior@all", "files": ["src/extra.go"]},
+        ])
+        self.assertFalse(report["complete"])
+
     def test_blind_hides_finder_evidence_from_tracer(self) -> None:
         c = {"path": "a.go", "new_line": 1, "severity": "high", "category": "bug", "title": "t",
              "what": "w", "why": "why", "evidence": ["a.go:1"], "upstream": "u", "downstream": "d", "lens": "logic"}
@@ -234,8 +260,15 @@ class PureHelperTest(unittest.TestCase):
             "category": "bug", "title": "t", "what": "w", "why": "why",
             "evidence": [], "confidence": "75", "lens": "logic",
         }
-        finder = {"lenses": ["logic"], "inspected": [], "candidates": [candidate], "verified_ok": []}
+        finder = {"lenses": ["logic"], "reviewed_files": ["a.go"], "inspected": [],
+                  "candidates": [candidate], "verified_ok": []}
         self.assertIsNone(omo_driver.validate_agent_payload(finder, "finder"))
+
+    def test_agent_payload_requires_reviewed_files_receipt(self) -> None:
+        finder = {"lenses": ["logic"], "inspected": [], "candidates": [], "verified_ok": []}
+        self.assertIsNone(omo_driver.validate_agent_payload(finder, "finder"))
+        finder["reviewed_files"] = ["a.go"]
+        self.assertEqual(omo_driver.validate_agent_payload(finder, "finder"), finder)
 
     def test_unverified_reason_is_rejected_even_with_higher_confidence(self) -> None:
         verdict = {
@@ -502,7 +535,8 @@ class SelfReviewFixTest(unittest.TestCase):
         class FakeRunner:
             def run(self, *args, **kwargs):
                 return (
-                    {"lenses": ["logic"], "inspected": [], "verified_ok": [], "candidates": [{
+                    {"lenses": ["logic"], "reviewed_files": ["a.go"], "inspected": [],
+                     "verified_ok": [], "candidates": [{
                         "path": "a.go", "new_line": "1", "end_line": None, "severity": "high",
                         "category": "bug", "title": "t", "what": "w", "why": "why",
                         "evidence": [], "confidence": "75", "lens": "logic",
@@ -522,6 +556,33 @@ class SelfReviewFixTest(unittest.TestCase):
         self.assertTrue(found["degraded"])
         self.assertEqual(found["candidates"], [])
         self.assertEqual(found["agent_failures"], ["find:logic@all"])
+
+    def test_phase_find_marks_missing_file_receipt_degraded(self) -> None:
+        class FakeRunner:
+            def run(self, *args, **kwargs):
+                return (
+                    {"lenses": ["logic"], "reviewed_files": ["src/a.go"],
+                     "inspected": ["src/a.go"], "verified_ok": [], "candidates": []},
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "",
+                )
+
+        a = {
+            "units": [{"id": "logic@all", "lenses": ["logic"], "pack": "pack.md",
+                       "files": ["src/a.go", "src/b.go"]}],
+            "checkout": "/tmp", "outDir": "/tmp", "lensText": {"logic": "logic"},
+            "thinking": {"finder": "high"}, "finder_turns": 24, "per_lens_cap": 3,
+            "workers": {"finder": 1},
+            "max_candidates": 24, "hunkRanges": {}, "refutedHistory": [],
+        }
+
+        found = omo_driver.phase_find(a, FakeRunner())
+
+        self.assertTrue(found["degraded"])
+        self.assertEqual(found["failure_counts"]["coverage_gap"], 1)
+        self.assertEqual(found["coverage"]["gaps"], [
+            {"unit": "logic@all", "missing_files": ["src/b.go"]},
+        ])
 
     def test_phase_verify_preserves_carried_findings(self) -> None:
         carried = [{"path": "src/a.go", "new_line": 10, "title": "carried"}]

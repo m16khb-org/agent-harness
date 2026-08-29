@@ -61,7 +61,7 @@ Do NOT report: style, naming, things a linter/typechecker/CI catches, pre-existi
 untouched lines, speculative refactors, "consider adding" without a failure scenario.
 
 Return JSON only:
-{"lens":"<id>","inspected":["<files/symbols actually read>"],
+{"lens":"<id>","reviewed_files":["<every exact unit file path, once>"],"inspected":["<files/symbols actually read in depth>"],
  "candidates":[{"path":"...","new_line":N,"end_line":N|null,"severity":"critical|high|medium|low",
    "category":"bug|security|performance|business-logic|data|api-contract|test|rule|scope",
    "title":"<Korean, one sentence>","what":"<Korean>","why":"<Korean failure scenario>","how":"<Korean fix>",
@@ -72,7 +72,9 @@ Return JSON only:
 
 Rules baked into the prompt: at most `perLensCap` candidates and 3 `verified_ok` per lens;
 `suggestion` is required for `api-contract` and any one-line decorator/description/config
-fix; a hop you cannot find caps confidence at 50 and is stated, never guessed.
+fix; a hop you cannot find caps confidence at 50 and is stated, never guessed. `reviewed_files`
+is the exact file-level coverage receipt for the unit; missing or duplicate assignments degrade
+the whole review instead of letting an incomplete scan look clean.
 
 ```
 ```

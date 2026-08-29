@@ -74,6 +74,55 @@
 - 싼 모델 finder(sonnet/fable) 의 "확정 finding / $" — 6차(wf_243b4bfc) 실측 대기.
 - 반박 이력 임베딩을 어디에 둘지(로컬 `.agent-harness/issues/*/review/` 는 gitignore 됨 → 레포 공유 저장소 필요).
 
+## 2026-08-30 후속 적용
+
+OpenCodeReview, Greptile, CodeRabbit의 최신 공식 문서를 다시 대조해 이미 반영된
+blind verifier, incremental re-review, co-change context, linked-issue 검증을 제외하고
+두 가지 남은 차이를 구현했다.
+
+- **완전성 영수증(OpenCodeReview)**: 결정적으로 유닛을 배정해도 finder가 일부 파일을
+  실제 결과에서 누락하면 이전에는 clean 결과와 구분할 수 없었다.
+  `reviewed_files`를 finder 구조화 출력의 필수 필드로 추가하고, Python/Omo와
+  Claude Workflow 양쪽에서 유닛별 expected assignment와 receipt를 비교한다. 누락·중복은
+  `coverage.gaps`/`coverage.duplicates`와 `failure_counts.coverage_gap`에 남고 전체 결과가
+  `degraded`가 된다. 기존 `inspected`는 심층 조사한 파일·심볼 목록으로 그대로 둬
+  서로 다른 의미를 한 필드에 겹치지 않았다.
+- **디렉터리 범위 규칙(Greptile + CodeRabbit)**: 기존 root 지침에 더해 tracked
+  nested `**/AGENTS.md`, `**/CLAUDE.md`, `**/.greptile/rules.md`를 찾고, 각 파일을
+  자신의 디렉터리 subtree에만 적용한다. root 규칙은 전체에 누적되고 sibling 규칙은
+  섞이지 않으며, 충돌하면 가장 가까운 디렉터리 지침이 우선한다. rule pack은 PR head
+  worktree에서 읽어 base checkout의 낡은 규칙이 들어가지 않게 했다.
+
+의도적으로 제외한 범위는 Greptile `config.json`의 strictness/disable 상속,
+CodeRabbit YAML과 cross-repo guideline, auto-approve, UI walkthrough이다. Parnas의
+정규성은 evidence-verified review pipeline이며, 벤더 설정 플랫폼을 복제하는 것은
+이번 정확도 결함을 해결하지 않는 accidental complexity다.
+
+검증 근거:
+
+- `python3 -m unittest discover -s skills/parnas/tests -p 'test_*.py'` — 59 tests
+- `python3 scripts/validate-skill.py skills/parnas` — valid
+- `python3 -m compileall -q skills/parnas`
+- `node --check skills/parnas/references/workflow.js`
+- `node --check skills/parnas/extensions/structured_output.js`
+- `./scripts/install-native.sh --dry-run --json` — Codex/Claude/Omo Parnas link plan 모두 `ok`
+- synthetic monorepo exercise — billing pack에는 root+billing 규칙만 적용되고 search 규칙은
+  누출되지 않았으며, 2/3 receipt는 incomplete, 3/3 receipt는 complete로 판정
+
+후속 공식 근거:
+
+- OpenCodeReview README / deterministic engineering:
+  https://github.com/alibaba/open-code-review
+- Greptile cascading `.greptile/` configuration:
+  https://www.greptile.com/docs/code-review/greptile-config
+- Greptile graph context and memory:
+  https://www.greptile.com/docs/how-greptile-works/graph-based-codebase-context
+  · https://www.greptile.com/docs/how-greptile-works/memory-and-learning
+- CodeRabbit architecture, code guidelines, path instructions:
+  https://docs.coderabbit.ai/overview/architecture
+  · https://docs.coderabbit.ai/knowledge-base/code-guidelines
+  · https://docs.coderabbit.ai/configuration/path-instructions
+
 ## Source Index
 (각 조사 에이전트의 인덱스를 합침 — 전부 2026-08-28 조회)
 - Claude Code Review docs https://code.claude.com/docs/en/code-review · ultrareview https://code.claude.com/docs/en/ultrareview · 플러그인 https://github.com/anthropics/claude-code/blob/main/plugins/code-review/README.md · InfoQ https://www.infoq.com/news/2026/04/claude-code-review/

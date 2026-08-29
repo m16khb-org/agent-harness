@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -135,6 +136,44 @@ class PackTest(unittest.TestCase):
 
     def test_hunk_slug_roundtrip(self) -> None:
         self.assertEqual(mr_context.hunk_slug("apps/a b/c.ts"), "apps__a_b__c.ts")
+
+    def test_rule_pack_scopes_tracked_nested_guidelines(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            files = {
+                "AGENTS.md": "root rules\n",
+                ".greptile/rules.md": "root review rules\n",
+                "packages/api/AGENTS.md": "api rules\n",
+                "packages/api/.greptile/rules.md": "api review rules\n",
+                "packages/web/CLAUDE.md": "web rules\n",
+                "packages/api/UNTRACKED.md": "not a guideline\n",
+            }
+            for rel, text in files.items():
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "add", "AGENTS.md", ".greptile/rules.md", "packages/api/AGENTS.md",
+                 "packages/api/.greptile/rules.md", "packages/web/CLAUDE.md"],
+                cwd=root, check=True,
+            )
+
+            rules = mr_context.rule_pack(str(root))
+            by_path = {rule["path"]: rule for rule in rules}
+            self.assertEqual(by_path["AGENTS.md"]["scope_prefix"], "")
+            self.assertEqual(by_path[".greptile/rules.md"]["scope_prefix"], "")
+            self.assertEqual(by_path["packages/api/AGENTS.md"]["scope_prefix"], "packages/api")
+            self.assertEqual(by_path["packages/api/.greptile/rules.md"]["scope_prefix"], "packages/api")
+            self.assertEqual(by_path["packages/web/CLAUDE.md"]["scope_prefix"], "packages/web")
+
+            api_paths = {"packages/api/src/handler.ts"}
+            applied = [rule["path"] for rule in rules if mr_context._rule_matches(rule, api_paths)]
+            self.assertIn("AGENTS.md", applied)
+            self.assertIn("packages/api/AGENTS.md", applied)
+            self.assertIn("packages/api/.greptile/rules.md", applied)
+            self.assertNotIn("packages/web/CLAUDE.md", applied)
+            self.assertNotIn("packages/api/UNTRACKED.md", applied)
 
 
 class ResearchImprovementsTest(unittest.TestCase):

@@ -36,10 +36,10 @@ const CANDIDATE = {
 }
 const FINDER = {
   type: 'object',
-  properties: { lenses: { type: 'array', items: { type: 'string' } }, inspected: { type: 'array', items: { type: 'string' } },
+  properties: { lenses: { type: 'array', items: { type: 'string' } }, reviewed_files: { type: 'array', items: { type: 'string' } }, inspected: { type: 'array', items: { type: 'string' } },
     candidates: { type: 'array', items: CANDIDATE },
     verified_ok: { type: 'array', items: { type: 'object', properties: { concern: { type: 'string' }, why_ok: { type: 'string' }, loc: { type: 'string' }, thread: { type: ['string', 'null'] } }, required: ['concern', 'why_ok', 'loc'] } } },
-  required: ['lenses', 'inspected', 'candidates', 'verified_ok'],
+  required: ['lenses', 'reviewed_files', 'inspected', 'candidates', 'verified_ok'],
 }
 const VERDICT = {
   type: 'object',
@@ -80,7 +80,10 @@ Report a candidate only with a concrete failure scenario (input/state → wrong 
 Do NOT report: style, naming, things a linter/typechecker/CI catches, pre-existing issues on untouched lines, speculative refactors, "consider adding" without a failure scenario, anything on a line that already has a thread in the pack unless you contradict that thread, anything listed under prior lessons.
 verified_ok: things that looked risky and you cleared — {concern: "<우려, 한 구절>", why_ok: "<왜 괜찮은지, 한 문장, 근거 파일:라인 포함>", loc: "file:line", thread: "<existing thread id you are contradicting, else null>"}. Max 3; prefer ones that contradict an existing thread.
 suggestion is REQUIRED when category is api-contract or the fix is a decorator/description/config one-liner.
-All prose fields in Korean; identifiers/paths verbatim. evidence entries: "path:line — what it proves". Return lenses = the lens ids you applied.`
+All prose fields in Korean; identifiers/paths verbatim. evidence entries: "path:line — what it proves". Return lenses = the lens ids you applied.
+reviewed_files is a coverage receipt: copy every file path listed in your unit's pack exactly once,
+even when it produced no candidate. Do not put symbols or extra paths in reviewed_files; inspected
+may still list files and symbols actually investigated in depth.`
 
 const finderPrompt = (u) => `${FINDER_COMMON}
 
@@ -140,6 +143,28 @@ const runFinder = (u) => safe(agent(finderPrompt(u), { label: `find:${u.id}`, ph
 const first = units.length ? await runFinder(units[0]) : null
 const rest = await parallel(units.slice(1).map((u) => () => runFinder(u)))
 const finders = [first, ...rest].map((r, i) => r && { ...r, unit: units[i].id, lenses: units[i].lenses }).filter(Boolean)
+const finderByUnit = new Map(finders.map((r) => [r.unit, r]))
+const coverageRows = units.map((u) => {
+  const expected = [...new Set(u.files || [])]
+  const reviewed = finderByUnit.get(u.id)?.reviewed_files || []
+  const counts = new Map()
+  for (const path of reviewed) counts.set(path, (counts.get(path) || 0) + 1)
+  return {
+    unit: u.id,
+    missing_files: expected.filter((path) => !counts.has(path)),
+    duplicates: expected.filter((path) => (counts.get(path) || 0) > 1),
+    unexpected: [...counts.keys()].filter((path) => !expected.includes(path)),
+    expected: expected.length,
+  }
+})
+const coverage = {
+  expected_assignments: coverageRows.reduce((n, row) => n + row.expected, 0),
+  covered_assignments: coverageRows.reduce((n, row) => n + row.expected - row.missing_files.length, 0),
+  gaps: coverageRows.filter((row) => row.missing_files.length).map(({ unit, missing_files }) => ({ unit, missing_files })),
+  duplicates: coverageRows.filter((row) => row.duplicates.length).map(({ unit, duplicates }) => ({ unit, files: duplicates })),
+  unexpected: coverageRows.filter((row) => row.unexpected.length).map(({ unit, unexpected }) => ({ unit, files: unexpected })),
+}
+coverage.complete = coverage.gaps.length === 0 && coverage.duplicates.length === 0
 
 const seen = new Map()
 for (const r of finders) {
@@ -163,7 +188,7 @@ let candidates = [...seen.values()].sort((a, b) => b.confidence - a.confidence)
 const prescreened = []
 candidates = candidates.filter((c) => { const why = prescreen(c); if (why) { prescreened.push({ ...c, verdicts: [{ skeptic: 'prescreen', refuted: true, confidence: 90, reason: why, evidence: [], severity_adjust: 'keep' }] }); return false } return true })
 if (candidates.length > maxCandidates) { log(`dropping ${candidates.length - maxCandidates} lowest-confidence candidates (cap ${maxCandidates})`); candidates = candidates.slice(0, maxCandidates) }
-log(`${finders.length}/${units.length} finders returned, ${seen.size} unique candidates, ${prescreened.length} removed by prescreen, ${candidates.length} to verify — ${spent()}k output tokens so far`)
+log(`${finders.length}/${units.length} finders returned, coverage ${coverage.covered_assignments}/${coverage.expected_assignments}, ${seen.size} unique candidates, ${prescreened.length} removed by prescreen, ${candidates.length} to verify — ${spent()}k output tokens so far`)
 
 // ---------------------------------------------------------------- Verify: blind tracer → reproducer only if the tracer failed to refute
 phase('Verify')
@@ -216,7 +241,15 @@ const partial = refuted
 // Refutations worth remembering (team memory): killed by a skeptic with evidence, not by prescreen.
 const refutedForHistory = refuted.filter((r) => r.verdicts.some((x) => x.refuted && x.skeptic !== 'prescreen' && x.confidence >= 80))
   .map((r) => ({ path: r.path, new_line: r.new_line, title: r.title, what: (r.what || '').slice(0, 300), category: r.category, killed_by: r.verdicts.filter((x) => x.refuted).map((x) => `${x.skeptic}(${x.confidence}): ${(x.reason || '').slice(0, 200)}`) }))
-log(`${findings.length - abstained} confirmed, ${abstained} abstained (+${carried.length} carried), ${refuted.length} refuted (${prescreened.length} by prescreen, ${skippedReproducers} reproducers skipped, ${partial.length} with residual risk → open_questions) — ${spent()}k output tokens total`)
-return { findings: [...findings, ...carried], refuted, partial, refuted_for_history: refutedForHistory, verified_ok: finders.flatMap((r) => r.verified_ok || []), inspected: finders.map((r) => ({ unit: r.unit, lenses: r.lenses, inspected: r.inspected })),
+const failureCounts = {
+  agent_failure: units.length - finders.length,
+  low_confidence_abstain: abstained,
+  coverage_gap: coverage.gaps.reduce((n, gap) => n + gap.missing_files.length, 0)
+    + coverage.duplicates.reduce((n, item) => n + item.files.length, 0),
+}
+const status = failureCounts.agent_failure || failureCounts.low_confidence_abstain || failureCounts.coverage_gap ? 'degraded' : 'ok'
+log(`${findings.length - abstained} confirmed, ${abstained} abstained (+${carried.length} carried), ${refuted.length} refuted (${prescreened.length} by prescreen, ${skippedReproducers} reproducers skipped, ${partial.length} with residual risk → open_questions, coverage ${coverage.covered_assignments}/${coverage.expected_assignments}, status=${status}) — ${spent()}k output tokens total`)
+return { findings: [...findings, ...carried], refuted, partial, refuted_for_history: refutedForHistory, verified_ok: finders.flatMap((r) => r.verified_ok || []), inspected: finders.map((r) => ({ unit: r.unit, lenses: r.lenses, reviewed_files: r.reviewed_files, inspected: r.inspected })),
   cost: { finders: finders.length, skeptics: verified.filter(Boolean).reduce((n, v) => n + (v.attempted || v.verdicts.length), 0), prescreened: prescreened.length, reproducers_skipped: skippedReproducers, carried: carried.length, output_tokens_k: spent(),
-    models: { finder: role('finder'), tracer: role('tracer'), reproducer: role('reproducer') } } }
+    models: { finder: role('finder'), tracer: role('tracer'), reproducer: role('reproducer') } },
+  coverage, status, degraded: status === 'degraded', failure_counts: failureCounts }

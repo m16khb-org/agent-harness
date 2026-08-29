@@ -37,6 +37,7 @@ const finder = {
   additionalProperties: false,
   properties: {
     lenses: stringArray,
+    reviewed_files: stringArray,
     inspected: stringArray,
     candidates: { type: "array", items: candidate },
     verified_ok: {
@@ -54,7 +55,7 @@ const finder = {
       },
     },
   },
-  required: ["lenses", "inspected", "candidates", "verified_ok"],
+  required: ["lenses", "reviewed_files", "inspected", "candidates", "verified_ok"],
 }
 
 const verdict = {

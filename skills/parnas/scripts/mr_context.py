@@ -45,6 +45,8 @@ RULE_CANDIDATES = [
     "agent-docs/constitution.md",
     "agent-docs/constitution-compact.md",
 ]
+NESTED_GUIDELINE_NAMES = {"AGENTS.md", "CLAUDE.md"}
+NESTED_GUIDELINE_SUFFIX = "/.greptile/rules.md"
 # 이 스킬이 게시한 리뷰 마커.
 REVIEW_MARKER_RE = re.compile(r"<!--\s*parnas-review\s+head=([0-9a-f]{7,40})")
 REVIEW_MARKER_TOKENS = ("parnas-review", "parnas-finding")
@@ -403,17 +405,35 @@ def detect_verification(repo_dir: str) -> dict:
 
 def rule_pack(repo_dir: str) -> list[dict]:
     out = []
+    seen: set[str] = set()
     for rel in RULE_CANDIDATES:
         p = Path(repo_dir) / rel
         if p.exists():
-            out.append({"path": rel, "bytes": p.stat().st_size, "kind": "instructions"})
+            out.append({"path": rel, "bytes": p.stat().st_size, "kind": "instructions", "scope_prefix": ""})
+            seen.add(rel)
+    tracked = run(["git", "ls-files"], cwd=repo_dir, check=False).splitlines()
+    for rel in sorted(tracked):
+        if rel in seen:
+            continue
+        path = Path(rel)
+        if path.name in NESTED_GUIDELINE_NAMES:
+            scope = path.parent.as_posix()
+        elif rel == ".greptile/rules.md" or rel.endswith(NESTED_GUIDELINE_SUFFIX):
+            scope = path.parent.parent.as_posix()
+        else:
+            continue
+        scope = "" if scope == "." else scope
+        p = Path(repo_dir) / rel
+        if p.is_file():
+            out.append({"path": rel, "bytes": p.stat().st_size, "kind": "instructions", "scope_prefix": scope})
+            seen.add(rel)
     for rules_dir, kind in ((".kody/rules", "kody-rule"), (".coderabbit", "coderabbit"), (".github/instructions", "copilot"), (".cursor/rules", "cursor")):
         d = Path(repo_dir) / rules_dir
         if d.is_dir():
             for p in sorted(list(d.glob("*.md")) + list(d.glob("*.mdc")) + list(d.glob("*.yaml"))):
                 txt = p.read_text(errors="ignore")
                 title = re.search(r'^title:\s*"?(.+?)"?\s*$', txt, re.M)
-                paths = re.search(r"^path:\s*(\[.*\])", txt, re.M)
+                paths = re.search(r"^(?:applyTo|path|globs):\s*(\[?.+?\]?)\s*$", txt, re.M)
                 sev = re.search(r'^severity_min:\s*"?(\w+)', txt, re.M)
                 out.append({"path": str(p.relative_to(repo_dir)), "bytes": p.stat().st_size, "kind": kind, "title": title.group(1) if title else p.stem,
                             "globs": paths.group(1) if paths else None, "severity_min": sev.group(1) if sev else None})
@@ -667,9 +687,15 @@ def render_pack(shard: dict, lenses: list[str], lens_texts: dict[str, str], per_
             L.append(f"  - hunk {h['new_start']} inside: " + " > ".join(f"{ln}: {txt.strip()}" for ln, txt in h["context"]))
         if f.get("co_change"):
             L.append(f"  - changes together with (not in this diff): {', '.join(f['co_change'])}")
-    rules = [r for r in meta.get("rules", []) if r.get("kind") == "instructions" or _rule_matches(r, paths)]
+    rules = [r for r in meta.get("rules", []) if _rule_matches(r, paths)]
     if rules:
-        L += ["", "## Rules that apply to these files"] + [f"- {r['path']}" + (f" — {r['title']} (globs {r['globs']})" if r.get("globs") else "") for r in rules]
+        L += ["", "## Rules that apply to these files",
+              "Read applicable guidelines from root to leaf; when they conflict, the nearest directory scope wins."] + [
+            f"- {r['path']}"
+            + (f" — scope {r['scope_prefix'] or '/'}" if "scope_prefix" in r else "")
+            + (f" — {r['title']} (globs {r['globs']})" if r.get("globs") else "")
+            for r in rules
+        ]
     threads = [t for t in meta.get("threads", []) if t.get("path") in paths]
     if threads:
         L += ["", "## Existing threads on these files (do not re-raise unless you contradict them)"]
@@ -693,6 +719,9 @@ def render_pack(shard: dict, lenses: list[str], lens_texts: dict[str, str], per_
 
 
 def _rule_matches(rule: dict, paths: set[str]) -> bool:
+    scope = rule.get("scope_prefix")
+    if scope and not any(p == scope or p.startswith(f"{scope}/") for p in paths):
+        return False
     globs = rule.get("globs")
     if not globs:
         return True
@@ -871,7 +900,7 @@ def main() -> None:
         "source_branch": meta["source_branch"], "target_branch": meta["target_branch"], "labels": meta["labels"],
         "diff_refs": refs, "head_available_locally": have_head, "eligibility": eligibility, "files": files,
         "totals": {"files": len(files), "added": sum(f["added"] for f in files), "removed": sum(f["removed"] for f in files)},
-        "linked_issues": issues, "rule_pack": rule_pack(repo_dir), "existing_threads": threads, "prior_review_lessons": lessons,
+        "linked_issues": issues, "rule_pack": rule_pack(worktree or repo_dir), "existing_threads": threads, "prior_review_lessons": lessons,
         "verification": detect_verification(repo_dir), "worktree": worktree, "repo_dir": repo_dir, "out_dir": str(out_dir),
     }
     scale = {"files": len(files), "added": ctx["totals"]["added"], "large": len(files) > 40 or ctx["totals"]["added"] > 2000}

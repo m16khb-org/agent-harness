@@ -60,7 +60,7 @@ VALID_SEVERITY_ADJUSTMENTS = {"keep", "lower", "raise"}
 READ_ONLY_TOOLS = ("read", "grep", "find", "ls")
 REPRODUCER_TOOLS = READ_ONLY_TOOLS + ("bash", "edit", "write")
 FAILURE_COUNT_KEYS = ("parse_failure", "schema_failure", "timeout", "process_failure",
-                      "model_mismatch", "low_confidence_abstain")
+                      "model_mismatch", "low_confidence_abstain", "coverage_gap")
 OUTPUT_TOOL_BY_KIND = {"finder": "submit_parnas_finder", "verdict": "submit_parnas_verdict"}
 
 PROFILES = {
@@ -133,8 +133,11 @@ Do NOT report: style, naming, things a linter/typechecker/CI catches, pre-existi
 verified_ok: things that looked risky and you cleared — {{"concern": "<우려, 한 구절>", "why_ok": "<왜 괜찮은지, 한 문장, 근거 파일:라인 포함>", "loc": "file:line", "thread": "<existing thread id you are contradicting, else null>"}}. Max 3; prefer ones that contradict an existing thread.
 suggestion is REQUIRED when category is api-contract or the fix is a decorator/description/config one-liner.
 All prose fields in Korean; identifiers/paths verbatim. evidence entries: "path:line — what it proves". Return lenses = the lens ids you applied.
+reviewed_files is a coverage receipt: copy every file path listed in your unit's pack exactly once,
+even when it produced no candidate. Do not put symbols or extra paths in reviewed_files; inspected
+may still list files and symbols actually investigated in depth.
 Your FINAL action must be exactly one submit_parnas_finder tool call matching the schema below. Do not print the result as assistant text.
-Schema: {{"lenses":["<lens ids>"],"inspected":["<files/symbols read>"],"candidates":[{{"path":"...","new_line":N,"end_line":N|null,"severity":"critical|high|medium|low","category":"bug|security|performance|business-logic|data|api-contract|test|rule|scope","title":"...","what":"...","why":"...","how":"...","evidence":["..."],"upstream":"...","downstream":"...","suggestion":null,"rule":null,"confidence":0,"newly_reachable":false,"lens":"..."}}],"verified_ok":[]}}"""
+Schema: {{"lenses":["<lens ids>"],"reviewed_files":["<every exact unit file path, once>"],"inspected":["<files/symbols read in depth>"],"candidates":[{{"path":"...","new_line":N,"end_line":N|null,"severity":"critical|high|medium|low","category":"bug|security|performance|business-logic|data|api-contract|test|rule|scope","title":"...","what":"...","why":"...","how":"...","evidence":["..."],"upstream":"...","downstream":"...","suggestion":null,"rule":null,"confidence":0,"newly_reachable":false,"lens":"..."}}],"verified_ok":[]}}"""
 
 
 def cg_hint(a: dict) -> str:
@@ -281,6 +284,37 @@ def dedup_candidates(finders: list[dict]) -> list[dict]:
     return seen
 
 
+def coverage_report(units: list[dict], finders: list[dict]) -> dict:
+    """Compare deterministic unit assignments with explicit finder file receipts."""
+    by_unit = {finder.get("unit"): finder for finder in finders}
+    gaps, duplicates, unexpected = [], [], []
+    expected_assignments = covered_assignments = 0
+    for unit in units:
+        expected = list(dict.fromkeys(unit.get("files") or []))
+        expected_set = set(expected)
+        reviewed = (by_unit.get(unit.get("id")) or {}).get("reviewed_files") or []
+        counts = {path: reviewed.count(path) for path in set(reviewed)}
+        missing = [path for path in expected if counts.get(path, 0) == 0]
+        repeated = sorted(path for path in expected_set if counts.get(path, 0) > 1)
+        extra = sorted(path for path in counts if path not in expected_set)
+        expected_assignments += len(expected)
+        covered_assignments += len(expected) - len(missing)
+        if missing:
+            gaps.append({"unit": unit.get("id"), "missing_files": missing})
+        if repeated:
+            duplicates.append({"unit": unit.get("id"), "files": repeated})
+        if extra:
+            unexpected.append({"unit": unit.get("id"), "files": extra})
+    return {
+        "expected_assignments": expected_assignments,
+        "covered_assignments": covered_assignments,
+        "gaps": gaps,
+        "duplicates": duplicates,
+        "unexpected": unexpected,
+        "complete": not gaps and not duplicates,
+    }
+
+
 def severity_shift(sev: str, adj: str) -> str:
     i = ORDER.index(sev) if sev in ORDER else 1
     if adj == "lower":
@@ -404,6 +438,8 @@ def validate_agent_payload(payload: object, kind: str) -> dict | None:
         if not isinstance(payload, dict):
             return None
         if not isinstance(payload.get("lenses"), list) or not all(isinstance(item, str) for item in payload["lenses"]):
+            return None
+        if not isinstance(payload.get("reviewed_files"), list) or not all(isinstance(item, str) for item in payload["reviewed_files"]):
             return None
         if not isinstance(payload.get("inspected"), list) or not all(isinstance(item, str) for item in payload["inspected"]):
             return None
@@ -776,9 +812,10 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
 
     if not units:
         print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
+        coverage = coverage_report([], [])
         return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all,
                 "agent_failures": [], "failure_counts": failure_counts, "agent_diagnostics": [],
-                "degraded": False}
+                "coverage": coverage, "degraded": False}
     print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
     t0 = [units[0]]
     r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
@@ -819,12 +856,18 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
     if len(kept) > a["max_candidates"]:
         print(f"[driver] dropping {len(kept) - a['max_candidates']} lowest-confidence candidates (cap {a['max_candidates']})")
         kept = kept[: a["max_candidates"]]
+    coverage = coverage_report(units, finders)
+    failure_counts["coverage_gap"] = sum(len(gap["missing_files"]) for gap in coverage["gaps"]) + sum(
+        len(item["files"]) for item in coverage["duplicates"]
+    )
     print(f"[driver] finders={len(finders)}/{len(units)} unique={len(seen)} prescreened={len(prescreened)} "
-          f"to_verify={len(kept)} failures={len(agent_failures)}", flush=True)
+          f"to_verify={len(kept)} failures={len(agent_failures)} "
+          f"coverage={coverage['covered_assignments']}/{coverage['expected_assignments']}", flush=True)
     return {"finders": finders, "verified_ok": [v for r in finders for v in (r.get("verified_ok") or [])],
             "candidates": kept, "prescreened": prescreened, "usage_find": usage_all,
             "agent_failures": agent_failures, "failure_counts": failure_counts,
-            "agent_diagnostics": agent_diagnostics, "degraded": bool(agent_failures)}
+            "agent_diagnostics": agent_diagnostics, "coverage": coverage,
+            "degraded": bool(agent_failures) or not coverage["complete"]}
 
 
 def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
@@ -834,6 +877,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
     low_confidence_abstains = list(found.get("low_confidence_abstains") or [])
     failure_counts = {**empty_failure_counts(), **(found.get("failure_counts") or {})}
     agent_diagnostics = list(found.get("agent_diagnostics") or [])
+    coverage = found.get("coverage") or coverage_report(a.get("units") or [], found.get("finders") or [])
     print(f"[driver] verify: {len(candidates)} tracers (×{a['workers']['tracer']})", flush=True)
     tasks = [{"prompt": skeptic_prompt(a, "tracer", c, None), "cwd": cwd, "thinking": a["thinking"]["tracer"],
               "permission_preset": "read-only", "payload_kind": "verdict",
@@ -923,13 +967,14 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                            if any(v.get("refuted") and v.get("skeptic") != "prescreen" and v.get("confidence", 0) >= 80
                                   for v in r.get("verdicts", []))]
     carried = list(a.get("carried") or [])
-    status = "degraded" if agent_failures or low_confidence_abstains else "ok"
+    status = "degraded" if agent_failures or low_confidence_abstains or not coverage["complete"] else "ok"
     print(f"[driver] {len(findings) - abstained} confirmed, {abstained} abstained (+{len(carried)} carried), {len(refuted)} refuted "
           f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk, "
           f"status={status})", flush=True)
     return {"findings": findings + carried, "refuted": refuted, "partial": partial,
             "refuted_for_history": refuted_for_history, "verified_ok": found["verified_ok"],
-            "inspected": [{"unit": r["unit"], "lenses": r["lenses"], "inspected": r.get("inspected", [])}
+            "inspected": [{"unit": r["unit"], "lenses": r["lenses"],
+                           "reviewed_files": r.get("reviewed_files", []), "inspected": r.get("inspected", [])}
                           for r in found["finders"]],
             "cost": {"finders": len(found["finders"]), "candidates_in": len(candidates), "tracers": len(candidates),
                      "reproducers": len(repro_tasks), "reproducers_skipped": skipped,
@@ -937,7 +982,8 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                      "profile": a["profile"], "model": f"{a['provider']}/{a['model']}"},
             "status": status, "degraded": status == "degraded", "agent_failures": agent_failures,
             "low_confidence_abstains": low_confidence_abstains,
-            "failure_counts": failure_counts, "agent_diagnostics": agent_diagnostics}
+            "failure_counts": failure_counts, "agent_diagnostics": agent_diagnostics,
+            "coverage": coverage}
 
 
 def main() -> int:

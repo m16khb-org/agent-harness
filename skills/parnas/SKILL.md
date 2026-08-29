@@ -96,9 +96,11 @@ turn before the cap, and the driver recovers validated tool arguments from the s
 the final assistant text is empty. A format retry receives the original prompt and candidate
 again with only the submit tool enabled. Raw stdout/stderr, return code, timeout, tool denials,
 parse errors, and schema errors remain in `agent_diagnostics`; `failure_counts` separates
-`parse_failure`, `schema_failure`, `timeout`, and `low_confidence_abstain`. Any failed child or
-abstention is reported as `status: "degraded"` and the adapter exits non-zero; an empty result
-must never be treated as a clean review.
+`parse_failure`, `schema_failure`, `timeout`, `low_confidence_abstain`, and `coverage_gap`.
+Every finder returns `reviewed_files` containing each exact file path assigned to its unit
+once. Missing or duplicate assignments appear under `coverage`, make the result
+`status: "degraded"`, and make the adapter exit non-zero. Any failed child or abstention does
+the same; an empty or incomplete result must never be treated as a clean review.
 Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
 from that file with the host's sub-agent tool and apply the prescreen and verdict rule in
 `references/verification.md`. Budget: `units × 1 + candidates × (1..2)` agents — a
@@ -202,6 +204,8 @@ new diff.
 - No agent-found finding without an opened definition, an upstream hop, a downstream hop and
   a failure scenario; "probably/may/could" in `why` means unverified. Gate findings are the
   only exception.
+- A finder must attest every assigned file exactly once in `reviewed_files`; a coverage gap or
+  duplicate receipt degrades the review and must be disclosed, never summarized as clean.
 - A single call site never proves a signature or a field. `{ results: users }` reads
   `results`.
 - Only changed or newly-reachable lines. Pre-existing debt appears only if the change makes it
