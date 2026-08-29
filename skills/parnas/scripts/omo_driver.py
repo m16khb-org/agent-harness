@@ -42,6 +42,7 @@ from pathlib import Path
 
 HOME = Path.home()
 OMO_SESSIONS = HOME / ".omo" / "agent" / "sessions"
+PARNAS_OUTPUT_EXTENSION = Path(__file__).parents[1] / "extensions" / "structured_output.js"
 KILL = 70
 UNVERIFIED_MAX_CONFIDENCE = 40
 SUPPRESS_EXEMPT = {"security", "data"}
@@ -53,6 +54,11 @@ PERMISSION_PRESETS = {"read-only", "workspace"}
 VALID_SEVERITIES = set(ORDER)
 VALID_CATEGORIES = {"bug", "security", "performance", "business-logic", "data", "api-contract", "test", "rule", "scope"}
 VALID_SEVERITY_ADJUSTMENTS = {"keep", "lower", "raise"}
+READ_ONLY_TOOLS = ("read", "grep", "find", "ls")
+REPRODUCER_TOOLS = READ_ONLY_TOOLS + ("bash", "edit", "write")
+FAILURE_COUNT_KEYS = ("parse_failure", "schema_failure", "timeout", "process_failure",
+                      "model_mismatch", "low_confidence_abstain")
+OUTPUT_TOOL_BY_KIND = {"finder": "submit_parnas_finder", "verdict": "submit_parnas_verdict"}
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
@@ -108,7 +114,9 @@ Repository checkout at head: {checkout} (read-only; never edit, never checkout, 
 
 How to work — this is a budget, not advice:
 - Your pack file (named at the end of this message) is the whole context for your slice: the cumulative diff of every file you inspect, the definition headers enclosing each hunk, files that historically change together, the definitions and one-hop callers/callees of the symbols they define, the rules that apply, existing threads and prior lessons.
-- Message 1: exactly one Read of the pack file, whole (no offset/limit) — nothing else. Message 2: every follow-up read you need, all in that one message (several Read/Bash calls at once), chosen from the hops the pack names. Then at most a few more messages. Hard cap: {a['finder_turns']} assistant messages including the final JSON message. One call per message wastes the budget. Read file regions (offset/limit or sed -n), never whole large files.
+- Message 1: exactly one read of the pack file, whole (no offset/limit) — nothing else. Message 2: every follow-up read/search you need, all in that one message, chosen from the hops the pack names. Then at most a few more messages. Hard cap: {a['finder_turns']} assistant messages including the final JSON message. One call per message wastes the budget. Read file regions, never whole large files.
+- Allowed tools: read, grep, find, ls. Forbidden tools: bash, eval, webfetch, edit, write, bash_output. Do not attempt a forbidden tool.
+- Reserve the final assistant message for the JSON object. Stop all investigation and tool use one message before the cap; the final message must contain no tool call.
 - You carry several lenses. Apply each one separately over the same pack and tag every candidate with the lens that found it (candidate.lens); a candidate two lenses would both report is reported once under the stronger lens. Lens-specific file scope: 'contract' looks at dto/controller/gateway/generated files, 'data' at db/repository/query code, 'async' at kafka/queue/stream/retry code, 'security' at auth/validation/secrets — skip files the lens does not apply to.
 - Open the checkout only for a hop the pack names (a caller, a callee, a validator) or a symbol the pack does not list ({cg}). If {root}/gate.md exists, lint/typecheck/test results and LOC metrics are already measured there — never re-report them.
 - When the budget is nearly spent, stop and report what you verified; an unverified hunch is not a candidate.
@@ -122,12 +130,12 @@ Do NOT report: style, naming, things a linter/typechecker/CI catches, pre-existi
 verified_ok: things that looked risky and you cleared — {{"concern": "<우려, 한 구절>", "why_ok": "<왜 괜찮은지, 한 문장, 근거 파일:라인 포함>", "loc": "file:line", "thread": "<existing thread id you are contradicting, else null>"}}. Max 3; prefer ones that contradict an existing thread.
 suggestion is REQUIRED when category is api-contract or the fix is a decorator/description/config one-liner.
 All prose fields in Korean; identifiers/paths verbatim. evidence entries: "path:line — what it proves". Return lenses = the lens ids you applied.
-Your FINAL message must be ONLY the JSON object matching the schema below — no markdown fences, no prose before or after.
+Your FINAL action must be exactly one submit_parnas_finder tool call matching the schema below. Do not print the result as assistant text.
 Schema: {{"lenses":["<lens ids>"],"inspected":["<files/symbols read>"],"candidates":[{{"path":"...","new_line":N,"end_line":N|null,"severity":"critical|high|medium|low","category":"bug|security|performance|business-logic|data|api-contract|test|rule|scope","title":"...","what":"...","why":"...","how":"...","evidence":["..."],"upstream":"...","downstream":"...","suggestion":null,"rule":null,"confidence":0,"newly_reachable":false,"lens":"..."}}],"verified_ok":[]}}"""
 
 
 def cg_hint(a: dict) -> str:
-    return '`codegraph explore "<symbol>"` prints definitions + call paths' if a.get("codegraph") else "one `rg -n` call, then read the file region at the line it names"
+    return "one grep tool call, then read the file region at the line it names"
 
 
 def finder_prompt(a: dict, u: dict) -> str:
@@ -143,7 +151,7 @@ Lenses:
 
 SKEPTIC_TEXT = {
     "tracer": "Prove the claim rests on an inferred shape, an unchecked boundary, or a misreading of intent. (1) Open the real definition of every symbol in the claim. (2) Walk upstream to the nearest validation boundary (DTO validators, guards, pipes, proto/schema constraints, caller preconditions) and downstream to the consumer of the result; report each hop as path:line. If any hop neutralises the scenario, refute. (3) Check the MR description (pack header) and the linked issue: is the behavior intentional AND correct with respect to what the issue asks? Intentional but wrong per the issue is still a defect — do not refute on intent alone.",
-    "reproducer": "Prove the failure scenario cannot actually happen. Try to make it happen: write a throwaway unit test in the checkout encoding the scenario and run it, or run the targeted typecheck/lint on the file, or execute a small script. Paste command and outcome. Delete throwaway files afterwards. A scenario that cannot be reproduced and cannot be argued from definitions is refuted.",
+    "reproducer": "Prove the failure scenario cannot actually happen. Try to make it happen: write a throwaway unit test inside the checkout encoding the scenario and run it, or run the targeted typecheck/lint on the file, or execute a small script from the checkout. Paste command and outcome. Delete throwaway files afterwards. A scenario that cannot be reproduced and cannot be argued from definitions is refuted.",
 }
 
 
@@ -159,17 +167,27 @@ def skeptic_prompt(a: dict, sid: str, c: dict, prior: dict | None) -> str:
                      f"{prior.get('reason')}. Do not repeat its trace; attack the scenario itself.")
     root = prompt_root(a)
     checkout = canonical_path(a["checkout"])
+    if sid == "tracer":
+        tools = ("Allowed tools: read, grep, find, ls. Forbidden tools: bash, eval, webfetch, edit, write, "
+                 "bash_output. Do not attempt a forbidden tool.")
+    else:
+        tools = ("Allowed tools: read, grep, find, ls, bash, edit, write. Forbidden tools: eval, webfetch, "
+                 "bash_output. Never use /tmp, bash_output, background commands, detached processes, or paths "
+                 "outside the checkout; run every command in the foreground with cwd inside the checkout.")
     return f"""You are a skeptic in a design inspection. Your job is to try to REFUTE this candidate defect.
 refuted=true ONLY when you actually neutralised the scenario with evidence (a definition, a boundary, a run that shows it cannot happen). If you could not test it (no runnable environment, missing DB, tooling absent) or could not find the hop, return refuted=false with confidence ≤ 40 and reason starting with "미확인:" — inability to verify is not a refutation.
 Budget: at most {a['skeptic_turns']} assistant messages including the final JSON message; batch independent reads in one message.
+{tools}
+Reserve the final assistant message for the JSON object. Stop all investigation and tool use one message before the cap; the final message must contain no tool call.
 Checkout (read-only except throwaway test files you delete afterwards): {checkout}
-Start here, in one message: {root}/hunks/{hunk_slug(c['path'])}.patch (the diff of the candidate's file) and the "## <symbol>" sections of {root}/defs.md for the symbols in the claim (grep -n "^## " to locate). Open other files only for a hop those name.
+Start here, in one message: {root}/hunks/{hunk_slug(c['path'])}.patch (the diff of the candidate's file) and the "## <symbol>" sections of {root}/defs.md for the symbols in the claim (use the grep tool to locate them). Open other files only for a hop those name.
 Lens: {sid} — {SKEPTIC_TEXT[sid]}
 Candidate: {json.dumps(blind(c) if sid == 'tracer' else c, ensure_ascii=False)}{prior_txt}
 severity_adjust other than "keep" is accepted only with an evidence entry (path:line) that justifies it.
 Scoring: 0-25 inferred/pre-existing; 50 real but rare; 75 real on a real path; 90-100 reproduced or proven from definitions with no escape upstream/downstream.
 reason in Korean; evidence entries "path:line — what it shows" or "<command> → <outcome>".
-Your FINAL message must be ONLY the JSON object: {{"skeptic":"{sid}","refuted":true|false,"confidence":0,"reason":"...","evidence":["..."],"severity_adjust":"keep|lower|raise","corrected_line":null,"corrected_suggestion":null}}"""
+Your FINAL action must be exactly one submit_parnas_verdict tool call with this object. Do not print it as assistant text:
+{{"skeptic":"{sid}","refuted":true|false,"confidence":0,"reason":"...","evidence":["..."],"severity_adjust":"keep|lower|raise","corrected_line":null,"corrected_suggestion":null}}"""
 
 
 # ---------------------------------------------------------------- helpers (port of workflow.js pure code)
@@ -261,13 +279,18 @@ def severity_shift(sev: str, adj: str) -> str:
 def extract_json(text: str | None):
     if not text:
         return None
-    lo, hi = text.find("{"), text.rfind("}")
-    if lo < 0 or hi <= lo:
-        return None
-    try:
-        return json.loads(text[lo:hi + 1])
-    except json.JSONDecodeError:
-        return None
+    decoder = json.JSONDecoder()
+    parsed = None
+    for start, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            value, _ = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            parsed = value
+    return parsed
 
 
 def prepare_omo_inputs(a: dict) -> Path:
@@ -394,7 +417,8 @@ def validate_omo_cli(executable: str = "omo", timeout: int = 30) -> None:
     if p.returncode != 0:
         raise RuntimeError(f"{executable} --help failed with exit {p.returncode}")
     help_text = f"{p.stdout}\n{p.stderr}"
-    required = ("--provider", "--model", "--no-model-fallback", "--permission-preset", "--session-id")
+    required = ("--provider", "--model", "--no-model-fallback", "--permission-preset", "--session-id",
+                "--tools", "--no-tools")
     missing = [flag for flag in required if flag not in help_text]
     if missing:
         raise RuntimeError(f"{executable} is missing required flags: {', '.join(missing)}")
@@ -425,54 +449,168 @@ class OmoRunner:
     def __init__(self, provider: str, model: str):
         self.provider, self.model = normalize_pinned_model(provider, model)
 
-    def _cmd(self, sid: str, thinking: str, permission_preset: str = "read-only") -> list[str]:
+    def _cmd(self, sid: str, thinking: str, permission_preset: str = "read-only",
+             allowed_tools: tuple[str, ...] | None = None, output_tool: str | None = None) -> list[str]:
         if permission_preset not in PERMISSION_PRESETS:
             raise ValueError(f"unsupported Omo permission preset: {permission_preset}")
-        return ["omo", "--provider", self.provider, "--model", PINNED_MODEL_REF, "--no-skills",
-                "--no-context-files", "--no-extensions", "--permission-preset", permission_preset,
-                "--no-model-fallback",  # fallback masked zai 429s as opencode weekly errors (2026-08-29)
-                "--session-id", sid, "--thinking", thinking]
+        cmd = ["omo", "--provider", self.provider, "--model", PINNED_MODEL_REF, "--no-skills",
+               "--no-context-files", "--no-extensions", "--permission-preset", permission_preset,
+               "--no-model-fallback",  # fallback masked zai 429s as opencode weekly errors (2026-08-29)
+               "--session-id", sid, "--thinking", thinking]
+        selected_tools = tuple(allowed_tools or ())
+        if output_tool:
+            cmd.extend(["--extension", str(PARNAS_OUTPUT_EXTENSION),
+                        "--permission", f"{output_tool}=allow"])
+            selected_tools += (output_tool,)
+        if selected_tools:
+            cmd.extend(["--tools", ",".join(dict.fromkeys(selected_tools))])
+        elif allowed_tools == ():
+            cmd.append("--no-tools")
+        return cmd
 
     def run(self, prompt: str, cwd: str, thinking: str, timeout: int = 1800,
-            permission_preset: str = "read-only", payload_kind: str | None = None) -> tuple[object, dict, str]:
+            permission_preset: str = "read-only", payload_kind: str | None = None,
+            allowed_tools: tuple[str, ...] | None = None) -> tuple[object, dict, str, dict]:
         sid = uuid.uuid4().hex[:12]
         p = None
+        attempts = []
+        output_tool = OUTPUT_TOOL_BY_KIND.get(payload_kind)
         for attempt in range(2):
             attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
             try:
-                p = run_omo_process(self._cmd(attempt_sid, thinking, permission_preset) + ["-p", prompt],
+                p = run_omo_process(
+                    self._cmd(attempt_sid, thinking, permission_preset, allowed_tools, output_tool) + ["-p", prompt],
                                     cwd, timeout)
-            except subprocess.TimeoutExpired:
-                return None, session_usage(attempt_sid), "omo timed out"
+            except subprocess.TimeoutExpired as exc:
+                stdout, stderr = _timeout_text(exc.output), _timeout_text(exc.stderr)
+                attempts.append(_attempt_diagnostics(
+                    attempt_sid, None, stdout, stderr, timed_out=True,
+                    parse_error="Omo timed out before a complete JSON response",
+                ))
+                diagnostics = {"failure_kind": "timeout", "attempts": attempts}
+                return None, session_usage(attempt_sid), stdout[-400:] or "omo timed out", diagnostics
+            attempts.append(_attempt_diagnostics(attempt_sid, p.returncode, p.stdout, p.stderr))
             if p.returncode == 0 or (p.stdout or "").strip():
                 break
             if attempt == 0:
                 time.sleep(4)  # provider 429 backoff (zai concurrent burst, 2026-08-29)
         base_usage = add_usage(session_usage(sid), session_usage(f"{sid}x1"))
-        parsed = extract_json(p.stdout)
-        if payload_kind:
-            parsed = validate_agent_payload(parsed, payload_kind)
+        parsed, parse_error, schema_error, output_source = parse_agent_output(
+            p.stdout, payload_kind, attempt_sid,
+        )
+        attempts[-1]["parse_error"] = parse_error
+        attempts[-1]["schema_error"] = schema_error
+        attempts[-1]["output_source"] = output_source
         tail = p.stdout[-400:]
         if parsed is None:  # one retry, the analogue of agent() schema retry
             sid2 = sid + "r"
+            retry_prompt = format_retry_prompt(prompt, p.stdout, payload_kind)
             try:
-                p2 = run_omo_process(self._cmd(sid2, thinking, permission_preset) +
-                                     ["-p", "이전 출력은 JSON 파싱에 실패했다. 요청된 스키마의 순수 JSON 오브젝트만 다시 출력하라. 마크다운 금지.\n\n" + p.stdout[-6000:]],
+                p2 = run_omo_process(self._cmd(sid2, thinking, permission_preset, (), output_tool) +
+                                     ["-p", retry_prompt],
                                      cwd, timeout)
                 tail = p2.stdout[-400:]
-                parsed = extract_json(p2.stdout)
-                if payload_kind:
-                    parsed = validate_agent_payload(parsed, payload_kind)
-            except subprocess.TimeoutExpired:
-                pass
+                parsed, parse_error, schema_error, output_source = parse_agent_output(
+                    p2.stdout, payload_kind, sid2,
+                )
+                attempts.append(_attempt_diagnostics(
+                    sid2, p2.returncode, p2.stdout, p2.stderr,
+                    parse_error=parse_error, schema_error=schema_error, output_source=output_source,
+                ))
+            except subprocess.TimeoutExpired as exc:
+                stdout, stderr = _timeout_text(exc.output), _timeout_text(exc.stderr)
+                tail = stdout[-400:] or "omo timed out"
+                attempts.append(_attempt_diagnostics(
+                    sid2, None, stdout, stderr, timed_out=True,
+                    parse_error="Omo timed out before a complete JSON response",
+                ))
             usage = add_usage(base_usage, session_usage(sid2))
         else:
             usage = base_usage
         unexpected_models = session_models(sid, f"{sid}x1", sid + "r")
         unexpected_models.discard(PINNED_MODEL_REF)
+        diagnostics = {"failure_kind": _failure_kind(parsed, attempts), "attempts": attempts}
         if unexpected_models:
-            return None, usage, f"omo selected unpinned model(s): {', '.join(sorted(unexpected_models))}"
-        return parsed, usage, tail
+            diagnostics["failure_kind"] = "model_mismatch"
+            return None, usage, f"omo selected unpinned model(s): {', '.join(sorted(unexpected_models))}", diagnostics
+        return parsed, usage, tail, diagnostics
+
+
+def _timeout_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value or ""
+
+
+def _tool_denials(stdout: str, stderr: str) -> list[str]:
+    markers = ("permission denied", "not allowed", "blocked", "is disabled", "tool denial")
+    return [line.strip() for line in f"{stdout}\n{stderr}".splitlines()
+            if any(marker in line.lower() for marker in markers)]
+
+
+def _attempt_diagnostics(session_id: str, returncode: int | None, stdout: str | None, stderr: str | None,
+                         *, timed_out: bool = False, parse_error: str | None = None,
+                         schema_error: str | None = None, output_source: str | None = None) -> dict:
+    raw_stdout, raw_stderr = stdout or "", stderr or ""
+    return {"session_id": session_id, "returncode": returncode, "timed_out": timed_out,
+            "stdout": raw_stdout, "stderr": raw_stderr,
+            "tool_denials": _tool_denials(raw_stdout, raw_stderr),
+            "parse_error": parse_error, "schema_error": schema_error,
+            "output_source": output_source}
+
+
+def parse_agent_stdout(stdout: str | None, payload_kind: str | None) -> tuple[object, str | None, str | None]:
+    parsed = extract_json(stdout)
+    if parsed is None:
+        return None, "stdout did not contain a complete JSON object", None
+    if payload_kind and validate_agent_payload(parsed, payload_kind) is None:
+        return None, None, f"JSON object failed the {payload_kind} schema"
+    return parsed, None, None
+
+
+def parse_agent_output(stdout: str | None, payload_kind: str | None,
+                       session_id: str) -> tuple[object, str | None, str | None, str | None]:
+    if payload_kind:
+        tool_payload = session_tool_payload(session_id, payload_kind)
+        if tool_payload is not None:
+            parsed = validate_agent_payload(tool_payload, payload_kind)
+            if parsed is not None:
+                return parsed, None, None, "structured_tool"
+            return None, None, f"structured tool arguments failed the {payload_kind} schema", "structured_tool"
+    parsed, parse_error, schema_error = parse_agent_stdout(stdout, payload_kind)
+    return parsed, parse_error, schema_error, "stdout" if parsed is not None else None
+
+
+def format_retry_prompt(original_prompt: str, previous_stdout: str | None, payload_kind: str | None) -> str:
+    schema_name = payload_kind or "requested"
+    output_tool = OUTPUT_TOOL_BY_KIND.get(payload_kind)
+    final_action = (f"Call {output_tool} exactly once with the complete result. Do not print JSON as assistant text."
+                    if output_tool else
+                    "Return exactly one complete JSON object matching the original response schema.")
+    return f"""The previous response failed {schema_name} JSON parsing or schema validation.
+Do not call any investigation tool. {final_action}
+No markdown fences, analysis, notes, or prose may appear before or after the final action.
+
+ORIGINAL REQUEST (including the original candidate JSON):
+{original_prompt}
+
+PREVIOUS STDOUT:
+{previous_stdout or "(empty: the prior agent ended without a final assistant response)"}"""
+
+
+def _failure_kind(parsed: object, attempts: list[dict]) -> str | None:
+    if parsed is not None:
+        return None
+    last = attempts[-1]
+    if last["timed_out"]:
+        return "timeout"
+    if last["schema_error"]:
+        return "schema_failure"
+    if last["parse_error"]:
+        return "parse_failure"
+    if last["returncode"] not in (0, None):
+        return "process_failure"
+    return "parse_failure"
 
 
 def session_usage(sid: str) -> dict:
@@ -525,8 +663,40 @@ def session_models(*sids: str) -> set[str]:
     return models
 
 
+def session_tool_payload(sid: str, payload_kind: str) -> dict | None:
+    tool_name = OUTPUT_TOOL_BY_KIND[payload_kind]
+    payload = None
+    if not OMO_SESSIONS.exists():
+        return None
+    for f in OMO_SESSIONS.rglob(f"*{sid}.jsonl"):
+        try:
+            for line in f.read_text(errors="ignore").splitlines():
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                message = record.get("message") if record.get("type") == "message" else None
+                if not isinstance(message, dict) or message.get("role") != "assistant":
+                    continue
+                for content in message.get("content") or []:
+                    if (isinstance(content, dict) and content.get("type") == "toolCall"
+                            and content.get("name") == tool_name and isinstance(content.get("arguments"), dict)):
+                        payload = content["arguments"]
+        except OSError:
+            continue
+    return payload
+
+
 def add_usage(a: dict, b: dict) -> dict:
     return {k: (a.get(k, 0) or 0) + (b.get(k, 0) or 0) for k in USAGE_KEYS}
+
+
+def empty_failure_counts() -> dict[str, int]:
+    return {key: 0 for key in FAILURE_COUNT_KEYS}
+
+
+def agent_diagnostic(result: dict) -> dict:
+    return {"label": result["label"], **result["diagnostics"]}
 
 
 def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
@@ -540,18 +710,31 @@ def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
                 t["thinking"],
                 permission_preset=t.get("permission_preset", "read-only"),
                 payload_kind=t.get("payload_kind"),
+                allowed_tools=t.get("allowed_tools"),
             ): i
             for i, t in enumerate(tasks)
         }
         for fut in as_completed(futs):
             i = futs[fut]
             try:
-                parsed, usage, tail = fut.result()
+                outcome = fut.result()
+                if len(outcome) == 4:
+                    parsed, usage, tail, diagnostics = outcome
+                else:
+                    parsed, usage, tail = outcome
+                    diagnostics = {"failure_kind": "parse_failure" if parsed is None else None,
+                                   "attempts": []}
                 if tasks[i].get("payload_kind"):
-                    parsed = validate_agent_payload(parsed, tasks[i]["payload_kind"])
+                    validated = validate_agent_payload(parsed, tasks[i]["payload_kind"])
+                    if parsed is not None and validated is None:
+                        diagnostics["failure_kind"] = "schema_failure"
+                    parsed = validated
             except Exception as e:  # noqa: BLE001
                 parsed, usage, tail = None, {k: 0 for k in USAGE_KEYS}, f"driver error: {e}"
-            results[i] = {"parsed": parsed, "usage": usage, "tail": tail, "label": tasks[i]["label"]}
+                diagnostics = {"failure_kind": "process_failure", "attempts": [],
+                               "driver_error": str(e)}
+            results[i] = {"parsed": parsed, "usage": usage, "tail": tail, "label": tasks[i]["label"],
+                          "diagnostics": diagnostics}
             print(f"[driver] {tasks[i]['label']}: {'OK' if parsed is not None else 'PARSE_FAIL'} "
                   f"(in {usage['input']:,} out {usage['output']:,} cacheRead {usage['cacheRead']:,} "
                   f"reasoning {usage['reasoning']:,} ${usage['cost_total']:.4f})", flush=True)
@@ -564,6 +747,8 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
     units, cwd = a["units"], canonical_path(a["checkout"])
     usage_all = {k: 0 for k in USAGE_KEYS}
     finders: list[dict] = []
+    failure_counts = empty_failure_counts()
+    agent_diagnostics = []
 
     def acc(u: dict):
         nonlocal usage_all
@@ -572,25 +757,33 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
     if not units:
         print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
         return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all,
-                "agent_failures": [], "degraded": False}
+                "agent_failures": [], "failure_counts": failure_counts, "agent_diagnostics": [],
+                "degraded": False}
     print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
     t0 = [units[0]]
     r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
                              "permission_preset": "read-only", "payload_kind": "finder",
+                             "allowed_tools": READ_ONLY_TOOLS,
                              "label": f"find:{u['id']}"} for u in t0], 1)[0]
     acc(r0["usage"])
+    agent_diagnostics.append(agent_diagnostic(r0))
     agent_failures = [r0["label"]] if r0["parsed"] is None else []
+    if r0["parsed"] is None:
+        failure_counts[r0["diagnostics"]["failure_kind"] or "parse_failure"] += 1
     if isinstance(r0["parsed"], dict):
         finders.append({**r0["parsed"], "unit": units[0]["id"], "lenses": units[0]["lenses"]})
     rest = units[1:]
     if rest:
         rest_results = run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
                                            "permission_preset": "read-only", "payload_kind": "finder",
+                                           "allowed_tools": READ_ONLY_TOOLS,
                                            "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"])
         for r, u in zip(rest_results, rest):
             acc(r["usage"])
+            agent_diagnostics.append(agent_diagnostic(r))
             if r["parsed"] is None:
                 agent_failures.append(r["label"])
+                failure_counts[r["diagnostics"]["failure_kind"] or "parse_failure"] += 1
             if isinstance(r["parsed"], dict):
                 finders.append({**r["parsed"], "unit": u["id"], "lenses": u["lenses"]})
 
@@ -608,20 +801,31 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
           f"to_verify={len(kept)} failures={len(agent_failures)}", flush=True)
     return {"finders": finders, "verified_ok": [v for r in finders for v in (r.get("verified_ok") or [])],
             "candidates": kept, "prescreened": prescreened, "usage_find": usage_all,
-            "agent_failures": agent_failures, "degraded": bool(agent_failures)}
+            "agent_failures": agent_failures, "failure_counts": failure_counts,
+            "agent_diagnostics": agent_diagnostics, "degraded": bool(agent_failures)}
 
 
 def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
     cwd, candidates = canonical_path(a["checkout"]), found["candidates"]
     usage_all = found["usage_find"]
     agent_failures = list(found.get("agent_failures") or [])
+    low_confidence_abstains = list(found.get("low_confidence_abstains") or [])
+    failure_counts = {**empty_failure_counts(), **(found.get("failure_counts") or {})}
+    agent_diagnostics = list(found.get("agent_diagnostics") or [])
     print(f"[driver] verify: {len(candidates)} tracers (×{a['workers']['tracer']})", flush=True)
     tasks = [{"prompt": skeptic_prompt(a, "tracer", c, None), "cwd": cwd, "thinking": a["thinking"]["tracer"],
               "permission_preset": "read-only", "payload_kind": "verdict",
+              "allowed_tools": READ_ONLY_TOOLS,
               "label": f"tracer:{c['path'].split('/')[-1]}:{c.get('new_line')}"} for c in candidates]
     tracer_results = run_batch(runner, tasks, a["workers"]["tracer"]) if tasks else []
-    agent_failures.extend(r["label"] for r in tracer_results
-                          if r["parsed"] is None or _is_unverified_verdict(r["parsed"]))
+    for r in tracer_results:
+        agent_diagnostics.append(agent_diagnostic(r))
+        if r["parsed"] is None:
+            agent_failures.append(r["label"])
+            failure_counts[r["diagnostics"]["failure_kind"] or "parse_failure"] += 1
+        elif _is_unverified_verdict(r["parsed"]):
+            low_confidence_abstains.append(r["label"])
+            failure_counts["low_confidence_abstain"] += 1
 
     repro_tasks, repro_idx, stages, skipped = [], [], [], 0
     for c, tr in zip(candidates, tracer_results):
@@ -636,13 +840,19 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
             repro_tasks.append({"prompt": skeptic_prompt(a, "reproducer", c, raw_t), "cwd": cwd,
                                 "thinking": a["thinking"]["reproducer"],
                                 "permission_preset": "workspace", "payload_kind": "verdict",
+                                "allowed_tools": REPRODUCER_TOOLS,
                                 "label": f"repro:{c['path'].split('/')[-1]}:{c.get('new_line')}"})
     if repro_tasks:
         print(f"[driver] {len(repro_tasks)} reproducers (×{a['workers']['reproducer']}, tracer killed {skipped})", flush=True)
         for idx, r in zip(repro_idx, run_batch(runner, repro_tasks, a["workers"]["reproducer"])):
             usage_all = add_usage(usage_all, r["usage"])
-            if r["parsed"] is None or _is_unverified_verdict(r["parsed"]):
+            agent_diagnostics.append(agent_diagnostic(r))
+            if r["parsed"] is None:
                 agent_failures.append(r["label"])
+                failure_counts[r["diagnostics"]["failure_kind"] or "parse_failure"] += 1
+            elif _is_unverified_verdict(r["parsed"]):
+                low_confidence_abstains.append(r["label"])
+                failure_counts["low_confidence_abstain"] += 1
             stages[idx]["reproducer"] = None if _is_unverified_verdict(r["parsed"]) else r["parsed"]
 
     findings, refuted, abstained = [], list(found["prescreened"]), 0
@@ -689,7 +899,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                            if any(v.get("refuted") and v.get("skeptic") != "prescreen" and v.get("confidence", 0) >= 80
                                   for v in r.get("verdicts", []))]
     carried = list(a.get("carried") or [])
-    status = "degraded" if agent_failures else "ok"
+    status = "degraded" if agent_failures or low_confidence_abstains else "ok"
     print(f"[driver] {len(findings) - abstained} confirmed, {abstained} abstained (+{len(carried)} carried), {len(refuted)} refuted "
           f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk, "
           f"status={status})", flush=True)
@@ -701,7 +911,9 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                      "reproducers": len(repro_tasks), "reproducers_skipped": skipped,
                      "prescreened": len(found["prescreened"]), "usage": usage_all,
                      "profile": a["profile"], "model": f"{a['provider']}/{a['model']}"},
-            "status": status, "degraded": bool(agent_failures), "agent_failures": agent_failures}
+            "status": status, "degraded": status == "degraded", "agent_failures": agent_failures,
+            "low_confidence_abstains": low_confidence_abstains,
+            "failure_counts": failure_counts, "agent_diagnostics": agent_diagnostics}
 
 
 def main() -> int:

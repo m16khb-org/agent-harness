@@ -75,6 +75,36 @@ class ProfileTest(unittest.TestCase):
 
 
 class PromptBoundaryTest(unittest.TestCase):
+    def test_prompts_reserve_final_json_turn_and_declare_tools(self) -> None:
+        args = {
+            "checkout": "/repo", "outDir": "/review", "finder_turns": 24,
+            "skeptic_turns": 18, "per_lens_cap": 3, "codegraph": False,
+            "lensText": {"logic": "logic"},
+        }
+        finder = omo_driver.finder_prompt(
+            args, {"id": "logic@all", "pack": "pack.md", "lenses": ["logic"]}
+        )
+        tracer = omo_driver.skeptic_prompt(
+            args, "tracer",
+            {"path": "a.go", "new_line": 1, "severity": "high", "category": "bug",
+             "title": "t", "what": "w", "why": "why", "lens": "logic"},
+            None,
+        )
+        reproducer = omo_driver.skeptic_prompt(
+            args, "reproducer",
+            {"path": "a.go", "new_line": 1, "severity": "high", "category": "bug",
+             "title": "t", "what": "w", "why": "why", "lens": "logic"},
+            None,
+        )
+
+        for prompt in (finder, tracer, reproducer):
+            self.assertIn("Reserve the final assistant message", prompt)
+            self.assertIn("no tool call", prompt)
+        self.assertIn("Allowed tools: read, grep, find, ls", tracer)
+        self.assertIn("Forbidden tools: bash, eval, webfetch", tracer)
+        self.assertIn("Allowed tools: read, grep, find, ls, bash, edit, write", reproducer)
+        self.assertIn("Never use /tmp, bash_output, background commands", reproducer)
+
     def test_review_inputs_are_mirrored_under_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -220,15 +250,120 @@ class PureHelperTest(unittest.TestCase):
         second = subprocess.CompletedProcess([], 0, '{"skeptic": "tracer", "refuted": false, "confidence": 75, "reason": "ok", "evidence": [], "severity_adjust": "keep"}', "")
         with patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
              patch.object(omo_driver.time, "sleep") as sleep:
-            parsed, _, _ = runner.run("prompt", "/tmp", "high", permission_preset="read-only",
-                                      payload_kind="verdict")
+            parsed, _, _, diagnostics = runner.run(
+                "prompt", "/tmp", "high", permission_preset="read-only",
+                payload_kind="verdict", allowed_tools=("read", "grep"),
+            )
         self.assertEqual(parsed["confidence"], 75)
         self.assertEqual(run.call_count, 2)
         self.assertEqual(sleep.call_count, 1)
+        self.assertEqual(diagnostics["failure_kind"], None)
         first_cmd = run.call_args_list[0].args[0]
         self.assertEqual(first_cmd[first_cmd.index("--model") + 1], "zai/glm-5.3-flash")
         self.assertEqual(first_cmd[first_cmd.index("--permission-preset") + 1], "read-only")
+        self.assertEqual(first_cmd[first_cmd.index("--tools") + 1], "read,grep,submit_parnas_verdict")
         self.assertIn("--no-model-fallback", first_cmd)
+
+    def test_format_retry_resends_original_prompt_and_disables_tools(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        original = 'ORIGINAL REQUEST\nCandidate: {"path":"src/a.go","new_line":10}'
+        first = subprocess.CompletedProcess([], 0, "조사 메모만 남김", "Permission denied: webfetch")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, _, diagnostics = runner.run(
+                original, "/tmp", "high", payload_kind="verdict",
+                allowed_tools=("read", "grep", "find", "ls"),
+            )
+
+        retry_cmd = run.call_args_list[1].args[0]
+        retry_prompt = retry_cmd[-1]
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertIn(original, retry_prompt)
+        self.assertIn("조사 메모만 남김", retry_prompt)
+        self.assertNotIn("--no-tools", retry_cmd)
+        self.assertEqual(retry_cmd[retry_cmd.index("--tools") + 1], "submit_parnas_verdict")
+        self.assertIn("--extension", retry_cmd)
+        self.assertEqual(retry_cmd[retry_cmd.index("--permission") + 1],
+                         "submit_parnas_verdict=allow")
+        self.assertEqual(len(diagnostics["attempts"]), 2)
+
+    def test_run_accepts_schema_validated_tool_payload_without_final_text(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        verdict = {
+            "skeptic": "tracer", "refuted": False, "confidence": 75,
+            "reason": "ok", "evidence": [], "severity_adjust": "keep",
+        }
+        response = subprocess.CompletedProcess([], 0, "", "")
+        with patch.object(omo_driver, "run_omo_process", return_value=response), \
+             patch.object(omo_driver, "session_tool_payload", return_value=verdict), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, tail, diagnostics = runner.run(
+                "prompt", "/tmp", "high", payload_kind="verdict",
+                allowed_tools=omo_driver.READ_ONLY_TOOLS,
+            )
+
+        self.assertEqual(parsed, verdict)
+        self.assertEqual(tail, "")
+        self.assertEqual(diagnostics["failure_kind"], None)
+        self.assertEqual(diagnostics["attempts"][0]["output_source"], "structured_tool")
+
+    def test_session_tool_payload_reads_latest_matching_tool_call(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant","content":['
+                '{"type":"toolCall","name":"submit_parnas_verdict","arguments":'
+                '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+                '"evidence":[],"severity_adjust":"keep"}}]}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)):
+                payload = omo_driver.session_tool_payload("sid", "verdict")
+
+        self.assertEqual(payload["confidence"], 75)
+
+    def test_run_preserves_parse_and_tool_denial_diagnostics(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 0, "analysis only", "Permission denied: webfetch")
+        second = subprocess.CompletedProcess([], 0, '{"skeptic":"tracer"', "bash_output is disabled")
+        with patch.object(omo_driver, "run_omo_process", side_effect=[first, second]), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, tail, diagnostics = runner.run(
+                "prompt", "/tmp", "high", payload_kind="verdict",
+                allowed_tools=("read", "grep"),
+            )
+
+        self.assertIsNone(parsed)
+        self.assertEqual(tail, '{"skeptic":"tracer"')
+        self.assertEqual(diagnostics["failure_kind"], "parse_failure")
+        self.assertEqual(diagnostics["attempts"][0]["stdout"], "analysis only")
+        self.assertEqual(diagnostics["attempts"][0]["stderr"], "Permission denied: webfetch")
+        self.assertEqual(diagnostics["attempts"][0]["returncode"], 0)
+        self.assertIn("Permission denied: webfetch", diagnostics["attempts"][0]["tool_denials"])
+        self.assertTrue(diagnostics["attempts"][1]["parse_error"])
+
+    def test_run_timeout_preserves_partial_output_diagnostics(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        timeout = subprocess.TimeoutExpired(
+            ["omo"], 5, output="partial stdout", stderr="Permission denied: bash"
+        )
+        with patch.object(omo_driver, "run_omo_process", side_effect=timeout), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}):
+            parsed, _, tail, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNone(parsed)
+        self.assertEqual(tail, "partial stdout")
+        self.assertEqual(diagnostics["failure_kind"], "timeout")
+        self.assertTrue(diagnostics["attempts"][0]["timed_out"])
+        self.assertEqual(diagnostics["attempts"][0]["stdout"], "partial stdout")
 
     def test_timeout_kills_the_entire_omo_process_group(self) -> None:
         class FakeProcess:
@@ -263,9 +398,10 @@ class PureHelperTest(unittest.TestCase):
         )
         with patch.object(omo_driver, "run_omo_process", return_value=response), \
              patch.object(omo_driver, "session_models", return_value={"opencode-go/kimi-k2.6"}):
-            parsed, _, tail = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+            parsed, _, tail, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
         self.assertIsNone(parsed)
         self.assertIn("unpinned model", tail)
+        self.assertEqual(diagnostics["failure_kind"], "model_mismatch")
 
     def test_run_batch_passes_role_permission_and_payload_kind(self) -> None:
         calls = []
@@ -282,10 +418,14 @@ class PureHelperTest(unittest.TestCase):
 
         results = omo_driver.run_batch(FakeRunner(), [{
             "prompt": "p", "cwd": "/tmp", "thinking": "high", "permission_preset": "workspace",
-            "payload_kind": "verdict", "label": "repro:a.go:1",
+            "payload_kind": "verdict", "allowed_tools": ("read", "bash"),
+            "label": "repro:a.go:1",
         }], 1)
         self.assertEqual(results[0]["parsed"]["confidence"], 75)
-        self.assertEqual(calls, [{"permission_preset": "workspace", "payload_kind": "verdict"}])
+        self.assertEqual(calls, [{
+            "permission_preset": "workspace", "payload_kind": "verdict",
+            "allowed_tools": ("read", "bash"),
+        }])
 
 
 class SelfReviewFixTest(unittest.TestCase):
@@ -387,6 +527,8 @@ class SelfReviewFixTest(unittest.TestCase):
         result = omo_driver.phase_verify(a, FakeRunner(), found)
         self.assertEqual(result["status"], "degraded")
         self.assertEqual(result["agent_failures"], ["tracer:a.go:10", "repro:a.go:10"])
+        self.assertEqual(result["failure_counts"]["parse_failure"], 2)
+        self.assertEqual(result["failure_counts"]["low_confidence_abstain"], 0)
 
     def test_phase_verify_abstains_on_unverified_low_confidence_verdicts(self) -> None:
         class FakeRunner:
@@ -424,7 +566,11 @@ class SelfReviewFixTest(unittest.TestCase):
         result = omo_driver.phase_verify(a, FakeRunner(), found)
 
         self.assertEqual(result["status"], "degraded")
-        self.assertEqual(result["agent_failures"], ["tracer:a.go:10", "repro:a.go:10"])
+        self.assertEqual(result["agent_failures"], [])
+        self.assertEqual(result["low_confidence_abstains"], ["tracer:a.go:10", "repro:a.go:10"])
+        self.assertEqual(result["failure_counts"]["parse_failure"], 0)
+        self.assertEqual(result["failure_counts"]["low_confidence_abstain"], 2)
+        self.assertEqual(result["failure_counts"]["timeout"], 0)
         self.assertEqual(len(result["findings"]), 1)
         self.assertEqual(result["findings"][0]["confidence"], 50)
         self.assertEqual(result["findings"][0]["verification"], "skeptics unavailable (abstain)")
