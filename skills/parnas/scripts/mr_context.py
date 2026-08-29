@@ -789,7 +789,7 @@ def incremental_plan(prev: dict, changed: set[str], units: list[dict]) -> dict:
 
 
 def make_worktree(repo_dir: str, out_dir: Path, head_sha: str) -> str:
-    wt = out_dir / "worktree"
+    wt = (out_dir / "worktree").resolve()
     if wt.exists():
         if run(["git", "rev-parse", "HEAD"], cwd=str(wt), check=False).strip() == head_sha:
             return str(wt)
@@ -825,7 +825,7 @@ def main() -> None:
     refs = meta["diff_refs"]
     head_sha = refs["head_sha"]
 
-    out_dir = Path(a.out) if a.out else default_out_dir(repo_dir, p.name, meta, n)
+    out_dir = (Path(a.out).expanduser() if a.out else default_out_dir(repo_dir, p.name, meta, n)).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if not a.no_fetch:

@@ -51,7 +51,10 @@ const VERDICT = {
 
 const { outDir, checkout, codegraph, lensText, units = [], maxCandidates = 24, perLensCap = 3, hunkRanges = {}, refutedHistory = [], carried = [] } = args
 const M = args.models || {}
-const role = (name) => args.model || M[name]
+// Omo native has its own pinned adapter path. Keep direct workflow invocations from inheriting
+// the Claude/OpenCode `opus` defaults in workflow_args.json.
+const isOmoNative = typeof process !== 'undefined' && process.env?.OMO_NATIVE === '1'
+const role = (name) => isOmoNative ? 'zai/glm-5.3-flash' : args.model || M[name]
 const FINDER_TURNS = 10
 const SKEPTIC_TURNS = 8
 const hunkSlug = (p) => p.replace(/\//g, '__').replace(/[^A-Za-z0-9_.\-]/g, '_')
@@ -165,19 +168,24 @@ log(`${finders.length}/${units.length} finders returned, ${seen.size} unique can
 // ---------------------------------------------------------------- Verify: blind tracer → reproducer only if the tracer failed to refute
 phase('Verify')
 const KILL = 70
+const UNVERIFIED_MAX_CONFIDENCE = 40
+// A structurally valid low-confidence non-refutation is an abstention, not evidence.
+const isUsableVerdict = (v) => v && (v.refuted || (v.confidence > UNVERIFIED_MAX_CONFIDENCE && !v.reason.trimStart().startsWith('미확인:')))
 const verified = await pipeline(
   candidates,
   (c) => safe(agent(skepticPrompt('tracer', c), { label: `verify:tracer:${c.path.split('/').pop()}:${c.new_line}`, phase: 'Verify', schema: VERDICT, model: role('tracer'), effort: 'medium' }))
-    .then((t) => ({ candidate: c, tracer: t })),
+    .then((t) => ({ candidate: c, tracer: t, attempted: t ? 1 : 0 })),
   (s) => {
     if (s.tracer && s.tracer.refuted && s.tracer.confidence >= KILL) return { candidate: s.candidate, tracer: s.tracer, verdicts: [s.tracer], skipped: 'reproducer' }
     return safe(agent(skepticPrompt('reproducer', s.candidate, s.tracer), { label: `verify:reproducer:${s.candidate.path.split('/').pop()}:${s.candidate.new_line}`, phase: 'Verify', schema: VERDICT, model: role('reproducer'), effort: 'medium' }))
-      .then((r) => ({ candidate: s.candidate, tracer: s.tracer, verdicts: [s.tracer, r].filter(Boolean) }))
+      .then((r) => ({ candidate: s.candidate, tracer: s.tracer, attempted: s.attempted + (r ? 1 : 0),
+        verdicts: [s.tracer, r].filter(isUsableVerdict) }))
   },
 )
 
 const findings = []
 const refuted = [...prescreened]
+let abstained = 0
 let skippedReproducers = 0
 const order = ['low', 'medium', 'high', 'critical']
 for (const v of verified.filter(Boolean)) {
@@ -185,7 +193,7 @@ for (const v of verified.filter(Boolean)) {
   const killer = v.verdicts.find((x) => x.refuted && x.confidence >= KILL)
   const keep = v.verdicts.filter((x) => !x.refuted)
   if (killer) { refuted.push({ ...v.candidate, verdicts: v.verdicts }); continue }
-  if (v.verdicts.length < 2) { log(`abstain: ${v.candidate.path}:${v.candidate.new_line} had ${v.verdicts.length} verdict(s); kept at confidence 50`); findings.push({ ...v.candidate, confidence: Math.min(50, v.candidate.confidence), verification: 'skeptics unavailable (abstain)' }); continue }
+  if (v.verdicts.length < 2) { abstained++; log(`abstain: ${v.candidate.path}:${v.candidate.new_line} had ${v.verdicts.length} verdict(s); kept at confidence 50`); findings.push({ ...v.candidate, confidence: Math.min(50, v.candidate.confidence), verification: 'skeptics unavailable (abstain)' }); continue }
   if (keep.length < 2) { refuted.push({ ...v.candidate, verdicts: v.verdicts }); continue }
   const confidence = Math.min(v.candidate.confidence, ...keep.map((x) => x.confidence))
   // Severity moves only on a skeptic that brought evidence (models' unsupported severity scores are noise — Greptile 2025).
@@ -208,7 +216,7 @@ const partial = refuted
 // Refutations worth remembering (team memory): killed by a skeptic with evidence, not by prescreen.
 const refutedForHistory = refuted.filter((r) => r.verdicts.some((x) => x.refuted && x.skeptic !== 'prescreen' && x.confidence >= 80))
   .map((r) => ({ path: r.path, new_line: r.new_line, title: r.title, what: (r.what || '').slice(0, 300), category: r.category, killed_by: r.verdicts.filter((x) => x.refuted).map((x) => `${x.skeptic}(${x.confidence}): ${(x.reason || '').slice(0, 200)}`) }))
-log(`${findings.length} confirmed (+${carried.length} carried), ${refuted.length} refuted (${prescreened.length} by prescreen, ${skippedReproducers} reproducers skipped, ${partial.length} with residual risk → open_questions) — ${spent()}k output tokens total`)
+log(`${findings.length - abstained} confirmed, ${abstained} abstained (+${carried.length} carried), ${refuted.length} refuted (${prescreened.length} by prescreen, ${skippedReproducers} reproducers skipped, ${partial.length} with residual risk → open_questions) — ${spent()}k output tokens total`)
 return { findings: [...findings, ...carried], refuted, partial, refuted_for_history: refutedForHistory, verified_ok: finders.flatMap((r) => r.verified_ok || []), inspected: finders.map((r) => ({ unit: r.unit, lenses: r.lenses, inspected: r.inspected })),
-  cost: { finders: finders.length, skeptics: verified.filter(Boolean).reduce((n, v) => n + v.verdicts.length, 0), prescreened: prescreened.length, reproducers_skipped: skippedReproducers, carried: carried.length, output_tokens_k: spent(),
+  cost: { finders: finders.length, skeptics: verified.filter(Boolean).reduce((n, v) => n + (v.attempted || v.verdicts.length), 0), prescreened: prescreened.length, reproducers_skipped: skippedReproducers, carried: carried.length, output_tokens_k: spent(),
     models: { finder: role('finder'), tracer: role('tracer'), reproducer: role('reproducer') } } }
