@@ -73,7 +73,7 @@ const verdict = {
   required: ["skeptic", "refuted", "confidence", "reason", "evidence", "severity_adjust"],
 }
 
-const registerOutputTool = (pi, name, label, description, parameters) => {
+const registerOutputTool = (pi, name, label, description, parameters, onSubmit) => {
   pi.registerTool({
     name,
     label,
@@ -81,6 +81,7 @@ const registerOutputTool = (pi, name, label, description, parameters) => {
     parameters,
     constrainedSampling: { type: "json_schema", strict: "require" },
     async execute(_toolCallId, params) {
+      onSubmit()
       return {
         content: [{ type: "text", text: "Structured result accepted. End the turn now." }],
         details: { payload: params },
@@ -90,12 +91,27 @@ const registerOutputTool = (pi, name, label, description, parameters) => {
 }
 
 export default function parnasStructuredOutput(pi) {
+  pi.registerFlag("parnas-max-turns", {
+    type: "string",
+    description: "Reserve the final Parnas agent turn for structured output",
+  })
+  let turns = 0
+  let submitted = false
+  pi.on("turn_end", () => {
+    turns += 1
+    const maxTurns = Number.parseInt(String(pi.getFlag("parnas-max-turns") || ""), 10)
+    if (submitted || !Number.isInteger(maxTurns) || maxTurns < 1 || turns < maxTurns - 1) return
+    const outputTool = pi.getActiveTools().find((name) => name.startsWith("submit_parnas_"))
+    if (outputTool) pi.setActiveTools([outputTool])
+  })
+
   registerOutputTool(
     pi,
     "submit_parnas_finder",
     "Submit Parnas finder result",
     "Required final action. Submit the complete finder result once; do not print it as assistant text.",
     finder,
+    () => { submitted = true },
   )
   registerOutputTool(
     pi,
@@ -103,5 +119,6 @@ export default function parnasStructuredOutput(pi) {
     "Submit Parnas verdict",
     "Required final action. Submit the complete tracer or reproducer verdict once; do not print it as assistant text.",
     verdict,
+    () => { submitted = true },
   )
 }

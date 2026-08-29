@@ -244,6 +244,14 @@ class PureHelperTest(unittest.TestCase):
         }
         self.assertTrue(omo_driver._is_unverified_verdict(verdict))
 
+    def test_unverified_marker_inside_reason_overrides_inflated_confidence(self) -> None:
+        verdict = {
+            "skeptic": "tracer", "refuted": False, "confidence": 85,
+            "reason": "검증 완료가 아니라 미확인: 결정적 근거를 읽지 못했다",
+            "evidence": [], "severity_adjust": "keep",
+        }
+        self.assertTrue(omo_driver._is_unverified_verdict(verdict))
+
     def test_run_retries_without_model_fallback_and_keeps_permission(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
         first = subprocess.CompletedProcess([], 1, "", "429")
@@ -280,6 +288,7 @@ class PureHelperTest(unittest.TestCase):
             parsed, _, _, diagnostics = runner.run(
                 original, "/tmp", "high", payload_kind="verdict",
                 allowed_tools=("read", "grep", "find", "ls"),
+                max_turns=18,
             )
 
         retry_cmd = run.call_args_list[1].args[0]
@@ -292,6 +301,7 @@ class PureHelperTest(unittest.TestCase):
         self.assertIn("--extension", retry_cmd)
         self.assertEqual(retry_cmd[retry_cmd.index("--permission") + 1],
                          "submit_parnas_verdict=allow")
+        self.assertEqual(retry_cmd[retry_cmd.index("--parnas-max-turns") + 1], "1")
         self.assertEqual(len(diagnostics["attempts"]), 2)
 
     def test_run_accepts_schema_validated_tool_payload_without_final_text(self) -> None:
@@ -328,6 +338,30 @@ class PureHelperTest(unittest.TestCase):
                 payload = omo_driver.session_tool_payload("sid", "verdict")
 
         self.assertEqual(payload["confidence"], 75)
+
+    def test_select_retry_candidates_keeps_only_prior_abstentions(self) -> None:
+        candidates = [
+            {"path": f"src/{i}.go", "new_line": i, "title": f"candidate {i}"}
+            for i in range(18)
+        ]
+        previous = {
+            "findings": [
+                {
+                    **candidate,
+                    "verification": "skeptics unavailable (abstain)",
+                }
+                for candidate in candidates[:14]
+            ] + [
+                {**candidate, "skeptics_passed": True}
+                for candidate in candidates[14:]
+            ],
+        }
+
+        selected = omo_driver.select_retry_candidates(candidates, previous)
+
+        self.assertEqual(len(selected), 14)
+        self.assertEqual(selected[0]["path"], "src/0.go")
+        self.assertEqual(selected[-1]["path"], "src/13.go")
 
     def test_run_preserves_parse_and_tool_denial_diagnostics(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
@@ -419,12 +453,14 @@ class PureHelperTest(unittest.TestCase):
         results = omo_driver.run_batch(FakeRunner(), [{
             "prompt": "p", "cwd": "/tmp", "thinking": "high", "permission_preset": "workspace",
             "payload_kind": "verdict", "allowed_tools": ("read", "bash"),
+            "max_turns": 18,
             "label": "repro:a.go:1",
         }], 1)
         self.assertEqual(results[0]["parsed"]["confidence"], 75)
         self.assertEqual(calls, [{
             "permission_preset": "workspace", "payload_kind": "verdict",
             "allowed_tools": ("read", "bash"),
+            "max_turns": 18,
         }])
 
 

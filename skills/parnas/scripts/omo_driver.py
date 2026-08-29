@@ -19,9 +19,12 @@ Usage:
   python3 scripts/omo_driver.py --args <out_dir>/workflow_args.json [--phase all]
       [--profile omo-flash] [--provider zai] [--model glm-5.3-flash]
       [--thinking-finder high] [--thinking-tracer high] [--thinking-reproducer medium]
+  python3 scripts/omo_driver.py --args <out_dir>/workflow_args.json --phase verify
+      --retry-degraded-from <out_dir>/workflow-result.json
 
-Outputs <out_dir>/workflow-result.json (same shape workflow.js returns) and prints a
-per-agent token/cost line read from the Omo session logs (sessions/*<sid>.jsonl).
+Outputs <out_dir>/workflow-result.json (or workflow-retry-result.json for a degraded-only
+retry) and prints a per-agent token/cost line read from the Omo session logs
+(sessions/*<sid>.jsonl).
 The provider and model are pinned; non-pinned values are rejected before any agent starts.
 """
 from __future__ import annotations
@@ -240,6 +243,17 @@ def prescreen(args_json: dict, c: dict) -> str | None:
     return None
 
 
+def select_retry_candidates(candidates: list[dict], previous_result: dict) -> list[dict]:
+    retry_keys = {
+        (finding.get("path"), finding.get("new_line"))
+        for finding in previous_result.get("findings") or []
+        if finding.get("verification") == "skeptics unavailable (abstain)"
+        and not finding.get("skeptics_passed")
+    }
+    return [candidate for candidate in candidates
+            if (candidate.get("path"), candidate.get("new_line")) in retry_keys]
+
+
 def dedup_candidates(finders: list[dict]) -> list[dict]:
     seen: list[dict] = []
     for r in finders:
@@ -381,7 +395,7 @@ def _is_unverified_verdict(value: object) -> bool:
     return isinstance(value, dict) and value.get("refuted") is False \
         and isinstance(value.get("reason"), str) and _is_int(value.get("confidence")) \
         and (value["confidence"] <= UNVERIFIED_MAX_CONFIDENCE
-             or value["reason"].lstrip().startswith("미확인:"))
+             or "미확인:" in value["reason"])
 
 
 def validate_agent_payload(payload: object, kind: str) -> dict | None:
@@ -450,7 +464,8 @@ class OmoRunner:
         self.provider, self.model = normalize_pinned_model(provider, model)
 
     def _cmd(self, sid: str, thinking: str, permission_preset: str = "read-only",
-             allowed_tools: tuple[str, ...] | None = None, output_tool: str | None = None) -> list[str]:
+             allowed_tools: tuple[str, ...] | None = None, output_tool: str | None = None,
+             max_turns: int | None = None) -> list[str]:
         if permission_preset not in PERMISSION_PRESETS:
             raise ValueError(f"unsupported Omo permission preset: {permission_preset}")
         cmd = ["omo", "--provider", self.provider, "--model", PINNED_MODEL_REF, "--no-skills",
@@ -461,6 +476,8 @@ class OmoRunner:
         if output_tool:
             cmd.extend(["--extension", str(PARNAS_OUTPUT_EXTENSION),
                         "--permission", f"{output_tool}=allow"])
+            if max_turns is not None:
+                cmd.extend(["--parnas-max-turns", str(max_turns)])
             selected_tools += (output_tool,)
         if selected_tools:
             cmd.extend(["--tools", ",".join(dict.fromkeys(selected_tools))])
@@ -470,7 +487,8 @@ class OmoRunner:
 
     def run(self, prompt: str, cwd: str, thinking: str, timeout: int = 1800,
             permission_preset: str = "read-only", payload_kind: str | None = None,
-            allowed_tools: tuple[str, ...] | None = None) -> tuple[object, dict, str, dict]:
+            allowed_tools: tuple[str, ...] | None = None,
+            max_turns: int = 18) -> tuple[object, dict, str, dict]:
         sid = uuid.uuid4().hex[:12]
         p = None
         attempts = []
@@ -479,7 +497,8 @@ class OmoRunner:
             attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
             try:
                 p = run_omo_process(
-                    self._cmd(attempt_sid, thinking, permission_preset, allowed_tools, output_tool) + ["-p", prompt],
+                    self._cmd(attempt_sid, thinking, permission_preset, allowed_tools, output_tool, max_turns)
+                    + ["-p", prompt],
                                     cwd, timeout)
             except subprocess.TimeoutExpired as exc:
                 stdout, stderr = _timeout_text(exc.output), _timeout_text(exc.stderr)
@@ -506,7 +525,7 @@ class OmoRunner:
             sid2 = sid + "r"
             retry_prompt = format_retry_prompt(prompt, p.stdout, payload_kind)
             try:
-                p2 = run_omo_process(self._cmd(sid2, thinking, permission_preset, (), output_tool) +
+                p2 = run_omo_process(self._cmd(sid2, thinking, permission_preset, (), output_tool, 1) +
                                      ["-p", retry_prompt],
                                      cwd, timeout)
                 tail = p2.stdout[-400:]
@@ -711,6 +730,7 @@ def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
                 permission_preset=t.get("permission_preset", "read-only"),
                 payload_kind=t.get("payload_kind"),
                 allowed_tools=t.get("allowed_tools"),
+                max_turns=t.get("max_turns", 18),
             ): i
             for i, t in enumerate(tasks)
         }
@@ -764,6 +784,7 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
     r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
                              "permission_preset": "read-only", "payload_kind": "finder",
                              "allowed_tools": READ_ONLY_TOOLS,
+                             "max_turns": a["finder_turns"],
                              "label": f"find:{u['id']}"} for u in t0], 1)[0]
     acc(r0["usage"])
     agent_diagnostics.append(agent_diagnostic(r0))
@@ -777,6 +798,7 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
         rest_results = run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
                                            "permission_preset": "read-only", "payload_kind": "finder",
                                            "allowed_tools": READ_ONLY_TOOLS,
+                                           "max_turns": a["finder_turns"],
                                            "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"])
         for r, u in zip(rest_results, rest):
             acc(r["usage"])
@@ -816,6 +838,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
     tasks = [{"prompt": skeptic_prompt(a, "tracer", c, None), "cwd": cwd, "thinking": a["thinking"]["tracer"],
               "permission_preset": "read-only", "payload_kind": "verdict",
               "allowed_tools": READ_ONLY_TOOLS,
+              "max_turns": a["skeptic_turns"],
               "label": f"tracer:{c['path'].split('/')[-1]}:{c.get('new_line')}"} for c in candidates]
     tracer_results = run_batch(runner, tasks, a["workers"]["tracer"]) if tasks else []
     for r in tracer_results:
@@ -841,6 +864,7 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                                 "thinking": a["thinking"]["reproducer"],
                                 "permission_preset": "workspace", "payload_kind": "verdict",
                                 "allowed_tools": REPRODUCER_TOOLS,
+                                "max_turns": a["skeptic_turns"],
                                 "label": f"repro:{c['path'].split('/')[-1]}:{c.get('new_line')}"})
     if repro_tasks:
         print(f"[driver] {len(repro_tasks)} reproducers (×{a['workers']['reproducer']}, tracer killed {skipped})", flush=True)
@@ -923,6 +947,8 @@ def main() -> int:
     ap.add_argument("--profile", choices=sorted(PROFILES), default="omo-flash")
     ap.add_argument("--provider", default=PINNED_PROVIDER, help=f"pinned to {PINNED_PROVIDER}")
     ap.add_argument("--model", default=PINNED_MODEL, help=f"pinned to {PINNED_MODEL_REF}")
+    ap.add_argument("--retry-degraded-from",
+                    help="with --phase verify, rerun only prior skeptics-unavailable findings")
     ap.add_argument("--thinking-finder"), ap.add_argument("--thinking-tracer"), ap.add_argument("--thinking-reproducer")
     ns = ap.parse_args()
 
@@ -957,6 +983,14 @@ def main() -> int:
                 raise SystemExit(f"find-stage.json not found at {find_stage} — run --phase find first")
             found = json.loads(find_stage.read_text())
             print(f"[driver] loaded find stage from {find_stage}", flush=True)
+            if ns.retry_degraded_from:
+                previous_path = Path(ns.retry_degraded_from)
+                previous_result = json.loads(previous_path.read_text())
+                found["candidates"] = select_retry_candidates(found["candidates"], previous_result)
+                print(f"[driver] selected {len(found['candidates'])} degraded candidates from "
+                      f"{previous_path}", flush=True)
+        elif ns.retry_degraded_from:
+            raise SystemExit("--retry-degraded-from requires --phase verify")
         else:
             found = phase_find(a, runner)
             # Persist before verify so a crash in verify does not lose the find spend.
@@ -964,7 +998,8 @@ def main() -> int:
             if ns.phase == "find":
                 return 2 if found.get("degraded") else 0
         result = phase_verify(a, runner, found)
-        out = Path(a["outDir"]) / "workflow-result.json"
+        out_name = "workflow-retry-result.json" if ns.retry_degraded_from else "workflow-result.json"
+        out = Path(a["outDir"]) / out_name
         out.write_text(json.dumps(result, ensure_ascii=False, indent=1))
         u = result["cost"]["usage"]
         print(f"[driver] done in {time.time() - t0:.0f}s → {out}")
