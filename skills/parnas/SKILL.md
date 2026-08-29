@@ -89,9 +89,16 @@ mistaken for a provider switch. Finder and tracer run with Omo's `read-only` per
 only the reproducer gets `workspace` so it can create a throwaway test, and that worktree is
 discarded after the review. The adapter mirrors packs, hunks, definitions, and gate output into
 a temporary read-only input directory inside that worktree so Omo's path boundary cannot block
-the mandated first read; it removes the directory after all phases finish. Invalid agent JSON or any failed child is reported as
-`status: "degraded"` and the adapter exits non-zero; an empty result must never be treated as a
-clean review.
+the mandated first read; it removes the directory after all phases finish. Omo agents submit
+finder/verdict data through schema-constrained `submit_parnas_*` tools rather than relying on a
+final text blob. The extension enforces the message budget by disabling investigation tools one
+turn before the cap, and the driver recovers validated tool arguments from the session even when
+the final assistant text is empty. A format retry receives the original prompt and candidate
+again with only the submit tool enabled. Raw stdout/stderr, return code, timeout, tool denials,
+parse errors, and schema errors remain in `agent_diagnostics`; `failure_counts` separates
+`parse_failure`, `schema_failure`, `timeout`, and `low_confidence_abstain`. Any failed child or
+abstention is reported as `status: "degraded"` and the adapter exits non-zero; an empty result
+must never be treated as a clean review.
 Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
 from that file with the host's sub-agent tool and apply the prescreen and verdict rule in
 `references/verification.md`. Budget: `units × 1 + candidates × (1..2)` agents — a
@@ -108,6 +115,15 @@ evidence/upstream/downstream (information asymmetry, OpenCodeReview) — it must
 hops; the reproducer sees everything. The result's `cost` block reports agents, prescreened,
 reproducers skipped and output tokens — quote it in the chat deliverable. Save the result to
 `<out_dir>/workflow-result.json` before reading it — the `refuted` list with verdicts is large.
+
+To rerun only candidates that were kept as `skeptics unavailable (abstain)` in a degraded run:
+
+```bash
+python3 <skill>/scripts/omo_driver.py --args <out_dir>/workflow_args.json \
+  --phase verify --retry-degraded-from <out_dir>/workflow-result.json
+```
+
+This leaves the original result untouched and writes `<out_dir>/workflow-retry-result.json`.
 
 ### 3. Merge (you are the moderator)
 

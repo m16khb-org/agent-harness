@@ -42,6 +42,9 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
   advertised catalog SHA를 config env에 포함해 binary-only schema update도
   fresh session에서 재조회되게 한다
   ([install.md](operations/install.md)).
+- Omo Parnas 결과는 final text JSON이 아니라 permission-allowed strict schema
+  `submit_parnas_*` tool arguments로 받고, 마지막 턴에는 submit tool만 남긴다
+  ([2026-08-29 lesson](cautions/lessons/2026-08-29-omo-parnas-structured-output-tool.md)).
 - `.agent-harness/*.md` 편집은 response-contract golden을 드리프트시킨다.
 - 로컬 검증 배터리의 게이트 집합은 CI와 같아야 한다. CI가 첫 게이트(gofmt)에서 끊기면 뒤의
   test/golden 실패는 관측되지 않고, 환경 관측값(working tree, 로컬 심링크)을 그대로 박은
@@ -71,6 +74,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 
 | Date | Lesson |
 |---|---|
+| 2026-08-29 | [Omo Parnas verdict는 최종 텍스트가 아니라 schema tool로 받아야 한다](cautions/lessons/2026-08-29-omo-parnas-structured-output-tool.md) |
 | 2026-08-28 | [dry-run이 외부 CLI를 실행해 홈 디렉터리를 변경했다](cautions/lessons/2026-08-28-install-dry-run-spawned-the-claude-cli.md) |
 | 2026-08-28 | [devil's-advocate 기록이 플랜에 묶이지 않아 게이트가 연극 가능했다](cautions/lessons/2026-08-28-devils-advocate-record-was-unbound.md) |
 | 2026-07-02 | [Re-verify stale memory observations against HEAD](cautions/lessons/2026-07-02-reverify-stale-memory-observations-against-head.md) |
