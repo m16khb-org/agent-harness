@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 SCRIPTS = Path(__file__).parents[1] / "scripts"
@@ -34,6 +37,41 @@ class ProfileTest(unittest.TestCase):
         self.assertEqual(b["skeptic_turns"], 8)
         self.assertEqual(b["max_candidates"], 24)          # no floor applied
         self.assertEqual(b["thinking"]["tracer"], "medium")
+
+    def test_omo_runner_is_pinned_to_zai_flash(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        cmd = runner._cmd("sid", "high")
+        self.assertEqual(cmd[cmd.index("--provider") + 1], "zai")
+        self.assertEqual(cmd[cmd.index("--model") + 1], "zai/glm-5.3-flash")
+        self.assertIn("--no-model-fallback", cmd)
+        self.assertEqual(cmd[cmd.index("--permission-preset") + 1], "read-only")
+        with self.assertRaises(ValueError):
+            omo_driver.OmoRunner("opencode-go", "kimi-k2.6")
+
+    def test_role_permission_preset_is_explicit(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        self.assertEqual(runner._cmd("sid", "high", "workspace")[
+            runner._cmd("sid", "high", "workspace").index("--permission-preset") + 1
+        ], "workspace")
+        with self.assertRaises(ValueError):
+            runner._cmd("sid", "high", "full-access")
+
+    def test_omo_cli_contract_requires_no_model_fallback(self) -> None:
+        help_text = "--provider --model --permission-preset --session-id"
+        with patch.object(omo_driver.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0, help_text, "")):
+            with self.assertRaisesRegex(RuntimeError, "--no-model-fallback"):
+                omo_driver.validate_omo_cli("omo")
+
+    def test_session_models_reads_model_change_and_assistant_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"model_change","provider":"zai","modelId":"glm-5.3-flash"}\n'
+                '{"type":"message","message":{"role":"assistant","provider":"zai","model":"glm-5.3-flash"}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)):
+                self.assertEqual(omo_driver.session_models("sid"), {"zai/glm-5.3-flash"})
 
 
 class PrescreenTest(unittest.TestCase):
@@ -99,11 +137,93 @@ class PureHelperTest(unittest.TestCase):
 
     def test_blind_hides_finder_evidence_from_tracer(self) -> None:
         c = {"path": "a.go", "new_line": 1, "severity": "high", "category": "bug", "title": "t",
-             "what": "w", "evidence": ["a.go:1"], "upstream": "u", "downstream": "d", "lens": "logic"}
+             "what": "w", "why": "why", "evidence": ["a.go:1"], "upstream": "u", "downstream": "d", "lens": "logic"}
         b = omo_driver.blind(c)
         self.assertNotIn("evidence", b)
         self.assertNotIn("upstream", b)
         self.assertIn("what", b)
+        self.assertIn("why", b)
+
+    def test_agent_payload_rejects_malformed_numeric_fields(self) -> None:
+        candidate = {
+            "path": "a.go", "new_line": "1", "end_line": None, "severity": "high",
+            "category": "bug", "title": "t", "what": "w", "why": "why",
+            "evidence": [], "confidence": "75", "lens": "logic",
+        }
+        finder = {"lenses": ["logic"], "inspected": [], "candidates": [candidate], "verified_ok": []}
+        self.assertIsNone(omo_driver.validate_agent_payload(finder, "finder"))
+
+    def test_run_retries_without_model_fallback_and_keeps_permission(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 1, "", "429")
+        second = subprocess.CompletedProcess([], 0, '{"skeptic": "tracer", "refuted": false, "confidence": 75, "reason": "ok", "evidence": [], "severity_adjust": "keep"}', "")
+        with patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+             patch.object(omo_driver.time, "sleep") as sleep:
+            parsed, _, _ = runner.run("prompt", "/tmp", "high", permission_preset="read-only",
+                                      payload_kind="verdict")
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(sleep.call_count, 1)
+        first_cmd = run.call_args_list[0].args[0]
+        self.assertEqual(first_cmd[first_cmd.index("--model") + 1], "zai/glm-5.3-flash")
+        self.assertEqual(first_cmd[first_cmd.index("--permission-preset") + 1], "read-only")
+        self.assertIn("--no-model-fallback", first_cmd)
+
+    def test_timeout_kills_the_entire_omo_process_group(self) -> None:
+        class FakeProcess:
+            pid = 123
+            returncode = -9
+
+            def __init__(self):
+                self.calls = 0
+
+            def communicate(self, timeout=None):
+                self.calls += 1
+                if self.calls == 1:
+                    raise subprocess.TimeoutExpired(["omo"], timeout)
+                return "", "killed"
+
+        process = FakeProcess()
+        with patch.object(omo_driver.subprocess, "Popen", return_value=process) as popen, \
+             patch.object(omo_driver.os, "killpg") as killpg:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                omo_driver.run_omo_process(["omo"], "/tmp", 1)
+        self.assertEqual(popen.call_args.kwargs["start_new_session"], True)
+        killpg.assert_called_once_with(123, omo_driver.signal.SIGKILL)
+        self.assertEqual(process.calls, 2)
+
+    def test_run_rejects_a_session_that_used_another_model(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        response = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic": "tracer", "refuted": false, "confidence": 75, "reason": "ok", "evidence": [], "severity_adjust": "keep"}',
+            "",
+        )
+        with patch.object(omo_driver, "run_omo_process", return_value=response), \
+             patch.object(omo_driver, "session_models", return_value={"opencode-go/kimi-k2.6"}):
+            parsed, _, tail = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+        self.assertIsNone(parsed)
+        self.assertIn("unpinned model", tail)
+
+    def test_run_batch_passes_role_permission_and_payload_kind(self) -> None:
+        calls = []
+
+        class FakeRunner:
+            def run(self, *args, **kwargs):
+                calls.append(kwargs)
+                return (
+                    {"skeptic": "tracer", "refuted": False, "confidence": 75, "reason": "ok",
+                     "evidence": [], "severity_adjust": "keep"},
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "",
+                )
+
+        results = omo_driver.run_batch(FakeRunner(), [{
+            "prompt": "p", "cwd": "/tmp", "thinking": "high", "permission_preset": "workspace",
+            "payload_kind": "verdict", "label": "repro:a.go:1",
+        }], 1)
+        self.assertEqual(results[0]["parsed"]["confidence"], 75)
+        self.assertEqual(calls, [{"permission_preset": "workspace", "payload_kind": "verdict"}])
 
 
 class SelfReviewFixTest(unittest.TestCase):
@@ -139,6 +259,72 @@ class SelfReviewFixTest(unittest.TestCase):
         self.assertEqual(found["candidates"], [])
         self.assertEqual(found["prescreened"], [])
         self.assertEqual(found["verified_ok"], [])
+
+    def test_phase_find_marks_malformed_agent_response_degraded(self) -> None:
+        class FakeRunner:
+            def run(self, *args, **kwargs):
+                return (
+                    {"lenses": ["logic"], "inspected": [], "verified_ok": [], "candidates": [{
+                        "path": "a.go", "new_line": "1", "end_line": None, "severity": "high",
+                        "category": "bug", "title": "t", "what": "w", "why": "why",
+                        "evidence": [], "confidence": "75", "lens": "logic",
+                    }]},
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "malformed",
+                )
+
+        a = {
+            "units": [{"id": "logic@all", "lenses": ["logic"], "pack": "pack.md"}],
+            "checkout": "/tmp", "outDir": "/tmp", "lensText": {"logic": "logic"},
+            "thinking": {"finder": "high"}, "finder_turns": 24, "per_lens_cap": 3,
+            "workers": {"finder": 1},
+            "max_candidates": 24, "hunkRanges": {}, "refutedHistory": [],
+        }
+        found = omo_driver.phase_find(a, FakeRunner())
+        self.assertTrue(found["degraded"])
+        self.assertEqual(found["candidates"], [])
+        self.assertEqual(found["agent_failures"], ["find:logic@all"])
+
+    def test_phase_verify_preserves_carried_findings(self) -> None:
+        carried = [{"path": "src/a.go", "new_line": 10, "title": "carried"}]
+        a = {
+            "checkout": "/tmp", "workers": {"tracer": 1, "reproducer": 1},
+            "thinking": {"tracer": "high", "reproducer": "high"},
+            "profile": "omo-flash", "provider": "zai", "model": "glm-5.3-flash",
+            "carried": carried,
+        }
+        found = {
+            "candidates": [], "prescreened": [], "finders": [],
+            "verified_ok": [], "usage_find": {k: 0 for k in omo_driver.USAGE_KEYS},
+        }
+        result = omo_driver.phase_verify(a, None, found)
+        self.assertEqual(result["findings"], carried)
+        self.assertEqual(result["status"], "ok")
+
+    def test_phase_verify_marks_failed_skeptics_degraded(self) -> None:
+        class FakeRunner:
+            def run(self, *args, **kwargs):
+                return None, {k: 0 for k in omo_driver.USAGE_KEYS}, "failed"
+
+        a = {
+            "checkout": "/tmp", "outDir": "/tmp", "skeptic_turns": 18,
+            "workers": {"tracer": 1, "reproducer": 1},
+            "thinking": {"tracer": "high", "reproducer": "high"},
+            "profile": "omo-flash", "provider": "zai", "model": "glm-5.3-flash",
+            "carried": [],
+        }
+        candidate = {
+            "path": "src/a.go", "new_line": 10, "end_line": None, "severity": "medium",
+            "category": "bug", "title": "t", "what": "w", "why": "why",
+            "evidence": [], "confidence": 75, "lens": "logic",
+        }
+        found = {
+            "candidates": [candidate], "prescreened": [], "finders": [],
+            "verified_ok": [], "usage_find": {k: 0 for k in omo_driver.USAGE_KEYS},
+        }
+        result = omo_driver.phase_verify(a, FakeRunner(), found)
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["agent_failures"], ["tracer:a.go:10", "repro:a.go:10"])
 
 
 if __name__ == "__main__":

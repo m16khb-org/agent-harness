@@ -70,20 +70,35 @@ from the gate; never estimate them.
 ### 2. Find + Verify
 
 Claude Code: `Workflow({scriptPath: "<skill>/references/workflow.js", args: <contents of
-workflow_args.json>})`. Omo: `python3 <skill>/scripts/omo_driver.py --args
-<out_dir>/workflow_args.json` runs the whole find+verify stage as concurrent `omo -p` agents
-(default `--profile omo-flash`: zai/glm-5.3-flash, finder 24 turns, skeptic 18, candidate cap
-floored at 40, 10-way concurrency, thinking high on every role — cheap tokens buy wider
+workflow_args.json>})`. Omo native: **do not execute `workflow.js` through the current Omo
+session**. Run the pinned adapter instead:
+
+```bash
+python3 <skill>/scripts/omo_driver.py --args <out_dir>/workflow_args.json \
+  --profile omo-flash --provider zai --model glm-5.3-flash
+```
+
+The adapter is the coordinator and dispatches each finder/tracer/reproducer as a concurrent
+`omo -p` agent. It rejects any provider/model other than `zai/glm-5.3-flash`, checks that the
+installed Omo exposes `--no-model-fallback` before starting, and disables model fallback on every
+child process. The default `--profile omo-flash` uses finder 24 turns, skeptic 18, candidate cap
+floored at 40, 10-way concurrency, and high thinking on every role — cheap tokens buy wider
 search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
-Workflow budgets).
+Workflow budgets. Shared-account burst 429s are handled by the per-agent retry; they must not be
+mistaken for a provider switch. Finder and tracer run with Omo's `read-only` permission preset;
+only the reproducer gets `workspace` so it can create a throwaway test, and that worktree is
+discarded after the review. Invalid agent JSON or any failed child is reported as
+`status: "degraded"` and the adapter exits non-zero; an empty result must never be treated as a
+clean review.
 Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings
 from that file with the host's sub-agent tool and apply the prescreen and verdict rule in
 `references/verification.md`. Budget: `units × 1 + candidates × (1..2)` agents — a
 deterministic prescreen drops off-hunk and already-refuted candidates, the tracer runs first,
 and the reproducer only where the tracer failed to refute. Every agent has a hard message
 budget (finder 10, skeptic 8) and is told to batch reads, because an agent's cost is
-Σ(context length per turn), not its output. Every role runs on the session model (opus) unless `args.models = {finder, tracer, reproducer}`
-says otherwise — measured 2026-08-28 on !5617, cheaper models did not use fewer tokens (sonnet
+Σ(context length per turn), not its output. For Claude Code and other hosts, every role runs on
+the session model (opus) unless `args.models = {finder, tracer, reproducer}` says otherwise —
+measured 2026-08-28 on !5617, cheaper models did not use fewer tokens (sonnet
 finders took as many turns as opus) and a haiku critic burned 14M tokens for zero surviving
 candidates, so the cost levers are structural: one pack per unit, a message budget, the
 prescreen, and incremental re-review. The tracer is **blind** to the finder's

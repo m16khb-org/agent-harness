@@ -51,7 +51,10 @@ const VERDICT = {
 
 const { outDir, checkout, codegraph, lensText, units = [], maxCandidates = 24, perLensCap = 3, hunkRanges = {}, refutedHistory = [], carried = [] } = args
 const M = args.models || {}
-const role = (name) => args.model || M[name]
+// Omo native has its own pinned adapter path. Keep direct workflow invocations from inheriting
+// the Claude/OpenCode `opus` defaults in workflow_args.json.
+const isOmoNative = typeof process !== 'undefined' && process.env?.OMO_NATIVE === '1'
+const role = (name) => isOmoNative ? 'zai/glm-5.3-flash' : args.model || M[name]
 const FINDER_TURNS = 10
 const SKEPTIC_TURNS = 8
 const hunkSlug = (p) => p.replace(/\//g, '__').replace(/[^A-Za-z0-9_.\-]/g, '_')

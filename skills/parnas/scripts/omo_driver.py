@@ -21,13 +21,16 @@ Usage:
 
 Outputs <out_dir>/workflow-result.json (same shape workflow.js returns) and prints a
 per-agent token/cost line read from the Omo session logs (sessions/*<sid>.jsonl).
+The provider and model are pinned; non-pinned values are rejected before any agent starts.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -40,6 +43,13 @@ OMO_SESSIONS = HOME / ".omo" / "agent" / "sessions"
 KILL = 70
 SUPPRESS_EXEMPT = {"security", "data"}
 ORDER = ["low", "medium", "high", "critical"]
+PINNED_PROVIDER = "zai"
+PINNED_MODEL = "glm-5.3-flash"
+PINNED_MODEL_REF = f"{PINNED_PROVIDER}/{PINNED_MODEL}"
+PERMISSION_PRESETS = {"read-only", "workspace"}
+VALID_SEVERITIES = set(ORDER)
+VALID_CATEGORIES = {"bug", "security", "performance", "business-logic", "data", "api-contract", "test", "rule", "scope"}
+VALID_SEVERITY_ADJUSTMENTS = {"keep", "lower", "raise"}
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
@@ -117,7 +127,8 @@ SKEPTIC_TEXT = {
 
 
 def blind(c: dict) -> dict:
-    return {k: c.get(k) for k in ("path", "new_line", "end_line", "severity", "category", "title", "what", "newly_reachable", "lens")}
+    return {k: c.get(k) for k in ("path", "new_line", "end_line", "severity", "category", "title", "what", "why",
+                                  "newly_reachable", "lens")}
 
 
 def skeptic_prompt(a: dict, sid: str, c: dict, prior: dict | None) -> str:
@@ -236,28 +247,137 @@ def extract_json(text: str | None):
         return None
 
 
+def _is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _valid_candidate(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    required = ("path", "new_line", "severity", "category", "title", "what", "why", "evidence", "confidence", "lens")
+    if any(key not in value for key in required):
+        return False
+    if not isinstance(value["path"], str) or not _is_int(value["new_line"]):
+        return False
+    if value.get("end_line") is not None and not _is_int(value["end_line"]):
+        return False
+    if value["severity"] not in VALID_SEVERITIES or value["category"] not in VALID_CATEGORIES:
+        return False
+    if not all(isinstance(value[key], str) for key in ("title", "what", "why", "lens")):
+        return False
+    if "newly_reachable" in value and not isinstance(value["newly_reachable"], bool):
+        return False
+    for key in ("upstream", "downstream", "suggestion", "rule"):
+        if key in value and value[key] is not None and not isinstance(value[key], str):
+            return False
+    return isinstance(value["evidence"], list) and all(isinstance(item, str) for item in value["evidence"]) \
+        and _is_int(value["confidence"])
+
+
+def _valid_verified_ok(value: object) -> bool:
+    return isinstance(value, dict) and all(isinstance(value.get(key), str) for key in ("concern", "why_ok", "loc")) \
+        and (value.get("thread") is None or isinstance(value.get("thread"), str))
+
+
+def _valid_verdict(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    required = ("skeptic", "refuted", "confidence", "reason", "evidence", "severity_adjust")
+    if any(key not in value for key in required):
+        return False
+    if not isinstance(value["skeptic"], str) or not isinstance(value["refuted"], bool):
+        return False
+    if not _is_int(value["confidence"]) or not isinstance(value["reason"], str):
+        return False
+    if not isinstance(value["evidence"], list) or not all(isinstance(item, str) for item in value["evidence"]):
+        return False
+    if value["severity_adjust"] not in VALID_SEVERITY_ADJUSTMENTS:
+        return False
+    if value.get("corrected_line") is not None and not _is_int(value["corrected_line"]):
+        return False
+    return value.get("corrected_suggestion") is None or isinstance(value.get("corrected_suggestion"), str)
+
+
+def validate_agent_payload(payload: object, kind: str) -> dict | None:
+    """Accept only the fields later phases compare arithmetically or dereference."""
+    if kind == "finder":
+        if not isinstance(payload, dict):
+            return None
+        if not isinstance(payload.get("lenses"), list) or not all(isinstance(item, str) for item in payload["lenses"]):
+            return None
+        if not isinstance(payload.get("inspected"), list) or not all(isinstance(item, str) for item in payload["inspected"]):
+            return None
+        if not isinstance(payload.get("candidates"), list) or not all(_valid_candidate(item) for item in payload["candidates"]):
+            return None
+        if not isinstance(payload.get("verified_ok"), list) or not all(_valid_verified_ok(item) for item in payload["verified_ok"]):
+            return None
+        return payload
+    if kind == "verdict":
+        return payload if _valid_verdict(payload) else None
+    raise ValueError(f"unknown agent payload kind: {kind}")
+
+
+def normalize_pinned_model(provider: str, model: str) -> tuple[str, str]:
+    if provider != PINNED_PROVIDER or model not in {PINNED_MODEL, PINNED_MODEL_REF}:
+        raise ValueError(f"Parnas Omo driver is pinned to {PINNED_MODEL_REF}; got {provider}/{model}")
+    return PINNED_PROVIDER, PINNED_MODEL
+
+
+def validate_omo_cli(executable: str = "omo", timeout: int = 30) -> None:
+    try:
+        p = subprocess.run([executable, "--help"], capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(f"could not inspect {executable} --help: {exc}") from exc
+    if p.returncode != 0:
+        raise RuntimeError(f"{executable} --help failed with exit {p.returncode}")
+    help_text = f"{p.stdout}\n{p.stderr}"
+    required = ("--provider", "--model", "--no-model-fallback", "--permission-preset", "--session-id")
+    missing = [flag for flag in required if flag not in help_text]
+    if missing:
+        raise RuntimeError(f"{executable} is missing required flags: {', '.join(missing)}")
+
+
 # ---------------------------------------------------------------- omo agent runner
+
+def run_omo_process(cmd: list[str], cwd: str, timeout: int) -> subprocess.CompletedProcess:
+    """Run Omo in its own process group so timeout cleanup reaches its child engine."""
+    process = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        stdout, stderr = process.communicate()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=stdout, stderr=stderr) from exc
+    return subprocess.CompletedProcess(cmd, process.returncode, stdout, stderr)
+
 
 class OmoRunner:
     """One agent = one `omo -p` process; usage is summed from the Omo session log."""
 
     def __init__(self, provider: str, model: str):
-        self.provider, self.model = provider, model
+        self.provider, self.model = normalize_pinned_model(provider, model)
 
-    def _cmd(self, sid: str, thinking: str) -> list[str]:
-        return ["omo", "--provider", self.provider, "--model", self.model, "--no-skills",
-                "--no-context-files", "--no-extensions", "--permission-preset", "workspace",
+    def _cmd(self, sid: str, thinking: str, permission_preset: str = "read-only") -> list[str]:
+        if permission_preset not in PERMISSION_PRESETS:
+            raise ValueError(f"unsupported Omo permission preset: {permission_preset}")
+        return ["omo", "--provider", self.provider, "--model", PINNED_MODEL_REF, "--no-skills",
+                "--no-context-files", "--no-extensions", "--permission-preset", permission_preset,
                 "--no-model-fallback",  # fallback masked zai 429s as opencode weekly errors (2026-08-29)
                 "--session-id", sid, "--thinking", thinking]
 
-    def run(self, prompt: str, cwd: str, thinking: str, timeout: int = 1800) -> tuple[object, dict, str]:
+    def run(self, prompt: str, cwd: str, thinking: str, timeout: int = 1800,
+            permission_preset: str = "read-only", payload_kind: str | None = None) -> tuple[object, dict, str]:
         sid = uuid.uuid4().hex[:12]
         p = None
         for attempt in range(2):
             attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
             try:
-                p = subprocess.run(self._cmd(attempt_sid, thinking) + ["-p", prompt], cwd=cwd,
-                                   capture_output=True, text=True, timeout=timeout)
+                p = run_omo_process(self._cmd(attempt_sid, thinking, permission_preset) + ["-p", prompt],
+                                    cwd, timeout)
             except subprocess.TimeoutExpired:
                 return None, session_usage(attempt_sid), "omo timed out"
             if p.returncode == 0 or (p.stdout or "").strip():
@@ -266,20 +386,28 @@ class OmoRunner:
                 time.sleep(4)  # provider 429 backoff (zai concurrent burst, 2026-08-29)
         base_usage = add_usage(session_usage(sid), session_usage(f"{sid}x1"))
         parsed = extract_json(p.stdout)
+        if payload_kind:
+            parsed = validate_agent_payload(parsed, payload_kind)
         tail = p.stdout[-400:]
         if parsed is None:  # one retry, the analogue of agent() schema retry
             sid2 = sid + "r"
             try:
-                p2 = subprocess.run(self._cmd(sid2, thinking) +
-                                    ["-p", "이전 출력은 JSON 파싱에 실패했다. 요청된 스키마의 순수 JSON 오브젝트만 다시 출력하라. 마크다운 금지.\n\n" + p.stdout[-6000:]],
-                                    cwd=cwd, capture_output=True, text=True, timeout=timeout)
+                p2 = run_omo_process(self._cmd(sid2, thinking, permission_preset) +
+                                     ["-p", "이전 출력은 JSON 파싱에 실패했다. 요청된 스키마의 순수 JSON 오브젝트만 다시 출력하라. 마크다운 금지.\n\n" + p.stdout[-6000:]],
+                                     cwd, timeout)
                 tail = p2.stdout[-400:]
                 parsed = extract_json(p2.stdout)
+                if payload_kind:
+                    parsed = validate_agent_payload(parsed, payload_kind)
             except subprocess.TimeoutExpired:
                 pass
             usage = add_usage(base_usage, session_usage(sid2))
         else:
             usage = base_usage
+        unexpected_models = session_models(sid, f"{sid}x1", sid + "r")
+        unexpected_models.discard(PINNED_MODEL_REF)
+        if unexpected_models:
+            return None, usage, f"omo selected unpinned model(s): {', '.join(sorted(unexpected_models))}"
         return parsed, usage, tail
 
 
@@ -307,6 +435,32 @@ def session_usage(sid: str) -> dict:
     return usage
 
 
+def session_models(*sids: str) -> set[str]:
+    models: set[str] = set()
+    if not OMO_SESSIONS.exists():
+        return models
+    for sid in sids:
+        for f in OMO_SESSIONS.rglob(f"*{sid}.jsonl"):
+            try:
+                for line in f.read_text(errors="ignore").splitlines():
+                    try:
+                        o = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if o.get("type") == "model_change":
+                        provider, model = o.get("provider"), o.get("modelId")
+                    elif o.get("type") == "message":
+                        message = o.get("message") or {}
+                        provider, model = message.get("provider"), message.get("model")
+                    else:
+                        continue
+                    if provider and model:
+                        models.add(f"{provider}/{model}")
+            except OSError:
+                continue
+    return models
+
+
 def add_usage(a: dict, b: dict) -> dict:
     return {k: (a.get(k, 0) or 0) + (b.get(k, 0) or 0) for k in USAGE_KEYS}
 
@@ -314,11 +468,23 @@ def add_usage(a: dict, b: dict) -> dict:
 def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
     results: list[dict | None] = [None] * len(tasks)
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {ex.submit(runner.run, t["prompt"], t["cwd"], t["thinking"]): i for i, t in enumerate(tasks)}
+        futs = {
+            ex.submit(
+                runner.run,
+                t["prompt"],
+                t["cwd"],
+                t["thinking"],
+                permission_preset=t.get("permission_preset", "read-only"),
+                payload_kind=t.get("payload_kind"),
+            ): i
+            for i, t in enumerate(tasks)
+        }
         for fut in as_completed(futs):
             i = futs[fut]
             try:
                 parsed, usage, tail = fut.result()
+                if tasks[i].get("payload_kind"):
+                    parsed = validate_agent_payload(parsed, tasks[i]["payload_kind"])
             except Exception as e:  # noqa: BLE001
                 parsed, usage, tail = None, {k: 0 for k in USAGE_KEYS}, f"driver error: {e}"
             results[i] = {"parsed": parsed, "usage": usage, "tail": tail, "label": tasks[i]["label"]}
@@ -341,19 +507,26 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
 
     if not units:
         print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
-        return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all}
+        return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all,
+                "agent_failures": [], "degraded": False}
     print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
     t0 = [units[0]]
     r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
+                             "permission_preset": "read-only", "payload_kind": "finder",
                              "label": f"find:{u['id']}"} for u in t0], 1)[0]
     acc(r0["usage"])
+    agent_failures = [r0["label"]] if r0["parsed"] is None else []
     if isinstance(r0["parsed"], dict):
         finders.append({**r0["parsed"], "unit": units[0]["id"], "lenses": units[0]["lenses"]})
     rest = units[1:]
     if rest:
-        for r, u in zip(run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
-                                            "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"]), rest):
+        rest_results = run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
+                                           "permission_preset": "read-only", "payload_kind": "finder",
+                                           "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"])
+        for r, u in zip(rest_results, rest):
             acc(r["usage"])
+            if r["parsed"] is None:
+                agent_failures.append(r["label"])
             if isinstance(r["parsed"], dict):
                 finders.append({**r["parsed"], "unit": u["id"], "lenses": u["lenses"]})
 
@@ -367,18 +540,23 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
     if len(kept) > a["max_candidates"]:
         print(f"[driver] dropping {len(kept) - a['max_candidates']} lowest-confidence candidates (cap {a['max_candidates']})")
         kept = kept[: a["max_candidates"]]
-    print(f"[driver] finders={len(finders)}/{len(units)} unique={len(seen)} prescreened={len(prescreened)} to_verify={len(kept)}", flush=True)
+    print(f"[driver] finders={len(finders)}/{len(units)} unique={len(seen)} prescreened={len(prescreened)} "
+          f"to_verify={len(kept)} failures={len(agent_failures)}", flush=True)
     return {"finders": finders, "verified_ok": [v for r in finders for v in (r.get("verified_ok") or [])],
-            "candidates": kept, "prescreened": prescreened, "usage_find": usage_all}
+            "candidates": kept, "prescreened": prescreened, "usage_find": usage_all,
+            "agent_failures": agent_failures, "degraded": bool(agent_failures)}
 
 
 def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
     cwd, candidates = a["checkout"], found["candidates"]
     usage_all = found["usage_find"]
+    agent_failures = list(found.get("agent_failures") or [])
     print(f"[driver] verify: {len(candidates)} tracers (×{a['workers']['tracer']})", flush=True)
     tasks = [{"prompt": skeptic_prompt(a, "tracer", c, None), "cwd": cwd, "thinking": a["thinking"]["tracer"],
+              "permission_preset": "read-only", "payload_kind": "verdict",
               "label": f"tracer:{c['path'].split('/')[-1]}:{c.get('new_line')}"} for c in candidates]
     tracer_results = run_batch(runner, tasks, a["workers"]["tracer"]) if tasks else []
+    agent_failures.extend(r["label"] for r in tracer_results if r["parsed"] is None)
 
     repro_tasks, repro_idx, stages, skipped = [], [], [], 0
     for c, tr in zip(candidates, tracer_results):
@@ -391,11 +569,14 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
             repro_idx.append(len(stages) - 1)
             repro_tasks.append({"prompt": skeptic_prompt(a, "reproducer", c, t), "cwd": cwd,
                                 "thinking": a["thinking"]["reproducer"],
+                                "permission_preset": "workspace", "payload_kind": "verdict",
                                 "label": f"repro:{c['path'].split('/')[-1]}:{c.get('new_line')}"})
     if repro_tasks:
         print(f"[driver] {len(repro_tasks)} reproducers (×{a['workers']['reproducer']}, tracer killed {skipped})", flush=True)
         for idx, r in zip(repro_idx, run_batch(runner, repro_tasks, a["workers"]["reproducer"])):
             usage_all = add_usage(usage_all, r["usage"])
+            if r["parsed"] is None:
+                agent_failures.append(r["label"])
             stages[idx]["reproducer"] = r["parsed"]
 
     findings, refuted = [], list(found["prescreened"])
@@ -441,8 +622,10 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                            if any(v.get("refuted") and v.get("skeptic") != "prescreen" and v.get("confidence", 0) >= 80
                                   for v in r.get("verdicts", []))]
     carried = list(a.get("carried") or [])
+    status = "degraded" if agent_failures else "ok"
     print(f"[driver] {len(findings)} confirmed (+{len(carried)} carried), {len(refuted)} refuted "
-          f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk)", flush=True)
+          f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk, "
+          f"status={status})", flush=True)
     return {"findings": findings + carried, "refuted": refuted, "partial": partial,
             "refuted_for_history": refuted_for_history, "verified_ok": found["verified_ok"],
             "inspected": [{"unit": r["unit"], "lenses": r["lenses"], "inspected": r.get("inspected", [])}
@@ -450,7 +633,8 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
             "cost": {"finders": len(found["finders"]), "candidates_in": len(candidates), "tracers": len(candidates),
                      "reproducers": len(repro_tasks), "reproducers_skipped": skipped,
                      "prescreened": len(found["prescreened"]), "usage": usage_all,
-                     "profile": a["profile"], "model": f"{a['provider']}/{a['model']}"}}
+                     "profile": a["profile"], "model": f"{a['provider']}/{a['model']}"},
+            "status": status, "degraded": bool(agent_failures), "agent_failures": agent_failures}
 
 
 def main() -> int:
@@ -458,11 +642,17 @@ def main() -> int:
     ap.add_argument("--args", required=True, help="workflow_args.json written by mr_context.py")
     ap.add_argument("--phase", choices=["find", "verify", "all"], default="all")
     ap.add_argument("--profile", choices=sorted(PROFILES), default="omo-flash")
-    ap.add_argument("--provider", default="zai")
-    ap.add_argument("--model", default="glm-5.3-flash")
+    ap.add_argument("--provider", default=PINNED_PROVIDER, help=f"pinned to {PINNED_PROVIDER}")
+    ap.add_argument("--model", default=PINNED_MODEL, help=f"pinned to {PINNED_MODEL_REF}")
     ap.add_argument("--thinking-finder"), ap.add_argument("--thinking-tracer"), ap.add_argument("--thinking-reproducer")
     ns = ap.parse_args()
 
+    try:
+        provider, model = normalize_pinned_model(ns.provider, ns.model)
+        validate_omo_cli()
+    except (ValueError, RuntimeError) as exc:
+        print(f"[driver] ERROR: {exc}", file=sys.stderr, flush=True)
+        return 2
     args_json = json.loads(Path(ns.args).read_text())
     budget = resolve_budget(args_json, ns.profile)
     thinking = budget["thinking"]
@@ -473,12 +663,12 @@ def main() -> int:
     if ns.thinking_reproducer:
         thinking["reproducer"] = ns.thinking_reproducer
     a = {**args_json, **budget, "thinking": thinking, "profile": ns.profile,
-         "provider": ns.provider, "model": ns.model}
-    print(f"[driver] profile={ns.profile} model={ns.provider}/{ns.model} finder_turns={budget['finder_turns']} "
+         "provider": provider, "model": model}
+    print(f"[driver] profile={ns.profile} model={provider}/{model} finder_turns={budget['finder_turns']} "
           f"skeptic_turns={budget['skeptic_turns']} maxCandidates={budget['max_candidates']} "
           f"perLensCap={budget['per_lens_cap']} workers={budget['workers']}", flush=True)
     t0 = time.time()
-    runner = OmoRunner(ns.provider, ns.model)
+    runner = OmoRunner(provider, model)
     find_stage = Path(a["outDir"]) / "find-stage.json"
     if ns.phase == "verify":
         if not find_stage.exists():
@@ -490,7 +680,7 @@ def main() -> int:
         # Persist before verify so a crash in verify does not lose the find spend.
         find_stage.write_text(json.dumps(found, ensure_ascii=False, indent=1))
         if ns.phase == "find":
-            return 0
+            return 2 if found.get("degraded") else 0
     result = phase_verify(a, runner, found)
     out = Path(a["outDir"]) / "workflow-result.json"
     out.write_text(json.dumps(result, ensure_ascii=False, indent=1))
@@ -498,7 +688,7 @@ def main() -> int:
     print(f"[driver] done in {time.time() - t0:.0f}s → {out}")
     print(f"[driver] TOKENS: input={u['input']:,} output={u['output']:,} cacheRead={u['cacheRead']:,} "
           f"cacheWrite={u['cacheWrite']:,} reasoning={u['reasoning']:,} cost=${u['cost_total']:.4f}")
-    return 0
+    return 2 if result["degraded"] else 0
 
 
 if __name__ == "__main__":
