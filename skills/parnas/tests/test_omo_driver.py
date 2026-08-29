@@ -106,5 +106,40 @@ class PureHelperTest(unittest.TestCase):
         self.assertIn("what", b)
 
 
+class SelfReviewFixTest(unittest.TestCase):
+    """PR #498 parnas 자기 리뷰가 발견한 결함의 회귀 테스트 (F1~F6)."""
+
+    def test_dedup_merges_on_why_similarity_not_what(self) -> None:
+        """F3: workflow.js 는 마지막 절에 why 유사도를 쓴다 — what 이 아니라."""
+        finders = [
+            {"lenses": ["logic"], "candidates": [
+                {"path": "a.go", "new_line": 10, "category": "bug", "title": "제목 하나",
+                 "what": "전혀 다른 서술 alpha", "why": "null 역참조로 프로세스가 크래시", "confidence": 60, "lens": "logic"}]},
+            {"lenses": ["boundary"], "candidates": [
+                {"path": "b.go", "new_line": 10, "category": "bug", "title": "관계없는 제목 둘",
+                 "what": "전혀 다른 서술 gamma", "why": "null 역참조로 프로세스가 크래시", "confidence": 70, "lens": "boundary"}]},
+        ]
+        merged = omo_driver.dedup_candidates(finders)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["confidence"], 70)
+
+    def test_dedup_skips_non_dict_candidates(self) -> None:
+        """F6: 스키마를 벗어난 finder 응답이 크래시를 일으키지 않는다."""
+        finders = [{"lenses": ["logic"], "candidates": ["junk-string",
+                                                            {"path": "a.go", "new_line": 1, "category": "bug", "title": "t", "lens": "logic"}]}]
+        merged = omo_driver.dedup_candidates(finders)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["path"], "a.go")
+
+    def test_phase_find_empty_units_returns_empty_without_agents(self) -> None:
+        """F2: units 가 비면 에이전트 없이 빈 구조체를 반환한다 (IndexError 아님)."""
+        a = {"units": [], "checkout": "/tmp"}
+        found = omo_driver.phase_find(a, runner=None)
+        self.assertEqual(found["finders"], [])
+        self.assertEqual(found["candidates"], [])
+        self.assertEqual(found["prescreened"], [])
+        self.assertEqual(found["verified_ok"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -10,8 +10,8 @@ KILL ≥ 70, abstain ≤ 2 verdicts) is identical; only the budgets differ per p
 
 Profiles:
   standard    workflow.js budgets (finder 10 turns, skeptic 8, args.maxCandidates).
-  omo-flash   cheap-token host profile (default): finder 20 turns, skeptic 14,
-              maxCandidates floored at 32, 10-way concurrency, thinking=high —
+  omo-flash   cheap-token host profile (default): finder 24 turns, skeptic 18,
+              maxCandidates floored at 40, 10-way concurrency, thinking=high —
               GLM flash pricing buys wider search and longer traces, not a looser rule.
 
 Usage:
@@ -189,13 +189,15 @@ def dedup_candidates(finders: list[dict]) -> list[dict]:
     seen: list[dict] = []
     for r in finders:
         for c in r.get("candidates") or []:
+            if not isinstance(c, dict):
+                continue
             lens = c.get("lens") or (r.get("lenses") or ["logic"])[0]
             dup = None
             for x in seen:
                 if (x.get("path") == c.get("path") and abs((x.get("new_line") or 0) - (c.get("new_line") or 0)) <= 2 and x.get("category") == c.get("category")) \
                         or similar(x.get("title"), c.get("title")) >= 0.5 \
                         or (x.get("rule") and x.get("rule") == c.get("rule") and similar(x.get("what"), c.get("what")) >= 0.4) \
-                        or (x.get("category") == c.get("category") and similar(x.get("what"), c.get("what")) >= 0.5):
+                        or (x.get("category") == c.get("category") and similar(x.get("why"), c.get("why")) >= 0.5):
                     dup = x
                     break
             if dup:
@@ -325,19 +327,22 @@ def phase_find(a: dict, runner: OmoRunner) -> dict:
         nonlocal usage_all
         usage_all = add_usage(usage_all, u)
 
+    if not units:
+        print("[driver] 0 finder units — nothing to inspect (empty units list)", flush=True)
+        return {"finders": [], "verified_ok": [], "candidates": [], "prescreened": [], "usage_find": usage_all}
     print(f"[driver] {len(units)} finder units (first alone to warm the provider cache, rest ×{a['workers']['finder']})", flush=True)
     t0 = [units[0]]
     r0 = run_batch(runner, [{"prompt": finder_prompt(a, u), "cwd": cwd, "thinking": a["thinking"]["finder"],
                              "label": f"find:{u['id']}"} for u in t0], 1)[0]
     acc(r0["usage"])
-    if r0["parsed"]:
+    if isinstance(r0["parsed"], dict):
         finders.append({**r0["parsed"], "unit": units[0]["id"], "lenses": units[0]["lenses"]})
     rest = units[1:]
     if rest:
         for r, u in zip(run_batch(runner, [{"prompt": finder_prompt(a, x), "cwd": cwd, "thinking": a["thinking"]["finder"],
                                             "label": f"find:{x['id']}"} for x in rest], a["workers"]["finder"]), rest):
             acc(r["usage"])
-            if r["parsed"]:
+            if isinstance(r["parsed"], dict):
                 finders.append({**r["parsed"], "unit": u["id"], "lenses": u["lenses"]})
 
     seen = dedup_candidates(finders)
@@ -423,9 +428,10 @@ def phase_verify(a: dict, runner: OmoRunner, found: dict) -> dict:
                            for r in refuted
                            if any(v.get("refuted") and v.get("skeptic") != "prescreen" and v.get("confidence", 0) >= 80
                                   for v in r.get("verdicts", []))]
-    print(f"[driver] {len(findings)} confirmed, {len(refuted)} refuted ({len(found['prescreened'])} by prescreen, "
-          f"{skipped} reproducers skipped, {len(partial)} residual risk)", flush=True)
-    return {"findings": findings, "refuted": refuted, "partial": partial,
+    carried = list(a.get("carried") or [])
+    print(f"[driver] {len(findings)} confirmed (+{len(carried)} carried), {len(refuted)} refuted "
+          f"({len(found['prescreened'])} by prescreen, {skipped} reproducers skipped, {len(partial)} residual risk)", flush=True)
+    return {"findings": findings + carried, "refuted": refuted, "partial": partial,
             "refuted_for_history": refuted_for_history, "verified_ok": found["verified_ok"],
             "inspected": [{"unit": r["unit"], "lenses": r["lenses"], "inspected": r.get("inspected", [])}
                           for r in found["finders"]],
@@ -461,10 +467,18 @@ def main() -> int:
           f"perLensCap={budget['per_lens_cap']} workers={budget['workers']}", flush=True)
     t0 = time.time()
     runner = OmoRunner(ns.provider, ns.model)
-    found = phase_find(a, runner)
-    if ns.phase == "find":
-        (Path(a["outDir"]) / "find-stage.json").write_text(json.dumps(found, ensure_ascii=False, indent=1))
-        return 0
+    find_stage = Path(a["outDir"]) / "find-stage.json"
+    if ns.phase == "verify":
+        if not find_stage.exists():
+            raise SystemExit(f"find-stage.json not found at {find_stage} — run --phase find first")
+        found = json.loads(find_stage.read_text())
+        print(f"[driver] loaded find stage from {find_stage}", flush=True)
+    else:
+        found = phase_find(a, runner)
+        # Persist before verify so a crash in verify does not lose the find spend.
+        find_stage.write_text(json.dumps(found, ensure_ascii=False, indent=1))
+        if ns.phase == "find":
+            return 0
     result = phase_verify(a, runner, found)
     out = Path(a["outDir"]) / "workflow-result.json"
     out.write_text(json.dumps(result, ensure_ascii=False, indent=1))
