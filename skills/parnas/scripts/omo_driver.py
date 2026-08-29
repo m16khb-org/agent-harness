@@ -31,6 +31,7 @@ import math
 import os
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -82,7 +83,12 @@ def resolve_budget(args_json: dict, profile: str) -> dict:
 
 # ---------------------------------------------------------------- prompt templates (port of workflow.js; keep in sync)
 
+def prompt_root(a: dict) -> str:
+    return a.get("omoInputDir") or a["outDir"]
+
+
 def finder_common(a: dict, cg: str) -> str:
+    root = prompt_root(a)
     return f"""You are one inspector in a formal design inspection (Parnas active design review).
 Repository checkout at head: {a['checkout']} (read-only; never edit, never checkout, never post).
 
@@ -90,7 +96,7 @@ How to work — this is a budget, not advice:
 - Your pack file (named at the end of this message) is the whole context for your slice: the cumulative diff of every file you inspect, the definition headers enclosing each hunk, files that historically change together, the definitions and one-hop callers/callees of the symbols they define, the rules that apply, existing threads and prior lessons.
 - Message 1: exactly one Read of the pack file, whole (no offset/limit) — nothing else. Message 2: every follow-up read you need, all in that one message (several Read/Bash calls at once), chosen from the hops the pack names. Then at most a few more messages. Hard cap: {a['finder_turns']} assistant messages including the final JSON message. One call per message wastes the budget. Read file regions (offset/limit or sed -n), never whole large files.
 - You carry several lenses. Apply each one separately over the same pack and tag every candidate with the lens that found it (candidate.lens); a candidate two lenses would both report is reported once under the stronger lens. Lens-specific file scope: 'contract' looks at dto/controller/gateway/generated files, 'data' at db/repository/query code, 'async' at kafka/queue/stream/retry code, 'security' at auth/validation/secrets — skip files the lens does not apply to.
-- Open the checkout only for a hop the pack names (a caller, a callee, a validator) or a symbol the pack does not list ({cg}). If {a['outDir']}/gate.md exists, lint/typecheck/test results and LOC metrics are already measured there — never re-report them.
+- Open the checkout only for a hop the pack names (a caller, a callee, a validator) or a symbol the pack does not list ({cg}). If {root}/gate.md exists, lint/typecheck/test results and LOC metrics are already measured there — never re-report them.
 - When the budget is nearly spent, stop and report what you verified; an unverified hunch is not a candidate.
 
 Inspect ONLY through your lens. For every candidate defect you MUST, before reporting:
@@ -112,10 +118,11 @@ def cg_hint(a: dict) -> str:
 
 def finder_prompt(a: dict, u: dict) -> str:
     lens_lines = "\n".join(f"- {l} — {a['lensText'][l]}" for l in u["lenses"])
+    root = prompt_root(a)
     return f"""{finder_common(a, cg_hint(a))}
 
 Your unit: {u['id']}
-Pack file (message 1: one Read, whole — it lists the files in your slice): {a['outDir']}/{u['pack']}
+Pack file (message 1: one Read, whole — it lists the files in your slice): {root}/{u['pack']}
 Lenses:
 {lens_lines}"""
 
@@ -136,11 +143,12 @@ def skeptic_prompt(a: dict, sid: str, c: dict, prior: dict | None) -> str:
     if prior:
         prior_txt = (f"\nThe tracer already examined it and did not refute (confidence {prior.get('confidence')}): "
                      f"{prior.get('reason')}. Do not repeat its trace; attack the scenario itself.")
+    root = prompt_root(a)
     return f"""You are a skeptic in a design inspection. Your job is to try to REFUTE this candidate defect.
 refuted=true ONLY when you actually neutralised the scenario with evidence (a definition, a boundary, a run that shows it cannot happen). If you could not test it (no runnable environment, missing DB, tooling absent) or could not find the hop, return refuted=false with confidence ≤ 40 and reason starting with "미확인:" — inability to verify is not a refutation.
 Budget: at most {a['skeptic_turns']} assistant messages including the final JSON message; batch independent reads in one message.
 Checkout (read-only except throwaway test files you delete afterwards): {a['checkout']}
-Start here, in one message: {a['outDir']}/hunks/{hunk_slug(c['path'])}.patch (the diff of the candidate's file) and the "## <symbol>" sections of {a['outDir']}/defs.md for the symbols in the claim (grep -n "^## " to locate). Open other files only for a hop those name.
+Start here, in one message: {root}/hunks/{hunk_slug(c['path'])}.patch (the diff of the candidate's file) and the "## <symbol>" sections of {root}/defs.md for the symbols in the claim (grep -n "^## " to locate). Open other files only for a hop those name.
 Lens: {sid} — {SKEPTIC_TEXT[sid]}
 Candidate: {json.dumps(blind(c) if sid == 'tracer' else c, ensure_ascii=False)}{prior_txt}
 severity_adjust other than "keep" is accepted only with an evidence entry (path:line) that justifies it.
@@ -245,6 +253,37 @@ def extract_json(text: str | None):
         return json.loads(text[lo:hi + 1])
     except json.JSONDecodeError:
         return None
+
+
+def prepare_omo_inputs(a: dict) -> Path:
+    """Copy review inputs under the Omo worker's checkout permission boundary."""
+    source = Path(a["outDir"])
+    checkout = Path(a["checkout"])
+    input_dir = checkout / f".parnas-input-{uuid.uuid4().hex}"
+    input_dir.mkdir()
+    try:
+        for directory in ("pack", "hunks"):
+            shutil.copytree(source / directory, input_dir / directory)
+        for filename in ("defs.md", "gate.md"):
+            path = source / filename
+            if path.is_file():
+                shutil.copy2(path, input_dir / filename)
+        for path in input_dir.rglob("*"):
+            if path.is_file():
+                path.chmod(0o444)
+    except Exception:
+        shutil.rmtree(input_dir)
+        raise
+    a["omoInputDir"] = str(input_dir)
+    return input_dir
+
+
+def cleanup_omo_inputs(input_dir: Path) -> None:
+    """Remove temporary review inputs after every Omo worker has finished."""
+    for path in input_dir.rglob("*"):
+        if path.is_file():
+            path.chmod(0o644)
+    shutil.rmtree(input_dir)
 
 
 def _is_int(value: object) -> bool:
@@ -669,26 +708,30 @@ def main() -> int:
           f"perLensCap={budget['per_lens_cap']} workers={budget['workers']}", flush=True)
     t0 = time.time()
     runner = OmoRunner(provider, model)
-    find_stage = Path(a["outDir"]) / "find-stage.json"
-    if ns.phase == "verify":
-        if not find_stage.exists():
-            raise SystemExit(f"find-stage.json not found at {find_stage} — run --phase find first")
-        found = json.loads(find_stage.read_text())
-        print(f"[driver] loaded find stage from {find_stage}", flush=True)
-    else:
-        found = phase_find(a, runner)
-        # Persist before verify so a crash in verify does not lose the find spend.
-        find_stage.write_text(json.dumps(found, ensure_ascii=False, indent=1))
-        if ns.phase == "find":
-            return 2 if found.get("degraded") else 0
-    result = phase_verify(a, runner, found)
-    out = Path(a["outDir"]) / "workflow-result.json"
-    out.write_text(json.dumps(result, ensure_ascii=False, indent=1))
-    u = result["cost"]["usage"]
-    print(f"[driver] done in {time.time() - t0:.0f}s → {out}")
-    print(f"[driver] TOKENS: input={u['input']:,} output={u['output']:,} cacheRead={u['cacheRead']:,} "
-          f"cacheWrite={u['cacheWrite']:,} reasoning={u['reasoning']:,} cost=${u['cost_total']:.4f}")
-    return 2 if result["degraded"] else 0
+    input_dir = prepare_omo_inputs(a)
+    try:
+        find_stage = Path(a["outDir"]) / "find-stage.json"
+        if ns.phase == "verify":
+            if not find_stage.exists():
+                raise SystemExit(f"find-stage.json not found at {find_stage} — run --phase find first")
+            found = json.loads(find_stage.read_text())
+            print(f"[driver] loaded find stage from {find_stage}", flush=True)
+        else:
+            found = phase_find(a, runner)
+            # Persist before verify so a crash in verify does not lose the find spend.
+            find_stage.write_text(json.dumps(found, ensure_ascii=False, indent=1))
+            if ns.phase == "find":
+                return 2 if found.get("degraded") else 0
+        result = phase_verify(a, runner, found)
+        out = Path(a["outDir"]) / "workflow-result.json"
+        out.write_text(json.dumps(result, ensure_ascii=False, indent=1))
+        u = result["cost"]["usage"]
+        print(f"[driver] done in {time.time() - t0:.0f}s → {out}")
+        print(f"[driver] TOKENS: input={u['input']:,} output={u['output']:,} cacheRead={u['cacheRead']:,} "
+              f"cacheWrite={u['cacheWrite']:,} reasoning={u['reasoning']:,} cost=${u['cost_total']:.4f}")
+        return 2 if result["degraded"] else 0
+    finally:
+        cleanup_omo_inputs(input_dir)
 
 
 if __name__ == "__main__":

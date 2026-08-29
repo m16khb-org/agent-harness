@@ -87,7 +87,9 @@ search and deeper traces, not a looser verdict rule; `--profile standard` reprod
 Workflow budgets. Shared-account burst 429s are handled by the per-agent retry; they must not be
 mistaken for a provider switch. Finder and tracer run with Omo's `read-only` permission preset;
 only the reproducer gets `workspace` so it can create a throwaway test, and that worktree is
-discarded after the review. Invalid agent JSON or any failed child is reported as
+discarded after the review. The adapter mirrors packs, hunks, definitions, and gate output into
+a temporary read-only input directory inside that worktree so Omo's path boundary cannot block
+the mandated first read; it removes the directory after all phases finish. Invalid agent JSON or any failed child is reported as
 `status: "degraded"` and the adapter exits non-zero; an empty result must never be treated as a
 clean review.
 Other hosts: dispatch the `finderPrompt` / `skepticPrompt` strings

@@ -74,6 +74,40 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(omo_driver.session_models("sid"), {"zai/glm-5.3-flash"})
 
 
+class PromptBoundaryTest(unittest.TestCase):
+    def test_review_inputs_are_mirrored_under_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkout = root / "worktree"
+            source = root / "review"
+            checkout.mkdir()
+            (source / "pack").mkdir(parents=True)
+            (source / "hunks").mkdir()
+            (source / "pack" / "behavior_all.md").write_text("pack", encoding="utf-8")
+            (source / "hunks" / "a.patch").write_text("patch", encoding="utf-8")
+            (source / "defs.md").write_text("defs", encoding="utf-8")
+            (source / "gate.md").write_text("gate", encoding="utf-8")
+            args = {"checkout": str(checkout), "outDir": str(source)}
+
+            input_dir = omo_driver.prepare_omo_inputs(args)
+            try:
+                self.assertTrue(input_dir.is_relative_to(checkout))
+                self.assertEqual((input_dir / "pack" / "behavior_all.md").read_text(), "pack")
+                self.assertEqual((input_dir / "hunks" / "a.patch").read_text(), "patch")
+                self.assertEqual((input_dir / "pack" / "behavior_all.md").stat().st_mode & 0o777, 0o444)
+                args.update({"codegraph": False, "lensText": {"logic": "logic"},
+                             "finder_turns": 24, "per_lens_cap": 6})
+                prompt = omo_driver.finder_prompt(
+                    args, {"id": "behavior@all", "pack": "pack/behavior_all.md", "lenses": ["logic"]}
+                )
+                self.assertIn(str(input_dir / "pack" / "behavior_all.md"), prompt)
+                self.assertIn(str(input_dir / "gate.md"), prompt)
+                self.assertNotIn(str(source / "pack"), prompt)
+            finally:
+                omo_driver.cleanup_omo_inputs(input_dir)
+            self.assertFalse(input_dir.exists())
+
+
 class PrescreenTest(unittest.TestCase):
     def test_drops_off_hunk_line_without_newly_reachable(self) -> None:
         c = {"path": "src/a.go", "new_line": 999, "newly_reachable": False, "category": "bug"}
