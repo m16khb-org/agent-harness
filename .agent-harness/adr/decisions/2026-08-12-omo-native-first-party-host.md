@@ -28,6 +28,10 @@ Omo native is the third first-party host adapter.
 - `~/.omo/extensions/agent-harness.js` maps Omo `session_start` and accepted
   `session_compact` events to the shared raw lifecycle hook commands and injects
   hidden project-doc context without triggering a new turn.
+- IssueOps binds Omo mutations to `PI_SESSION_ID` plus a live process receipt.
+  Omo 5.x RPC mode detaches the `omo` launcher, so its persistent `senpi`
+  runtime receipt is accepted as the Omo process identity only for
+  `host=omo`; a session ID alone never authorizes a lease.
 - Explicit project-local install may write `.omo/skills/*` and
   `.omo/mcp.json`; default install writes no target-repository Omo files.
 - Activation commits only after exact MCP semantics and lifecycle extension

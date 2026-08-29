@@ -127,8 +127,13 @@ The preview response seals the selection evidence in `readiness_fingerprint` and
 --session-executable PATH --cwd PATH
 ```
 
-Omo native sessions use `PI_SESSION_ID` and the live `omo` process receipt.
-`agent-harness issueops execution whoami --json` resolves both automatically.
+Omo native sessions use `PI_SESSION_ID` and a live Omo runtime receipt.
+In Omo 5.x RPC mode, the `omo` launcher detaches its persistent host and the
+observed host process is named `senpi`; that `senpi` receipt is the runtime
+equivalent of the launcher receipt and is accepted only for `--host omo`.
+`agent-harness issueops execution whoami --json` resolves the runtime receipt
+from the local ancestry automatically. It never falls back to the session ID
+alone.
 `--owner-host` accepts `codex|claude|omo`, so Orca can own and display any of
 those host sessions. For Omo, IssueOps launches the UI-visible terminal with
 `omo --model '<provider/model>:<thinking>'`; the default is

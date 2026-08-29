@@ -92,6 +92,31 @@ func TestReusableNativeProcessAncestryRecognizesOmoHost(t *testing.T) {
 	}
 }
 
+func TestReusableNativeProcessAncestryRecognizesSenpiOmoRuntime(t *testing.T) {
+	ancestry := []model.NativeProcessReceipt{
+		{PID: 101, StartedAt: "2026-08-29T00:00:01Z", Executable: "agent-harness"},
+		{PID: 202, StartedAt: "2026-08-29T00:00:00Z", Executable: "senpi"},
+		{PID: 303, StartedAt: "2026-08-28T00:00:00Z", Executable: "launchd"},
+	}
+	got, err := reusableNativeProcessAncestry("omo", 101, ancestry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].PID != 202 || got[1].PID != 303 {
+		t.Fatalf("reusable Senpi Omo ancestry = %+v", got)
+	}
+}
+
+func TestReusableNativeProcessAncestryDoesNotUseSenpiForAnotherHost(t *testing.T) {
+	_, err := reusableNativeProcessAncestry("codex", 101, []model.NativeProcessReceipt{
+		{PID: 101, StartedAt: "2026-08-29T00:00:01Z", Executable: "agent-harness"},
+		{PID: 202, StartedAt: "2026-08-29T00:00:00Z", Executable: "senpi"},
+	})
+	if err == nil {
+		t.Fatal("Senpi process was accepted as a Codex host")
+	}
+}
+
 func TestReusableNativeProcessAncestryRejectsMissingNativeHost(t *testing.T) {
 	_, err := reusableNativeProcessAncestry("codex", 101, []model.NativeProcessReceipt{
 		{PID: 101, Executable: "agent-harness"},

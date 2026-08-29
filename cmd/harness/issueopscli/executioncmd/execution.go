@@ -304,7 +304,10 @@ func nativeHostProcessExecutable(host, executable string) bool {
 	case "claude":
 		return base == "claude" || strings.Contains(normalized, "/claude/versions/")
 	case "omo":
-		return base == "omo"
+		// Omo 5.x detaches its RPC host from the `omo` launcher. The
+		// persistent host that owns the session is consequently named
+		// `senpi`, so its live receipt is the reusable Omo identity.
+		return base == "omo" || base == "senpi"
 	default:
 		return false
 	}
