@@ -456,6 +456,115 @@ class PureHelperTest(unittest.TestCase):
         killpg.assert_called_once_with(123, omo_driver.signal.SIGKILL)
         self.assertEqual(process.calls, 2)
 
+    def test_run_omo_process_force_disables_engine_model_fallback(self) -> None:
+        class FakePopen:
+            pid = 1
+            returncode = 0
+
+            def communicate(self, timeout=None):
+                return "ok", ""
+
+        with patch.object(omo_driver.subprocess, "Popen", return_value=FakePopen()) as popen:
+            omo_driver.run_omo_process(["omo"], "/tmp", 5)
+
+        env = popen.call_args.kwargs["env"]
+        self.assertEqual(env["SENPI_NO_FALLBACK"], "1")
+        self.assertEqual(env["OMO_NO_FALLBACK"], "1")
+
+    def test_run_backs_off_exponentially_on_rate_limit(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        failures = [
+            subprocess.CompletedProcess(
+                [], 1, "", '429: {"code":"1302","message":"Rate limit reached for requests"}')
+            for _ in range(omo_driver.MAX_AGENT_ATTEMPTS)
+        ]
+        with patch.object(omo_driver, "run_omo_process", side_effect=failures) as run, \
+             patch.object(omo_driver.time, "sleep") as sleep, \
+             patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, _, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNone(parsed)
+        self.assertEqual(run.call_count, omo_driver.MAX_AGENT_ATTEMPTS)
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], [10.0, 30.0, 90.0, 600.0])
+        self.assertEqual(diagnostics["failure_kind"], "rate_limited")
+
+    def test_rate_limit_backoff_recovers_on_pinned_model(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 1, "", "429: Rate limit reached for requests")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic": "tracer", "refuted": false, "confidence": 75, "reason": "ok", '
+            '"evidence": [], "severity_adjust": "keep"}',
+            "",
+        )
+        with patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+             patch.object(omo_driver.time, "sleep") as sleep, \
+             patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, _, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(sleep.call_args_list[0].args[0], 10.0)
+        self.assertIsNone(diagnostics["failure_kind"])
+
+    def test_recovered_agent_not_poisoned_by_failed_attempt_model_fallback(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 1, "", "429: Rate limit reached for requests")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic": "tracer", "refuted": false, "confidence": 75, "reason": "ok", '
+            '"evidence": [], "severity_adjust": "keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant","provider":"opencode-go",'
+                '"model":"kimi-k3","content":[]}}\n',
+                encoding="utf-8",
+            )
+            Path(tmp, "prefix-sidx1.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant","provider":"zai",'
+                '"model":"glm-5.3-flash","content":[]}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+                 patch.object(omo_driver.time, "sleep"), \
+                 patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay):
+                with patch.object(
+                    omo_driver.uuid, "uuid4",
+                    return_value=type("U", (), {"hex": "sid"})(),
+                ):
+                    parsed, _, _, diagnostics = runner.run(
+                        "prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNotNone(parsed)
+        self.assertEqual(run.call_count, 2)
+        self.assertIsNone(diagnostics["failure_kind"])
+
+    def test_format_retry_skipped_when_provider_never_responded(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        failures = [
+            subprocess.CompletedProcess([], 1, "", "429: GoUsageLimitError weekly usage limit")
+            for _ in range(omo_driver.MAX_AGENT_ATTEMPTS)
+        ]
+        with patch.object(omo_driver, "run_omo_process", side_effect=failures) as run, \
+             patch.object(omo_driver.time, "sleep"), \
+             patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+             patch.object(omo_driver, "session_usage", return_value={k: 0 for k in omo_driver.USAGE_KEYS}), \
+             patch.object(omo_driver, "session_models", return_value=set()):
+            parsed, _, tail, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNone(parsed)
+        # 5 provider attempts only: a dead provider cannot be fixed by a format retry.
+        self.assertEqual(run.call_count, omo_driver.MAX_AGENT_ATTEMPTS)
+        self.assertEqual(len(diagnostics["attempts"]), omo_driver.MAX_AGENT_ATTEMPTS)
+        self.assertEqual(diagnostics["failure_kind"], "rate_limited")
+
     def test_run_rejects_a_session_that_used_another_model(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
         response = subprocess.CompletedProcess(

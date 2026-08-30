@@ -84,8 +84,11 @@ installed Omo exposes `--no-model-fallback` before starting, and disables model 
 child process. The default `--profile omo-flash` uses finder 24 turns, skeptic 18, candidate cap
 floored at 40, 10-way concurrency, and high thinking on every role — cheap tokens buy wider
 search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
-Workflow budgets. Shared-account burst 429s are handled by the per-agent retry; they must not be
-mistaken for a provider switch. Finder and tracer run with Omo's `read-only` permission preset;
+Workflow budgets. Shared-account burst 429s are absorbed by per-agent exponential backoff
+(10s→30s→90s→10min cap, jittered, up to 5 attempts) and the engine's model fallback is
+force-disabled via `SENPI_NO_FALLBACK=1` (`--no-model-fallback` alone is wiped by the engine's
+project-trust flag rebuild), so a rate-limited agent fails loudly on the pinned model instead of
+silently switching providers; a 429 must not be mistaken for a provider switch or a format error. Finder and tracer run with Omo's `read-only` permission preset;
 only the reproducer gets `workspace` so it can create a throwaway test, and that worktree is
 discarded after the review. The adapter mirrors packs, hunks, definitions, and gate output into
 a temporary read-only input directory inside that worktree so Omo's path boundary cannot block
@@ -96,7 +99,7 @@ turn before the cap, and the driver recovers validated tool arguments from the s
 the final assistant text is empty. A format retry receives the original prompt and candidate
 again with only the submit tool enabled. Raw stdout/stderr, return code, timeout, tool denials,
 parse errors, and schema errors remain in `agent_diagnostics`; `failure_counts` separates
-`parse_failure`, `schema_failure`, `timeout`, `low_confidence_abstain`, and `coverage_gap`.
+`parse_failure`, `schema_failure`, `timeout`, `rate_limited`, `low_confidence_abstain`, and `coverage_gap`.
 Every finder returns `reviewed_files` containing each exact file path assigned to its unit
 once. Missing or duplicate assignments appear under `coverage`, make the result
 `status: "degraded"`, and make the adapter exit non-zero. Any failed child or abstention does

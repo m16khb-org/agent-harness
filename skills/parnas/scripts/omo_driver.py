@@ -30,6 +30,10 @@ retry) and prints a per-agent token/cost line read from the Omo session logs
 Verification refuses an incomplete find-stage. --retry-failed-units reruns only missing,
 failed, or duplicate-coverage finder units, rewrites find-stage.json, and proceeds only when
 the rebuilt stage is complete.
+Provider 429s back off exponentially (10s→30s→90s→10min cap, jittered, up to 5 attempts per
+agent) and the engine's model fallback is force-disabled through SENPI_NO_FALLBACK=1, so a
+rate-limited agent fails on the pinned model as `rate_limited` instead of silently switching
+providers or being mislabeled as a format error.
 The provider and model are pinned; non-pinned values are rejected before any agent starts.
 """
 from __future__ import annotations
@@ -38,6 +42,7 @@ import argparse
 import json
 import math
 import os
+import random
 import re
 import signal
 import shutil
@@ -65,8 +70,13 @@ VALID_SEVERITY_ADJUSTMENTS = {"keep", "lower", "raise"}
 READ_ONLY_TOOLS = ("read", "grep", "find", "ls")
 REPRODUCER_TOOLS = READ_ONLY_TOOLS + ("bash", "edit", "write")
 FAILURE_COUNT_KEYS = ("parse_failure", "schema_failure", "timeout", "process_failure",
-                      "model_mismatch", "low_confidence_abstain", "coverage_gap")
+                      "model_mismatch", "rate_limited", "low_confidence_abstain", "coverage_gap")
 OUTPUT_TOOL_BY_KIND = {"finder": "submit_parnas_finder", "verdict": "submit_parnas_verdict"}
+# Provider rate limits (shared-account 429 bursts) back off exponentially with
+# jitter; the last rung caps a single wait at ten minutes per user contract.
+RATE_LIMIT_MARKERS = ("429", "rate limit", "ratelimit", "usage limit", "gousagelimiterror")
+RATE_LIMIT_BACKOFF_SECONDS = (10.0, 30.0, 90.0, 600.0)
+MAX_AGENT_ATTEMPTS = 5
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
@@ -481,11 +491,33 @@ def validate_omo_cli(executable: str = "omo", timeout: int = 30) -> None:
 
 # ---------------------------------------------------------------- omo agent runner
 
+def rate_limit_hit(stdout: str | None, stderr: str | None) -> bool:
+    text = f"{stdout or ''}\n{stderr or ''}".lower()
+    return any(marker in text for marker in RATE_LIMIT_MARKERS)
+
+
+def rate_limit_delay(attempt: int) -> float:
+    return RATE_LIMIT_BACKOFF_SECONDS[min(attempt, len(RATE_LIMIT_BACKOFF_SECONDS) - 1)]
+
+
+def _jitter(delay: float) -> float:
+    """±25% jitter so concurrent agents do not retry in lockstep."""
+    return random.uniform(delay * 0.75, delay * 1.25)
+
+
 def run_omo_process(cmd: list[str], cwd: str, timeout: int) -> subprocess.CompletedProcess:
-    """Run Omo in its own process group so timeout cleanup reaches its child engine."""
+    """Run Omo in its own process group so timeout cleanup reaches its child engine.
+
+    The engine's model fallback is force-disabled through the environment: the
+    CLI flag path (`--no-model-fallback`) is wiped when the engine rebuilds
+    extension flag defaults during project-trust reloads, but the agent session
+    reads SENPI/OMO_NO_FALLBACK directly from process.env on every path
+    (measured 2026-08-30: zai 429 -> silent opencode-go/kimi-k3 switch).
+    """
     cwd = canonical_path(cwd)
+    env = {**os.environ, "SENPI_NO_FALLBACK": "1", "OMO_NO_FALLBACK": "1"}
     process = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               text=True, start_new_session=True)
+                               text=True, start_new_session=True, env=env)
     try:
         stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as exc:
@@ -511,7 +543,7 @@ class OmoRunner:
             raise ValueError(f"unsupported Omo permission preset: {permission_preset}")
         cmd = ["omo", "--provider", self.provider, "--model", PINNED_MODEL_REF, "--no-skills",
                "--no-context-files", "--no-extensions", "--permission-preset", permission_preset,
-               "--no-model-fallback",  # fallback masked zai 429s as opencode weekly errors (2026-08-29)
+               "--no-model-fallback",  # engine flag-rebuild can drop it (2026-08-30); run_omo_process sets SENPI_NO_FALLBACK=1 as the enforced channel
                "--session-id", sid, "--thinking", thinking]
         selected_tools = tuple(allowed_tools or ())
         if output_tool:
@@ -534,7 +566,7 @@ class OmoRunner:
         p = None
         attempts = []
         output_tool = OUTPUT_TOOL_BY_KIND.get(payload_kind)
-        for attempt in range(2):
+        for attempt in range(MAX_AGENT_ATTEMPTS):
             attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
             try:
                 p = run_omo_process(
@@ -552,9 +584,20 @@ class OmoRunner:
             attempts.append(_attempt_diagnostics(attempt_sid, p.returncode, p.stdout, p.stderr))
             if p.returncode == 0 or (p.stdout or "").strip():
                 break
-            if attempt == 0:
-                time.sleep(4)  # provider 429 backoff (zai concurrent burst, 2026-08-29)
-        base_usage = add_usage(session_usage(sid), session_usage(f"{sid}x1"))
+            if attempt == MAX_AGENT_ATTEMPTS - 1:
+                break
+            if rate_limit_hit(p.stdout, p.stderr):
+                delay = rate_limit_delay(attempt)
+                print(f"[driver] provider rate limit; backing off ~{delay:.0f}s "
+                      f"before retry {attempt + 2}/{MAX_AGENT_ATTEMPTS}", flush=True)
+                time.sleep(_jitter(delay))
+            elif attempt == 0:
+                time.sleep(4)  # transient process failure keeps the original single retry
+            else:
+                break
+        base_usage = {k: 0 for k in USAGE_KEYS}
+        for attempt_record in attempts:
+            base_usage = add_usage(base_usage, session_usage(attempt_record["session_id"]))
         parsed, parse_error, schema_error, output_source = parse_agent_output(
             p.stdout, payload_kind, attempt_sid,
         )
@@ -562,7 +605,13 @@ class OmoRunner:
         attempts[-1]["schema_error"] = schema_error
         attempts[-1]["output_source"] = output_source
         tail = p.stdout[-400:]
-        if parsed is None:  # one retry, the analogue of agent() schema retry
+        contributing_sessions = [attempt_sid]
+        # A format retry can only fix malformed model output. When the provider
+        # never responded (empty stdout, no structured tool call) the outage is
+        # the failure; resending the prompt would just burn another 429 cycle.
+        provider_never_responded = not (p.stdout or "").strip() and not (
+            schema_error and output_source == "structured_tool")
+        if parsed is None and not provider_never_responded:  # one retry, the analogue of agent() schema retry
             sid2 = sid + "r"
             retry_prompt = format_retry_prompt(prompt, p.stdout, payload_kind)
             try:
@@ -584,10 +633,14 @@ class OmoRunner:
                     sid2, None, stdout, stderr, timed_out=True,
                     parse_error="Omo timed out before a complete JSON response",
                 ))
+            contributing_sessions.append(sid2)
             usage = add_usage(base_usage, session_usage(sid2))
         else:
             usage = base_usage
-        unexpected_models = session_models(sid, f"{sid}x1", sid + "r")
+        # Model pinning is judged only on the sessions whose output was actually
+        # accepted: a rate-limited earlier attempt may carry the engine fallback
+        # model in its log, and that must not discard a clean pinned verdict.
+        unexpected_models = session_models(*contributing_sessions)
         unexpected_models.discard(PINNED_MODEL_REF)
         diagnostics = {"failure_kind": _failure_kind(parsed, attempts), "attempts": attempts}
         if unexpected_models:
@@ -664,6 +717,8 @@ def _failure_kind(parsed: object, attempts: list[dict]) -> str | None:
     last = attempts[-1]
     if last["timed_out"]:
         return "timeout"
+    if rate_limit_hit(last["stdout"], last["stderr"]) and not (last["stdout"] or "").strip():
+        return "rate_limited"
     if last["schema_error"]:
         return "schema_failure"
     if last["parse_error"]:
