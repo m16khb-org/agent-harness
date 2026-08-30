@@ -112,7 +112,7 @@ repositories, and the target repo's own conventions are authoritative:
 
 ### Document-specific fill targets
 
-- `CONSTITUTION.md`: project-specific priority, safety, source-of-truth, session-start baseline.
+- `CONSTITUTION.md`: project-specific priority, safety, source-of-truth, session-start baseline. Preserve the generated complexity rule: prefer average or amortized `O(1)` where practical, but when performance is not materially harmed, prioritize readability, established project conventions, and consistent APIs and structure; never add unnecessary cache, index, or duplicated state merely to claim `O(1)`.
 - `ARCHITECTURE.md`: current structure, boundaries, adopted architectural decisions, diagrams only if helpful. Name the architecture style actually observed (layered, hexagonal/ports-and-adapters, onion, clean architecture, modular monolith, microservices) and the DDD bounded contexts if they exist; cite the owning files.
 - `CONVENTIONS.md`: concrete coding conventions, SOLID/YAGNI/KISS/design-pattern good/bad cases observed in this repo, plus repo-confirmed clean-code, OOP/composition, and error-handling style rules from the standards catalog.
 - `TESTING.md`: commands and examples of well-structured vs poorly-structured tests for this repo.

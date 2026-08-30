@@ -81,6 +81,14 @@ This project-specific constitution should be read at session start. Follow the g
 - Never put raw secrets in docs, logs, test fixtures, or MCP/CLI responses.
 - Preserve explicit workspace-root and command-policy boundaries.
 - Harness results observed from Codex and Claude Code should match.
+
+## Complexity, readability, and consistency
+
+**Prefer average or amortized O(1) data access and repeated hot-path operations when practical.**
+
+- When alternatives do not materially harm performance or optimization value, prefer readability, established project conventions, and consistent APIs and structure.
+- Do not add unnecessary caches, indexes, or duplicated state merely to claim O(1). Justify optimization with measured bottlenecks and time/space complexity evidence.
+- Safety and correctness remain higher priorities when O(1) goals conflict.
 `
 }
 
