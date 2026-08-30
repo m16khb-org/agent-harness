@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,6 +12,52 @@ import (
 	issueops "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
+
+func TestWriteFingerprintFileRejectsChangedUntrackedFile(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(t *testing.T, path string)
+	}{
+		{
+			name: "replaced",
+			change: func(t *testing.T, path string) {
+				replacement := path + ".replacement"
+				if err := os.WriteFile(replacement, []byte("same"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Rename(replacement, path); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "resized",
+			change: func(t *testing.T, path string) {
+				if err := os.WriteFile(path, []byte("different-size"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "untracked")
+			if err := os.WriteFile(path, []byte("same"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			entry, err := os.Lstat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			test.change(t, path)
+
+			err = writeFingerprintFile(sha256.New(), path, entry)
+			if err == nil || !strings.Contains(err.Error(), "untracked file changed while snapshotting") {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
 
 func TestWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
 	root := t.TempDir()
