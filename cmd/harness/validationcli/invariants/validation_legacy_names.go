@@ -17,6 +17,12 @@ func ForbiddenNameHits(root string) []string {
 	var hitsMu sync.Mutex
 	var reads errgroup.Group
 	reads.SetLimit(8)
+	owner := []byte(currentOwnerHandle())
+	needleNames := forbiddenLegacyNeedles()
+	needles := make([][]byte, len(needleNames))
+	for index, needle := range needleNames {
+		needles[index] = []byte(needle)
+	}
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -47,15 +53,11 @@ func ForbiddenNameHits(root string) []string {
 			if readErr != nil || bytes.Contains(b, []byte{0}) {
 				return nil
 			}
-			text := allowCurrentOwnerHandle(string(b))
-			for _, needle := range forbiddenLegacyNeedles() {
-				if strings.Contains(text, needle) {
-					rel, _ := filepath.Rel(root, path)
-					hitsMu.Lock()
-					hits = append(hits, rel+" contains "+needle)
-					hitsMu.Unlock()
-					break
-				}
+			if needle := firstForbiddenLegacyNeedle(b, owner, needles, needleNames); needle != "" {
+				rel, _ := filepath.Rel(root, path)
+				hitsMu.Lock()
+				hits = append(hits, rel+" contains "+needle)
+				hitsMu.Unlock()
 			}
 			return nil
 		})
@@ -67,6 +69,23 @@ func ForbiddenNameHits(root string) []string {
 		return hits[:20]
 	}
 	return hits
+}
+
+func firstForbiddenLegacyNeedle(content, owner []byte, needles [][]byte, needleNames []string) string {
+	for index, needle := range needles {
+		remaining := content
+		for {
+			offset := bytes.Index(remaining, needle)
+			if offset < 0 {
+				break
+			}
+			if !bytes.HasPrefix(remaining[offset:], owner) {
+				return needleNames[index]
+			}
+			remaining = remaining[offset+len(owner):]
+		}
+	}
+	return ""
 }
 
 func forbiddenNameHits(root string) []string {
