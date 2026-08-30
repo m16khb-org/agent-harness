@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -107,6 +108,10 @@ func readGlabIssueState(repo, hostname, endpoint string) (string, error) {
 // runGlabAPI runs a REST `glab api <endpoint> --hostname <host> [extra...]` call,
 // mirroring the hostname/order shape the verify layer uses for issue reads.
 func runGlabAPI(repo, hostname, endpoint string, extra ...string) ([]byte, error) {
+	return runGlabAPIContext(context.Background(), repo, hostname, endpoint, extra...)
+}
+
+func runGlabAPIContext(ctx context.Context, repo, hostname, endpoint string, extra ...string) ([]byte, error) {
 	if _, err := exec.LookPath("glab"); err != nil {
 		return nil, fmt.Errorf("glab CLI is not installed; install it from https://gitlab.com/gitlab-org/cli")
 	}
@@ -115,17 +120,9 @@ func runGlabAPI(repo, hostname, endpoint string, extra ...string) ([]byte, error
 		cmdArgs = append(cmdArgs, "--hostname", strings.TrimSpace(hostname))
 	}
 	cmdArgs = append(cmdArgs, extra...)
-	cmd := exec.Command("glab", cmdArgs...)
-	if repo != "" {
-		cmd.Dir = repo
-	}
-	out, err := cmd.Output()
+	out, _, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", cmdArgs...)
 	if err != nil {
-		stderr := err.Error()
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr = strings.TrimSpace(string(exitErr.Stderr))
-		}
-		return nil, fmt.Errorf("glab api failed: %s", stderr)
+		return nil, fmt.Errorf("glab api failed: %w", err)
 	}
 	return out, nil
 }

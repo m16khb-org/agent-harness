@@ -496,6 +496,10 @@ func graphqlStringList(values []string) string {
 }
 
 func runGlabGraphQL[T any](repo, hostname, query string, fields map[string]string) (T, error) {
+	return runGlabGraphQLContext[T](context.Background(), repo, hostname, query, fields)
+}
+
+func runGlabGraphQLContext[T any](ctx context.Context, repo, hostname, query string, fields map[string]string) (T, error) {
 	var zero T
 	if _, err := exec.LookPath("glab"); err != nil {
 		return zero, fmt.Errorf("glab CLI is not installed; install it from https://gitlab.com/gitlab-org/cli")
@@ -508,17 +512,9 @@ func runGlabGraphQL[T any](repo, hostname, query string, fields map[string]strin
 	for key, value := range fields {
 		args = append(args, "-f", key+"="+value)
 	}
-	cmd := exec.Command("glab", args...)
-	if repo != "" {
-		cmd.Dir = repo
-	}
-	out, err := cmd.Output()
+	out, _, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", args...)
 	if err != nil {
-		stderr := err.Error()
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr = strings.TrimSpace(string(exitErr.Stderr))
-		}
-		return zero, fmt.Errorf("glab graphql failed: %s", stderr)
+		return zero, fmt.Errorf("glab graphql failed: %w", err)
 	}
 	var envelope struct {
 		Errors []struct {

@@ -696,6 +696,23 @@ func TestRunGlabJSONReportsMissingCLI(t *testing.T) {
 	}
 }
 
+func TestRunGlabHelpersHonorCanceledContext(t *testing.T) {
+	binDir := t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '{}'
+`)
+	t.Setenv("PATH", binDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := runGlabAPIContext(ctx, t.TempDir(), "gitlab.example.com", "version"); err == nil || !strings.Contains(err.Error(), "context canceled") {
+		t.Fatalf("runGlabAPIContext error = %v", err)
+	}
+	if _, err := runGlabGraphQLContext[map[string]any](ctx, t.TempDir(), "gitlab.example.com", "query { currentUser { id } }", nil); err == nil || !strings.Contains(err.Error(), "context canceled") {
+		t.Fatalf("runGlabGraphQLContext error = %v", err)
+	}
+}
+
 func TestRunGlabJSONExecutesInRepoAndParsesOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake glab shell script is POSIX-only")
