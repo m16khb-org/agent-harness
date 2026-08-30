@@ -2,7 +2,10 @@ package issueopslease
 
 import (
 	"context"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -10,6 +13,38 @@ import (
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
+
+func TestReseedWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
+	root := t.TempDir()
+	reseedInventoryGit(t, root, "init", "--initial-branch", "reseed")
+	reseedInventoryGit(t, root, "config", "user.email", "test@example.invalid")
+	reseedInventoryGit(t, root, "config", "user.name", "Test")
+	reseedInventoryGit(t, root, "commit", "--allow-empty", "--message", "initial")
+	large := filepath.Join(root, "large.bin")
+	file, err := os.Create(large)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(32 << 20); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime.GC()
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	if _, err := reseedWorkspaceSnapshot(leasecontract.Workspace{Root: root, Branch: "reseed"}); err != nil {
+		t.Fatal(err)
+	}
+	var after runtime.MemStats
+	runtime.ReadMemStats(&after)
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 8<<20 {
+		t.Fatalf("reseed snapshot allocated %d bytes while hashing a 32 MiB untracked file", allocated)
+	}
+}
 
 func TestReseedInventoryFingerprintIncludesRawOwnerEvidence(t *testing.T) {
 	root := t.TempDir()

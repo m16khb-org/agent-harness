@@ -6,7 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -126,12 +128,12 @@ func reseedWorkspaceSnapshot(workspace leasecontract.Workspace) (string, error) 
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
 	}
-	_, tracked, stderr := reseedGitRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
-	if stderr != "" {
+	code, tracked, stderr := reseedGitRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
+	if code != 0 {
 		return "", fmt.Errorf("read tracked diff: %s", strings.TrimSpace(stderr))
 	}
-	_, staged, stderr := reseedGitRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
-	if stderr != "" {
+	code, staged, stderr := reseedGitRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
+	if code != 0 {
 		return "", fmt.Errorf("read staged diff: %s", strings.TrimSpace(stderr))
 	}
 	code, untrackedRaw, stderr := reseedGitRaw(workspace.Root, "ls-files", "--others", "--exclude-standard", "-z")
@@ -160,13 +162,11 @@ func reseedWorkspaceSnapshot(workspace leasecontract.Workspace) (string, error) 
 		if err != nil || entry.Mode()&os.ModeSymlink != 0 || !entry.Mode().IsRegular() {
 			return "", fmt.Errorf("untracked path must be a regular file: %s", relative)
 		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return "", err
-		}
 		reseedWriteFingerprintPart(hash, relative)
 		reseedWriteFingerprintPart(hash, entry.Mode().String())
-		reseedWriteFingerprintBytes(hash, content)
+		if err := reseedWriteFingerprintFile(hash, path, entry); err != nil {
+			return "", err
+		}
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
@@ -204,4 +204,34 @@ func reseedWriteFingerprintBytes(hash interface{ Write([]byte) (int, error) }, v
 	_, _ = hash.Write([]byte{0})
 	_, _ = hash.Write(value)
 	_, _ = hash.Write([]byte{0})
+}
+
+func reseedWriteFingerprintFile(hash interface{ Write([]byte) (int, error) }, path string, entry os.FileInfo) (err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	opened, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(entry, opened) || !opened.Mode().IsRegular() || opened.Size() != entry.Size() {
+		return fmt.Errorf("untracked file changed while snapshotting: %s", path)
+	}
+	_, _ = hash.Write([]byte(strconv.FormatInt(opened.Size(), 10)))
+	_, _ = hash.Write([]byte{0})
+	if _, err := io.CopyN(hash, file, opened.Size()); err != nil {
+		return err
+	}
+	var extra [1]byte
+	if n, err := file.Read(extra[:]); n != 0 || (err != nil && !errors.Is(err, io.EOF)) {
+		return fmt.Errorf("untracked file changed while snapshotting: %s", path)
+	}
+	_, _ = hash.Write([]byte{0})
+	return nil
 }

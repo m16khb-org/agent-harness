@@ -4,12 +4,79 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	issueops "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
+
+func TestWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
+	root := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "-b", "main"},
+		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "--allow-empty", "-m", "init"},
+	} {
+		if code, _, stderr := GitCmd(root, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	large := filepath.Join(root, "large.bin")
+	file, err := os.Create(large)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(32 << 20); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime.GC()
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	if _, err := workspaceSnapshot(issueops.Workspace{Root: root, Branch: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	var after runtime.MemStats
+	runtime.ReadMemStats(&after)
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 8<<20 {
+		t.Fatalf("snapshot allocated %d bytes while hashing a 32 MiB untracked file", allocated)
+	}
+}
+
+func TestWorkspaceSnapshotAllowsSuccessfulGitDiffWarnings(t *testing.T) {
+	root := t.TempDir()
+	if code, _, stderr := GitCmd(root, "init", "-b", "main"); code != 0 {
+		t.Fatalf("git init: %s", stderr)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".gitattributes"), []byte("tracked.txt filter=warning\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"config", "filter.warning.clean", "sh -c 'cat; printf warning-from-clean-filter >&2'"},
+		{"config", "filter.warning.smudge", "cat"},
+		{"add", ".gitattributes", "tracked.txt"},
+		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "-m", "init"},
+	} {
+		if code, _, stderr := GitCmd(root, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := workspaceSnapshot(issueops.Workspace{Root: root, Branch: "main"}); err != nil {
+		t.Fatalf("successful git diff warnings must not invalidate the snapshot: %v", err)
+	}
+}
 
 // TestWorkspaceSnapshotAcceptsAnAbsentWorktree는 #435를 고정한다.
 //

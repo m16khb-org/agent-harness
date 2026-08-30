@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -62,12 +63,12 @@ func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
-	_, tracked, stderr := GitCmdRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
-	if stderr != "" {
+	code, tracked, stderr := GitCmdRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
+	if code != 0 {
 		return "", fmt.Errorf("read tracked diff: %s", strings.TrimSpace(stderr))
 	}
-	_, staged, stderr := GitCmdRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
-	if stderr != "" {
+	code, staged, stderr := GitCmdRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
+	if code != 0 {
 		return "", fmt.Errorf("read staged diff: %s", strings.TrimSpace(stderr))
 	}
 	code, untrackedRaw, stderr := GitCmdRaw(workspace.Root, "ls-files", "--others", "--exclude-standard", "-z")
@@ -96,13 +97,11 @@ func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 		if err != nil || entry.Mode()&os.ModeSymlink != 0 || !entry.Mode().IsRegular() {
 			return "", fmt.Errorf("untracked path must be a regular file: %s", relative)
 		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return "", err
-		}
 		writeFingerprintPart(hash, relative)
 		writeFingerprintPart(hash, entry.Mode().String())
-		writeFingerprintBytes(hash, content)
+		if err := writeFingerprintFile(hash, path, entry); err != nil {
+			return "", err
+		}
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
@@ -128,6 +127,36 @@ func writeFingerprintBytes(hash fingerprintWriter, value []byte) {
 	_, _ = hash.Write([]byte{0})
 	_, _ = hash.Write(value)
 	_, _ = hash.Write([]byte{0})
+}
+
+func writeFingerprintFile(hash fingerprintWriter, path string, entry os.FileInfo) (err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	opened, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(entry, opened) || !opened.Mode().IsRegular() || opened.Size() != entry.Size() {
+		return fmt.Errorf("untracked file changed while snapshotting: %s", path)
+	}
+	_, _ = hash.Write([]byte(strconv.FormatInt(opened.Size(), 10)))
+	_, _ = hash.Write([]byte{0})
+	if _, err := io.CopyN(hash, file, opened.Size()); err != nil {
+		return err
+	}
+	var extra [1]byte
+	if n, err := file.Read(extra[:]); n != 0 || (err != nil && !errors.Is(err, io.EOF)) {
+		return fmt.Errorf("untracked file changed while snapshotting: %s", path)
+	}
+	_, _ = hash.Write([]byte{0})
+	return nil
 }
 
 func hashJSON(value any) (string, error) {
