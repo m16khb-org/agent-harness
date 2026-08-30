@@ -34,6 +34,10 @@ func RunBoundedMutationContext(ctx context.Context, repo, name string, args ...s
 	return runBoundedCommandContext(ctx, repo, name, args, providerMutationTimeout, providerReadbackLimit)
 }
 
+func RunBoundedMutationWithOutputLimitContext(ctx context.Context, repo, name string, outputLimit int, args ...string) (stdout []byte, invoked bool, err error) {
+	return runBoundedCommandContext(ctx, repo, name, args, providerMutationTimeout, outputLimit)
+}
+
 func DryRunPreview(name string, args ...string) string {
 	argv := append([]string{name}, args...)
 	value := strings.Join(policy.RedactArgv(argv), " ")

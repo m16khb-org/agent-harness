@@ -120,7 +120,7 @@ func runGlabAPIContext(ctx context.Context, repo, hostname, endpoint string, ext
 		cmdArgs = append(cmdArgs, "--hostname", strings.TrimSpace(hostname))
 	}
 	cmdArgs = append(cmdArgs, extra...)
-	out, _, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", cmdArgs...)
+	out, _, err := providerutil.RunBoundedMutationWithOutputLimitContext(ctx, repo, "glab", gitLabCommandOutputLimit, cmdArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("glab api failed: %w", err)
 	}

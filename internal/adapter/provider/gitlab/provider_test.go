@@ -697,6 +697,9 @@ func TestRunGlabJSONReportsMissingCLI(t *testing.T) {
 }
 
 func TestRunGlabHelpersHonorCanceledContext(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
 	binDir := t.TempDir()
 	writeFakeGlab(t, binDir, `#!/bin/sh
 printf '{}'
@@ -710,6 +713,34 @@ printf '{}'
 	}
 	if _, err := runGlabGraphQLContext[map[string]any](ctx, t.TempDir(), "gitlab.example.com", "query { currentUser { id } }", nil); err == nil || !strings.Contains(err.Error(), "context canceled") {
 		t.Fatalf("runGlabGraphQLContext error = %v", err)
+	}
+}
+
+func TestRunGlabHelpersAcceptGitLabSizedReadbacks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '{"padding":"'
+dd if=/dev/zero bs=1024 count=300 2>/dev/null | tr '\000' x
+printf '"}'
+`)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	apiResult, err := runGlabAPIContext(context.Background(), t.TempDir(), "gitlab.example.com", "projects/acme/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(apiResult) <= 256*1024 {
+		t.Fatalf("API readback size = %d", len(apiResult))
+	}
+	graphqlResult, err := runGlabGraphQLContext[map[string]string](context.Background(), t.TempDir(), "gitlab.example.com", "query { issue { description } }", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(graphqlResult["padding"]) != 300*1024 {
+		t.Fatalf("GraphQL padding size = %d", len(graphqlResult["padding"]))
 	}
 }
 

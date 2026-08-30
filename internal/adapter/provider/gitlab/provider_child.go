@@ -13,6 +13,11 @@ import (
 	"agent-harness/internal/port"
 )
 
+// GitLab descriptions can approach 1 MiB; GraphQL and REST envelopes add
+// metadata around them. Keep a finite process bound without rejecting payloads
+// that the provider itself accepts.
+const gitLabCommandOutputLimit = 2 * 1024 * 1024
+
 func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.IssueProviderCreateChildResult, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
@@ -512,7 +517,7 @@ func runGlabGraphQLContext[T any](ctx context.Context, repo, hostname, query str
 	for key, value := range fields {
 		args = append(args, "-f", key+"="+value)
 	}
-	out, _, err := providerutil.RunBoundedMutationContext(ctx, repo, "glab", args...)
+	out, _, err := providerutil.RunBoundedMutationWithOutputLimitContext(ctx, repo, "glab", gitLabCommandOutputLimit, args...)
 	if err != nil {
 		return zero, fmt.Errorf("glab graphql failed: %w", err)
 	}
