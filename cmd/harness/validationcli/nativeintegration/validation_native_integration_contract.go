@@ -66,13 +66,14 @@ func hasThinCodexContextHooks(config, expectedBinary string) bool {
 }
 
 func nativeIntegrationOmoConfigErrors(root, home string, deps nativeIntegrationValidationDeps) []string {
-	expectedBinary, err := canonicalHarnessBinary(root)
+	stableRoot, err := canonicalStableNativeRoot(root)
 	if err != nil {
 		return []string{"resolve stable native root for Omo: " + err.Error()}
 	}
+	expectedBinary := filepath.Join(stableRoot, "bin", "agent-harness")
 	errs := []string{}
 	mcpPath := filepath.Join(home, ".omo", "mcp.json")
-	if body, readErr := deps.readFile(mcpPath); readErr != nil || !hasCanonicalOmoMCP(body, expectedBinary, root) {
+	if body, readErr := deps.readFile(mcpPath); readErr != nil || !hasCanonicalOmoMCP(body, expectedBinary, stableRoot) {
 		errs = append(errs, "Omo MCP config missing canonical agent_harness server")
 	}
 	extensionPath := filepath.Join(home, ".omo", "extensions", "agent-harness.js")
@@ -106,14 +107,18 @@ func hasCanonicalOmoMCP(body []byte, expectedBinary, root string) bool {
 }
 
 func canonicalHarnessBinary(root string) (string, error) {
-	if ResolveStableNativeRoot == nil {
-		return "", fmt.Errorf("stable native root resolver is unavailable")
-	}
-	stableRoot, err := ResolveStableNativeRoot(root)
+	stableRoot, err := canonicalStableNativeRoot(root)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(stableRoot, "bin", "agent-harness"), nil
+}
+
+func canonicalStableNativeRoot(root string) (string, error) {
+	if ResolveStableNativeRoot == nil {
+		return "", fmt.Errorf("stable native root resolver is unavailable")
+	}
+	return ResolveStableNativeRoot(root)
 }
 
 func nativeIntegrationDuplicateWarningOutput(fixture string) ([]string, string) {

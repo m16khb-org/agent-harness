@@ -7,10 +7,16 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func ForbiddenNameHits(root string) []string {
 	var hits []string
+	var hitsMu sync.Mutex
+	var reads errgroup.Group
+	reads.SetLimit(8)
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -36,20 +42,26 @@ func ForbiddenNameHits(root string) []string {
 		if statErr != nil || info.Size() > 2*1024*1024 {
 			return nil
 		}
-		b, readErr := os.ReadFile(path)
-		if readErr != nil || bytes.Contains(b, []byte{0}) {
-			return nil
-		}
-		text := allowCurrentOwnerHandle(string(b))
-		for _, needle := range forbiddenLegacyNeedles() {
-			if strings.Contains(text, needle) {
-				rel, _ := filepath.Rel(root, path)
-				hits = append(hits, rel+" contains "+needle)
-				break
+		reads.Go(func() error {
+			b, readErr := os.ReadFile(path)
+			if readErr != nil || bytes.Contains(b, []byte{0}) {
+				return nil
 			}
-		}
+			text := allowCurrentOwnerHandle(string(b))
+			for _, needle := range forbiddenLegacyNeedles() {
+				if strings.Contains(text, needle) {
+					rel, _ := filepath.Rel(root, path)
+					hitsMu.Lock()
+					hits = append(hits, rel+" contains "+needle)
+					hitsMu.Unlock()
+					break
+				}
+			}
+			return nil
+		})
 		return nil
 	})
+	_ = reads.Wait()
 	sort.Strings(hits)
 	if len(hits) > 20 {
 		return hits[:20]

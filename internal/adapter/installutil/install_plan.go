@@ -33,6 +33,8 @@ type Plan struct {
 	errs   []error
 }
 
+var _ port.InstallPlan = (*Plan)(nil)
+
 // NewPlan starts an install plan for one host. The result begins OK and carries
 // the dry-run flag through to Finish.
 func NewPlan(host string, dryRun bool) *Plan {

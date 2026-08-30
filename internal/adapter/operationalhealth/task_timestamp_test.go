@@ -43,3 +43,16 @@ func TestParseTaskCompletedAtRejectsUnsupportedLegacyFormats(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskCompletedAtCompatibilityExpiresAfterContractV1(t *testing.T) {
+	const legacy = "2026-08-03 22:35:17"
+	if _, err := parseTaskCompletedAtForVersion(legacy, 1); err != nil {
+		t.Fatalf("contract v1 legacy timestamp: %v", err)
+	}
+	if _, err := parseTaskCompletedAtForVersion(legacy, 2); err == nil {
+		t.Fatal("contract v2 accepted the legacy timestamp")
+	}
+	if _, err := parseTaskCompletedAtForVersion("2026-08-03T22:35:17Z", 2); err != nil {
+		t.Fatalf("contract v2 rejected RFC3339: %v", err)
+	}
+}

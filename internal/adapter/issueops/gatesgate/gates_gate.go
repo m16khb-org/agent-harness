@@ -125,9 +125,19 @@ func allDigits(name string) bool {
 	return true
 }
 
-// legacyLedgerIssueNumber는 호환 원장 파일명 `issue-<n>*.md` 또는 `<n>-*.md`에서
-// 번호를 뽑는다. 둘 다 아니면 빈 문자열.
+const gatesLedgerCompatibilitySchemaVersion = 1
+
+// legacyLedgerIssueNumber는 schema v1 persisted state의 호환 원장 파일명
+// `issue-<n>*.md` 또는 `<n>-*.md`에서 번호를 뽑는다. state migration이
+// canonical issue folder로 이름을 옮긴 뒤 schema가 올라가면 이 경로는 닫힌다.
 func legacyLedgerIssueNumber(name string) string {
+	return legacyLedgerIssueNumberForSchema(name, gatesLedgerCompatibilitySchemaVersion)
+}
+
+func legacyLedgerIssueNumberForSchema(name string, schemaVersion int) string {
+	if schemaVersion != gatesLedgerCompatibilitySchemaVersion {
+		return ""
+	}
 	name = strings.TrimSuffix(name, ".md")
 	name = strings.TrimPrefix(name, "issue-")
 	digits := 0

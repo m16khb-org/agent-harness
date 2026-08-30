@@ -105,9 +105,13 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 - `internal/domain|application/... -> internal/adapter/...|cmd/...`, `internal/adapter/... -> cmd/...`, `internal/port -> contract 외 internal/...`는 baseline 없이 즉시 실패한다. 과거 `core` 규칙도 재도입 방지용으로 유지한다.
 - legacy adapter edge는 0이다. `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만 import한다. 예외는 셋뿐이다(`isSharedStorageEngineEdge`) — 같은 capability의 하위 package 사이 edge는 구현 정리이므로 세지 않고(capability는 `internal/adapter/` 다음 경로 요소, `outbound`/`inbound`는 방향 분류이므로 그 다음 요소까지 읽는다), `outbound/sqlstore`는 capability가 아니라 공유 저장 엔진이므로 outbound 어댑터와 `internal/adapter/issueops`가 직접 쓸 수 있으며, `outbound/issueopsrecord`는 `outbound/issueops*` 어댑터만 쓴다. 그 밖의 edge는 `TestProductionGraphHasNoLegacyAdapterEdges`가 막는다.
 - baseline을 줄이는 변경은 의도된 architecture 개선으로 같은 review에서만 허용한다. production package 이동이나 runtime wiring은 이 ratchet의 범위가 아니다.
+- Issue #499의 maintenance baseline은 기존 package/import graph를 바꾸지 않고 책임별 sibling file로 분해한다. 당시 지목된 7개 비테스트 entry file과 새 sibling은 모두 900줄 미만이며, 이후 예외는 같은 review에서 근거와 검증을 남겨야 한다.
 
 ## 현재 hardening 추가 사항
 
+- `internal/port`는 Orca probe/run/worktree/terminal/task/dispatch 역할 interface와 공용 `InstallPlan`을 소유한다. 기존 `OrcaClient` aggregate와 `omo.InstallPlan` alias는 내부 소비자의 type/method-set 호환을 위한 명시적 예외다.
+- gates legacy ledger 이름은 persisted schema v1 migration 전까지, Orca legacy UTC task timestamp는 payload contract v1 종료 전까지 유지한다. 시간 경과만으로 호환 경로를 제거하지 않는다.
+- Orca/operational-health fan-out은 bounded `errgroup`을 쓰되 indexed error와 partial finding을 보존한다. channel wait는 append-only immutable record ID를 한 호출 안에서만 기억하며, cross-process writer 때문에 process-global cache나 in-process notification을 authority로 삼지 않는다.
 - `internal/domain/cli`가 canonical usage text와 command vocabulary를 소유하고 `cmd/harness/*cli`가 flag/출력/dispatch를 담당한다.
 - `internal/domain/mcp`가 advertised catalog와 dispatch group을 소유하고 `cmd/harness/mcpcli`가 stdio/JSON-RPC와 handler wiring을 담당한다. `internal/adapter/mcp`는 capture-only conformance probe로 제한한다.
 - `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
