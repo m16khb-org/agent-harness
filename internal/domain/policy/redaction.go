@@ -9,6 +9,7 @@ import (
 
 var secretPathRe = regexp.MustCompile(`(?i)(^|/)(\.env(\.|$)|id_rsa|id_dsa|id_ecdsa|id_ed25519|.*\.pem$|.*\.key$|.*\.p12$|.*\.pfx$|.*credentials.*|.*secret.*)`)
 var secretArgRe = regexp.MustCompile(`(?i)((token|password|passwd|secret|api[_-]?key|credential|authorization)=|authorization[[:space:]]*:[[:space:]]*bearer[[:space:]]+[^[:space:]]+)`)
+var knownTokenRe = regexp.MustCompile(`(?i)(gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|xox[baprs]-[a-z0-9-]{20,}|sk-[a-z0-9]{20,}|AKIA[0-9A-Z]{16})`)
 
 var diagnosticURLPattern = regexp.MustCompile(`https?://[^\s]+`)
 
@@ -78,5 +79,5 @@ func BoundedDiagnostic(value string, limit int) string {
 }
 
 func SecretLikeArg(arg string) bool {
-	return secretArgRe.MatchString(arg) || secretPathRe.MatchString(filepath.ToSlash(arg))
+	return secretArgRe.MatchString(arg) || knownTokenRe.MatchString(arg) || secretPathRe.MatchString(filepath.ToSlash(arg))
 }

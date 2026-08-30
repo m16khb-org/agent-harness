@@ -16,6 +16,21 @@ func TestBoundedDiagnosticRedactsAndCapsExternalText(t *testing.T) {
 	}
 }
 
+func TestRedactFreeformRedactsKnownBareTokenFormats(t *testing.T) {
+	values := []string{
+		"gh" + "p_abcdefghijklmnopqrstuvwxyz123456",
+		"github_" + "pat_abcdefghijklmnopqrstuvwxyz123456",
+		"xox" + "b-123456789012-abcdefghijklmnop",
+		"sk" + "-abcdefghijklmnopqrstuvwxyz123456",
+		"AK" + "IAABCDEFGHIJKLMNOP",
+	}
+	for _, value := range values {
+		if got := RedactFreeform(value); got != "<redacted>" {
+			t.Fatalf("RedactFreeform(%q) = %q", value, got)
+		}
+	}
+}
+
 // CleanEnvAllowlist/ValidEnvName/RedactArgv는 감사 로그 env allowlist와 argv
 // redaction의 진입 규칙이다.
 func TestCleanEnvAllowlistTrimsSortsDedupesNothing(t *testing.T) {
