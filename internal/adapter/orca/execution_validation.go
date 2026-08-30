@@ -279,12 +279,13 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 	if strings.TrimSpace(row.RuntimeID) == "" || strings.TrimSpace(row.ID) == "" || strings.TrimSpace(row.RepoID) == "" || !samePath(row.Path, workspace.Root) || strings.TrimSpace(row.Branch) != workspace.Branch || strings.TrimSpace(row.Head) != workspace.BaseHead || strings.TrimSpace(row.Comment) != req.Marker {
 		return fmt.Errorf("Orca worktree receipt does not match the canonical workspace identity")
 	}
-	if req.Provider == "github" && row.Issue != req.Issue {
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	if provider == "github" && row.Issue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitHub issue")
 	}
 	// 공개 Orca CLI에는 GitLab IID 쓰기 flag가 없다. 정확한 comment marker를
 	// 필수 봉인으로 사용하고, native 필드가 관찰되면 추가 교차검증한다.
-	if req.Provider == "gitlab" && row.GitLabIssue != nil && *row.GitLabIssue != req.Issue {
+	if provider == "gitlab" && row.GitLabIssue != nil && *row.GitLabIssue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitLab issue")
 	}
 	if strings.TrimSpace(workspace.ParentWorktree) != "" &&

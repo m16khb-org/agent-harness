@@ -158,6 +158,19 @@ func TestExecutionProvisionerRejectsMismatchedNativeGitLabMetadata(t *testing.T)
 	}
 }
 
+func TestExecutionProvisionerNormalizesProviderBeforeIssueReadback(t *testing.T) {
+	workspace, request := executionFixture(t)
+	request.Provider = " GitHub "
+	row := executionWorktree(workspace, request)
+	row.Issue = request.Issue + 1
+	client := &executionFake{workspace: workspace, probeRequest: request, worktrees: []port.OrcaWorktree{row}}
+
+	if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err == nil ||
+		!strings.Contains(err.Error(), "linked GitHub issue") {
+		t.Fatalf("normalized provider must enforce the GitHub issue readback, got %v", err)
+	}
+}
+
 func TestExecutionProvisionerRequiresExactGitLabMarker(t *testing.T) {
 	workspace, request := executionFixture(t)
 	request = executionGitLabProbe(request)
