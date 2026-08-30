@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 from pathlib import Path
 
@@ -285,6 +287,16 @@ class PureHelperTest(unittest.TestCase):
         }
         self.assertTrue(omo_driver._is_unverified_verdict(verdict))
 
+    def test_rate_limit_schedule_is_dense_with_bounded_jitter(self) -> None:
+        self.assertEqual(
+            omo_driver.RATE_LIMIT_BACKOFF_SECONDS,
+            (5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 60.0, 60.0),
+        )
+        self.assertEqual(omo_driver.MAX_AGENT_ATTEMPTS, 10)
+        with patch.object(omo_driver.random, "uniform", return_value=7.5) as uniform:
+            self.assertEqual(omo_driver._jitter(10.0), 7.5)
+        uniform.assert_called_once_with(7.5, 12.5)
+
     def test_run_retries_without_model_fallback_and_keeps_permission(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
         first = subprocess.CompletedProcess([], 1, "", "429")
@@ -304,6 +316,157 @@ class PureHelperTest(unittest.TestCase):
         self.assertEqual(first_cmd[first_cmd.index("--permission-preset") + 1], "read-only")
         self.assertEqual(first_cmd[first_cmd.index("--tools") + 1], "read,grep,submit_parnas_verdict")
         self.assertIn("--no-model-fallback", first_cmd)
+
+    def test_late_rate_limit_with_nonempty_stdout_retries_pinned_provider(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 1, "read src/a.go\nran tests", "")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant","provider":"zai",'
+                '"model":"glm-5.3-flash","errorMessage":"429 Rate limit reached for requests"}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+                 patch.object(omo_driver.time, "sleep") as sleep, \
+                 patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, _, diagnostics = runner.run(
+                    "prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(sleep.call_args_list[0].args[0], 5.0)
+        self.assertIsNone(diagnostics["failure_kind"])
+
+    def test_zero_exit_with_session_rate_limit_still_retries(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 0, "investigation completed before provider error", "")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant",'
+                '"errorMessage":"429 Rate limit reached for requests"}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+                 patch.object(omo_driver.time, "sleep") as sleep, \
+                 patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, _, diagnostics = runner.run(
+                    "prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(sleep.call_args_list[0].args[0], 5.0)
+        self.assertIsNone(diagnostics["failure_kind"])
+
+    def test_model_change_with_fallback_reason_is_model_mismatch(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        response = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"model_change","provider":"opencode-go","modelId":"kimi-k3",'
+                '"reason":"fallback"}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", return_value=response) as run, \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, tail, diagnostics = runner.run(
+                    "prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNone(parsed)
+        self.assertEqual(run.call_count, 1)
+        self.assertIn("unpinned model", tail)
+        self.assertEqual(diagnostics["failure_kind"], "model_mismatch")
+        self.assertTrue(diagnostics["attempts"][0]["model_fallback"])
+
+    def test_late_rate_limit_uses_provider_retry_not_format_retry(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 0, "read src/a.go\nran tests", "")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "prefix-sid.jsonl").write_text(
+                '{"type":"message","message":{"role":"assistant",'
+                '"errorMessage":"429 Rate limit reached for requests"}}\n',
+                encoding="utf-8",
+            )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+                 patch.object(omo_driver.time, "sleep"), \
+                 patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, _, _ = runner.run(
+                    "ORIGINAL PROMPT", "/tmp", "high", payload_kind="verdict", max_turns=18)
+
+        retry_cmd = run.call_args_list[1].args[0]
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(retry_cmd[-1], "ORIGINAL PROMPT")
+        self.assertEqual(retry_cmd[retry_cmd.index("--parnas-max-turns") + 1], "18")
+
+    def test_ten_session_rate_limits_are_classified_rate_limited(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        with tempfile.TemporaryDirectory() as tmp:
+            def late_rate_limit(cmd, _cwd, _timeout):
+                session_id = cmd[cmd.index("--session-id") + 1]
+                Path(tmp, f"prefix-{session_id}.jsonl").write_text(
+                    '{"type":"message","message":{"role":"assistant",'
+                    '"errorMessage":"429 Rate limit reached for requests"}}\n',
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess([], 0, "investigation output", "")
+
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=late_rate_limit) as run, \
+                 patch.object(omo_driver.time, "sleep") as sleep, \
+                 patch.object(omo_driver, "_jitter", side_effect=lambda delay: delay), \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, _, diagnostics = runner.run(
+                    "prompt", "/tmp", "high", payload_kind="verdict")
+
+        self.assertIsNone(parsed)
+        self.assertEqual(omo_driver.MAX_AGENT_ATTEMPTS, 10)
+        self.assertEqual(run.call_count, omo_driver.MAX_AGENT_ATTEMPTS)
+        self.assertEqual(len(sleep.call_args_list), omo_driver.MAX_AGENT_ATTEMPTS - 1)
+        self.assertEqual(diagnostics["failure_kind"], "rate_limited")
 
     def test_format_retry_resends_original_prompt_and_disables_tools(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
@@ -336,6 +499,37 @@ class PureHelperTest(unittest.TestCase):
                          "submit_parnas_verdict=allow")
         self.assertEqual(retry_cmd[retry_cmd.index("--parnas-max-turns") + 1], "1")
         self.assertEqual(len(diagnostics["attempts"]), 2)
+
+    def test_pure_malformed_output_recovers_with_one_format_retry(self) -> None:
+        runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
+        first = subprocess.CompletedProcess([], 0, '{"skeptic":"tracer"', "")
+        second = subprocess.CompletedProcess(
+            [], 0,
+            '{"skeptic":"tracer","refuted":false,"confidence":75,"reason":"ok",'
+            '"evidence":[],"severity_adjust":"keep"}',
+            "",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            for session_id in ("sid", "sidr"):
+                Path(tmp, f"prefix-{session_id}.jsonl").write_text(
+                    '{"type":"message","message":{"role":"assistant","provider":"zai",'
+                    '"model":"glm-5.3-flash","content":[]}}\n',
+                    encoding="utf-8",
+                )
+            with patch.object(omo_driver, "OMO_SESSIONS", Path(tmp)), \
+                 patch.object(omo_driver, "run_omo_process", side_effect=[first, second]) as run, \
+                 patch.object(
+                     omo_driver.uuid, "uuid4",
+                     return_value=type("U", (), {"hex": "sid"})(),
+                 ):
+                parsed, _, _, diagnostics = runner.run(
+                    "prompt", "/tmp", "high", payload_kind="verdict")
+
+        retry_cmd = run.call_args_list[1].args[0]
+        self.assertEqual(parsed["confidence"], 75)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(retry_cmd[retry_cmd.index("--parnas-max-turns") + 1], "1")
+        self.assertIsNone(diagnostics["failure_kind"])
 
     def test_run_accepts_schema_validated_tool_payload_without_final_text(self) -> None:
         runner = omo_driver.OmoRunner("zai", "glm-5.3-flash")
@@ -487,7 +681,10 @@ class PureHelperTest(unittest.TestCase):
 
         self.assertIsNone(parsed)
         self.assertEqual(run.call_count, omo_driver.MAX_AGENT_ATTEMPTS)
-        self.assertEqual([c.args[0] for c in sleep.call_args_list], [10.0, 30.0, 90.0, 600.0])
+        self.assertEqual(
+            [c.args[0] for c in sleep.call_args_list],
+            [5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 60.0, 60.0],
+        )
         self.assertEqual(diagnostics["failure_kind"], "rate_limited")
 
     def test_rate_limit_backoff_recovers_on_pinned_model(self) -> None:
@@ -508,7 +705,7 @@ class PureHelperTest(unittest.TestCase):
 
         self.assertEqual(parsed["confidence"], 75)
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(sleep.call_args_list[0].args[0], 10.0)
+        self.assertEqual(sleep.call_args_list[0].args[0], 5.0)
         self.assertIsNone(diagnostics["failure_kind"])
 
     def test_recovered_agent_not_poisoned_by_failed_attempt_model_fallback(self) -> None:
@@ -560,7 +757,7 @@ class PureHelperTest(unittest.TestCase):
             parsed, _, tail, diagnostics = runner.run("prompt", "/tmp", "high", payload_kind="verdict")
 
         self.assertIsNone(parsed)
-        # 5 provider attempts only: a dead provider cannot be fixed by a format retry.
+        # Provider attempts only: a dead provider cannot be fixed by a format retry.
         self.assertEqual(run.call_count, omo_driver.MAX_AGENT_ATTEMPTS)
         self.assertEqual(len(diagnostics["attempts"]), omo_driver.MAX_AGENT_ATTEMPTS)
         self.assertEqual(diagnostics["failure_kind"], "rate_limited")
@@ -604,6 +801,39 @@ class PureHelperTest(unittest.TestCase):
             "allowed_tools": ("read", "bash"),
             "max_turns": 18,
         }])
+
+    def test_run_batch_console_status_matches_failure_kind(self) -> None:
+        failure_kinds = [
+            "rate_limited",
+            "model_mismatch",
+            "schema_failure",
+            "parse_failure",
+        ]
+
+        class FakeRunner:
+            def run(self, *args, **kwargs):
+                failure_kind = failure_kinds.pop(0)
+                return (
+                    None,
+                    {k: 0 for k in omo_driver.USAGE_KEYS},
+                    "",
+                    {"failure_kind": failure_kind, "attempts": []},
+                )
+
+        tasks = [
+            {"prompt": "p", "cwd": "/tmp", "thinking": "high", "label": label}
+            for label in ("rate", "model", "schema", "parse")
+        ]
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            omo_driver.run_batch(FakeRunner(), tasks, 1)
+
+        rendered = stdout.getvalue()
+        self.assertIn("[driver] rate: RATE_LIMITED ", rendered)
+        self.assertIn("[driver] model: MODEL_MISMATCH ", rendered)
+        self.assertIn("[driver] schema: SCHEMA_FAILURE ", rendered)
+        self.assertIn("[driver] parse: PARSE_FAILURE ", rendered)
+        self.assertNotIn(": PARSE_FAIL (", rendered)
 
 
 class SelfReviewFixTest(unittest.TestCase):

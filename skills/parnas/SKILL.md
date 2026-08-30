@@ -92,8 +92,8 @@ installed Omo exposes `--no-model-fallback` before starting, and disables model 
 child process. The default `--profile omo-flash` uses finder 24 turns, skeptic 18, candidate cap
 floored at 40, 10-way concurrency, and high thinking on every role — cheap tokens buy wider
 search and deeper traces, not a looser verdict rule; `--profile standard` reproduces the
-Workflow budgets. Shared-account burst 429s are absorbed by per-agent exponential backoff
-(10s→30s→90s→10min cap, jittered, up to 5 attempts) and the engine's model fallback is
+Workflow budgets. Shared-account burst 429s are absorbed by dense per-agent staged backoff
+(5s→10s→15s→20s→30s→40s→50s→60s→60s, jittered, up to 10 attempts) and the engine's model fallback is
 force-disabled via `SENPI_NO_FALLBACK=1` (`--no-model-fallback` alone is wiped by the engine's
 project-trust flag rebuild), so a rate-limited agent fails loudly on the pinned model instead of
 silently switching providers; a 429 must not be mistaken for a provider switch or a format error. Finder and tracer run with Omo's `read-only` permission preset;

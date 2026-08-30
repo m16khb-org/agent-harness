@@ -30,7 +30,8 @@ retry) and prints a per-agent token/cost line read from the Omo session logs
 Verification refuses an incomplete find-stage. --retry-failed-units reruns only missing,
 failed, or duplicate-coverage finder units, rewrites find-stage.json, and proceeds only when
 the rebuilt stage is complete.
-Provider 429s back off exponentially (10s→30s→90s→10min cap, jittered, up to 5 attempts per
+Provider 429s use dense staged backoff (5s→10s→15s→20s→30s→40s→50s→60s→60s,
+jittered, up to 10 attempts per
 agent) and the engine's model fallback is force-disabled through SENPI_NO_FALLBACK=1, so a
 rate-limited agent fails on the pinned model as `rate_limited` instead of silently switching
 providers or being mislabeled as a format error.
@@ -72,11 +73,11 @@ REPRODUCER_TOOLS = READ_ONLY_TOOLS + ("bash", "edit", "write")
 FAILURE_COUNT_KEYS = ("parse_failure", "schema_failure", "timeout", "process_failure",
                       "model_mismatch", "rate_limited", "low_confidence_abstain", "coverage_gap")
 OUTPUT_TOOL_BY_KIND = {"finder": "submit_parnas_finder", "verdict": "submit_parnas_verdict"}
-# Provider rate limits (shared-account 429 bursts) back off exponentially with
-# jitter; the last rung caps a single wait at ten minutes per user contract.
+# Provider rate limits (shared-account 429 bursts) use staged backoff with
+# ±25% jitter while keeping ten attempts responsive for short provider bursts.
 RATE_LIMIT_MARKERS = ("429", "rate limit", "ratelimit", "usage limit", "gousagelimiterror")
-RATE_LIMIT_BACKOFF_SECONDS = (10.0, 30.0, 90.0, 600.0)
-MAX_AGENT_ATTEMPTS = 5
+RATE_LIMIT_BACKOFF_SECONDS = (5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 60.0, 60.0)
+MAX_AGENT_ATTEMPTS = 10
 
 PROFILES = {
     "standard": {"finder_turns": 10, "skeptic_turns": 8, "candidate_floor": 0,
@@ -566,6 +567,8 @@ class OmoRunner:
         p = None
         attempts = []
         output_tool = OUTPUT_TOOL_BY_KIND.get(payload_kind)
+        parsed = parse_error = schema_error = output_source = None
+        attempt_sid = sid
         for attempt in range(MAX_AGENT_ATTEMPTS):
             attempt_sid = sid if attempt == 0 else f"{sid}x{attempt}"
             try:
@@ -581,37 +584,61 @@ class OmoRunner:
                 ))
                 diagnostics = {"failure_kind": "timeout", "attempts": attempts}
                 return None, session_usage(attempt_sid), stdout[-400:] or "omo timed out", diagnostics
-            attempts.append(_attempt_diagnostics(attempt_sid, p.returncode, p.stdout, p.stderr))
-            if p.returncode == 0 or (p.stdout or "").strip():
+            evidence = session_evidence(attempt_sid, payload_kind)
+            parsed, parse_error, schema_error, output_source = parse_agent_output(
+                p.stdout, payload_kind, attempt_sid,
+            )
+            attempt_diagnostic = _attempt_diagnostics(
+                attempt_sid, p.returncode, p.stdout, p.stderr,
+                parse_error=parse_error, schema_error=schema_error, output_source=output_source,
+            )
+            unexpected_models = set(evidence["models"])
+            unexpected_models.discard(PINNED_MODEL_REF)
+            attempt_diagnostic.update({
+                "session_rate_limited": evidence["rate_limited"],
+                "rate_limited": evidence["rate_limited"] or rate_limit_hit(p.stdout, p.stderr),
+                "model_fallback": evidence["model_fallback"],
+                "models": sorted(evidence["models"]),
+                "structured_tool_submitted": evidence["structured_tool_submitted"],
+            })
+            attempts.append(attempt_diagnostic)
+            if evidence["model_fallback"]:
+                parsed = None
                 break
-            if attempt == MAX_AGENT_ATTEMPTS - 1:
-                break
-            if rate_limit_hit(p.stdout, p.stderr):
+            if attempt_diagnostic["rate_limited"] and not evidence["structured_tool_submitted"]:
+                parsed = None
+                if attempt == MAX_AGENT_ATTEMPTS - 1:
+                    break
                 delay = rate_limit_delay(attempt)
                 print(f"[driver] provider rate limit; backing off ~{delay:.0f}s "
                       f"before retry {attempt + 2}/{MAX_AGENT_ATTEMPTS}", flush=True)
                 time.sleep(_jitter(delay))
-            elif attempt == 0:
+                continue
+            if unexpected_models:
+                parsed = None
+                break
+            if parsed is not None or p.returncode == 0 or (p.stdout or "").strip():
+                break
+            if attempt == MAX_AGENT_ATTEMPTS - 1:
+                break
+            if attempt == 0:
                 time.sleep(4)  # transient process failure keeps the original single retry
             else:
                 break
         base_usage = {k: 0 for k in USAGE_KEYS}
         for attempt_record in attempts:
             base_usage = add_usage(base_usage, session_usage(attempt_record["session_id"]))
-        parsed, parse_error, schema_error, output_source = parse_agent_output(
-            p.stdout, payload_kind, attempt_sid,
-        )
-        attempts[-1]["parse_error"] = parse_error
-        attempts[-1]["schema_error"] = schema_error
-        attempts[-1]["output_source"] = output_source
         tail = p.stdout[-400:]
         contributing_sessions = [attempt_sid]
-        # A format retry can only fix malformed model output. When the provider
-        # never responded (empty stdout, no structured tool call) the outage is
-        # the failure; resending the prompt would just burn another 429 cycle.
-        provider_never_responded = not (p.stdout or "").strip() and not (
-            schema_error and output_source == "structured_tool")
-        if parsed is None and not provider_never_responded:  # one retry, the analogue of agent() schema retry
+        last_attempt = attempts[-1]
+        format_retry_allowed = (
+            parsed is None
+            and p.returncode == 0
+            and not last_attempt["rate_limited"]
+            and not last_attempt["model_fallback"]
+            and (bool((p.stdout or "").strip()) or last_attempt["structured_tool_submitted"])
+        )
+        if format_retry_allowed:  # one retry, the analogue of agent() schema retry
             sid2 = sid + "r"
             retry_prompt = format_retry_prompt(prompt, p.stdout, payload_kind)
             try:
@@ -619,13 +646,28 @@ class OmoRunner:
                                      ["-p", retry_prompt],
                                      cwd, timeout)
                 tail = p2.stdout[-400:]
+                evidence = session_evidence(sid2, payload_kind)
                 parsed, parse_error, schema_error, output_source = parse_agent_output(
                     p2.stdout, payload_kind, sid2,
                 )
-                attempts.append(_attempt_diagnostics(
+                attempt_diagnostic = _attempt_diagnostics(
                     sid2, p2.returncode, p2.stdout, p2.stderr,
                     parse_error=parse_error, schema_error=schema_error, output_source=output_source,
-                ))
+                )
+                attempt_diagnostic.update({
+                    "session_rate_limited": evidence["rate_limited"],
+                    "rate_limited": evidence["rate_limited"] or rate_limit_hit(p2.stdout, p2.stderr),
+                    "model_fallback": evidence["model_fallback"],
+                    "models": sorted(evidence["models"]),
+                    "structured_tool_submitted": evidence["structured_tool_submitted"],
+                })
+                attempts.append(attempt_diagnostic)
+                unexpected_retry_models = set(evidence["models"])
+                unexpected_retry_models.discard(PINNED_MODEL_REF)
+                if (evidence["model_fallback"] or unexpected_retry_models
+                        or (attempt_diagnostic["rate_limited"]
+                            and not evidence["structured_tool_submitted"])):
+                    parsed = None
             except subprocess.TimeoutExpired as exc:
                 stdout, stderr = _timeout_text(exc.output), _timeout_text(exc.stderr)
                 tail = stdout[-400:] or "omo timed out"
@@ -643,9 +685,10 @@ class OmoRunner:
         unexpected_models = session_models(*contributing_sessions)
         unexpected_models.discard(PINNED_MODEL_REF)
         diagnostics = {"failure_kind": _failure_kind(parsed, attempts), "attempts": attempts}
-        if unexpected_models:
+        if unexpected_models or any(record.get("model_fallback") for record in attempts):
             diagnostics["failure_kind"] = "model_mismatch"
-            return None, usage, f"omo selected unpinned model(s): {', '.join(sorted(unexpected_models))}", diagnostics
+            selected = ", ".join(sorted(unexpected_models)) or "fallback model change"
+            return None, usage, f"omo selected unpinned model(s): {selected}", diagnostics
         return parsed, usage, tail, diagnostics
 
 
@@ -717,7 +760,7 @@ def _failure_kind(parsed: object, attempts: list[dict]) -> str | None:
     last = attempts[-1]
     if last["timed_out"]:
         return "timeout"
-    if rate_limit_hit(last["stdout"], last["stderr"]) and not (last["stdout"] or "").strip():
+    if last.get("rate_limited") or rate_limit_hit(last["stdout"], last["stderr"]):
         return "rate_limited"
     if last["schema_error"]:
         return "schema_failure"
@@ -776,6 +819,60 @@ def session_models(*sids: str) -> set[str]:
             except OSError:
                 continue
     return models
+
+
+def _session_error_messages(value: object):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "errorMessage" and isinstance(item, str):
+                yield item
+            else:
+                yield from _session_error_messages(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _session_error_messages(item)
+
+
+def session_evidence(sid: str, payload_kind: str | None) -> dict:
+    """Read provider errors, model switches, and structured submission from one session."""
+    evidence = {
+        "rate_limited": False,
+        "model_fallback": False,
+        "models": set(),
+        "structured_tool_submitted": False,
+    }
+    tool_name = OUTPUT_TOOL_BY_KIND.get(payload_kind)
+    if not OMO_SESSIONS.exists():
+        return evidence
+    for f in OMO_SESSIONS.rglob(f"*{sid}.jsonl"):
+        try:
+            for line in f.read_text(errors="ignore").splitlines():
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if any(rate_limit_hit(None, message)
+                       for message in _session_error_messages(record)):
+                    evidence["rate_limited"] = True
+                if record.get("type") == "model_change":
+                    provider, model = record.get("provider"), record.get("modelId")
+                    if record.get("reason") == "fallback":
+                        evidence["model_fallback"] = True
+                elif record.get("type") == "message":
+                    message = record.get("message") or {}
+                    provider, model = message.get("provider"), message.get("model")
+                    if message.get("role") == "assistant" and tool_name:
+                        for content in message.get("content") or []:
+                            if (isinstance(content, dict) and content.get("type") == "toolCall"
+                                    and content.get("name") == tool_name):
+                                evidence["structured_tool_submitted"] = True
+                else:
+                    continue
+                if provider and model:
+                    evidence["models"].add(f"{provider}/{model}")
+        except OSError:
+            continue
+    return evidence
 
 
 def session_tool_payload(sid: str, payload_kind: str) -> dict | None:
@@ -851,7 +948,10 @@ def run_batch(runner: OmoRunner, tasks: list[dict], workers: int) -> list[dict]:
                                "driver_error": str(e)}
             results[i] = {"parsed": parsed, "usage": usage, "tail": tail, "label": tasks[i]["label"],
                           "diagnostics": diagnostics}
-            print(f"[driver] {tasks[i]['label']}: {'OK' if parsed is not None else 'PARSE_FAIL'} "
+            status = "OK" if parsed is not None else (
+                diagnostics.get("failure_kind") or "parse_failure"
+            ).upper()
+            print(f"[driver] {tasks[i]['label']}: {status} "
                   f"(in {usage['input']:,} out {usage['output']:,} cacheRead {usage['cacheRead']:,} "
                   f"reasoning {usage['reasoning']:,} ${usage['cost_total']:.4f})", flush=True)
     return results
