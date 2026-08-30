@@ -24,7 +24,7 @@ or GitHub (`gh`). `agents/openai.yaml` exposes it as `$parnas` on Codex.
 ## Pipeline
 
 ```
-0 Preflight  scripts/mr_context.py  → summary.md, defs.md, pack/, hunks/, context.json, workflow_args.json, worktree
+0 Preflight  scripts/mr_context.py  → summary.md, defs.md, pack/, hunks/, context.json, workflow_args.json, checkout
 1 Gate       scripts/quality_gate.py → gate.md / gate.json (deterministic; ~30s)
 2 Find+Verify references/workflow.js → confirmed findings, refuted, verified_ok, refuted_for_history
 3 Merge      you → findings.json
@@ -41,6 +41,14 @@ Read `<out_dir>/summary.md`. Stop and say so when `eligible=false` (closed/merge
 review by this skill already exists for this head) unless the user explicitly asked to review it
 anyway. When `large=true` (> 40 files or > 2000 added lines), tell the user the scale and
 ask whether to narrow (directories or lenses) before spending agents.
+
+`--worktree` means "guarantee an isolated-safe review checkout", not "always create a
+detached worktree". When `--repo-dir` already points to a clean primary checkout or linked
+worktree at the MR/PR `head_sha`, preflight reuses it and records that path in
+`context.json → checkout`; `context.json → worktree` remains null. It creates
+`<out_dir>/worktree` as a detached checkout only when the supplied checkout is dirty or at a
+different commit. Never create a second detached worktree merely because `--repo-dir` is a
+linked worktree.
 
 `workflow_args.json` already contains the finder units, the checkout path, the candidate caps,
 the hunk ranges and prior lessons for the prescreen — never hand-build it. A **unit** is one
@@ -214,6 +222,9 @@ new diff.
 
 ### 5. Clean up
 
+Read `context.json` before cleanup. Remove a worktree only when its non-null `worktree`
+field resolves exactly to `<out_dir>/worktree`; a null field means preflight reused the
+caller's checkout and it must never be removed. Remove an isolated review worktree with
 `git worktree remove --force <out_dir>/worktree` on every exit path, including
 `eligible=false` and validation failures. Delete throwaway specs the reproducer left.
 
@@ -230,6 +241,8 @@ new diff.
   worse, and says so.
 - A suggestion is posted only after it was applied in the worktree and passed the fastest
   relevant check.
+- A clean supplied checkout at the exact review head is the review checkout. Do not create a
+  redundant detached worktree, and never clean up a reused caller checkout.
 - Inability to verify is not a refutation, and intent is not correctness — a skeptic needs
   evidence to kill a candidate; an `intent`-lens defect is not refuted by "the author meant it".
 - Never resolve threads, never approve or merge through any other path, never post twice for

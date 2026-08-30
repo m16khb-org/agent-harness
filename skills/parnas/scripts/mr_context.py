@@ -19,7 +19,8 @@ MR/PR names its issue (branch prefix `<issue>-…` or `#<issue>` in title/descri
   defs.md        changed symbols → definition + one-hop callers/callees (codegraph or rg)
   pack/<unit>.md one self-contained pack per finder unit (lens × shard): diff of its files, defs, rules, threads
   hunks/<f>.patch per-file patch for skeptics
-  worktree/      (with --worktree) detached checkout of head_sha; node_modules symlinked
+  worktree/      (with --worktree) detached checkout only when the supplied checkout
+                 is not already a clean checkout of head_sha; node_modules symlinked
 
 Never prints tokens.
 """
@@ -831,6 +832,24 @@ def make_worktree(repo_dir: str, out_dir: Path, head_sha: str) -> str:
     return str(wt)
 
 
+def select_review_checkout(
+    repo_dir: str, out_dir: Path, head_sha: str, isolate: bool
+) -> tuple[str, str | None]:
+    checkout = str(Path(repo_dir).resolve())
+    if not isolate:
+        return checkout, None
+    current_head = run(["git", "rev-parse", "HEAD"], cwd=checkout, check=False).strip()
+    status = run(
+        ["git", "status", "--porcelain", "--untracked-files=normal"],
+        cwd=checkout,
+        check=False,
+    ).strip()
+    if current_head == head_sha and not status:
+        return checkout, None
+    worktree = make_worktree(checkout, out_dir, head_sha)
+    return worktree, worktree
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mr", required=True)
@@ -883,7 +902,9 @@ def main() -> None:
     issues = linked_issues(p, meta, n)
     src_files = [f["path"] for f in files if not ({"test", "docs"} & set(f["tags"]))]
     lessons = prior_review_lessons(p, repo_dir, src_files, n, a.history, meta["target_branch"])
-    worktree = make_worktree(repo_dir, out_dir, head_sha) if (a.worktree and have_head) else None
+    checkout, worktree = select_review_checkout(
+        repo_dir, out_dir, head_sha, isolate=bool(a.worktree and have_head)
+    )
 
     reasons = []
     if meta["state"] != "opened":
@@ -900,8 +921,8 @@ def main() -> None:
         "source_branch": meta["source_branch"], "target_branch": meta["target_branch"], "labels": meta["labels"],
         "diff_refs": refs, "head_available_locally": have_head, "eligibility": eligibility, "files": files,
         "totals": {"files": len(files), "added": sum(f["added"] for f in files), "removed": sum(f["removed"] for f in files)},
-        "linked_issues": issues, "rule_pack": rule_pack(worktree or repo_dir), "existing_threads": threads, "prior_review_lessons": lessons,
-        "verification": detect_verification(repo_dir), "worktree": worktree, "repo_dir": repo_dir, "out_dir": str(out_dir),
+        "linked_issues": issues, "rule_pack": rule_pack(checkout), "existing_threads": threads, "prior_review_lessons": lessons,
+        "verification": detect_verification(repo_dir), "checkout": checkout, "worktree": worktree, "repo_dir": repo_dir, "out_dir": str(out_dir),
     }
     scale = {"files": len(files), "added": ctx["totals"]["added"], "large": len(files) > 40 or ctx["totals"]["added"] > 2000}
     ctx["scale"] = scale
@@ -911,7 +932,6 @@ def main() -> None:
     (out_dir / "context.json").write_text(json.dumps(ctx, ensure_ascii=False, indent=1))
     lenses = load_lenses()
     chosen = [l for l in select_lenses(files, "\n".join(patch_parts), issues, lessons) if l in lenses]
-    checkout = worktree or repo_dir
     full_patch = "\n".join(patch_parts)
     sym_pairs = changed_symbols(full_patch, with_files=True)
     defs = collect_defs(checkout, sym_pairs, ctx["verification"]["codegraph"])
@@ -992,7 +1012,7 @@ def main() -> None:
 
     L = [f"# {p.name} {'!' if p.name == 'gitlab' else '#'}{n} — {ctx['title']}", ctx["web_url"] or "",
          f"author={ctx['author']} source={ctx['source_branch']} → target={ctx['target_branch']} labels={','.join(ctx['labels']) or '-'}",
-         f"head={head_sha} base={refs.get('base_sha')} start={refs.get('start_sha')} head_local={have_head} worktree={worktree or '-'}",
+         f"head={head_sha} base={refs.get('base_sha')} start={refs.get('start_sha')} head_local={have_head} checkout={checkout} isolated_worktree={worktree or '-'}",
          f"eligible={eligibility['eligible']} reasons={reasons or '-'}",
          f"scale: files={scale['files']} added={scale['added']} large={scale['large']} → lenses={','.join(chosen)} (workflow_args.json)",
          f"defs.md: {len(symbols)} changed symbols with definition + one-hop callers/callees; pack/: {len(units)} finder units (lens bundle × shard, ≤ ~{PACK_CAP_BYTES // 1000}KB diff each); hunks/: per-file patches",

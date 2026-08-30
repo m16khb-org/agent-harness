@@ -203,5 +203,68 @@ class ResearchImprovementsTest(unittest.TestCase):
         self.assertEqual(plan["dropped"], 1)
 
 
+class ReviewCheckoutTest(unittest.TestCase):
+    def init_repo(self, root: Path) -> str:
+        root.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.email", "parnas@example.invalid"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Parnas Test"], cwd=root, check=True)
+        (root / "review.txt").write_text("review head\n", encoding="utf-8")
+        subprocess.run(["git", "add", "review.txt"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-qm", "test: seed review head"], cwd=root, check=True)
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def test_reuses_clean_linked_worktree_at_review_head(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "repo"
+            head = self.init_repo(root)
+            linked = base / "repo.worktrees" / "123-review"
+            linked.parent.mkdir()
+            subprocess.run(
+                ["git", "worktree", "add", "-q", "-b", "123-review", str(linked), head],
+                cwd=root,
+                check=True,
+            )
+
+            checkout, isolated = mr_context.select_review_checkout(
+                str(linked), base / "review-output", head, isolate=True
+            )
+
+            self.assertEqual(Path(checkout), linked.resolve())
+            self.assertIsNone(isolated)
+            self.assertFalse((base / "review-output" / "worktree").exists())
+
+    def test_dirty_checkout_uses_isolated_detached_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "repo"
+            head = self.init_repo(root)
+            (root / "review.txt").write_text("dirty\n", encoding="utf-8")
+            out = base / "review-output"
+
+            checkout, isolated = mr_context.select_review_checkout(
+                str(root), out, head, isolate=True
+            )
+
+            expected = (out / "worktree").resolve()
+            self.assertEqual(Path(checkout), expected)
+            self.assertEqual(Path(isolated), expected)
+            actual_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=expected,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual(actual_head, head)
+
+
 if __name__ == "__main__":
     unittest.main()
