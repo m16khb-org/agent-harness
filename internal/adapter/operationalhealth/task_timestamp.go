@@ -19,8 +19,12 @@ func parseTaskCompletedAtForVersion(raw string, contractVersion int) (time.Time,
 	if parsed, err := time.Parse(time.RFC3339Nano, trimmed); err == nil {
 		return parsed, nil
 	}
-	// Orca payload contract v1 emitted this UTC layout. Once the external
-	// contract version advances, only RFC3339Nano remains accepted.
+	// Orca payload contract v1 emitted this UTC layout. The payload has no
+	// version field, so expiry is a source-controlled migration: after every
+	// supported Orca CLI release is observed returning RFC3339Nano completed_at
+	// values and its release contract drops the legacy layout, bump this
+	// constant and update TestTaskCompletedAtCompatibilityExpiresAfterContractV1
+	// in the same change.
 	if contractVersion != taskCompletedAtCompatibilityContractV1 {
 		return time.Parse(time.RFC3339Nano, trimmed)
 	}

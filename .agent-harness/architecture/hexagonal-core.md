@@ -110,8 +110,8 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 ## 현재 hardening 추가 사항
 
 - `internal/port`는 Orca probe/run/worktree/terminal/task/dispatch 역할 interface와 공용 `InstallPlan`을 소유한다. 기존 `OrcaClient` aggregate와 `omo.InstallPlan` alias는 내부 소비자의 type/method-set 호환을 위한 명시적 예외다.
-- gates legacy ledger 이름은 persisted schema v1 migration 전까지, Orca legacy UTC task timestamp는 payload contract v1 종료 전까지 유지한다. 시간 경과만으로 호환 경로를 제거하지 않는다.
-- Orca/operational-health fan-out은 bounded `errgroup`을 쓰되 indexed error와 partial finding을 보존한다. channel wait는 append-only immutable record ID를 한 호출 안에서만 기억하며, cross-process writer 때문에 process-global cache나 in-process notification을 authority로 삼지 않는다.
+- gates legacy ledger 이름은 persisted schema v1 migration 전까지 유지한다. Orca task payload에는 version 필드가 없으므로 legacy UTC timestamp는 지원 대상 Orca CLI 전부의 `completed_at` readback이 RFC3339Nano임을 확인하고 release contract에서 legacy layout이 제거된 때에만 소스 상수를 올려 닫는다. 시간 경과만으로 호환 경로를 제거하지 않는다.
+- Orca/operational-health fan-out은 bounded `errgroup`을 쓰되 indexed error와 partial finding을 보존한다. `quality inspect`의 5-collector fan-out은 모든 read-only 결과를 오류와 함께 끝까지 회수해야 하므로 조기 취소하지 않는 명시적 예외다. 각 collector는 공유 쓰기 없이 버퍼 1 채널에 정확히 한 번 전송해 수신 순서와 무관하게 종료하며, 한 collector 오류도 나머지 진단을 버리지 않는다. channel wait는 append-only immutable record ID를 한 호출 안에서만 기억하며, cross-process writer 때문에 process-global cache나 in-process notification을 authority로 삼지 않는다.
 - `internal/domain/cli`가 canonical usage text와 command vocabulary를 소유하고 `cmd/harness/*cli`가 flag/출력/dispatch를 담당한다.
 - `internal/domain/mcp`가 advertised catalog와 dispatch group을 소유하고 `cmd/harness/mcpcli`가 stdio/JSON-RPC와 handler wiring을 담당한다. `internal/adapter/mcp`는 capture-only conformance probe로 제한한다.
 - `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
