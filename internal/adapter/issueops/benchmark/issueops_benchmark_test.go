@@ -68,8 +68,8 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresGuidelineReference(t *testing.T) 
 	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "guideline", CriticalFailures: []string{"missing issue/pr guideline reference"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.GuidelineRef = ""
-	artifact.IssueDraft = strings.ReplaceAll(artifact.IssueDraft, "Guideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n", "")
-	artifact.PRDraft = strings.ReplaceAll(artifact.PRDraft, "Guideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n", "")
+	artifact.IssueDraft = strings.ReplaceAll(artifact.IssueDraft, "Guideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n", "")
+	artifact.PRDraft = strings.ReplaceAll(artifact.PRDraft, "Guideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n", "")
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
 	if score.Passed {

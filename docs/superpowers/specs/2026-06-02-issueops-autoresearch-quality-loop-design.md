@@ -108,7 +108,7 @@ Expected implementation surfaces:
 - `internal/core/issueops_benchmark_test.go`: deterministic gate coverage.
 - `cmd/harness/issueops.go`: CLI output or command wiring if needed.
 - `cmd/harness/issueops_benchmark_test.go`: CLI behavior tests.
-- `docs/superpowers/specs/issueops-issue-pr-guidelines.md`: only if the benchmark requires clearer quality wording.
+- `skills/issueops-create-issue/SKILL.md` and `skills/issueops-create-pr/SKILL.md`: only if the benchmark requires clearer quality wording.
 - `testdata/issueops/fixtures/*.json`: only when adding a new fixture that exposes a real gap.
 
 The implementation should prefer documenting and enforcing the loop through existing IssueOps benchmark structures before adding new command surfaces.

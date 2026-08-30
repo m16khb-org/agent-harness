@@ -206,12 +206,12 @@ Add:
 func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 	fixture := IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
 	artifact := IssueOpsBenchmarkArtifact{
-		IssueDraft: "## Problem\n\n문제 요약\n\n## Current Evidence\n\n현재 근거\n\n## Acceptance Criteria\n\n완료 기준\n\n## Non-goals\n\n비목표\n\n## Verification\n\n검증\n\n## Feedback Log\n\n피드백 기록\n\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
+		IssueDraft: "## Problem\n\n문제 요약\n\n## Current Evidence\n\n현재 근거\n\n## Acceptance Criteria\n\n완료 기준\n\n## Non-goals\n\n비목표\n\n## Verification\n\n검증\n\n## Feedback Log\n\n피드백 기록\n\nGuideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n",
 		Plan: "Run: go test ./... -count=1\n",
 		TDDPlan: "Write failing test before implementation.\n",
 		TaskBreakdown: "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.\n",
 		SubagentPrompts: "You are not alone in the codebase. Do not revert others. Own internal/core only.\n",
-		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
+		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n",
 		PhaseChoices: "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName: "feature/1-issueops-quality-benchmark",
 		WorktreePath: "/repo.worktrees/feature-1-issueops-quality-benchmark",

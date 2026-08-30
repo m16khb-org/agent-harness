@@ -5,500 +5,212 @@ description: Run an issue-driven work cycle from problem discovery through domai
 
 # IssueOps
 
-Use this skill when the user wants a repeatable cycle from a vague problem to a GitHub/GitLab issue, implementation plan, tested change, AI slop cleanup, feedback loop, and PR/MR.
+IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/MR까지
+하나의 durable record로 연결하는 lifecycle router다. 이 파일은 **단계 선택과
+공통 불변식만** 설명한다. 현재 단계의 전용 스킬·reference만 읽는다.
 
-This file is the phase router. Load only the referenced phase document needed for the current step.
+## 책임 분리
 
-## Core Contract
+| 현재 작업 | owner |
+|---|---|
+| 전체 lifecycle·phase·execution lease | `issueops` |
+| parent Issue·provider-native child | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) |
+| GitHub PR·GitLab MR publication | [`issueops-create-pr`](../issueops-create-pr/SKILL.md) |
+| issue branch·worktree | [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md) |
+| merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
 
-The workflow is advisory and agent-driven. Hooks may suggest this skill, but hooks must not create issues, edit files, run tests, wait on background jobs, or open PRs/MRs by themselves.
+Issue 단계에서 MR 스킬을, PR/MR 단계에서 Issue 스킬을 함께 읽지 않는다.
+Provider mutation을 raw `gh`/`glab` 명령으로 우회하지 않는다.
 
-The cycle has one durable state record with one `Execution`. Use `agent-harness issueops ... --json` or the single MCP tool `issueops_execution` when execution state must survive compaction or another host. Execution v1 owns one canonical worktree and one generation-fenced native holder. Its modes are `direct` and `orca`; Orca is a workspace/owner adapter, never a second workflow authority.
+## Core contract
 
-The exact lifecycle ID selects one isolated cycle even when several active cycles share the source checkout. Run `agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto` as a preview, then execute its `next_command`, which carries the readiness fingerprint into an otherwise identical confirm. Read back `execution.selection` (`requested_mode`, `resolved_mode`, probe facts/codes, fallback, fingerprint, selection time, and explicit-direct reason). `--mode direct` is exceptional and requires `--direct-reason`; automated children must not use it to bypass Orca readiness. A direct holder continues in the canonical worktree. An Orca owner verifies the sealed issue/context digests and claims the exact generation with `--claim-current-token`; the CLI resolves the private token path internally. The active holder implements, verifies, publishes, and calls `issueops execution complete`; merge and destructive cleanup remain separate human-authorized operations. GitHub Orca preserves the #176 ordering: `branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`. `gh issue develop` (its branch-creating forms) is forbidden on this path because it can link the remote branch at a later base-branch HEAD; the read-only `gh issue develop --list` reader that the sealed owner packet renders is the sanctioned link check. The owner therefore starts inside a window where the link does not exist yet, and that absence is expected, not a blocker: it waits with `agent-harness issueops branch await-link --id "$ISSUEOPS_ID"` (read-only, bounded) before recording `--link-verified`. The coordinator must create the linked branch promptly, because that bounded wait is what the owner is spending.
-
-IssueOps is a main-agent state machine:
+사용자 관점 흐름:
 
 ```text
-problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup
+problem → grill → issue → plan → compatibility-review → implement
+        → ai-slop-clean → feedback → pr → cleanup
 ```
 
-`issue` and `cleanup` are workflow steps, not `issueops phase --to` values. The durable phase enum is `problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done`; `done` is entered atomically by `issueops execution complete`, never by `phase --to done`.
+durable phase 값은 `problem`, `grill`, `plan`, `compatibility-review`,
+`implement`, `ai-slop-clean`, `feedback`, `pr`, `done`이다. `issue`는
+linkage 단계이고 `cleanup`은 `done` 뒤의 후처리다. `done`은
+`issueops execution complete`만 기록한다.
 
-`agent-harness issueops ...` CLI/MCP commands own durable state, phase transitions, readiness, and remote artifact records. The only installed hook injects the project-doc catalog at `SessionStart`; no hook blocks tool events or performs workflow work: no issue creation, provider mutation, file edit, test run, background wait, branch/worktree preparation, PR/MR creation, review reply, merge, or cleanup.
+한 cycle은 다음 authority를 가진다.
 
-### IssueOps Benchmark Artifact Contract
+- exact lifecycle ID
+- 하나의 canonical worktree
+- 하나의 generation-fenced native holder
+- 하나의 linked Issue와 검증된 PR/MR
 
-When IssueOps contributes to a benchmark response, include a compact labeled evidence block. The block must describe durable workflow state, not just intentions.
+`agent-harness issueops ... --json`과 MCP `issueops_execution`이 durable
+state를 소유한다. hook은 SessionStart에서 project-doc context만 제공한다.
+Issue 생성, 파일 수정, 테스트, 대기, branch/worktree 준비, PR/MR publication,
+reply, merge, cleanup을 hook에 맡기지 않는다.
+
+## 단계별 라우팅
+
+| 단계 | main agent가 남길 증거 | 읽을 문서·스킬 |
+|---|---|---|
+| problem | 요청, 성공 기준, 제약, ambiguity, non-goal, intent class | `von-neumann` |
+| grill | code/docs/runtime 조사, domain model·용어 검토 | `issue-preflight.md`, 필요 시 `berners-lee` |
+| issue | 한국어 body, score, label/assignee, URL readback, split/no-split | `issueops-create-issue` |
+| plan | plan-prep 4항목, 설계, 대안, 위험, 검증 | `von-neumann`, `codd`, `dijkstra`, `karpathy` |
+| compatibility-review | 호환성, side effect, rollback, blocker, 승인 | `evidence-contract.md` |
+| implement | current generation, TDD, focused verification | `execution.md`, 필요 시 `hopper`·`turing` |
+| ai-slop-clean | diff 기반 cleanup, 전후 품질 지표, 재검증 | `ai-slop-clean.md`, `shannon` |
+| feedback | contract change 반영, review thread 검증 | `review-feedback.md` |
+| pr | readiness, 한국어 body, actor/branch/URL readback | `issueops-create-pr` |
+| cleanup | merge evidence, preview/fingerprint, 사용자 승인 | `issueops-cleanup`, `cleanup-state.md` |
+
+최신 사용자 지시가 이전 계획과 충돌하면 최신 지시를 반영하고 durable
+contract를 갱신한다. 충돌하지 않는 기존 목표는 유지한다.
+
+## 시작 순서
+
+1. `issueops list --repo "$PWD" --json`으로 동일 repo의 cycle을 확인한다.
+2. 없으면 `issueops start`; 있으면 exact ID로 `status`를 읽는다.
+3. `agent-harness issueops intent record`로 요청 계약을 기록한다.
+4. `issueops plan-prep record`로 다음 네 항목을 evidence 또는 waive reason과
+   함께 기록한다.
+   - decisions
+   - related issue/label score
+   - web research
+   - codebase survey
+5. Issue는 `issueops-create-issue`로 생성·연결한다.
+6. Issue 번호로 시작하는 branch 이름을 정한다. `feature/123-*`가 아니라
+   `123-*` 형식이다.
+7. base SHA를 고정하고 plan을 stage한 뒤
+   `agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto`를
+   preview한다. 출력된 readiness fingerprint가 든 `next_command`로 confirm한다.
+
+`--mode direct`는 예외이며 `--direct-reason`이 필요하다. Orca는 owner/workspace
+adapter일 뿐 두 번째 workflow authority가 아니다. GitHub Orca의 sealed
+base-SHA linked-branch 순서는 다음과 같다.
+
+`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`
+
+status의 selection에서 `requested_mode`, `resolved_mode`, readiness fingerprint를
+다시 읽는다. 상세 복구 명령은 `execution.md`만 소유한다.
+
+## Gate map
+
+readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 state owner를
+실행한다.
+
+| missing state | owner command/reference |
+|---|---|
+| `intent_contract` | `issueops intent record` |
+| `plan_prep_*` | `issueops plan-prep record` |
+| Issue URL·label·assignee·hierarchy | `issueops-create-issue` |
+| `design_review` | `agent-harness issueops design review` |
+| `compatibility_review` | `issueops compatibility review` |
+| `devils_advocate_review` | `issueops devils-advocate review` |
+| branch·worktree·plan·execution lease | `issueops-branch-worktree`, `execution.md` |
+| `ai_slop_clean` | `issueops ai-slop-clean record` |
+| contract feedback Issue 반영 | `issueops feedback mark-issue-updated` |
+| PR/MR body·target·actor·readback | `issueops-create-pr` |
+| cleanup readiness | `issueops-cleanup`, `cleanup-state.md` |
+
+승인된 design review에는 refactor plan, 대안, 위험, 검증이 있어야 하고 open
+question은 없어야 한다. compatibility review는 blocker가 없어야 한다.
+plan이 바뀌면 plan hash에 묶인 devil's-advocate·implementation review freshness를
+다시 확인한다.
+
+## Child와 delegation
+
+원격 parent/child 분리는 `issueops-create-issue`가 소유한다. 기본은 no split,
+child는 `[p]`가 기본이고 `[s]`는 이름 있는 hard dependency가 있을 때만 쓴다.
+
+실행 중 delegated child cycle은 별도 개념이다. 다음 조건이 모두 맞을 때만
+`issueops child start`를 사용한다.
+
+- parent가 `implement` phase다.
+- design·compatibility·devil's-advocate gate가 승인 또는 명시적으로 waive됐다.
+- plan이 sub-agent pattern, scope, acceptance, verification, fallback,
+  tradeoff를 기록한다.
+
+parent는 child record를 대신 수정하지 않는다. parent가 소유하는 것은
+`accept`, `reject`, `drop` verdict뿐이다. 자세한 prompt와 scope-drift 규칙은
+`orchestration.md`를 따른다.
+
+## 구현·검증 규칙
+
+- behavior change는 focused failing test에서 시작해
+  `RED→GREEN→SURFACE→CLEAN` 순서로 검증한다.
+- 작업은 canonical worktree에서만 한다. source checkout에 구현하지 않는다.
+- API/DTO/OpenAPI 변경은 `.agent-harness/OPEN_API_SPEC.md` gate를 적용한다.
+- live runtime, review reply, completion hygiene가 요청 범위라면 테스트 통과만으로
+  완료를 선언하지 않는다.
+- ai-slop-clean은 실제 diff가 생긴 뒤 실행하고, cleanup 후 관련 검증을 다시
+  실행한다.
+- Git staging/push는 `atomic-commit-push`, 고급 history 작업은 `torvalds`가
+  소유한다. 사용자 지시 없이 commit하거나 push하지 않는다.
+- destructive cleanup은 exact target과 fingerprint를 preview한 뒤 별도 사용자
+  승인을 받는다.
+
+## Remote write 공통 게이트
+
+Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 소유한다.
+공통 규칙만 유지한다.
+
+- score 결과를 join한 뒤 threshold 이상 label만 적용한다.
+- label과 concrete assignee가 없으면 쓰지 않는다.
+- title/body는 한국어 중심이며 secret 원문을 포함하지 않는다.
+- preview와 동일한 요청에만 `--confirm`을 추가한다.
+- provider 호출 결과가 불명확하면 자동 retry하지 않고 reconcile한다.
+- contract-changing feedback가 생기면 원격 Issue body를 갱신하고 durable
+  state에 반영 사실을 기록한다.
+
+## Reference map
+
+현재 단계에 해당하는 파일만 읽는다.
+
+| reference | 책임 |
+|---|---|
+| `references/issue-preflight.md` | ambiguity 감소, ideal Issue prompt |
+| `references/remote-issue.md` | provider relation·hierarchy·한국어 공통 규칙 |
+| `references/evidence-contract.md` | domain/API/live/review/completion evidence |
+| `references/worktree-context.md` | branch·worktree·local config |
+| `references/execution.md` | direct/Orca, generation, claim/recovery/publication |
+| `references/orchestration.md` | delegated child contract |
+| `references/ai-slop-clean.md` | diff cleanup |
+| `references/review-feedback.md` | feedback·thread resolution |
+| `references/cleanup-state.md` | post-merge cleanup |
+| `references/operational-start.md` | start/resume command sequence |
+
+## Stop conditions
+
+다음 조건이면 다음 phase나 remote write로 진행하지 않는다.
+
+- provider, credentials, project, Issue owner, target branch가 모호하다.
+- intent·success criteria·domain term 해석이 구현을 바꿀 만큼 갈린다.
+- design open question, compatibility blocker, stale review가 남아 있다.
+- branch/worktree/plan/generation/actor가 current record와 맞지 않는다.
+- strict PR readiness가 Issue, branch link, plan, worktree, upstream,
+  ai-slop-clean, contract feedback를 누락했다고 보고한다.
+- label·assignee·한국어 body·target branch·live readback이 검증되지 않았다.
+- merge evidence 없이 cleanup을 요청한다.
+
+## IssueOps benchmark artifact contract
+
+Benchmark 응답에는 의도나 계획만 쓰지 말고 다음 labeled evidence를 넣는다.
 
 ```text
 Durable state record: <IssueOps id, phase, readiness gates, state path/tool output>
-Phase routing: <problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup decisions>
-Flow evidence: <issue, plan, TDD, subagent decision, feedback, PR/MR artifacts>
-Hook boundary: <what hooks may suggest/block and what only the main agent/CLI owns>
+Phase routing: <problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup>
+Flow evidence: <Issue, plan, TDD, sub-agent decision, feedback, PR/MR artifacts>
+Hook boundary: <what hooks may suggest and what only the main agent/CLI owns>
 Cleanup/readiness evidence: <strict readiness, merge/cleanup status, remaining choices>
 ```
 
-If no IssueOps cycle exists, do not fabricate one. Record that the workflow is not active and route to the appropriate standalone skill.
-
-### Flow Boundary Matrix
-
-| Phase area | Automatic main-agent loop | Hook enforcement | Human-in-the-loop |
-| --- | --- | --- | --- |
-| Problem / Grill | Gather repo/docs/code/runtime evidence; draft intent class; ask only on blocking ambiguity. | UserPromptSubmit routing hint only. | Success criteria, scope, or terminology changes the implementation. |
-| Issue Contract | Record intent; run issue-preflight; score related issues and labels; pass Korean artifact gate; create/link the remote issue when credentials, target, owner, and base branch are clear. | Korean remote artifact, VCS linking metadata, missing label, and missing assignee guards. | Credentials, target project, owner, base branch, or selected label is unclear. |
-| Large Issue Breakdown | Decide split/no-split; create provider-native child tasks; verify hierarchy, labels, assignee, and parent body. | VCS artifact guard blocks body-only hierarchy when native linking is required. | Child scope is a product decision or provider hierarchy support/permission is missing. |
-| Plan / Design Review | Record plan-prep evidence or waivers and approve the design with risks, alternatives, and verification; author the child plan in a coordinator temporary file for pre-prepare staging. | No hook enforcement. | Open question, risky alternative, or refactor boundary remains unresolved. |
-| Branch / Worktree Prep | Pin the exact base SHA and stage the approved plan. Direct mode and GitLab verify the provider-linked branch before prepare; GitHub Orca follows the #176 local-only ordering above and links through `createLinkedBranch` only after Orca prepare. Record compatibility review before `implement`. | Worktree guard blocks source-checkout mutation and wrong canonical-worktree targets; an Orca execution blocks mutation until the native owner claims. | Base branch is user-selected/unclear/conflicting, dependency/config linking has secret risk, or external mutation recovery is ambiguous. |
-| Compatibility Review | Review backward compatibility, side effects, rollback plan, verification evidence, and blockers; record approval with `issueops compatibility review`. | Hook may only block missing durable state/readiness; it does not judge compatibility or side effects. | Any unresolved blocker, public contract risk, migration risk, or rollback uncertainty remains. |
-| Implementation | The active native holder runs TDD, focused fixes, and verification. Sub-agents are used only for a documented net-positive pattern under the repository contract. | Worktree guard; staged-check and live-command guards where installed. Hooks do not decide sub-agent usage. | Failure classification, destructive migration, live access, product behavior, or sub-agent tradeoff judgment is unclear. |
-| AI Slop Clean | Inspect the actual diff, remove lazy artifacts, rerun targeted checks, record cleanup evidence. | Worktree guard remains active. | Cleanup would widen scope or require behavior changes. |
-| Feedback | Classify CI/review/user feedback; fix valid items; update remote issue body for contract changes. | Numbered next-action shape and remote issue edit gates. | Contract change, noisy review judgment, or priority requires user choice. |
-| PR/MR | Run strict readiness; draft/create PR/MR with target branch, labels, assignee, and Korean body verified. | PR/MR base/target, label, assignee, Korean body, and numbered next-action guards. | Merge approval, target change, reviewer disagreement, or non-green CI waiver. |
-| Cleanup | Verify merge/worktree/branch/child state; present cleanup choices before deletion. | No hook enforcement. | Worktree/local branch/remote branch deletion, force deletion, parent issue closure. |
-
-When a readiness command reports a missing gate, the automatic loop runs the command that owns that state and retries readiness. The main agent decides whether continuing is safe, reversible, and aligned with the latest user instruction.
-
-Required phases:
-
-1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
-2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
-3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, ambiguity ledger, and `--intent-class` with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions, applying the `fluent-korean` writing rules bound by `references/remote-issue.md` -> "Remote Artifact Writing Quality". Before entering the `plan` phase, satisfy the plan-prep evidence gate with `agent-harness issueops plan-prep record`: prior-decision lookup, related-issue scoring, web research, and the codebase survey each take evidence or a waive reason. The codebase survey is the anti-"requirements-only" gate: never draft the issue contract or plan from the request text alone — sweep the whole codebase with the available tools (rg, CodeGraph, LSP) for every symbol, file, call path, and existing similar implementation the change touches, and record what was searched and found. The gate is enforced for non-trivial intent classes (trivial skips it) and blocks `plan`-phase entry, not design review.
-4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. The default decision is no split. Split only when one issue would be unsafe because the work is genuinely large, risky, or hides independent delivery decisions, or when the user/owners explicitly requested for collaboration. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
-5. Design: record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`. An approved design review is required before a supervised worktree may be created.
-6. Execution selection, worktree, and plan: after approving the design, pin the exact base SHA and write the child plan to a coordinator temporary file outside the source checkout. Direct mode and GitLab create and verify the provider-linked branch before prepare. GitHub Orca instead records the base SHA without `--link-verified`, then follows the #176 ordering above so Orca owns local branch/worktree creation and GraphQL links that same branch name at the sealed base afterward. Stage the plan with `agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file <TEMP_PLAN> --json`, then preview and confirm `agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto`. Load `references/execution.md` for the exact direct/Orca contract. `auto` chooses Orca only when readiness succeeds before mutation; otherwise it resolves to direct. Any ambiguity after an external mutation fails closed and uses `issueops execution reconcile`, never another create attempt. Orca materializes the staged bytes at `.agent-harness/artifact/plan.md`, persists that child path atomically with the worktree receipt, and seals the same digest before owner launch; remove the temporary source only after readback. Set up dependencies in the returned canonical worktree with the repository's documented command.
-7. Compatibility review gate: before entering implementation, record `agent-harness issueops compatibility review`. Capture backward compatibility findings, side effects, rollback plan, verification evidence, blockers, and approval. Approved compatibility reviews must have no blockers.
-8. Implementation: the active holder performs TDD directly. Sub-agents are spawned only for a net-positive plan matching the 12 documented patterns; record the objective, pattern slug, benefit, tradeoffs, scope, verification, and fallback in the implementation plan or evidence. Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the design review is approved with no open questions, the canonical worktree and lease are ready, compatibility review is approved with no blockers, and a devil's-advocate verdict is recorded.
-   Task gate ledger: for non-trivial implementation, write the issue's acceptance criteria as a gate ledger in the canonical worktree before coding. Set `GATE_FILE=".agent-harness/issues/<provider-issue-number>/gates.md"` from the linked issue URL (the per-issue artifact folder, see `.agent-harness/CONVENTIONS.md` → "이슈 산출물 레이아웃"), then run `agent-harness gates init --file "$GATE_FILE" --scope "<issue title>"` with one `--gate "G<n>: <outcome> | CHECK: <command> | EXPECT: <decisive output>"` per acceptance criterion (outcomes, not activities; manual outcomes take no CHECK). Never create the IssueOps ledger as root `GATES.md` or under root `gates/`: concurrent worktrees would commit different task ledgers at a shared top-level path and clutter the source root. Commit the namespaced ledger, then run `agent-harness gates check` at each verification pass. A checked box is a claim and `EVIDENCE:` is the proof — `gates check` flips boxes only from real command output. A `CHECK:` is one argv command, not a shell line: `&&`, `||`, `;`, `|`, `2>&1` outside quotes are refused by `gates init` and left `unchecked` by `gates check` (wrap a sequence in one script or `python3 -c`), and a literal `EXPECT:` must be a whole output line or the line's leading token (`ok` matches `ok  \tpkg`, not `docs-ok: error`); use `/regex/` for anything else. A CHECK must also exit 0 — with or without EXPECT — so a failing `go test ./...` never counts as met because another line says `ok`; wrap tools whose non-zero exit is normal (`grep`/`rg` with no match) in `python3 -c` that exits 0. An honestly impossible gate gets `agent-harness gates abandon --file "$GATE_FILE" --gate <id> --reason "..."` instead of silent removal. If an unmerged current-cycle branch already has a root `GATES.md`, `.agent-harness/gates/issue-<number>.md`, or `gates/issue-<number>.md`, move that file once to `$GATE_FILE` and do not maintain both paths — the harness fails closed with `duplicate_issue_artifact:<number>` while the same issue has a ledger at both the canonical and a compatible path. The harness blocks `issueops phase --to pr` with `gates_incomplete:<file>` while the committed ledger has unmet gates (readiness judges only this cycle's `issues/<number>/gates.md` and ledgers without a number — other issues' ledgers are listed once as `gates_skipped:<count> (…)`), so `agent-harness gates report` must show all gates met or abandoned before requesting the PR phase.
-9. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
-10. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-11. PR/MR and completion: the active generation creates the draft PR/MR only after strict readiness and verification. Read back the durable remote artifact with `issueops remote verify-artifact`, then run `issueops execution complete` with the exact final HEAD, Turing report, artifact URL, evidence, actor, generation, and `--confirm`.
-
-### Delegated Child Cycles
-
-Delegated child cycles let a parent IssueOps cycle coordinate bounded sub-agent work without asking hooks or the harness to spawn agents. The main agent owns dispatch; `agent-harness` owns durable state, gates, and owner commands.
-
-Delegation preconditions:
-
-- The parent is in `implement phase`.
-- Required reviews are approved reviews: design review, compatibility review, and devil's-advocate review are pass or explicitly waived according to the normal implement-entry gate.
-- The implementation plan or durable evidence names the documented sub-agent pattern and records scope, verification, fallback, tradeoffs, and net-positive rationale.
-
-Owner commands:
-
-- Start a child: `issueops child start --parent "$ISSUEOPS_ID" --branch "$CHILD_BRANCH" --title "$TITLE" --scope "$SCOPE" --acceptance "$CRITERION" --json`
-- Inspect children: `issueops child status --parent "$ISSUEOPS_ID" --json`
-- Validate a done child: `issueops child accept --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --evidence "$EVIDENCE" --json`
-- Send a child back for redo: `issueops child reject --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --reason "$REASON" --json`
-- Remove a child from the parent gate: `issueops child drop --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --reason "$REASON" --json`
-
-Verdict table:
-
-| Verdict | Meaning | Gate effect |
-|---|---|---|
-| `accepted` | The main agent reviewed the child evidence and accepts it as satisfying the delegated contract. | Child no longer blocks parent PR readiness. |
-| `rejected` | The child result is not acceptable yet; dispatch a revised prompt or continue the child cycle. | Parent remains blocked as `child_rejected_unresolved` until accept or drop. |
-| `dropped` | The main agent intentionally removes the child from the parent contract with an auditable reason. | Child no longer blocks the parent gate, but the reason remains in state. |
-
-Do not mutate child records from the parent to "fix" them. The child owns its own cycle; the parent owns only the child index and validation verdict. Use `references/orchestration.md` for the child contract prompt, scope-drift stop rule, and validation rubric.
-
-### Large Issue Breakdown Gate
-
-Run this gate after the remote Issue Contract exists and before entering the IssueOps `plan` phase.
-
-```text
-Before entering the IssueOps `plan` phase, evaluate whether the current remote issue is too large to implement as one safe work item.
-
-### When To Split
-
-The default decision is no split. A directly executable issue stays as one issue even when it has several checklist items.
-
-Split the issue into provider-native child tasks only when at least one primary split trigger is true:
-
-- One issue would be unsafe because the work is genuinely large, risky, or would hide independent delivery decisions, verification, rollback, or review boundaries.
-- The user, product owner, or multiple implementers explicitly requested for collaboration, parallel ownership, or separate assignees.
-
-When splitting, design every child to be `[p] parallelizable` by default. Decompose at the `[p]` unit wherever the scope boundary allows an independent start and independent verification; reserve `[s] sequential` only for a child with a genuinely unavoidable cross-child dependency — where one child's code, schema, remote state, migration, fixture, or decision output is a hard input to another and no contract/interface decoupling can remove that ordering. Before marking a child `[s]`, state the specific unavoidable dependency that blocks parallelization (for example, a shared database migration that must land before dependent code compiles). If you cannot name a concrete hard dependency, the child must be `[p]`. Name each child's prerequisites (`none` for `[p]`) and group children into execution waves. `[p]` means the task can start without another child task's output and its verification can run independently. `[s]` means the task must wait for another child's output. The `[p]`/`[s]` prefix is mandatory in each child title and in the parent child-task section. If this classification is unclear, stop for a product/engineering choice instead of guessing.
-
-Supporting signals are not sufficient by themselves. Use them only as evidence for one of the primary split triggers:
-
-- The issue has multiple independently verifiable acceptance criteria.
-- The work touches multiple modules, layers, providers, or runtime concerns.
-- The implementation naturally has ordered phases such as routing/config, request shape, lifecycle, usage/cost, migration, or verification.
-- A single MR would hide risky behavior changes behind unrelated setup work.
-- The issue contains research findings, open assumptions, or external API semantics that need separate implementation validation.
-- The estimated work is larger than one focused implementation pass.
-- The parent issue reads like an umbrella/epic rather than a directly executable task.
-
-Do not split only because the issue body is long, has multiple bullets, touches multiple files, or can be described as phases. Split only when keeping it as one issue would create concrete delivery risk, or when collaboration requires separate child ownership. If the issue is small enough for one focused owner and one reviewable MR, record a no-split rationale.
-
-### Required Behavior
-
-If splitting is needed:
-
-1. Keep the original issue as the umbrella parent.
-2. State the split trigger in the parent body: either `one issue would be unsafe` with the concrete risk, or `explicitly requested for collaboration` with the owner/assignee boundary.
-3. Create provider-native child work items/tasks with `agent-harness issueops remote create-child --id ID --title TEXT --body TEXT --label LABEL --assignee USER --confirm --json`, not ordinary sibling issues.
-   - GitHub: create sub-issues if supported by the project workflow.
-   - GitLab: create child `Task` work items under the parent issue/work item through the GraphQL work-item hierarchy path owned by `remote create-child`. Do not fall back to the REST Issues API `issue_type=task` path or ordinary `glab issue create` as the creation/attachment mechanism.
-4. Each child task must have:
-   - a Korean title
-   - a mandatory title prefix: `[p]` for `parallelizable` (default) or `[s]` for `sequential` (only with a named unavoidable dependency)
-   - a Korean body
-   - clear scope
-   - execution class: `[p] parallelizable` (default) or `[s] sequential` (only when a hard cross-child dependency is stated)
-   - prerequisites/dependencies, or `none`
-   - for `[s]` only: the specific unavoidable dependency that prevents parallelization (omit for `[p]`)
-   - execution wave/order
-   - acceptance criteria
-   - verification commands or evidence
-   - non-goals when needed
-   - inherited labels from the parent unless explicitly inappropriate
-   - assignee matching the parent/current owner
-5. Link every child task to the parent using the provider-native hierarchy. The preferred command is `remote create-child`; it creates the child, attaches the hierarchy, verifies labels/assignees, and records the child link. `link-child` is only for an already-created provider-native child URL.
-6. Update the parent issue body, not a comment, with:
-   - `## 하위 Task`
-   - each child task link
-   - recommended execution order
-   - `[p]`/`[s]` prefix for every child link
-   - execution waves grouping parallelizable (`[p]`) children first, then sequential (`[s]`) children if any
-   - prerequisites/dependencies for every child, and the unavoidable dependency that forces each `[s]` child
-   - scope summary per child
-   - note that the parent is now the umbrella coordination issue
-7. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
-8. Verify after creation:
-   - child items are the correct work item type
-   - child-parent relationship exists
-   - labels are present
-   - assignee is present
-   - parent body contains the child task section
-9. If incorrect sibling issues were accidentally created, do not silently reuse them.
-   - Create the correct child tasks.
-   - Close the incorrect issues with a short correction note.
-   - Reflect only the correct child tasks in the parent body.
-
-### If Not Splitting
-
-If the issue is small enough, record why it remains a single task before entering `plan`.
-
-Use this format:
-
-Large Issue Breakdown Gate: no split
-
-근거:
-- <why the issue is directly executable>
-- <why acceptance criteria do not need independent child tasks>
-- <expected implementation boundary>
-- <why no collaboration split was requested or needed>
-
-### Output Format
-
-After the gate, report exactly one of these:
-
-분리 결정: split
-
-Parent:
-- <parent issue URL>
-
-Default decomposition is all-`[p]` parallelizable children; include `[s]` lines only when a child has a stated unavoidable dependency. Omit every `[s]` example below when the split is fully parallelizable.
-Child tasks:
-1. [p] <child task URL> - <scope> - class: parallelizable - prerequisites: none - wave: <N>
-2. [s] <child task URL> - <scope> - class: sequential - prerequisites: <child URLs> - wave: <N>
-3. [p|s] <child task URL> - <scope> - class: parallelizable|sequential - prerequisites: <none or child URLs> - wave: <N>
-
-검증:
-- hierarchy verified
-- labels verified
-- assignee verified
-- parent body updated
-- execution waves and prerequisites documented
-
-or
-
-분리 결정: no split
-
-근거:
-- <reason>
-- <reason>
-
-다음 단계:
-- proceed to IssueOps plan phase for <issue URL>
-```
-
-## Agent-Harness Phase Assist Map
-
-IssueOps phases are supported by 12 agent-harness native skills covering strategy, research, design, execution, debugging, optimization, git operations, quality measurement, and cleanup. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP. Skills form a pipeline from problem discovery through PR/MR completion:
-
-```
-problem → grill → issue → plan → compatibility-review → implement → ai-slop-clean → feedback → pr → cleanup
-   │        │       │       │         │            │            │        │       │
-   ▼        ▼       ▼       ▼         ▼            ▼            ▼        ▼       ▼
-  von-    berners  von-     von-     turing      shannon      hopper   turing  torvalds
- neumann  -lee   neumann  neumann   dijkstra     (measure)    (diagnose)  (gate)  (cleanup)
-                    +codd    +codd    hopper     turing        turing   torvalds
-                   +karpathy (schema)  torvalds   (cleanup)    (steering)  +karpathy
-                   (prompt)          (commit)                           (adversarial)
-```
-
-| IssueOps phase | Agent-harness assist |
-| --- | --- |
-| **problem** | Use **`von-neumann`** when the request spans multiple modules, has unclear scope, or needs a decision-complete plan. Von Neumann follows "Explore Before Asking" — it grounds itself in the actual codebase before interviewing the user. Classify the intent (Trivial/Standard/Refactoring/Architecture/Research) to determine interview depth. |
-| **grill** | Use **`von-neumann`** Phase 1 (Ground) for codebase exploration, pattern discovery, and brownfield detection. Use **`berners-lee`** for external research: competitive analysis, library documentation comparisons, API reference discovery. Berners-Lee's Hyperlink Contract ensures every domain claim is cross-referenced against independent sources before the issue contract. Research reports are saved to `.agent-harness/research/<slug>.md`. |
-| **issue** | Run the issue-preflight deep-interview gate: use **`von-neumann`** Phase 2 (Interview + Clearance Checklist) to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries. For database-heavy work, invoke **`codd`** Step 1 (SURVEY) to capture DDL, row counts, and access patterns — schema constraints become issue constraints. Keep remote writes in the IssueOps remote artifact gates. |
-| **plan** | Use **`von-neumann`** Phase 3 (Plan Generation) to produce a decision-complete plan at `.agent-harness/issues/<provider-issue-number>/plan.md` (no linked issue: `.agent-harness/plans/<slug>.md`). Link it with `agent-harness issueops link-plan`. Von Neumann plans include a dependency matrix, parallel execution waves, and per-task QA scenarios. Use **`karpathy`** Phase 1-2 (SPECIFY + DRAFT) to optimize von-neumann's plan-generation prompt — calibrate model-specific constraints, structure primacy/recency zones, and add adversarial hardening so the generated plan is precise, testable, and free of ambiguity. For database schema changes, invoke **`codd`** Step 2 (NORMALIZE) to audit tables against 1NF→BCNF; normalization violations become plan tasks. For algorithmic work, invoke **`dijkstra`** Step 1-2 (ANALYZE + CLASSIFY) to identify the problem class and optimal algorithm — complexity targets become plan acceptance criteria. **Spawn `brooks` as a devil's-advocate sub-agent** (pattern #4, `devils-advocate-review`) on the completed plan and design review BEFORE implementation: Brooks separates essential from accidental complexity, defends conceptual integrity, exposes the second-system effect (gold-plating, speculative generality), and challenges schedule optimism (Brooks's Law, the mythical man-month). Brooks MUST run as an isolated sub-agent — never inline, because a plan's author carries sunk cost and cannot adversarially review their own plan. If Brooks returns `stop`, **take the feedback loop backward: regress the cycle to `grill`, re-investigate scope/domain, and re-plan** (the `plan` and `compatibility-review` ledger entries are marked stale per the backward-regression rule, retained as audit). A `revise` verdict is resolved by revising the plan and **re-running brooks on the revised plan** (round 3+ as a delta review: "verify these N findings, report only new blockers"); the recorded verdict carries the plan's sha256 (`reviewed_plan_digest`), so a verdict recorded against an older plan version blocks implement entry as `devils_advocate_review_stale`. `--waive` overrides a verdict on purpose; it does not mean "findings addressed". Record with `issueops devils-advocate review --reviewer-context subagent --finding ...` right after each round (a `pass` also needs at least one finding). No implementation until the clearance checklist passes and the design review is approved. |
-| **implement** | Use **`turing`** for evidence-bound execution: the main agent performs RED→GREEN→SURFACE→CLEAN TDD directly, drives Manual-QA across 4 channels (HTTP/tmux/browser/computer-use), and tracks quantitative metrics. Sub-agents only per the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). **`dijkstra`** optimizes algorithmic complexity (O(n²)→O(n log n)→O(n)) with benchmark evidence; every optimization must prove complexity class change via scaling tests. **`codd`** Step 3-4 (SCALE + INDEX) designs tables by expected row count and selects indexes with explicit write-penalty justification. **`hopper`** diagnoses test/debug failures via 7-step Hopper Method (REPRODUCE→TRANSLATE→ISOLATE→HYPOTHESIZE→VERIFY→FIX→LEARN). **`torvalds`** handles git operations: worktree creation, atomic commits per Conventional Commit + Lore format, and rebase/cherry-pick as needed. **`atomic-commit-push`** manages staged commits and push safety. |
-| **ai-slop-clean** | Use **`shannon`** Phase 0-1 (BASELINE + REGRESSION CHECK) to measure signal-to-noise ratio (SNR), entropy, and redundancy BEFORE cleanup. Use **`turing`** Final Quality Gate step 2 to remove lazy agent artifacts: obvious comments, dead scaffolding, over-defensive code, needless abstraction, duplication, oversized modules. Use **`karpathy`** Phase 3-4 (TEST + DIAGNOSE) to adversarial-test skill prompts used during implementation — detect prompt drift, injection vulnerabilities, and format degradation introduced during coding. Use **`dijkstra`** Step 5 (SIMPLIFY) for structural complexity reduction — replace deep nesting with guard clauses, eliminate modern GOTO patterns. Use **`shannon`** Phase 3 (GATE) to re-measure after cleanup and confirm SNR improved. Record before/after metrics as IssueOps evidence. |
-| **feedback** | Use **`turing`** Dynamic Steering to record feedback as structured evidence. For contract-changing feedback, update the remote issue body before continuing. For review feedback, answer in the original thread with verdict, evidence, and next action. Use **`hopper`** to diagnose reported bugs — reproduce the failure exactly, isolate the root cause, and deliver a verified diagnosis. Use **`berners-lee`** to research external root causes (upstream library bugs, known issues, changelog regressions). |
-| **pr** | Use **`turing`** Final Quality Gate: spawn an adversarial reviewer sub-agent (pattern #4, `devils-advocate-review`) with the full diff, all success criteria, shannon metrics, and all evidence. Use **`karpathy`** Phase 5 (REFINE) to harden the reviewer sub-agent prompt — add immutability clauses, injection barriers, and output format constraints so the reviewer cannot be redirected by the diff content and always produces a structured verdict. Run targeted verification, AI slop clean, re-verify, and reviewer check. The reviewer verdict is BINDING — unconditional approval only. Use **`torvalds`** for rebase/squash before PR submission, ensuring commit history is clean and atomic. Keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
-| **cleanup** | Use **`issueops-cleanup`** for the confirmed parent-issue closure plus local worktree/local branch deletion flow. It delegates typed Git removal to IssueOps and never folds remote branch deletion into the same authorization. Separately authorized remote-branch deletion still uses the typed `issueops cleanup remote-branch` preview/fingerprint/apply flow; **`torvalds`** is read-only Git verification here. Use **`turing`** cleanup receipt rules for QA resources. Keep merge evidence and cleanup decisions in `references/cleanup-state.md`. |
-
-### Karpathy is cross-cutting prompt augmentation (all phases)
-
-Prompt quality directly drives output quality, so **`karpathy` is not confined to the plan/ai-slop-clean/pr phases — it runs before every sub-agent dispatch and on every authored prompt in any phase.** Before spawning any sub-agent — von-neumann planning, the berners-lee researcher, the dijkstra/codd/hopper specialists, the **brooks** devil's advocate, or the turing reviewer — run `karpathy` (Phase 1-2 SPECIFY+DRAFT, plus Phase 5 REFINE for adversarial/reviewer prompts) to harden the dispatch prompt: state the success contract, add immutability/injection barriers, and constrain the output format. Treat an un-augmented sub-agent prompt as a defect on any quality-affecting task. This is the most leveraged, lowest-cost quality step in the cycle — use it aggressively, not occasionally.
-
-### Skill-by-Phase Reference
-
-| Skill | Phases involved | Role in IssueOps |
-|-------|----------------|------------------|
-| **von-neumann** | problem, grill, issue, plan | Strategic planning: intent classification, exploration, interview, decision-complete plan generation |
-| **berners-lee** | grill, issue, feedback | External research: parallel web searches, source cross-referencing, competitive analysis, library investigation |
-| **codd** | issue, plan, implement | Database design: schema survey, normalization audit, table sizing by row count, indexing, query optimization |
-| **dijkstra** | plan, implement, ai-slop-clean | Algorithm optimization: complexity analysis, optimal algorithm selection, O(n²)→O(n log n), structural simplification |
-| **hopper** | implement, feedback | Systematic debugging: reproduce, isolate, hypothesize, verify, fix, learn — 7-step method |
-| **turing** | implement, ai-slop-clean, feedback, pr, cleanup | Evidence-bound execution engine: RED→GREEN→SURFACE→CLEAN TDD, 4-channel QA, reviewer gate, metrics tracking |
-| **shannon** | ai-slop-clean | Quantitative quality measurement: SNR, entropy, redundancy — before/after metrics for ai-slop-clean gate |
-| **torvalds** | implement, pr, cleanup | Git operations: worktree, atomic commits, rebase, squash, post-merge cleanup, reflog recovery |
-| **karpathy** | **all phases (cross-cutting)** | Prompt augmentation before every sub-agent dispatch and on every authored prompt — plan-generation, research, specialist, devil's-advocate, and reviewer prompts. Prompt quality directly drives output quality; harden the dispatch prompt first. Use aggressively, not occasionally. |
-| **atomic-commit-push** | implement, pr | Staged commits and push safety: preflight, scope, Conventional Commit + Lore format |
-| **brooks** | plan, compatibility-review | Devil's advocate (**sub-agent only**): adversarial plan/design critique before implementation — essential vs accidental complexity, conceptual integrity, second-system effect, schedule honesty. Record the verdict with `issueops devils-advocate review --verdict pass\|revise\|stop --reviewer-context subagent\|inline --finding TEXT`; a recorded pass (or a `stop`/`revise` waived with `--waive --waiver-rationale TEXT`) **bound to the current plan's sha256** is a **fail-closed implement-entry gate** — a verdict recorded against an older plan version is `devils_advocate_review_stale` and needs a fresh round on the final plan. Rounds 1–2 review the whole plan, round 3+ is a delta review. A `stop`'s findings must be reflected into the issue (`issueops remote reflect-devils-advocate --confirm`) before `issueops regress` rewinds the cycle to `grill` for re-plan (feedback loop). |
-| **issueops-cleanup** | cleanup | Record-backed merged cleanup: preview exact targets, close and verify the parent issue, then remove only the confirmed local worktree and local branch through fingerprint-bound IssueOps commands. |
-
-## Reference Map
-
-Load these files only when the phase applies:
-
-- `references/remote-issue.md`: remote issue first, related issue/label scoring, external LLM judge contract, Korean remote artifact gate, issue template.
-- `references/issue-preflight.md`: deep-interview ambiguity reduction and `PROMPT.md`-based ideal issue prompt rewrite before remote issue creation.
-- `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
-- `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
-- `references/execution.md`: direct/Orca mode selection, sealed owner claim, generation lease, replacement, reconciliation, publication, and completion.
-- `references/orchestration.md`: delegated child-cycle prompt template, scope-drift stop rule, and validation rubric.
-- `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior. Run **`shannon`** SNR measurement before and after.
-- `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
-- `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
-
-### Cross-Skill References
-
-Load from other skill directories when the phase involves specialized work:
-
-| Phase | Load from | For |
-|-------|-----------|-----|
-| grill, issue | `skills/berners-lee/references/report-template.md` | Authority classification, confidence levels for external research |
-| plan, implement | `skills/codd/SKILL.md` (Steps 2-4) | Normalization audit, index selection matrix, query optimization |
-| implement | `skills/dijkstra/SKILL.md` (Steps 1-5) | Problem classification table, optimization patterns, complexity cheatsheet |
-| implement | `skills/hopper/SKILL.md` (Steps 1-7) | Debugging patterns reference, isolation strategies |
-| plan, ai-slop-clean, pr | `skills/karpathy/SKILL.md` (Phases 1-5) | Prompt optimization, adversarial testing, model calibration, immutability clauses |
-| implement, pr, cleanup | `skills/torvalds/references/rebase-protocol.md` | Pre-rebase checklist, conflict resolution |
-| implement, pr, cleanup | `skills/torvalds/references/bisect-protocol.md` | Bisect workflow, when NOT to use bisect |
-| cleanup | `skills/issueops-cleanup/SKILL.md` | Parent issue closure plus fingerprint-bound local worktree and local branch removal |
-| ai-slop-clean | `.agent-harness/SUB_AGENT_PATTERNS.md` | 12 net-positive sub-agent patterns, net-negative patterns |
-| all phases | `.agent-harness/CONSTITUTION.md` (Sub-Agent 사용 원칙) | Sub-agent usage principles |
-
-## Always-On Rules
-
-- Remote issue first: when `$issueops` is explicitly invoked and repo remote, credentials, target project, branch target, and issue ownership are discoverable, create or link the remote issue before planning or implementation.
-- Linked branch first: IssueOps branches must start with the issue/task number followed by a hyphen so GitLab links them in the issue Development section. Use names like `2387-fix-grpc-ai-dmm-tag-replication-lag` or `2386-remove-dmm-ranking-ranktype`; do not put `feature/` or `hotfix/` before the issue number.
-- Worktree first: after issue link and before implementation, create an isolated worktree under `../<repo>.worktrees/<branch-slug-with-slashes-replaced>` and run implementation from that path.
-- Edit-target guard: shell cwd checks are not enough. Before any file edit, ensure the edit tool target path is inside the expected isolated worktree; after the edit, verify the source checkout/main branch remains clean and the worktree owns the change.
-- State first: link the issue and plan in IssueOps state before PR/MR drafting.
-- Intent contract first: before entering `plan`, record the raw request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; the durable state must show the main agent's judgment.
-- Design review first: before linking a plan or entering `implement`, record an approved `agent-harness issueops design review` with problem summary, proposed design, refactor plan or boundary, risks, alternatives, and verification. Approved design reviews must not carry open questions.
-- TDD first: for behavior changes, write or update focused tests before production changes.
-- Evidence contract first: before implementation, record the domain invariant, exact mechanism, equivalent behavior if any, source evidence, changed endpoint/API-doc needs, live runtime matrix needs, review-thread obligations, and completion hygiene checks. Load `references/evidence-contract.md` when any of those surfaces apply.
-- Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
-- Template before remote writes: render remote issue, child-task, and PR/MR bodies through the shared IssueOps template and remote-create wrappers. After ownership transfer, only the acknowledged owner at the canonical worker root may publish the exact verified final head and create the PR/MR for that lifecycle ID. Durable remote-create claims fail closed on ambiguity and must be reconciled against the exact provider project, head, base, title, and rendered body. Hooks never create, merge, or clean remote artifacts.
-- Korean remote artifacts: `gh issue/pr create/edit` and `glab` equivalents must carry Korean titles/bodies; the `issueops remote ...` commands that own the artifact check this. No hook blocks the raw command any more.
-- VCS linking: issue bodies must not carry a `Plan Link` section or, on GitLab, a `Related Issues` body section (related issues belong in native linked items); remote issue/PR/MR create commands need labels and an assignee, and PR/MR create must target the recorded `branch_prepare.base_branch`. Copy linked issue labels for PR/MR create or pass an explicit manual label, assign the artifact to the current user, and target the recorded parent work branch. See `references/remote-issue.md` -> "Provider-Specific Linking And Hierarchy".
-- Numbered next actions: at user decision points and after reporting review/feedback/cleanup status, end with `선택지:` and three numbered choices. Mark exactly one recommended option only when the main agent itself judges it safe, reversible, and aligned, and state that judgement in the reply. No Stop hook blocks or relays choices any more (2026-08-27).
-- Worker identity check: every implementation, TDD, review, QA, or subagent worker must first report and verify `pwd`, branch, `HEAD`, and the expected isolated worktree path before inspecting or changing anything.
-- Host usage/model user-decision boundary: usage-limit, rate-limit, reset, and model-selection prompts require the user/coordinator. Dismiss or stop and relay; never navigate, confirm, reset usage, or switch models automatically.
-- Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
-- Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
-- Review thread accountability: remote review feedback must be answered in the original review thread/discussion with verdict, evidence, and next action; do not report feedback cleared until addressed threads are replied to, resolved when appropriate, and re-checked.
-- AI slop clean before PR/MR: after implementation and before PR/MR drafting, inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`. Run **`shannon`** SNR measurement before and after cleanup; record before/after metrics as evidence.
-- Shannon gate before ai-slop-clean: measure baseline SNR, entropy, and redundancy before cleanup begins. Re-measure after cleanup; SNR must improve or the cleanup pass is incomplete. Record metrics in IssueOps evidence.
-- Dijkstra complexity gate: when implementation touches algorithmic code, profile before optimizing. Every optimization must include before/after benchmark evidence and complexity class confirmation via scaling tests (N=100→1000→10000). Record in commit messages and IssueOps evidence.
-- Codd schema gate: when implementation includes DDL changes, the schema must pass normalization audit (1NF→BCNF) or every denormalization must be explicitly justified with read:write ratio trade-off. Every new index must state its write penalty.
-- Hopper diagnosis protocol: when a test or bug report arrives, reproduce the failure before diagnosing. Apply the 7-step Hopper Method. Cap hypothesis cycles at 5. Record root cause diagnoses as IssueOps feedback.
-- Torvalds commit protocol: every commit must be atomic (one intent per commit). Use Conventional Commit + Lore body format per `.agent-harness/COMMIT_POLICY.md`. Never force-push shared branches. Always create a backup branch before history rewrite.
-- Berners-Lee research protocol: during grill and issue phases, external claims must cite sources with retrieval dates. Claims without ≥2 independent sources are flagged as single-sourced. Research reports are committed to `.agent-harness/research/`.
-- Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
-- Host-agent judge boundary: IssueOps never calls an external LLM service in-process. Render a read-only prompt, dispatch it to a fresh independent host agent, and validate the returned JSON through the `file` backend before any remote artifact write.
-
-## Gate Quick Reference
-
-When an IssueOps command reports a missing gate, do not guess a new hidden flag. Use the command that owns that state:
-
-- `intent_contract`: run `issueops intent record` with raw request, interpreted intent, success criteria, constraints/non-goals/ambiguity when known. Pass `--intent-class trivial|standard|refactoring|architecture|research|delegated-child`; an empty class normalizes to `standard` and trivial skips the plan-prep gate.
-- `plan_prep_decisions` / `plan_prep_related_issues` / `plan_prep_web_research` / `plan_prep_codebase_survey`: run `issueops plan-prep record` with evidence or a waive reason per item before entering the `plan` phase. `plan_prep_codebase_survey` takes `--codebase-survey-evidence` (tools used plus the touched symbols/files/call paths and reuse candidates found) or `--codebase-survey-waive` (only when the change creates net-new files with no existing code to survey). Enforced only for non-trivial intent classes; design review does not require it because design review runs inside the plan phase where plan-prep is already satisfied.
-- `branch_prepare` / `branch_link_verified`: normally run `issueops branch prepare` only after provider-visible branch evidence exists. GitHub Orca is the exception: record the matching GitHub issue identity and exact base SHA without `--link-verified`, stage the plan, run Orca prepare so its branch remains local-only, then call GraphQL `createLinkedBranch` with the sealed SHA as `oid` and the same branch name. The claimed owner waits for that link with `issueops branch await-link` — the only command the pre-link guard admits besides the recorder — and reruns `branch prepare --link-verified` before linking a legacy plan or implementing. Do not substitute `gh issue develop`. The branch must start with the issue/task number and a hyphen.
-- `worktree_path` / `worktree_exists` / execution lease: preview and confirm `issueops execution prepare --mode auto`. Use the returned canonical worktree and set up dependencies there with the repository's documented command.
-- `compatibility_review` / `backward_compatibility` / `side_effects` / `rollback_plan` / `compatibility_verification` / `compatibility_blockers` / `compatibility_approval`: run `issueops compatibility review`. Record backward compatibility findings, side effects, rollback plan, verification evidence, and approval. Do not approve while blockers remain.
-- `execution` / `execution_write_lease`: run `issueops execution status`. Prepare a missing execution, claim an Orca generation with `issueops execution claim --claim-current-token` (the CLI resolves the private token path internally), or use the generation-CAS replacement/reconciliation command returned by status. Never invent an override.
-- `design_review`, `design_approval`, `design_review_evidence`, `refactor_plan`, `alternatives`, `risks`, `design_open_questions`: run one full `issueops design review` call. Approval is recorded with the full design review payload; there is no approve-only merge step.
-- `plan_path` / `plan_exists` / `plan_in_worktree`: for fresh Orca prepare, stage the approved plan before prepare and let the worktree receipt materialize/link it. For a legacy released Orca generation with no child plan, create the plan inside the canonical worktree, run exact `issueops link-plan`, stage the same file, then generation-CAS `execution replace --reseed` before `execution resume`. `parent_plan_path` alone never satisfies this gate.
-- `ai_slop_clean`: record AI slop cleanup after implementation changes exist in the linked worktree: `issueops ai-slop-clean record --id "$ISSUEOPS_ID" --category <checked-or-cleaned category> --verification <rerun check> $ACTOR_FLAGS --json` (both flags repeatable).
-- `gates_incomplete:<file>`: the committed task gate ledger (`.agent-harness/gates/*.md`, or a compatible `GATES.md`/`gates/*.md`) in the linked worktree still has unmet gates. Run `agent-harness gates check --cwd <worktree> --workspace-root <worktree>` to execute CHECK commands and record evidence, fill manual `EVIDENCE:` lines with real proof (measurement, output quote, file:line), or record an honest `agent-harness gates abandon --file <ledger> --gate <id> --reason "..."`. A checked box whose `EVIDENCE:` still reads `pending` counts as unmet. Removing the ledger file to pass the gate is forbidden.
-- `contract_feedback_issue_update`: update the remote issue body for contract-changing feedback, then run `issueops feedback mark-issue-updated`.
-- `child_incomplete` | `issueops child status`: inspect child phase, heartbeat age, worktree, and latest evidence; continue or recover the child before parent PR readiness.
-- `child_unvalidated` | `issueops child accept`: validate the done child with evidence, or reject/drop it with a reason when the result is not acceptable.
-- `child_rejected_unresolved` | `issueops child accept` or `issueops child drop`: resolve a rejected child by accepting corrected evidence or dropping it from the parent gate with an auditable reason.
-- `children_active` | `issueops child status`: active children prevent parent regression/cleanup shortcuts; inspect children and stop at the owner decision boundary.
-
-Approved design reviews require `--refactor-plan`, at least one `--alternative`, at least one `--risk`, no `--open-question`, and at least one design-review evidence verification item. `design_review_evidence` is not a separate CLI flag, MCP field, or decision record. Put it in `--verification`, for example:
-
-```bash
-agent-harness issueops design review --id "$ISSUEOPS_ID" \
-  --problem-summary "$PROBLEM_SUMMARY" \
-  --proposed-design "$PROPOSED_DESIGN" \
-  --refactor-plan "$REFACTOR_PLAN" \
-  --alternative "$ALTERNATIVE" \
-  --risk "$RISK" \
-  --verification "design review checked alternatives and risks" \
-  --verification "go test ./..." \
-  --approved \
-  --json
-```
-
-## Concept → Command Map
-
-The IssueOps skill prose uses vivid domain nouns — phase names, decision verbs, ledger artifact names — that are **not** `issueops` subcommands. The CLI uses generic verbs (`phase`, `remote`, `link-related`). Guessing `issueops <domain-word>` fails. When unsure, run `issueops --help` for the real registry; the CLI also emits a did-you-mean hint for the common confusions below.
-
-| Domain word in this skill | What it actually is | Real CLI command |
-|---|---|---|
-| `grill` / `problem` / `implement` / `ai-slop-clean` / `feedback` / `pr` | **lifecycle phase** | `issueops phase --id ID --to <phase>` |
-| `split` | **breakdown decision** (no-split default; see Large Issue Breakdown Gate) | `issueops remote create-child` to create child tasks, `issueops link-related --type splits-from` to link an existing one |
-| `domain` (review) | **grill-phase ledger artifact** | `issueops domain-review record` |
-| `compatibility` (review) | **plan-phase ledger artifact** | `issueops compatibility review` |
-| `devils-advocate` / `brooks` (verdict) | **fail-closed implement-entry gate**, bound to the plan sha256 (`devils_advocate_review_stale` when the plan changed after the review) | `issueops devils-advocate review --verdict pass\|revise\|stop --reviewer-context subagent\|inline --finding TEXT` |
-| reflect findings to issue (stop) | **regress precondition** | `issueops remote reflect-devils-advocate --confirm` |
-| `design` (review) | **plan-phase ledger artifact** | `issueops design review` |
-| `intent` (contract) | **problem-phase ledger artifact** | `issueops intent record` |
-| `regress` (for replan) | **feedback action** | `issueops regress` |
-| `delegated child` | **parent-owned sub-agent cycle reference** | `issueops child start/status/accept/reject/drop` |
-| `artifact` (plan/spec/turing-loop 전달) | **prepare 전 스테이징 → materialize/봉인** | `issueops artifact stage/unstage` |
-| `implementation review` / 구현 diff brooks | **orca 모드 publication 게이트** | `issueops implementation-review record --verdict pass\|revise\|stop` |
-| 다중 사이클 조망 / cleanup 후보 | **read-only 집계 표면** | `issueops list [--repo PATH]` |
-| 머지 후 정리(finish) | **record-backed 정리 + 레코드 삭제** | `issueops cleanup finish (--preview \| --apply --confirm --fingerprint SHA)` |
-| 완료 기록/이슈 close | **completion 섹션 보존·부모 이슈 close** | `issueops remote reflect-completion` / `issueops remote close-issue` |
-| `child validation` | **parent verdict over child evidence** | `issueops child accept` or `issueops child reject` |
-
-## Quality Upgrade Gates
-
-IssueOps must leave an auditable decision trail for labels, large issue breakdown, draft issue completion, and PR/MR review-agent feedback.
-
-- Before any remote issue or PR/MR write, record the **threshold-based label decision**: selected labels, rejected labels, and manual override reason when no label crosses threshold. Use `issueops remote score` first, then apply only selected labels or stop before writing.
-- For broad or multi-step work, run the **Large Issue Breakdown Gate**: create provider-native child work items before implementation when the parent issue would otherwise hide independent tasks. Use `agent-harness issueops remote create-child`, which creates, verifies, and records each child; `agent-harness issueops link-child` is only for a provider-native child that already exists and was verified separately.
-- Do not split merely because work is broad or multi-step. The gate's default is no split; create provider-native child work items only when one issue would be unsafe or collaboration/parallel ownership was explicitly requested.
-- On completion, write a **draft issue completion record** in the remote issue or PR/MR-ready notes before reporting done. It must summarize final diff, verification evidence, selected labels, child links, PR/MR URL, cleanup status, and unresolved follow-ups.
-- Treat Kodus, Gemini Code Assist, and similar automated reviewers as **review-agent feedback**. Verify each claim, reply in the original thread with verdict and evidence, and resolve only threads whose fix or obsolescence has been verified.
-
-Use this remote issue scoring choice shape before creating or editing an issue:
-
-```text
-관련 이슈/라벨 후보를 먼저 deterministic scorer로 점검하고, read-only prompt를 fresh host agent가 독립 평가한 결과만 `file` backend로 검증해 threshold 이상을 반영하겠습니다.
-```
-
-Use this review thread reply shape:
-
-```text
-타당성: 타당
-
-근거:
-- <파일:라인 또는 명령 결과 근거>
-- <계약/테스트 근거>
-
-다음 조치: <수정 진행|별도 PR 분리|보류 사유>
-```
-
-After posting review-thread replies, report numbered next actions:
-
-```text
-선택지:
-1. 진행: 테스트를 먼저 추가하고 결함을 수정합니다. (추천)
-2. 축소 진행: 일부 검증만 먼저 수정하고 나머지는 별도 PR로 분리합니다.
-3. 보류: 현재 PR에는 수정하지 않고 리뷰 스레드에 검증 결과만 답변합니다.
-```
-
-Use this cleanup choice shape:
-
-```text
-선택지:
-1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)
-2. 보류: worktree는 유지하고 나중에 확인합니다.
-3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
-```
-
-For the "확장 정리" choice, inspect each known cycle and its worktree, branch,
-remote artifact, native process, and execution generation. There is no bulk
-unsafe release. A live or ambiguous holder stays fenced; recovery uses the
-previewed generation-CAS `issueops execution replace` sequence. Worktree and
-branch deletion still requires verified merge evidence and a separate human
-choice.
-
-## Background LLM Gates
-
-Remote scoring is a `background_join` LLM gate. It may run while local planning or implementation continues, but the main IssueOps loop must join the result before any remote artifact write: issue create/edit, label create/apply, PR/MR create/edit, assignment, or comment. If label candidates existed but none met threshold, stop before remote writes and choose an explicit manual label or rerun scoring with corrected candidates; do not create an unlabeled issue, PR, or MR.
-
-Do not put polling or waiting in lifecycle hooks. Hooks may surface a status hint only. Completion is decided by the main loop at the join point by checking the stored job/result status and requiring success before the remote write.
-
-Host-agent judges are read-only evaluators. Their prompts must forbid workspace inspection, tool execution, file changes, git actions, issue/label/PR/MR mutation, comments, assignment, closing/reopening, or state changes. They may only return judgment JSON that the main loop applies after validation.
-
-### Benchmark Judge Protocol (independent host-agent)
-
-When an IssueOps benchmark needs a semantic judge, use a fresh-context host agent that did not author the artifacts:
-
-1. Run the deterministic pass first: `agent-harness issueops benchmark run --fixtures <dir> --judge none --json`.
-2. The main agent dispatches a **fresh-context** sub-agent (no inherited conversation context, never the author of the artifacts being judged — no self-scoring) with a deterministic input packet: ① the rubric dimension list with one-line definitions, ② the artifact fields to judge, ③ the required output: a `{"<fixtureID>": <IssueOpsBenchmarkScore>}` map as JSON only, no preamble.
-3. Feed the returned map through `agent-harness issueops benchmark run --fixtures <dir> --judge file --judge-file <map.json> --json`. The CLI strict-decodes each score and fails closed on missing/unknown fixture keys.
-
-The no-self-approval constraint is a documented orchestration protocol: the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment, so enforcement lives in the coordinator's dispatch discipline.
-
-## Operational Start
-
-Start or resume state only after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch. The compact command sequence and examples live in `references/operational-start.md`; load that reference only when you are actively running or documenting an IssueOps cycle.
-
-The first-turn essentials are:
-
-- Start/status: `agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json`, then `agent-harness issueops status --id "$ISSUEOPS_ID" --json`.
-- Intent and plan prep: run `agent-harness issueops intent record`; record the raw request, interpreted intent, success criteria, constraints, ambiguity ledger, non-goals, `intent_contract`, `plan_prep_decisions`, `plan_prep_related_issues`, `plan_prep_web_research`, and `plan_prep_codebase_survey` before plan entry.
-- Branch/worktree/design: pin the exact base SHA and approve `agent-harness issueops design review`. Direct mode and GitLab record provider linkage before prepare. GitHub Orca records the base without linkage, stages the approved child plan from a coordinator temporary file, lets Orca create the local-only branch/worktree, then uses `createLinkedBranch` at the sealed SHA and records `--link-verified`. Orca prepare materializes and links the durable plan before launch.
-- Implementation gates: inspect `issueops execution status`, set up dependencies in the canonical worktree, record compatibility and devil's-advocate reviews, and enter implementation only when the active generation and design gates are ready.
-- Completion gates: `ai_slop_clean` evidence must be current before `pr`; contract-changing feedback must be reflected remotely; the active generation creates and verifies the draft PR/MR, then `issueops execution complete` records the final receipt and releases the lease.
-
-Remote scoring and benchmark commands are CLI-only developer/autoresearch tooling. The only IssueOps MCP surface is `issueops_execution`, whose actions mirror the execution v1 state machine.
-
-## Stop Conditions
-
-Stop and ask before creating or updating remote issues, PRs, or MRs if credentials, target project, branch target, or issue ownership are unclear.
-
-Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
-
-Stop before implementation if `issueops intent record` or `issueops design review` cannot be completed from evidence. Do not treat a recommended next-action option as permission to continue unless the main agent records why continuation is safe, reversible, and aligned with the user's latest instruction.
-
-Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `branch_prepare`, `branch_link_verified`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, `plan_exists`, or `ai_slop_clean`.
-
-Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `contract_feedback_issue_update`. This means a `contract_change` feedback item was recorded after the remote issue contract changed, and the remote issue body update has not been confirmed with `issueops feedback mark-issue-updated`.
-
-Do not mark an IssueOps loop `done` before it has entered the `pr` phase. Completion reporting happens after PR/MR readiness and review/merge hygiene, not as an escape hatch from planning or implementation.
-
-Before PR/MR create, verify the linked issue labels and pass them to the provider create command. If the linked issue has no labels, create or apply an explicit manual label first, or stop and record label-decision feedback; never create the PR/MR with an empty label set.
+semantic judge는 artifact 작성자가 아닌 fresh-context host agent가 맡는다.
+deterministic pass를 먼저 실행하고, JSON-only judge map을 `--judge file`로
+strict-decode한다. 외부 judge는 read-only이며 workspace나 remote를 수정하지
+않는다.
 
 ## Execution ownership
 
-Load `references/execution.md` for the full direct/Orca contract and
-`references/cleanup-state.md` for the post-merge boundary. Fence only the exact
-lifecycle ID, generation, native holder, canonical worktree, and persisted Orca
-resource. The source main worktree remains available before, during, and after
-execution for unrelated work. Successful `issueops execution complete` records
-`done` and releases the generation; it never merges or removes resources.
+active holder만 canonical worktree에서 구현·검증·publication하고
+`issueops execution complete`를 호출한다. 이 명령은 `done`을 기록하고 lease를
+해제할 뿐 merge나 resource 삭제를 하지 않는다. merge와 cleanup은 별도 단계다.

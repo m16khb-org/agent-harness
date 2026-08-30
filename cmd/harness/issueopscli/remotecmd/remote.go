@@ -390,6 +390,10 @@ func (f *repeatedFlag) Set(value string) error {
 	return nil
 }
 
+func normalizeRemoteCreateMetadata(labels, assignees repeatedFlag) (repeatedFlag, repeatedFlag) {
+	return repeatedFlag(issueopsremote.CleanValues(labels)), repeatedFlag(issueopsremote.CleanValues(assignees))
+}
+
 func formatIssueOpsRemoteIssueRef(issue issueopsremote.IssueOpsRemoteScoredItem) string {
 	ref := firstNonEmptyMain(issue.ID, issue.URL)
 	title := strings.TrimSpace(issue.Title)
@@ -507,6 +511,7 @@ func runRemoteCreateIssue(ctx context.Context, args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
+	labels, assignees = normalizeRemoteCreateMetadata(labels, assignees)
 	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
@@ -843,6 +848,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
+	labels, assignees = normalizeRemoteCreateMetadata(labels, assignees)
 	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
@@ -957,6 +963,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
+	labels, assignees = normalizeRemoteCreateMetadata(labels, assignees)
 	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)

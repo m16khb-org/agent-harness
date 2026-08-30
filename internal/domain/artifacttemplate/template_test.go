@@ -138,6 +138,35 @@ func TestValidateRejectsPlanLinkAndGitLabRelatedIssuesSection(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsUnsupportedArtifactKindAndTemplate(t *testing.T) {
+	validation := Validate(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactKind("mr"),
+		Template: IssueOpsTemplateFeature,
+		Title:    "잘못된 artifact kind",
+		Body:     "본문",
+	})
+
+	if validation.OK {
+		t.Fatalf("unsupported artifact kind/template must fail: %+v", validation)
+	}
+	if !contains(validation.Critical, "unsupported_artifact_kind") {
+		t.Fatalf("missing unsupported kind critical: %+v", validation)
+	}
+	if !contains(validation.Critical, "unsupported_template_for_artifact") {
+		t.Fatalf("missing unsupported template critical: %+v", validation)
+	}
+
+	validation = Validate(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactPR,
+		Template: IssueOpsTemplateFeature,
+		Title:    "PR template 조합 오류",
+		Body:     "본문",
+	})
+	if validation.OK || !contains(validation.Critical, "unsupported_template_for_artifact") {
+		t.Fatalf("PR with issue template must fail closed: %+v", validation)
+	}
+}
+
 func TestRenderChildAndPRTemplatesIncludeContractSections(t *testing.T) {
 	child := Render(IssueOpsTemplateInput{
 		Kind:     IssueOpsArtifactChild,

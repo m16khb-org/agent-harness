@@ -100,6 +100,7 @@ body:
       label: 가이드라인 참조
       description: 관련 project docs, IssueOps guide, upstream docs 경로를 적어 주세요.
       value: |
-        - docs/superpowers/specs/issueops-issue-pr-guidelines.md
+        - skills/issueops-create-issue/SKILL.md
+        - .agent-harness/operations/guides/issueops-providers.md
     validations:
       required: true

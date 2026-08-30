@@ -869,6 +869,20 @@
           "path": "$HARNESS_ROOT/skills/issueops-cleanup"
         },
         {
+          "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-create-issue",
+          "path": "$HARNESS_ROOT/skills/issueops-create-issue"
+        },
+        {
+          "description": "Create and verify a linked GitHub pull request or GitLab merge request from an IssueOps execution lease with a readable Korean body, branch and actor fencing, scored metadata, safe recovery, and explicit good and bad examples. Use during the PR or MR publication phase.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-create-pr",
+          "path": "$HARNESS_ROOT/skills/issueops-create-pr"
+        },
+        {
           "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5164,6 +5178,8 @@
           "issueops",
           "issueops-branch-worktree",
           "issueops-cleanup",
+          "issueops-create-issue",
+          "issueops-create-pr",
           "karpathy",
           "parnas",
           "project-bootstrap",
@@ -7135,6 +7151,20 @@
                 "path": "$HARNESS_ROOT/skills/issueops-cleanup"
               },
               {
+                "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-create-issue",
+                "path": "$HARNESS_ROOT/skills/issueops-create-issue"
+              },
+              {
+                "description": "Create and verify a linked GitHub pull request or GitLab merge request from an IssueOps execution lease with a readable Korean body, branch and actor fencing, scored metadata, safe recovery, and explicit good and bad examples. Use during the PR or MR publication phase.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-create-pr",
+                "path": "$HARNESS_ROOT/skills/issueops-create-pr"
+              },
+              {
                 "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8239,6 +8269,8 @@
                 "issueops",
                 "issueops-branch-worktree",
                 "issueops-cleanup",
+                "issueops-create-issue",
+                "issueops-create-pr",
                 "karpathy",
                 "parnas",
                 "project-bootstrap",

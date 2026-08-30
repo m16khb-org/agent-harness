@@ -6,7 +6,7 @@ import (
 )
 
 func FromFixture(fixture issueopscontract.IssueOpsBenchmarkFixture) issueopscontract.IssueOpsBenchmarkArtifact {
-	const guideline = "docs/superpowers/specs/issueops-issue-pr-guidelines.md"
+	const guideline = "skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md"
 	issueNumber := "1"
 	branchName := "feature/1-issueops-quality-benchmark"
 	worktreePath := "/repo.worktrees/feature-1-issueops-quality-benchmark"

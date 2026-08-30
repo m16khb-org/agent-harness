@@ -22,7 +22,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 ## 현재 근거
 
 - 설계 문서: `docs/superpowers/specs/2026-06-02-issueops-quality-benchmark-design.md`
-- 이슈/PR 가이드라인: `docs/superpowers/specs/issueops-issue-pr-guidelines.md`
+- 이슈 가이드: `skills/issueops-create-issue/SKILL.md`; PR/MR 가이드: `skills/issueops-create-pr/SKILL.md`
 - 기존 IssueOps skill: `skills/issueops/SKILL.md`
 - 기존 IssueOps CLI state surface: `cmd/harness/issueops.go`
 - 기존 IssueOps core state helper: `internal/core/issueops.go`
@@ -38,7 +38,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - deterministic benchmark는 worker prompt가 `pwd`, branch, `HEAD`, expected worktree path 검증을 요구하는지 검사한다.
 - deterministic benchmark는 좁은 리뷰에서 bounded review/verifier를 우선하고, `code-reviewer` 사용 시 nested subagent fan-out 금지와 시간 예산을 요구하는지 검사한다.
 - deterministic benchmark는 issue draft와 PR/MR draft가 한글로 작성됐는지 검사한다.
-- deterministic benchmark는 issue draft와 PR/MR draft가 `docs/superpowers/specs/issueops-issue-pr-guidelines.md`를 참조하고 핵심 section을 만족하는지 검사한다.
+- deterministic benchmark는 issue draft와 PR/MR draft가 각각 `skills/issueops-create-issue/SKILL.md`와 `skills/issueops-create-pr/SKILL.md`를 참조하고 핵심 section을 만족하는지 검사한다.
 - deterministic benchmark는 복잡도 근거 없이 억지로 넣은 다이어그램을 지양하고, 다이어그램은 review value가 명확할 때만 허용한다.
 - `Z.AI Coding Plan` LLM judge adapter를 추가하고, judge output은 strict JSON-only schema로 검증한다.
 - malformed judge output은 작은 bounded retry 안에서만 재시도하고, 최종 decode/schema failure는 critical failure로 기록한다.

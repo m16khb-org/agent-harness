@@ -1,6 +1,6 @@
 name: Child Task
 description: IssueOps parent issue 아래의 provider-native child task를 등록합니다.
-title: "task: "
+title: "[p] "
 labels: ["enhancement"]
 body:
   - type: markdown
@@ -8,7 +8,7 @@ body:
       value: |
         큰 IssueOps parent를 provider-native child task로 나눌 때 사용합니다. GitHub에서는 sub-issue, GitLab에서는 child work item/Task로 연결해야 합니다.
 
-        GitHub CLI로 기존 parent에 연결할 때는 child 생성 후 `gh issue edit <parent-number-or-url> --add-sub-issue <child-number-or-url>`로 provider-native sub-issue 관계를 확인하세요.
+        좋은 예시는 `[p]` 또는 `[s]` 제목, 독립적인 범위, 실행 wave, 검증 명령을 포함합니다. 나쁜 예시는 `task: 작업`, parent 없는 child, 댓글에만 남긴 계획입니다. IssueOps cycle에서는 `agent-harness issueops remote create-child`로 생성·연결·검증하세요.
 
   - type: input
     id: parent_issue
@@ -39,6 +39,35 @@ body:
     attributes:
       label: 비목표
       description: 이 child task가 맡지 않을 범위를 적어 주세요.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: execution_class
+    attributes:
+      label: 실행 분류
+      description: "기본은 [p]입니다. [s]는 이름 있는 hard dependency가 있을 때만 선택하세요."
+      options:
+        - "[p] parallelizable"
+        - "[s] sequential"
+    validations:
+      required: true
+
+  - type: input
+    id: prerequisites
+    attributes:
+      label: 선행 조건
+      description: "[p]는 none, [s]는 반드시 필요한 child URL 또는 산출물을 적어 주세요."
+      placeholder: "none"
+    validations:
+      required: true
+
+  - type: input
+    id: execution_wave
+    attributes:
+      label: 실행 wave
+      description: parent가 권장하는 실행 순서를 숫자로 적어 주세요.
+      placeholder: "1"
     validations:
       required: true
 

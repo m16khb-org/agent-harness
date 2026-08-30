@@ -2,6 +2,18 @@
 
 parent issue URL 또는 번호를 적어 주세요.
 
+## 실행 분류
+
+제목은 `[p]` 또는 `[s]`로 시작해야 합니다. 기본은 `[p] parallelizable`이며,
+`[s] sequential`은 이름 있는 hard dependency가 있을 때만 사용합니다.
+
+- 실행 클래스: `[p] parallelizable` 또는 `[s] sequential`
+- 선행 조건: `[p]`는 `none`, `[s]`는 필요한 child URL/산출물
+- 실행 wave: 숫자
+
+좋은 예: `[p] renderer 계약 검증`, 선행 조건 `none`, wave `1`.
+나쁜 예: `task: renderer 수정`, 선행 조건과 검증이 없음.
+
 ## 작업 목표
 
 이 child task가 독립적으로 끝내야 할 목표를 적어 주세요.

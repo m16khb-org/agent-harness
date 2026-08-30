@@ -123,7 +123,7 @@ var issueOpsPRSectionConcepts = [][]string{
 }
 
 func hasIssueOpsGuidelineRef(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
-	const guideline = "docs/superpowers/specs/issueops-issue-pr-guidelines.md"
+	const guideline = "skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md"
 	return containsFold(artifact.GuidelineRef, guideline) ||
 		containsFold(artifact.IssueDraft, guideline) ||
 		containsFold(artifact.PRDraft, guideline)

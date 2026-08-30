@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Create PR"
+  short_description: "Create verified linked PRs and merge requests"
+  default_prompt: "Use $issueops-create-pr only for IssueOps PR/MR publication after issue linkage and execution lease verification. Use the provider-neutral remote create-pr command, render a complete Korean pull_request body, preserve generation and native actor fences, score labels, confirm one exact request, and verify the live artifact, branches, issue linkage, labels, assignee, and secret-free evidence. Route issue or child creation to $issueops-create-issue."

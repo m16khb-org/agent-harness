@@ -245,7 +245,7 @@ problem → grill → issue → plan → compatibility-review → implement
 정한 뒤, 반환된 `next_command`로 confirm합니다. `direct`와 `orca`는 실행
 adapter일 뿐 IssueOps가 durable authority라는 점은 바뀌지 않습니다.
 
-`create-issue`는 `--confirm`이 없으면 preview만 출력하고 intent를 만들지 않습니다. `reconcile-issue`는 확인된 원격 호출의 결과가 불명확해 durable intent가 남은 경우에만 사용하며, candidate 연결은 별도의 `--confirm`이 필요합니다. 세부 명령과 provider별 제약은 [IssueOps provider 가이드](.agent-harness/operations/guides/issueops-providers.md)에 정의되어 있습니다.
+`create-issue`는 `--confirm`이 없으면 preview만 출력하고 intent를 만들지 않습니다. `reconcile-issue`는 확인된 원격 호출의 결과가 불명확해 durable intent가 남은 경우에만 사용하며, candidate 연결은 별도의 `--confirm`이 필요합니다. Issue/child publication은 [`issueops-create-issue`](skills/issueops-create-issue/SKILL.md), PR/MR publication은 [`issueops-create-pr`](skills/issueops-create-pr/SKILL.md)이 담당하고, 세부 명령과 provider별 제약은 [IssueOps provider 가이드](.agent-harness/operations/guides/issueops-providers.md)에 정의되어 있습니다.
 
 현재 cycle의 tracked plan/spec/gate와 ignored sealed artifact는 `.agent-harness/issues/<provider-issue-number>/` 아래에 함께 namespacing합니다. `cleanup finish`는 preview/fingerprint를 다시 확인하고 worktree process와 Orca terminal을 정지한 뒤 worktree·branch·record를 순서대로 정리합니다.
 
@@ -253,12 +253,12 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 
 ## 스킬
 
-공용 스킬 33개의 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
+공용 스킬 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
 
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`
-- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-branch-worktree`, `issueops-cleanup`
+- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-create-pr`, `issueops-branch-worktree`, `issueops-cleanup`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - 코드 리뷰: `parnas`, `review-agent-feedback`

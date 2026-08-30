@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Create Issue"
+  short_description: "Create verified IssueOps issues and native child tasks"
+  default_prompt: "Use $issueops-create-issue for the IssueOps issue phase: identify the provider and durable cycle, score related issues and labels, render and validate a Korean parent body, create or reconcile the parent safely, and create provider-native [p]/[s] child tasks only when the breakdown gate proves they are needed. Verify hierarchy, labels, assignees, parent-body readback, and secret-free evidence. Do not create PRs/MRs here; route publication to $issueops-create-pr."

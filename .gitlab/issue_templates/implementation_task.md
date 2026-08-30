@@ -46,6 +46,7 @@
 
 ## 가이드라인 참조
 
-- docs/superpowers/specs/issueops-issue-pr-guidelines.md
+- `skills/issueops-create-issue/SKILL.md`
+- `.agent-harness/operations/guides/issueops-providers.md`
 
 /label ~"enhancement"

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -473,6 +474,16 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	_ = flags.Set("b")
 	if flags.String() != "a,b" {
 		t.Fatalf("repeated flag string = %q", flags.String())
+	}
+	labels, assignees := normalizeRemoteCreateMetadata(
+		repeatedFlag{" bug ", "", "bug", "enhancement"},
+		repeatedFlag{" @me ", "octocat", "octocat"},
+	)
+	if !slices.Equal(labels, repeatedFlag{"bug", "enhancement"}) {
+		t.Fatalf("labels were not canonicalized: %v", labels)
+	}
+	if !slices.Equal(assignees, repeatedFlag{"@me", "octocat"}) {
+		t.Fatalf("assignees were not canonicalized: %v", assignees)
 	}
 	item := issueopscore.IssueOpsRemoteScoredItem{ID: "1", URL: "url", Title: "Title", Score: 0.9}
 	if formatIssueOpsRemoteIssueRef(item) != "1 (Title)" || formatIssueOpsRemoteIssueRef(issueopscore.IssueOpsRemoteScoredItem{Title: "Title"}) != "Title" {

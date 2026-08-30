@@ -112,3 +112,30 @@
 
 - 4-lens 병렬 서브에이전트: 아키텍처(opus, import 그래프+심볼 카운트), 코드품질(최근 churn 14파일 리뷰), 성능(실측: hook 10–15회 wall time + 상태 파일 실측), 테스트갭(coverprofile + race 실측 + FAIL 3회 재현).
 - 교차 검증된 상호 확인: 성능 lens의 P-4(flock 부재)와 품질 lens의 상태 쓰기 견고성 평가는 **다른 파일**에 대한 것으로 모순 아님(issueops/state는 flock, hookmetrics/doc-upkeep은 미적용). 테스트 lens의 T-5(dead code 의심)는 아키텍처 lens의 "M1 의도적 유지" 결정과 대조 필요를 명기.
+
+## 7. 2026-08-30 후속 실행: IssueOps 생성 스킬 분리
+
+이 문서를 품질·성능 umbrella의 로컬 coordination record로 사용한다. 원격
+quality umbrella #18과 provider-native child #19, #20, #21은 모두 CLOSED이며,
+GraphQL `subIssues` readback으로 세 child가 #18 아래에 있었음을 확인했다.
+따라서 닫힌 parent를 재개하거나 sibling issue로 재사용하지 않는다.
+
+이번 후속 실행 단위는 다음과 같다. 세 항목은 서로 다른 파일 경계를 가지므로
+모두 `[p]` parallelizable, prerequisite `none`, wave 1이다.
+
+1. `[p] issueops-create-issue` — parent issue와 native child의 score,
+   renderer, hierarchy, 좋은/나쁜 예시, reconcile 계약.
+2. `[p] issueops-create-pr` — linked PR/MR의 generation, branch, actor,
+   body, live verification 계약과 좋은/나쁜 예시.
+3. `[p] remote input/template guard` — metadata trim/dedupe와 artifact
+   kind/template 조합의 fail-closed validation.
+
+품질 게이트는 각 새 `SKILL.md`의 `validate-skill` 및 shell verification,
+renderer critical validation, provider readback이다. 성능 게이트는 변경 전후
+skill byte 수와 focused verification duration을 기록하는 것이다. 측정 결과,
+공통 router는 67,310B → 10,973B(-83.7%), Issue 단계는
+router+전용 skill 20,523B(-69.5%), PR/MR 단계는 18,824B(-72.0%)다. 이는
+파일 byte 기준 context-cost 감소이며 runtime latency 개선으로 확대 해석하지
+않는다. 원격 활성 umbrella가 없으므로 이번 문서는 새 child를 provider에
+생성했다는 뜻이 아니라, 다음 활성 IssueOps parent에서 재사용할 local
+execution contract다.

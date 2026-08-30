@@ -13,6 +13,14 @@ and owner workflow live in
 
 ## Preparation and Provider Publication Contracts
 
+Use the focused skill for the current publication step:
+
+- [`issueops-create-issue`](../../../skills/issueops-create-issue/SKILL.md) owns
+  parent issue and provider-native child creation, scoring, examples, and
+  reconciliation.
+- [`issueops-create-pr`](../../../skills/issueops-create-pr/SKILL.md) owns
+  linked PR/MR publication and live artifact verification.
+
 ### Durable parent issue creation and recovery
 
 `create-issue --confirm` requires a started IssueOps record and a canonical

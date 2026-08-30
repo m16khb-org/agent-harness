@@ -17,7 +17,7 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - The benchmark also checks IssueOps workflow contract quality: phase choices after every step and isolated worktree gating after issue creation.
 - IssueOps completion includes worktree cleanup readiness and removal guidance after the branch is merged, abandoned, or otherwise safe to dispose.
 - IssueOps issue drafts and PR/MR drafts are written in Korean, even when implementation details, commands, or code identifiers remain in English.
-- IssueOps issue drafts and PR/MR drafts follow the repo-local open-source-derived guideline at `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
+- IssueOps issue drafts follow `skills/issueops-create-issue/SKILL.md`; PR/MR drafts follow `skills/issueops-create-pr/SKILL.md`.
 - IssueOps issue drafts and PR/MR drafts avoid excessive emoji decoration while allowing sparse purposeful emoji.
 - IssueOps PR/MR drafts include developer-friendly diagrams only when useful for complex flows; unnecessary forced diagrams are a quality failure.
 - IssueOps worker prompts require `pwd`, branch, `HEAD`, and expected worktree path verification before implementation, TDD, review, QA, or subagent work starts.
@@ -109,7 +109,7 @@ The deterministic scorer verifies structure and hard workflow rules:
 
 - Issue draft includes problem, current evidence, acceptance criteria, non-goals, verification, and feedback log.
 - Issue draft is written in Korean.
-- Issue draft references and follows `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
+- Issue draft references and follows `skills/issueops-create-issue/SKILL.md`.
 - Plan includes explicit tests or verification commands.
 - Task breakdown has bounded ownership and avoids conflicting file responsibilities.
 - TDD artifact identifies failing tests before implementation work.
@@ -118,7 +118,7 @@ The deterministic scorer verifies structure and hard workflow rules:
 - Review prompts prefer `verifier` or direct bounded review for narrow reviews, or explicitly forbid nested subagent fan-out with a time budget when `code-reviewer` is used.
 - PR/MR draft includes intent, changes, verification, risks, and issue link.
 - PR/MR draft is written in Korean.
-- PR/MR draft references and follows `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
+- PR/MR draft references and follows `skills/issueops-create-pr/SKILL.md`.
 - Issue and PR/MR drafts contain no excessive emoji decoration.
 - PR/MR drafts avoid unnecessary forced diagrams and include diagrams only with clear review value.
 - Every completed phase presents next-step choices and does not silently continue.

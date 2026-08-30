@@ -101,6 +101,12 @@ func containsString(items []string, want string) bool {
 func Validate(input IssueOpsTemplateInput) IssueOpsTemplateValidation {
 	input = normalizeInput(input)
 	v := IssueOpsTemplateValidation{OK: true, Critical: []string{}, Warnings: []string{}, MissingRequiredFields: []string{}}
+	if !supportedArtifactKind(input.Kind) {
+		v.Critical = append(v.Critical, "unsupported_artifact_kind")
+	}
+	if !supportedTemplateForKind(input.Kind, input.Template) {
+		v.Critical = append(v.Critical, "unsupported_template_for_artifact")
+	}
 	if strings.TrimSpace(input.Title) == "" {
 		v.MissingRequiredFields = append(v.MissingRequiredFields, "title")
 	}
@@ -126,6 +132,30 @@ func Validate(input IssueOpsTemplateInput) IssueOpsTemplateValidation {
 	v.Warnings = uniqueSorted(v.Warnings)
 	v.OK = len(v.Critical) == 0
 	return v
+}
+
+func supportedArtifactKind(kind IssueOpsArtifactKind) bool {
+	switch kind {
+	case IssueOpsArtifactIssue, IssueOpsArtifactChild, IssueOpsArtifactPR:
+		return true
+	default:
+		return false
+	}
+}
+
+func supportedTemplateForKind(kind IssueOpsArtifactKind, template IssueOpsTemplateKind) bool {
+	switch kind {
+	case IssueOpsArtifactIssue:
+		switch template {
+		case IssueOpsTemplateBug, IssueOpsTemplateFeature, IssueOpsTemplateProposal, IssueOpsTemplateImplementationTask:
+			return true
+		}
+	case IssueOpsArtifactChild:
+		return template == IssueOpsTemplateChildTask
+	case IssueOpsArtifactPR:
+		return template == IssueOpsTemplatePullRequest
+	}
+	return false
 }
 
 func normalizeInput(input IssueOpsTemplateInput) IssueOpsTemplateInput {
