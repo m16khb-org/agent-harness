@@ -78,6 +78,9 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	if err := rejectSecretLikeRemoteCreateInputs("child create", *title, finalBody, labels, assignees); err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
 	var actor issueopscontract.IssueOpsActor
 	if *confirm && record.Execution != nil {
 		ancestry, observeErr := deps.observeNativeProcessAncestry()

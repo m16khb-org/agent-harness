@@ -452,6 +452,19 @@ func TestRunRemoteCreateChildRequiresParentLabelsAndAssignees(t *testing.T) {
 	}
 }
 
+func TestRunRemoteCreateChildRejectsSecretLikeBody(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+
+	err := Run([]string{
+		"create-child", "--id", record.ID, "--title", "Child",
+		"--body", "password=private-value", "--label", "bug", "--assignee", "octocat",
+	}, Deps{})
+	if err == nil || !strings.Contains(err.Error(), "child create body contains secret-like content") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	var deps Deps
 	if err := deps.printJSON(map[string]any{"ok": true}); err != nil {

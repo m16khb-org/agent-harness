@@ -72,7 +72,7 @@ func runRemoteCreateIssue(ctx context.Context, args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	if err := rejectSecretLikeIssueCreateInputs(*title, finalBody, labels, assignees); err != nil {
+	if err := rejectSecretLikeRemoteCreateInputs("issue create", *title, finalBody, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
@@ -198,7 +198,7 @@ func runRemoteCreateIssue(ctx context.Context, args []string, deps Deps) error {
 	return nil
 }
 
-func rejectSecretLikeIssueCreateInputs(title, body string, labels, assignees []string) error {
+func rejectSecretLikeRemoteCreateInputs(kind, title, body string, labels, assignees []string) error {
 	values := []struct {
 		field string
 		value string
@@ -220,7 +220,7 @@ func rejectSecretLikeIssueCreateInputs(title, body string, labels, assignees []s
 	}
 	for _, candidate := range values {
 		if policydomain.RedactFreeform(candidate.value) != candidate.value {
-			return fmt.Errorf("issue create %s contains secret-like content", candidate.field)
+			return fmt.Errorf("%s %s contains secret-like content", kind, candidate.field)
 		}
 	}
 	return nil
