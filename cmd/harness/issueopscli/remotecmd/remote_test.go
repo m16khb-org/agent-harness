@@ -242,6 +242,40 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	}
 }
 
+func TestRunRemoteCreatePRRejectsSecretLikeMetadataBeforeProviderCall(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "label", args: []string{"--label", "password=private-value"}},
+		{name: "assignee", args: []string{"--assignee", "token=private-value"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			providerCalls := 0
+			deps := Deps{Publication: PublicationHandlers{
+				Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+					providerCalls++
+					return port.IssueProviderCreatePullRequestResult{OK: true}, nil
+				},
+			}}
+			args := []string{
+				"create-pr", "--id", record.ID, "--provider", "github",
+				"--title", "PR", "--body", "Body", "--head", record.Branch, "--base", "main",
+			}
+			err := Run(append(args, test.args...), deps)
+			if err == nil || !strings.Contains(err.Error(), "pr create "+test.name+" contains secret-like content") {
+				t.Fatalf("error = %v", err)
+			}
+			if providerCalls != 0 {
+				t.Fatalf("provider called %d times", providerCalls)
+			}
+		})
+	}
+}
+
 func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecord(t)

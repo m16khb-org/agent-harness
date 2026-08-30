@@ -184,6 +184,9 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	if err := rejectSecretLikeRemoteCreateInputs("pr create", *title, finalBody, labels, assignees); err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
