@@ -93,6 +93,30 @@ func TestReseedWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
 	}
 }
 
+func TestReseedWorkspaceSnapshotAllowsSuccessfulGitDiffWarnings(t *testing.T) {
+	root := t.TempDir()
+	reseedInventoryGit(t, root, "init", "--initial-branch", "reseed")
+	if err := os.WriteFile(filepath.Join(root, ".gitattributes"), []byte("tracked.txt filter=warning\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reseedInventoryGit(t, root, "config", "user.email", "test@example.invalid")
+	reseedInventoryGit(t, root, "config", "user.name", "Test")
+	reseedInventoryGit(t, root, "config", "filter.warning.clean", "sh -c 'cat; printf warning-from-clean-filter >&2'")
+	reseedInventoryGit(t, root, "config", "filter.warning.smudge", "cat")
+	reseedInventoryGit(t, root, "add", ".gitattributes", "tracked.txt")
+	reseedInventoryGit(t, root, "commit", "--message", "initial")
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := reseedWorkspaceSnapshot(leasecontract.Workspace{Root: root, Branch: "reseed"}); err != nil {
+		t.Fatalf("successful git diff warnings must not invalidate the reseed snapshot: %v", err)
+	}
+}
+
 func TestReseedInventoryFingerprintIncludesRawOwnerEvidence(t *testing.T) {
 	root := t.TempDir()
 	reseedInventoryGit(t, root, "init", "--initial-branch", "holderless-reseed")
