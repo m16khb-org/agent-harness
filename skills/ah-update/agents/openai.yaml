@@ -1,0 +1,4 @@
+interface:
+  display_name: "AH Update"
+  short_description: "Safely refresh the current agent-harness installation"
+  default_prompt: "Use $ah-update to preview and run ah update from the installed agent-harness checkout, preserve the exact selected flags, verify the Codex/Claude/Omo activation receipt, and read back inspect, docs, and daemon status. Never substitute git pull, commit, or push for this workflow."

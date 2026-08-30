@@ -750,6 +750,13 @@
       "ok": true,
       "skills": [
         {
+          "description": "Safely refresh agent-harness from the installed source checkout, including the binary, Codex/Claude/Omo native links, MCP and lifecycle integration, and daemon readback. Use when the user says `ah update`, `agent-harness update`, 하네스 업데이트, native skill 갱신, or asks to reinstall the current harness checkout without fetching or changing Git history.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "ah-update",
+          "path": "$HARNESS_ROOT/skills/ah-update"
+        },
+        {
           "description": "Client-facing functional QA through the installed Aside CLI. Use when asked to verify that a browser feature, acceptance criterion, user journey, validation rule, state transition, persistence behavior, authorization rule, or error-recovery path works as intended and needs a reproducible evidence report. Triggers include functional QA, browser test, acceptance test, requirement verification, regression check, 기능 QA, 요구사항 검증, 의도대로 동작하는지 확인, and client QA report.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5161,6 +5168,7 @@
         "has_worker_mvp": true,
         "has_worker_stuck_running_detection": true,
         "skills": [
+          "ah-update",
           "aside-functional-qa",
           "aside-visual-qa",
           "aside-web-qa",
@@ -7032,6 +7040,13 @@
             "ok": true,
             "skills": [
               {
+                "description": "Safely refresh agent-harness from the installed source checkout, including the binary, Codex/Claude/Omo native links, MCP and lifecycle integration, and daemon readback. Use when the user says `ah update`, `agent-harness update`, 하네스 업데이트, native skill 갱신, or asks to reinstall the current harness checkout without fetching or changing Git history.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "ah-update",
+                "path": "$HARNESS_ROOT/skills/ah-update"
+              },
+              {
                 "description": "Client-facing functional QA through the installed Aside CLI. Use when asked to verify that a browser feature, acceptance criterion, user journey, validation rule, state transition, persistence behavior, authorization rule, or error-recovery path works as intended and needs a reproducible evidence report. Triggers include functional QA, browser test, acceptance test, requirement verification, regression check, 기능 QA, 요구사항 검증, 의도대로 동작하는지 확인, and client QA report.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8252,6 +8267,7 @@
               "has_worker_mvp": true,
               "has_worker_stuck_running_detection": true,
               "skills": [
+                "ah-update",
                 "aside-functional-qa",
                 "aside-visual-qa",
                 "aside-web-qa",

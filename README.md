@@ -262,7 +262,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - 코드 리뷰: `parnas`, `review-agent-feedback`
-- 운영 개선: `self-verify`, `self-augment`, `stability-audit`
+- 운영 개선: `ah-update`, `self-verify`, `self-augment`, `stability-audit`
 - 한국어 작성: `fluent-korean`
 - 다이어그램과 시각화: `diagram-design`
 

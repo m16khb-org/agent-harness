@@ -41,7 +41,7 @@ instead of duplicating their content here or in a guide.
 
 ## Core Surfaces
 
-1. Native skills: `atomic-commit-push`, `issueops`, `self-augment`,
+1. Native skills: `ah-update`, `atomic-commit-push`, `issueops`, `self-augment`,
    `project-bootstrap`, `self-verify`, `stability-audit`, plus the named
    specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared

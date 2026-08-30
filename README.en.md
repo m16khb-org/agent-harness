@@ -283,7 +283,7 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - Code review: `parnas`, `review-agent-feedback`
-- Operational improvement: `self-verify`, `self-augment`, `stability-audit`
+- Operational improvement: `ah-update`, `self-verify`, `self-augment`, `stability-audit`
 - Korean writing: `fluent-korean`
 - Diagrams and visualization: `diagram-design`
 
