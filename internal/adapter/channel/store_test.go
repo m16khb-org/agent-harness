@@ -109,6 +109,14 @@ func TestRecvWaitReturnsImmediatelyWhenMessageExists(t *testing.T) {
 
 func TestRecvWaitTimesOutEmpty(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	now := time.Date(2026, 8, 30, 0, 0, 0, 0, time.UTC)
+	previousNow, previousWait := channelNow, channelWait
+	channelNow = func() time.Time { return now }
+	channelWait = func(duration time.Duration) { now = now.Add(duration) }
+	t.Cleanup(func() {
+		channelNow = previousNow
+		channelWait = previousWait
+	})
 	recv, err := Recv(channelcontract.RecvRequest{Channel: "c", Wait: true, TimeoutSeconds: 1})
 	if err != nil {
 		t.Fatalf("recv wait timeout: %v", err)
@@ -120,6 +128,14 @@ func TestRecvWaitTimesOutEmpty(t *testing.T) {
 
 func TestRecvWaitBlocksUntilConcurrentSend(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	waitStarted := make(chan struct{}, 1)
+	resume := make(chan struct{})
+	previousWait := channelWait
+	channelWait = func(time.Duration) {
+		waitStarted <- struct{}{}
+		<-resume
+	}
+	t.Cleanup(func() { channelWait = previousWait })
 	arrived := make(chan channelcontract.RecvResult, 1)
 	go func() {
 		recv, err := Recv(channelcontract.RecvRequest{Channel: "contract", Wait: true, TimeoutSeconds: 15})
@@ -128,12 +144,15 @@ func TestRecvWaitBlocksUntilConcurrentSend(t *testing.T) {
 		}
 		arrived <- recv
 	}()
-	// 수신자가 폴링을 시작할 시간을 준 뒤 발신한다. 이 대기는 테스트의
-	// 판정 대상이 아니라 송신 타이밍을 만드는 장치다.
-	time.Sleep(600 * time.Millisecond)
+	select {
+	case <-waitStarted:
+	case <-time.After(time.Second):
+		t.Fatal("receiver did not enter the exact wait seam")
+	}
 	if _, err := Send(channelcontract.SendRequest{Channel: "contract", From: "server", Body: "contract v1"}); err != nil {
 		t.Fatalf("send: %v", err)
 	}
+	close(resume)
 	select {
 	case recv := <-arrived:
 		if len(recv.Messages) != 1 || recv.TimedOut || recv.Messages[0].Body != "contract v1" {
@@ -141,6 +160,46 @@ func TestRecvWaitBlocksUntilConcurrentSend(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("recv --wait did not observe the concurrent send")
+	}
+}
+
+func TestRecvWaitDoesNotRereadObservedRecords(t *testing.T) {
+	previousList, previousGet := ListExisting, GetExisting
+	previousNow, previousWait := channelNow, channelWait
+	t.Cleanup(func() {
+		ListExisting = previousList
+		GetExisting = previousGet
+		channelNow = previousNow
+		channelWait = previousWait
+	})
+
+	ids := []string{"msg-old"}
+	records := map[string]channelcontract.Message{
+		"msg-old": {OK: true, SchemaVersion: channelcontract.SchemaVersion, ID: "msg-old", Channel: "other", From: "a", Body: "old"},
+		"msg-new": {OK: true, SchemaVersion: channelcontract.SchemaVersion, ID: "msg-new", Channel: "target", From: "b", Body: "new"},
+	}
+	reads := map[string]int{}
+	ListExisting = func(string, string) ([]string, error) {
+		return append([]string(nil), ids...), nil
+	}
+	GetExisting = func(_, _, id string) ([]byte, bool, error) {
+		reads[id]++
+		data, err := json.Marshal(records[id])
+		return data, err == nil, err
+	}
+	now := time.Date(2026, 8, 30, 0, 0, 0, 0, time.UTC)
+	channelNow = func() time.Time { return now }
+	channelWait = func(time.Duration) { ids = append(ids, "msg-new") }
+
+	recv, err := Recv(channelcontract.RecvRequest{Channel: "target", Wait: true, TimeoutSeconds: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recv.Messages) != 1 || recv.Messages[0].ID != "msg-new" {
+		t.Fatalf("recv=%+v", recv)
+	}
+	if reads["msg-old"] != 1 || reads["msg-new"] != 1 {
+		t.Fatalf("record reads=%v, want one read per observed record", reads)
 	}
 }
 

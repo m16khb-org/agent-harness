@@ -366,3 +366,12 @@ func TestStrictPRReadinessWithoutIssueNumberJudgesEverything(t *testing.T) {
 		t.Fatalf("no linked issue number must keep judging every ledger: %+v", ready.Missing)
 	}
 }
+
+func TestLegacyLedgerCompatibilityExpiresAfterSchemaV1(t *testing.T) {
+	if got := legacyLedgerIssueNumberForSchema("issue-21-old.md", 1); got != "21" {
+		t.Fatalf("schema v1 legacy ledger issue=%q, want 21", got)
+	}
+	if got := legacyLedgerIssueNumberForSchema("issue-21-old.md", 2); got != "" {
+		t.Fatalf("schema v2 accepted legacy ledger issue=%q", got)
+	}
+}

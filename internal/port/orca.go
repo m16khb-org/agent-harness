@@ -304,25 +304,51 @@ type OrcaWorkerDoneClient interface {
 	SendWorkerDone(context.Context, OrcaWorkerDoneRequest) (OrcaWorkerDoneResult, error)
 }
 
-type OrcaClient interface {
+type OrcaProbeClient interface {
 	Probe(context.Context, OrcaProbeRequest) (OrcaProbeResult, error)
+}
+
+type OrcaRunClient interface {
 	ListRuns(context.Context) ([]OrcaRun, error)
 	CreateRun(context.Context, OrcaCreateRunRequest) (OrcaRun, error)
 	CurrentRun(context.Context) (*OrcaRun, error)
 	UseRun(context.Context, string) (OrcaRun, error)
+}
+
+type OrcaWorktreeClient interface {
 	ListWorktrees(context.Context, string) ([]OrcaWorktree, error)
 	ShowWorktree(context.Context, string) (OrcaWorktree, error)
 	CreateWorktree(context.Context, OrcaCreateWorktreeRequest) (OrcaWorktree, error)
 	AdoptWorktree(context.Context, OrcaAdoptWorktreeRequest) (OrcaWorktree, error)
 	RemoveWorktree(context.Context, string, bool) error
+}
+
+type OrcaTerminalClient interface {
 	ListTerminals(context.Context, string) ([]OrcaTerminal, error)
 	CreateTerminal(context.Context, OrcaCreateTerminalRequest) (OrcaTerminal, error)
 	RefreshTerminal(context.Context, string, string) (OrcaTerminal, error)
+}
+
+type OrcaTaskClient interface {
 	ListTasks(context.Context) ([]OrcaTask, error)
 	ListDispatchedTasks(context.Context) ([]OrcaTask, error)
 	CreateTask(context.Context, OrcaCreateTaskRequest) (OrcaTask, error)
 	UpdateTask(context.Context, string, string, string, string) error
+}
+
+type OrcaDispatchClient interface {
 	Dispatch(context.Context, OrcaDispatchRequest) (OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (OrcaDispatch, error)
 	ShowDispatchFrom(context.Context, string, string) (OrcaDispatch, error)
+}
+
+// OrcaClient keeps the historical aggregate method set for compatibility.
+// New consumers should accept only the role interface they actually use.
+type OrcaClient interface {
+	OrcaProbeClient
+	OrcaRunClient
+	OrcaWorktreeClient
+	OrcaTerminalClient
+	OrcaTaskClient
+	OrcaDispatchClient
 }

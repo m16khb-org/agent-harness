@@ -2,14 +2,128 @@ package issueops
 
 import (
 	"context"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	issueops "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
+
+func TestWriteFingerprintFileRejectsChangedUntrackedFile(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(t *testing.T, path string)
+	}{
+		{
+			name: "replaced",
+			change: func(t *testing.T, path string) {
+				replacement := path + ".replacement"
+				if err := os.WriteFile(replacement, []byte("same"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Rename(replacement, path); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "resized",
+			change: func(t *testing.T, path string) {
+				if err := os.WriteFile(path, []byte("different-size"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "untracked")
+			if err := os.WriteFile(path, []byte("same"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			entry, err := os.Lstat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			test.change(t, path)
+
+			err = writeFingerprintFile(sha256.New(), path, entry)
+			if err == nil || !strings.Contains(err.Error(), "untracked file changed while snapshotting") {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
+func TestWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
+	root := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "-b", "main"},
+		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "--allow-empty", "-m", "init"},
+	} {
+		if code, _, stderr := GitCmd(root, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	large := filepath.Join(root, "large.bin")
+	file, err := os.Create(large)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(32 << 20); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime.GC()
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	if _, err := workspaceSnapshot(issueops.Workspace{Root: root, Branch: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	var after runtime.MemStats
+	runtime.ReadMemStats(&after)
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 8<<20 {
+		t.Fatalf("snapshot allocated %d bytes while hashing a 32 MiB untracked file", allocated)
+	}
+}
+
+func TestWorkspaceSnapshotAllowsSuccessfulGitDiffWarnings(t *testing.T) {
+	root := t.TempDir()
+	if code, _, stderr := GitCmd(root, "init", "-b", "main"); code != 0 {
+		t.Fatalf("git init: %s", stderr)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".gitattributes"), []byte("tracked.txt filter=warning\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"config", "filter.warning.clean", "sh -c 'cat; printf warning-from-clean-filter >&2'"},
+		{"config", "filter.warning.smudge", "cat"},
+		{"add", ".gitattributes", "tracked.txt"},
+		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "-m", "init"},
+	} {
+		if code, _, stderr := GitCmd(root, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := workspaceSnapshot(issueops.Workspace{Root: root, Branch: "main"}); err != nil {
+		t.Fatalf("successful git diff warnings must not invalidate the snapshot: %v", err)
+	}
+}
 
 // TestWorkspaceSnapshotAcceptsAnAbsentWorktree는 #435를 고정한다.
 //

@@ -3,6 +3,7 @@ package invariants
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -156,6 +157,23 @@ func TestForbiddenNameHitsSkipsOnlyOmoTaskRuntime(t *testing.T) {
 	hits := forbiddenNameHits(root)
 	if len(hits) != 1 || hits[0] != filepath.Join(".omo", "mcp.json")+" contains m"+"16kh" {
 		t.Fatalf("expected project config hit and no Omo task-runtime hit, got %+v", hits)
+	}
+}
+
+func BenchmarkForbiddenNameHits(b *testing.B) {
+	root := b.TempDir()
+	payload := []byte(strings.Repeat("safe validation fixture\n", 128))
+	for index := range 512 {
+		path := filepath.Join(root, "fixture-"+strconv.Itoa(index)+".txt")
+		if err := os.WriteFile(path, payload, 0o644); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		if hits := forbiddenNameHits(root); len(hits) != 0 {
+			b.Fatalf("unexpected hits: %+v", hits)
+		}
 	}
 }
 

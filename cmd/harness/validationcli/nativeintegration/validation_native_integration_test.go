@@ -64,6 +64,30 @@ func TestValidateNativeIntegrationWithDepsCoversSuccessAndMissingPaths(t *testin
 	}
 }
 
+func TestNativeIntegrationOmoConfigAcceptsStableRootFromWorktree(t *testing.T) {
+	worktreeRoot := t.TempDir()
+	stableRoot := t.TempDir()
+	home := t.TempDir()
+	stubStableNativeRoot(t, func(string) (string, error) { return stableRoot, nil })
+	expectedBinary := filepath.Join(stableRoot, "bin", "agent-harness")
+	deps := nativeIntegrationValidationDeps{
+		readFile: func(path string) ([]byte, error) {
+			switch path {
+			case filepath.Join(home, ".omo", "mcp.json"):
+				return []byte(fmt.Sprintf(`{"mcpServers":{"agent_harness":{"command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}`, expectedBinary, stableRoot)), nil
+			case filepath.Join(home, ".omo", "extensions", "agent-harness.js"):
+				return []byte(OmoLifecycleExtension(expectedBinary)), nil
+			default:
+				return nil, errors.New("unexpected read")
+			}
+		},
+	}
+
+	if errs := nativeIntegrationOmoConfigErrors(worktreeRoot, home, deps); len(errs) != 0 {
+		t.Fatalf("stable native config rejected from worktree: %v", errs)
+	}
+}
+
 func TestValidateNativeIntegrationWithDepsCoversSkillConfigAndWarningFailures(t *testing.T) {
 	root := t.TempDir()
 	stubStableNativeRoot(t, func(string) (string, error) { return root, nil })

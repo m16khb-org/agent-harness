@@ -231,14 +231,53 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecord(t)
 	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
+	providerCalls := 0
 	deps := Deps{
 		Publication: PublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
-			return port.IssueProviderCreatePullRequestResult{}, errors.New("remote create title or body contains secret-like content")
+			providerCalls++
+			return port.IssueProviderCreatePullRequestResult{OK: true}, nil
 		}},
 	}
 	err := Run([]string{"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
 	if err == nil || !strings.Contains(err.Error(), "secret-like") {
 		t.Fatalf("error=%v", err)
+	}
+	if providerCalls != 0 {
+		t.Fatalf("provider called %d times", providerCalls)
+	}
+}
+
+func TestRunRemoteCreatePRRejectsSecretLikeMetadataBeforeProviderCall(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "label", args: []string{"--label", "password=private-value"}},
+		{name: "assignee", args: []string{"--assignee", "token=private-value"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			providerCalls := 0
+			deps := Deps{Publication: PublicationHandlers{
+				Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+					providerCalls++
+					return port.IssueProviderCreatePullRequestResult{OK: true}, nil
+				},
+			}}
+			args := []string{
+				"create-pr", "--id", record.ID, "--provider", "github",
+				"--title", "PR", "--body", "Body", "--head", record.Branch, "--base", "main",
+			}
+			err := Run(append(args, test.args...), deps)
+			if err == nil || !strings.Contains(err.Error(), "pr create "+test.name+" contains secret-like content") {
+				t.Fatalf("error = %v", err)
+			}
+			if providerCalls != 0 {
+				t.Fatalf("provider called %d times", providerCalls)
+			}
+		})
 	}
 }
 
@@ -449,6 +488,19 @@ func TestRunRemoteCreateChildRequiresParentLabelsAndAssignees(t *testing.T) {
 		if err := Run(args, Deps{}); err == nil {
 			t.Fatalf("expected validation error for args %v", args)
 		}
+	}
+}
+
+func TestRunRemoteCreateChildRejectsSecretLikeBody(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+
+	err := Run([]string{
+		"create-child", "--id", record.ID, "--title", "Child",
+		"--body", "password=private-value", "--label", "bug", "--assignee", "octocat",
+	}, Deps{})
+	if err == nil || !strings.Contains(err.Error(), "child create body contains secret-like content") {
+		t.Fatalf("error = %v", err)
 	}
 }
 

@@ -6,17 +6,7 @@ import (
 	"agent-harness/internal/port"
 )
 
-type InstallPlan interface {
-	Err(err error)
-	Errs(errs []error)
-	File(file port.InstallFile, err error)
-	Files(files []port.InstallFile)
-	Link(link port.InstallLink, err error)
-	Links(links []port.InstallLink)
-	Message(msg string)
-	Messages(msgs []string)
-	Finish() (port.HostInstallResult, error)
-}
+type InstallPlan = port.InstallPlan
 
 var (
 	NewInstallPlan func(host string, dryRun bool) InstallPlan

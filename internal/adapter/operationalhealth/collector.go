@@ -10,12 +10,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
+	"golang.org/x/sync/errgroup"
 )
 
 type OrcaInventory interface {
@@ -107,17 +107,16 @@ func (collector Collector) Collect(ctx context.Context, repo string) corehealth.
 	_, orcaOwned := collector.collectIssueOps(&snapshot)
 	gitSnapshot := corehealth.Snapshot{RepoRoot: repo}
 	orcaSnapshot := corehealth.Snapshot{RepoRoot: repo, Messages: corehealth.MessagePresence{Empty: true}}
-	var reads sync.WaitGroup
-	reads.Add(2)
-	go func() {
-		defer reads.Done()
-		collector.collectGit(ctx, &gitSnapshot)
-	}()
-	go func() {
-		defer reads.Done()
-		collector.collectOrca(ctx, &orcaSnapshot, orcaOwned)
-	}()
-	reads.Wait()
+	reads, readCtx := errgroup.WithContext(ctx)
+	reads.Go(func() error {
+		collector.collectGit(readCtx, &gitSnapshot)
+		return nil
+	})
+	reads.Go(func() error {
+		collector.collectOrca(readCtx, &orcaSnapshot, orcaOwned)
+		return nil
+	})
+	_ = reads.Wait()
 
 	snapshot.CanonicalBranch = gitSnapshot.CanonicalBranch
 	snapshot.SourceHead = gitSnapshot.SourceHead
@@ -365,21 +364,20 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	var tasksErr error
 	var dispatchedErr error
 	var gatesErr error
-	var readers sync.WaitGroup
-	readers.Add(3)
-	go func() {
-		defer readers.Done()
-		tasks, tasksErr = collector.Orca.ListAllTasksFromRuns(ctx, runs)
-	}()
-	go func() {
-		defer readers.Done()
-		dispatched, dispatchedErr = collector.Orca.ListDispatchedTasksFromRuns(ctx, runs)
-	}()
-	go func() {
-		defer readers.Done()
-		gates, gatesErr = collector.Orca.ListGatesFromRuns(ctx, runs)
-	}()
-	readers.Wait()
+	readers, readerCtx := errgroup.WithContext(ctx)
+	readers.Go(func() error {
+		tasks, tasksErr = collector.Orca.ListAllTasksFromRuns(readerCtx, runs)
+		return nil
+	})
+	readers.Go(func() error {
+		dispatched, dispatchedErr = collector.Orca.ListDispatchedTasksFromRuns(readerCtx, runs)
+		return nil
+	})
+	readers.Go(func() error {
+		gates, gatesErr = collector.Orca.ListGatesFromRuns(readerCtx, runs)
+		return nil
+	})
+	_ = readers.Wait()
 
 	if tasksErr != nil {
 		addProblem(snapshot, "orca_tasks", "orca_tasks_failed", "Orca task inventory failed")

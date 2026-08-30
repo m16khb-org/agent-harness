@@ -93,6 +93,21 @@ type InstallLink struct {
 	WouldRemove bool `json:"would_remove,omitempty"`
 }
 
+// InstallPlan is the shared accumulation contract used by host installers.
+// Concrete adapters depend on this port instead of redeclaring the same method
+// set per host.
+type InstallPlan interface {
+	Err(error)
+	Errs([]error)
+	File(InstallFile, error)
+	Files([]InstallFile)
+	Link(InstallLink, error)
+	Links([]InstallLink)
+	Message(string)
+	Messages([]string)
+	Finish() (HostInstallResult, error)
+}
+
 // HostInstaller is implemented by host-specific adapters such as Codex, Claude Code, and Omo.
 type HostInstaller interface {
 	Name() string

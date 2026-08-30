@@ -38,7 +38,8 @@ var (
 	GetExisting       func(dir, bucket, id string) ([]byte, bool, error)
 	ListExisting      func(dir, bucket string) ([]string, error)
 	// channelNow는 주입형 clock이다(테스트가 시간을 고정할 때 교체).
-	channelNow = time.Now
+	channelNow  = time.Now
+	channelWait = time.Sleep
 )
 
 func StateRoot() string {
@@ -106,8 +107,9 @@ func Recv(req channelcontract.RecvRequest) (channelcontract.RecvResult, error) {
 	if req.Wait {
 		result.Waited = true
 		deadline := channelNow().Add(time.Duration(timeout) * time.Second)
+		observed := map[string]struct{}{}
 		for {
-			messages, err := readChannel(req.Channel, req.SinceID, req.Limit)
+			messages, err := readChannelUnseen(req.Channel, req.SinceID, req.Limit, observed)
 			if err != nil {
 				result.Error = err.Error()
 				return result, err
@@ -127,7 +129,9 @@ func Recv(req channelcontract.RecvRequest) (channelcontract.RecvResult, error) {
 				poll = remaining
 			}
 			if poll > 0 {
-				time.Sleep(poll)
+				// Cross-process writers make in-process notification
+				// non-authoritative; channelWait keeps polling testable.
+				channelWait(poll)
 			}
 		}
 	}
@@ -149,6 +153,10 @@ func fillRecvResult(result *channelcontract.RecvResult, messages []channelcontra
 }
 
 func readChannel(channelName, sinceID string, limit int) ([]channelcontract.Message, error) {
+	return readChannelUnseen(channelName, sinceID, limit, nil)
+}
+
+func readChannelUnseen(channelName, sinceID string, limit int, observed map[string]struct{}) ([]channelcontract.Message, error) {
 	ids, err := ListExisting(StateRoot(), channelBucket)
 	if errors.Is(err, fs.ErrNotExist) {
 		return []channelcontract.Message{}, nil
@@ -171,6 +179,9 @@ func readChannel(channelName, sinceID string, limit int) ([]channelcontract.Mess
 	}
 	messages := []channelcontract.Message{}
 	for _, id := range ids[startAt:] {
+		if _, alreadyObserved := observed[id]; alreadyObserved {
+			continue
+		}
 		data, ok, err := GetExisting(StateRoot(), channelBucket, id)
 		if err != nil || !ok {
 			continue // 동시성 경합으로 사라진 레코드는 건너뛴다.
@@ -178,6 +189,12 @@ func readChannel(channelName, sinceID string, limit int) ([]channelcontract.Mess
 		var msg channelcontract.Message
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue // 깨진 레코드도 채널 스트림을 끊지 않는다.
+		}
+		if observed != nil {
+			// Channel records are append-only: Send allocates a unique ID and
+			// never rewrites it. A successfully decoded nonmatching record
+			// cannot later become a message for this channel.
+			observed[id] = struct{}{}
 		}
 		if msg.Channel != channelName {
 			continue
