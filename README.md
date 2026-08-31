@@ -258,7 +258,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`
-- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-create-pr`, `issueops-branch-worktree`, `issueops-cleanup`
+- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-implement`, `issueops-create-pr`, `issueops-branch-worktree`, `issueops-cleanup`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - 코드 리뷰: `parnas`, `review-agent-feedback`

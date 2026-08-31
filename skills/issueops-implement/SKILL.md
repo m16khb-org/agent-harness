@@ -1,0 +1,191 @@
+---
+name: issueops-implement
+description: Run the implement phase of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, delegated child cycles, and the pre-publication implementation review gate. Use when an IssueOps cycle enters or resumes the implement phase, when the user asks to start or continue issue implementation, delegate bounded implementation work to child cycles, or record an implementation review, or says "구현 시작", "구현 이어서 해줘", "이슈 구현해줘", "child로 나눠서 구현해줘".
+---
+
+# IssueOps Implement
+
+이 스킬의 일은 **implement 단계 하나**다. 승인된 plan을 canonical worktree에서
+TDD로 구현하고, execution lease를 지키고, 증거를 남기고, ai-slop-clean 단계로
+넘긴다. Issue·branch·PR publication과 전체 lifecycle 라우팅은 하지 않는다.
+
+- 전체 흐름과 phase 라우팅: [`issueops`](../issueops/SKILL.md)
+- branch·worktree 준비: [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md)
+- lease 준비·회복 체인 전문: [`execution.md`](../issueops/references/execution.md)
+- delegated child 전문: [`orchestration.md`](../issueops/references/orchestration.md)
+- PR/MR publication: [`issueops-create-pr`](../issueops-create-pr/SKILL.md)
+
+## 흐름
+
+```mermaid
+flowchart LR
+  a["시작 게이트"] --> b["lease·worktree 실측"]
+  b --> c{"직접 구현? child 위임?"}
+  c -->|직접| d["RED→GREEN→SURFACE→CLEAN"]
+  c -->|위임| e["child start → rubric → verdict"]
+  d --> f["focused verification 증거"]
+  e --> f
+  f --> g["phase --to ai-slop-clean"]
+  g --> h["최종 diff에 implementation review"]
+```
+
+## 시작 게이트
+
+다음 하나라도 확인되지 않으면 구현을 시작하지 않는다.
+
+- record의 phase가 `implement`다. 아직 전이 전이면 이 스킬이 아니라
+  [`issueops`](../issueops/SKILL.md) 라우터의 게이트를 먼저 통과한다.
+- design·compatibility·devils-advocate review가 approved 또는 명시적 waive다.
+- staged plan artifact와 durable `plan_path`가 있다.
+- current `Execution`의 generation·mode·native holder가 이 세션과 일치한다.
+- canonical worktree의 branch·HEAD가 record와 일치하고 무관한 dirty 변경이 없다.
+
+```bash
+agent-harness issueops status --id "$ISSUEOPS_ID" --json
+agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
+agent-harness issueops execution whoami --json
+git -C "$WORKTREE" rev-parse --abbrev-ref HEAD
+git -C "$WORKTREE" status --porcelain
+```
+
+`execution whoami`가 이 세션의 native receipt를 자동으로 해석한다. holder가 이
+세션이 아니거나 generation이 다르면 구현하지 않고 아래 회복 표를 따른다.
+
+## 구현 루프
+
+- behavior change는 focused failing test에서 시작한다:
+  RED→GREEN→SURFACE→CLEAN. RED에서 새 테스트가 곧바로 통과하면 버그 이해가
+  틀린 것이므로 수정에 착수하지 않고 보고한다.
+- 파일 수정은 canonical worktree 안에서만 한다. source checkout 수정은 변경
+  규모와 무관하게 계약 위반이다. worktree는 이미 준비되어 있으므로 "시간이
+  없다"는 source checkout 작업의 근거가 되지 않는다.
+- 검증은 변경 범위에 집중한 명령을 실행하고 명령과 결과를 그대로 기록한다.
+  실행하지 않은 검증을 `pass`로 적지 않는다.
+- commit·push는 사용자 지시가 있을 때만 [`atomic-commit-push`](../atomic-commit-push/SKILL.md)로
+  한다. 해석이 필요한 지시("PR 올려줘")는 해석을 밝힌 뒤 진행한다.
+- API/DTO/OpenAPI 변경은 `.agent-harness/OPEN_API_SPEC.md` gate를 적용한다.
+
+## Lease fencing
+
+durable mutation(phase 전이, record 기록, artifact stage) 전마다 exact lifecycle
+ID·generation·native actor·canonical cwd를 현재 record와 대조한다. record 기록은
+`RECORD_ACTOR_FLAGS`, lease 전이·publication은 `ACTOR_FLAGS`를 쓴다. 두 축약의
+정의는 `issueops --help`의 legend가 소유한다.
+
+불일치는 stop이다. 사용자의 "그 세션은 내가 껐어"는 quiescence 증거가 아니다.
+증명은 `replace --finalize-preview`의 결과만 한다.
+
+## 회복은 next_command 체인만
+
+lease가 없거나, holder가 다르거나, mutation 결과가 모호할 때는 아래 첫 명령을
+실행하고 **각 결과가 돌려주는 `next_command`를 그대로 실행한다**.
+
+| 상황 | 첫 명령 |
+|---|---|
+| 방향을 모르겠다 | `execution status --id ID --json` |
+| holder 교체·회수가 필요하다 | `execution replace --id ID --expected-generation N --preview` |
+| provisioning·publication 결과가 모호하다 | `execution reconcile --id ID --preview` 후 `--confirm` |
+
+- `--revoke`·`--finalize`·`--reseed`와 fingerprint를 기억으로 조합하지 않는다.
+  preview가 돌려준 정확한 명령만 실행한다.
+- direct 회복의 종착은 `claim`, orca 회복의 종착은 `resume`이다. 서로 바꿔
+  추정하지 않는다.
+- 모호한 mutation 뒤에 같은 prepare/create를 반복 실행하지 않는다. 파일시스템을
+  직접 관찰해서 "흔적이 없으니 재실행"으로 분기하지도 않는다. 처분은
+  reconcile이 소유한다.
+- 전체 replacement 체인과 legacy 예외는 [`execution.md`](../issueops/references/execution.md)가
+  소유한다. 이 표는 진입점만 제공한다.
+
+## Child 위임
+
+세 조건이 모두 참일 때만 위임한다: parent가 implement phase다, 세 리뷰 게이트가
+approved 또는 waive다, plan이 sub-agent pattern·scope·acceptance·verification·
+fallback·tradeoff를 기록한다.
+
+```bash
+agent-harness issueops child start --parent "$ISSUEOPS_ID" \
+  --branch "$CHILD_BRANCH" --title "$TITLE" \
+  --scope "$SCOPE" --acceptance "$CRITERION" \
+  --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+agent-harness issueops child status --parent "$ISSUEOPS_ID" \
+  --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+```
+
+- verdict는 `accept`·`reject`·`drop` 셋뿐이다. child scope를 고치는 amend 명령은
+  없으므로 찾거나 발명하지 않는다.
+- child의 branch·worktree·lease는 child cycle 자신의 `branch prepare`와
+  `execution prepare`가 소유한다. worktree provisioning은 `execution prepare`
+  몫이며, legacy `worktree prepare` 계열 명령은 v1 카탈로그에서 제거되었다.
+  parent가 child worktree를 직접 만들거나 `orca worktree create`로 대체하지
+  않는다.
+- child가 scope drift를 보고하면 child를 조용히 넓히지 않는다. 사용자가
+  승인해도 경로는 두 가지뿐이다: 새 scope를 **새 child**로 분리하거나, plan을
+  개정하고 plan hash에 묶인 리뷰 freshness를 다시 확인한다.
+- accept 전 rubric: 위임한 scope·expected worktree 준수, acceptance별 증거,
+  선언한 검증 명령의 실행 결과, 무관한 diff·secret·stale scaffold 없음. 하나라도
+  모호하면 accept하지 않는다.
+- parent는 child record를 대신 수정하지 않는다. child contract prompt 템플릿과
+  상세 rubric은 [`orchestration.md`](../issueops/references/orchestration.md)를 따른다.
+
+## Implementation review gate
+
+orca mode 사이클은 publication 전에 구현 diff에 대한 적대 리뷰가 필수다.
+게이트가 리뷰를 부르는 것이 아니라 **리뷰가 기록을 만든다**.
+
+1. planner급 모델의 fresh 서브에이전트로 최종 diff의 brooks 적대 리뷰를 실제로
+   실행한다. prepare가 기록한 `{REVIEWER_MODEL}`/`{REVIEWER_EFFORT}` 기본값을
+   따른다.
+2. 리뷰가 끝난 뒤에만 기록한다.
+
+```bash
+agent-harness issueops implementation-review record --id "$ISSUEOPS_ID" \
+  --verdict pass --finding "$FINDING" --evidence "$EVIDENCE" \
+  --reviewer-host claude --reviewer-model "$REVIEWER_MODEL" \
+  --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+```
+
+- verdict는 `pass|revise|stop`이고 finding·evidence 각 1개 이상이 강제된다.
+  리뷰를 실행하지 않은 `--verdict pass` 기록은 게이트 연극이다. "pr-readiness가
+  요구할 때만 하면 된다"는 판단은 순서를 뒤집은 것이다.
+- 기록은 implement phase 이후부터 가능하고, 리뷰가 검토한 change fingerprint를
+  봉인한다. 이후 diff가 바뀌면 `implementation_review_stale`로 create-pr과 strict
+  readiness가 거부하므로, 리뷰는 ai-slop-clean 재검증까지 끝난 diff에 수행한다.
+- direct mode는 이 게이트 대상이 아니다. direct의 brooks 리뷰는 devils-advocate
+  ledger 기록으로 남긴다.
+
+## 종료 게이트
+
+implement 단계의 출구는 ai-slop-clean 전이다.
+
+- focused verification 증거가 명령·결과로 남아 있는지, 위임한 child가 전부
+  accepted 또는 dropped인지 확인한다. `child_incomplete`·`child_unvalidated`가
+  남으면 전이가 거부된다.
+- `phase --id ID --to ai-slop-clean`으로 전이한다. cleanup 작업과 기록은
+  [`ai-slop-clean.md`](../issueops/references/ai-slop-clean.md)와 `shannon`이 소유한다.
+- `execution complete`는 이 단계의 명령이 아니다. complete는 pr phase에서 검증된
+  remote artifact URL·final head·turing report를 요구하며 그 전 호출은 거부된다.
+  "구현 끝났으니 완료 처리해줘"가 뜻하는 것은 phase 전이지 complete가 아니다.
+
+## 나쁜 예
+
+| 나쁜 행동 | 문제 |
+|---|---|
+| "3줄 수정이니까" source checkout에서 바로 수정 | canonical worktree 계약 위반, 이후 readiness의 head 증거와 어긋난다 |
+| 사용자 구두 확인만으로 `replace --revoke --confirm` | quiescence 증명이 없다. finalize-preview 결과만 증거다 |
+| direct인데 `resume`, orca인데 수동 `claim` 조합 | 모드별 종착 명령을 혼동했다. next_command를 따른다 |
+| timeout 뒤 prepare/create 재실행 | 이중 mutation 위험이 있다. 처분은 reconcile이 소유한다 |
+| 리뷰 없이 `implementation-review record --verdict pass` | 게이트 연극이다. 리뷰 실행이 기록보다 먼저다 |
+| implement 직후 `execution complete` | complete는 pr phase에서 remote artifact 검증 후에만 가능하다 |
+| 구두 승인으로 child scope 확장 | sanctioned 경로는 새 child 분리 또는 plan 개정뿐이다 |
+| 존재가 불확실한 서브커맨드를 --help 프로브로 확정 | 이 CLI의 --help 프로브는 신뢰할 수 없다. usage 카탈로그와 소스가 기준이다 |
+
+## 검증
+
+```bash
+python3 scripts/validate-skill.py skills/issueops-implement
+python3 scripts/verify-skill-shell.py skills/issueops-implement
+wc -c skills/issueops-implement/SKILL.md
+```
+
+시작 게이트·lease·child verdict·리뷰 게이트·종료 게이트 중 하나라도 모호하면
+durable mutation을 하지 않고 현재 상태와 막힌 지점을 보고한다.
