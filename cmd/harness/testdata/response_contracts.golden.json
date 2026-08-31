@@ -890,6 +890,13 @@
           "path": "$HARNESS_ROOT/skills/issueops-create-pr"
         },
         {
+          "description": "Run the implement phase of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, delegated child cycles, and the pre-publication implementation review gate. Use when an IssueOps cycle enters or resumes the implement phase, when the user asks to start or continue issue implementation, delegate bounded implementation work to child cycles, or record an implementation review, or says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-implement",
+          "path": "$HARNESS_ROOT/skills/issueops-implement"
+        },
+        {
           "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5188,6 +5195,7 @@
           "issueops-cleanup",
           "issueops-create-issue",
           "issueops-create-pr",
+          "issueops-implement",
           "karpathy",
           "parnas",
           "project-bootstrap",
@@ -7180,6 +7188,13 @@
                 "path": "$HARNESS_ROOT/skills/issueops-create-pr"
               },
               {
+                "description": "Run the implement phase of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, delegated child cycles, and the pre-publication implementation review gate. Use when an IssueOps cycle enters or resumes the implement phase, when the user asks to start or continue issue implementation, delegate bounded implementation work to child cycles, or record an implementation review, or says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-implement",
+                "path": "$HARNESS_ROOT/skills/issueops-implement"
+              },
+              {
                 "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8287,6 +8302,7 @@
                 "issueops-cleanup",
                 "issueops-create-issue",
                 "issueops-create-pr",
+                "issueops-implement",
                 "karpathy",
                 "parnas",
                 "project-bootstrap",

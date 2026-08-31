@@ -15,6 +15,7 @@ IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/M
 |---|---|
 | 전체 lifecycle·phase·execution lease | `issueops` |
 | parent Issue·provider-native child | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) |
+| implement 단계 구현·child 위임·implementation review | [`issueops-implement`](../issueops-implement/SKILL.md) |
 | GitHub PR·GitLab MR publication | [`issueops-create-pr`](../issueops-create-pr/SKILL.md) |
 | issue branch·worktree | [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md) |
 | merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
@@ -57,7 +58,7 @@ reply, merge, cleanup을 hook에 맡기지 않는다.
 | issue | 한국어 body, score, label/assignee, URL readback, split/no-split | `issueops-create-issue` |
 | plan | plan-prep 4항목, 설계, 대안, 위험, 검증 | `von-neumann`, `codd`, `dijkstra`, `karpathy` |
 | compatibility-review | 호환성, side effect, rollback, blocker, 승인 | `evidence-contract.md` |
-| implement | current generation, TDD, focused verification | `execution.md`, 필요 시 `hopper`·`turing` |
+| implement | current generation, TDD, focused verification | `issueops-implement`, 필요 시 `hopper`·`turing` |
 | ai-slop-clean | diff 기반 cleanup, 전후 품질 지표, 재검증 | `ai-slop-clean.md`, `shannon` |
 | feedback | contract change 반영, review thread 검증 | `review-feedback.md` |
 | pr | readiness, 한국어 body, actor/branch/URL readback | `issueops-create-pr` |
@@ -107,6 +108,7 @@ readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 stat
 | `compatibility_review` | `issueops compatibility review` |
 | `devils_advocate_review` | `issueops devils-advocate review` |
 | branch·worktree·plan·execution lease | `issueops-branch-worktree`, `execution.md` |
+| `implementation_review`·`implementation_review_stale` | `issueops-implement` |
 | `ai_slop_clean` | `issueops ai-slop-clean record` |
 | contract feedback Issue 반영 | `issueops feedback mark-issue-updated` |
 | PR/MR body·target·actor·readback | `issueops-create-pr` |
