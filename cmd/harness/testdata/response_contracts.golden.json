@@ -876,6 +876,13 @@
           "path": "$HARNESS_ROOT/skills/issueops-cleanup"
         },
         {
+          "description": "Record IssueOps execution completion and release the generation after a draft PR or MR is published and verified, with exact evidence ordering, actor and generation fencing, idempotent recovery, and explicit good and bad examples. Use when a cycle sits in pr phase with an active lease, when the user asks to finish or complete an issue cycle, or says \"완료 처리해줘\", \"사이클 끝내줘\", \"execution complete\", \"완료 기록해줘\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-complete",
+          "path": "$HARNESS_ROOT/skills/issueops-complete"
+        },
+        {
           "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5200,6 +5207,7 @@
           "issueops",
           "issueops-branch-worktree",
           "issueops-cleanup",
+          "issueops-complete",
           "issueops-create-issue",
           "issueops-create-pr",
           "issueops-implement",
@@ -7182,6 +7190,13 @@
                 "path": "$HARNESS_ROOT/skills/issueops-cleanup"
               },
               {
+                "description": "Record IssueOps execution completion and release the generation after a draft PR or MR is published and verified, with exact evidence ordering, actor and generation fencing, idempotent recovery, and explicit good and bad examples. Use when a cycle sits in pr phase with an active lease, when the user asks to finish or complete an issue cycle, or says \"완료 처리해줘\", \"사이클 끝내줘\", \"execution complete\", \"완료 기록해줘\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-complete",
+                "path": "$HARNESS_ROOT/skills/issueops-complete"
+              },
+              {
                 "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8315,6 +8330,7 @@
                 "issueops",
                 "issueops-branch-worktree",
                 "issueops-cleanup",
+                "issueops-complete",
                 "issueops-create-issue",
                 "issueops-create-pr",
                 "issueops-implement",
