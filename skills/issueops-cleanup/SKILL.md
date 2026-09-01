@@ -54,8 +54,19 @@ decision and a separate `issueops cleanup remote-branch` flow.
    `ORCA_PANE_KEY`/`ORCA_TERMINAL_HANDLE` env cannot be matched), and
    `worktree_is_source_checkout`. Resolve those by running from a different
    terminal or worktree — never by killing processes by hand.
-6. The remote source branch must already be absent. If it remains, stop and
-   report that this skill does not have authority to delete it.
+6. The remote source branch must be absent, or the user must have chosen to
+   leave it. This skill never deletes a remote branch. If one remains, the
+   preview blocks on `remote_branch_absent`; report the two exits and let the
+   user pick, never pick for them and never run `git push origin --delete`:
+   - delete it first through `issueops cleanup remote-branch` (a separate
+     decision and a separate flow, out of this skill's authority), then finish;
+   - or finish with `--keep-remote-branch`, which leaves the branch on the
+     server. Because finish deletes the record, the typed deletion path can no
+     longer reach that branch afterwards; the apply result's
+     `kept_remote_branch` and the `remote_branch_kept=<branch>@<oid>` fragment
+     in the issue audit line are the only remaining trace. Report both back.
+   A remote that cannot be read blocks the same way and takes the same two
+   exits; `--keep-remote-branch` records `state: "unreadable"` instead of an OID.
 7. The merge must have landed on the base the cycle prepared. `cleanup finish`
    compares the record's prepared base with the provider-observed merged base and
    blocks on `base_branch_drifted`. One exemption is observed, not asserted: when
@@ -194,6 +205,11 @@ agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --preview --json
 ```
 
+When the user chose to leave the remote branch (precondition 6), pass
+`--keep-remote-branch` to this preview too. Without it the preview blocks on
+`remote_branch_absent` and issues no fingerprint. With it the preview reports
+`kept_remote_branch` and carries the flag into `next_command`.
+
 When `worktree_present` is true, repeat all four live Git commands from
 **Preview the exact targets** after issue closure and before apply.
 
@@ -242,7 +258,8 @@ fails. A `failed_step` of `workspace_processes_stop` means the Orca terminal
 stop failed or something still occupies the worktree after HUP/TERM/KILL —
 re-preview to see what remains.
 
-Never add `issueops cleanup remote-branch` to this flow.
+Never add `issueops cleanup remote-branch` to this flow, and never delete a
+remote branch by hand. When one survives, precondition 6 has the two exits.
 
 ## Verify the observable result
 

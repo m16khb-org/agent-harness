@@ -60,9 +60,14 @@ type CleanupFinishRequest struct {
 	// 있으면 merged 게이트를 replacement 증거로 대신 충족할 수 있다(#283).
 	// 증거는 provider readback으로 검증되며, 검증 실패는 통과가 아니라 거부다.
 	SupersededBy string
-	Apply        bool
-	Confirm      bool
-	Fingerprint  string
+	// KeepRemoteBranch는 원격 소스 브랜치를 남긴 채 사이클을 끝내겠다는 명시적
+	// 선택이다. finish는 레코드를 지우므로 기본값은 계속 fail-closed이지만,
+	// 원격 브랜치를 지울 수도(게이트 ⑩) 남길 수도 없어 사이클이 하네스 안에서
+	// 끝나지 않는 교착이 실재했다. 남긴 사실은 결과와 ④' 감사 라인에 기록된다.
+	KeepRemoteBranch bool
+	Apply            bool
+	Confirm          bool
+	Fingerprint      string
 }
 
 // CleanupRemoteBranchRequest는 머지 검증된 사이클의 원격 브랜치를 typed 경로로
@@ -165,7 +170,29 @@ type CleanupFinishResult struct {
 	// RetargetedBase는 준비 base와 관측 base가 다른데도 통과했을 때 그 근거다.
 	// 무엇을 관측해 정상 재타깃으로 판정했는지 결과만 보고 알 수 있어야 한다(#490).
 	RetargetedBase *CleanupRetargetedBase `json:"retargeted_base,omitempty"`
+	// KeptRemoteBranch는 KeepRemoteBranch로 통과했고 원격에 실제로 무언가 남았을
+	// 때만 채워진다. nil은 남긴 것이 없다는 뜻이다.
+	KeptRemoteBranch *CleanupKeptRemoteBranch `json:"kept_remote_branch,omitempty"`
 }
+
+// CleanupKeptRemoteBranch는 finish가 남기고 간 원격 브랜치의 관측 결과다.
+// finish는 레코드를 지우고 typed 삭제 경로(cleanup remote-branch)는 레코드를
+// 읽어 동작하므로, 이 값과 ④' 감사 라인이 그 브랜치를 다시 찾을 유일한 흔적이다.
+type CleanupKeptRemoteBranch struct {
+	Branch string `json:"branch"`
+	// RemoteOID는 관측된 원격 tip이다. State가 unreadable이면 비어 있다.
+	RemoteOID string `json:"remote_oid,omitempty"`
+	// State는 present 또는 unreadable이다.
+	State string `json:"state"`
+}
+
+const (
+	// CleanupKeptRemoteBranchPresent는 원격 브랜치를 실제로 관측했고 남겨 둔 상태다.
+	CleanupKeptRemoteBranchPresent = "present"
+	// CleanupKeptRemoteBranchUnreadable는 원격을 읽지 못해 잔존 여부를 확정하지
+	// 못한 상태다. 남기기로 한 이상 잔존과 같게 다룬다.
+	CleanupKeptRemoteBranchUnreadable = "unreadable"
+)
 
 // CleanupRetargetedBase는 부모 브랜치가 머지·삭제되어 provider가 PR을 기본
 // 브랜치로 재타깃한 정상 흐름의 관측 근거다(#490).

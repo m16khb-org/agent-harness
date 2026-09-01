@@ -49,6 +49,28 @@ func cleanupFinishRemedyCommand(id string, missing []string) string {
 	return ""
 }
 
+// keepRemoteBranchFlag는 preview가 발급하는 apply 명령에 caller의 선택을 그대로
+// 되돌려준다. 이 플래그가 빠진 명령을 복사해 실행하면 게이트가 다시 막는다.
+func keepRemoteBranchFlag(keep bool) string {
+	if !keep {
+		return ""
+	}
+	return " --keep-remote-branch"
+}
+
+// keptRemoteBranchAudit는 남긴 원격 브랜치를 감사 라인 조각으로 렌더한다.
+// 레코드가 삭제되면 이슈 본문의 이 한 줄이 그 브랜치의 유일한 기록이다.
+func keptRemoteBranchAudit(kept *issueops.CleanupKeptRemoteBranch) string {
+	if kept == nil {
+		return ""
+	}
+	tip := kept.RemoteOID
+	if tip == "" {
+		tip = kept.State
+	}
+	return fmt.Sprintf(" remote_branch_kept=%s@%s", kept.Branch, tip)
+}
+
 // cleanupFinishInventory는 fingerprint 입력이 되는 현재 관측 상태다. 부분
 // 정리로 상태가 바뀌면 fingerprint도 바뀌므로 이전 preview의 값은 무효가
 // 된다(5차 m3: 재실행 전 preview 재발급).
@@ -104,8 +126,9 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	result.Fingerprint = fingerprint
 	if !req.Apply {
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --apply --confirm --fingerprint %s%s --json",
-			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy))
+		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --apply --confirm --fingerprint %s%s%s --json",
+			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy),
+			keepRemoteBranchFlag(req.KeepRemoteBranch))
 		return result, nil
 	}
 	if !req.Confirm {
@@ -186,9 +209,10 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	// ④' 감사 라인 best-effort 멱등 반영 — 실패해도 ⑤를 막지 않는다.
 	if deps.ReflectAudit != nil {
-		audit := fmt.Sprintf("cleanup 완료: worktree=%s branch=%s oid=%s stopped=%d terminals=%d at=%s",
+		audit := fmt.Sprintf("cleanup 완료: worktree=%s branch=%s oid=%s stopped=%d terminals=%d%s at=%s",
 			orNone(inventory.WorktreeRoot), orNone(inventory.Branch), orNone(inventory.BranchOID),
 			len(result.WorkspaceProcessesStopped), result.OrcaTerminalsStopped,
+			keptRemoteBranchAudit(result.KeptRemoteBranch),
 			time.Now().UTC().Format(time.RFC3339))
 		if err := deps.ReflectAudit(record, completionSnapshot, audit); err == nil {
 			result.AuditReflected = true
@@ -334,9 +358,28 @@ func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req
 		// 브랜치가 남은 채로 통과하면 typed 삭제 경로(cleanup remote-branch)가
 		// 그 브랜치에 영원히 닿지 못한다. 관측만 하고 원격은 건드리지 않으며,
 		// 관측 불가는 fail-closed다. 이 관측은 fingerprint 입력이 아니다.
-		if code, out := deps.Git(record.Repo, "ls-remote", "--heads", "origin", "refs/heads/"+inventory.Branch); code != 0 ||
-			len(strings.Fields(strings.TrimSpace(out))) > 0 {
+		//
+		// KeepRemoteBranch는 그 대가를 알고 받는 명시적 선택이다. 원격 tip이
+		// 머지된 head보다 전진했고 후속 artifact도 없으면 remote-branch 게이트 ⑩이
+		// 삭제를 막는데, 그때 이 게이트까지 남기기를 막으면 사이클을 끝낼 경로가
+		// 하나도 남지 않는다. H8의 대가는 면제하는 대신 기록으로 갚는다: 무엇이
+		// 남았는지를 결과와 ④' 감사 라인에 적어 레코드 삭제 뒤에도 찾을 수 있게 한다.
+		code, out := deps.Git(record.Repo, "ls-remote", "--heads", "origin", "refs/heads/"+inventory.Branch)
+		readable, fields := code == 0, strings.Fields(strings.TrimSpace(out))
+		switch {
+		case readable && len(fields) == 0:
+			// 원격 브랜치 부재 — finish의 정상 전제다.
+		case !req.KeepRemoteBranch:
 			missing = append(missing, "remote_branch_absent")
+		case readable:
+			result.KeptRemoteBranch = &issueops.CleanupKeptRemoteBranch{
+				Branch: inventory.Branch, RemoteOID: fields[0],
+				State: issueops.CleanupKeptRemoteBranchPresent,
+			}
+		default:
+			result.KeptRemoteBranch = &issueops.CleanupKeptRemoteBranch{
+				Branch: inventory.Branch, State: issueops.CleanupKeptRemoteBranchUnreadable,
+			}
 		}
 	}
 	return inventory, missing

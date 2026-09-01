@@ -101,7 +101,7 @@ func localActor(host, sessionID, agentID, cwd string) issueopscontract.IssueOpsA
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup linked-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup linked-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--keep-remote-branch] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -225,7 +225,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("cannot resolve current directory (refusing cleanup status): %w", err)
 	}
 	result, finishErr := cleanupDeps.CleanupFinish(context.Background(), cleanupDeps.IssueOpsStateRoot(), cleanupFinishRequest(
-		record, snapshot, mergedArtifact, cwd, false, false, "", true, "",
+		record, snapshot, mergedArtifact, cwd, false, false, "", true, "", false,
 	), deps, prov)
 	if finishErr != nil && (result.ID != id || len(result.Missing) == 0) {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, finishErr
@@ -244,7 +244,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	return cleanupDeps.FinalizeIssueOpsCleanupStatus(status), nil
 }
 
-func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscontract.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string, merged bool, supersededBy string) issueopscontract.CleanupFinishRequest {
+func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscontract.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string, merged bool, supersededBy string, keepRemoteBranch bool) issueopscontract.CleanupFinishRequest {
 	return issueopscontract.CleanupFinishRequest{
 		ID:                  record.ID,
 		CWD:                 cwd,
@@ -253,6 +253,7 @@ func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.
 		CompletionReflected: strings.Contains(snapshot.Body, port.IssueBodyCompletionStartMarker),
 		IssueClosed:         strings.EqualFold(strings.TrimSpace(snapshot.State), "closed"),
 		MergedBaseBranch:    mergedArtifact.BaseRefName,
+		KeepRemoteBranch:    keepRemoteBranch,
 		Apply:               apply,
 		Confirm:             confirm,
 		Fingerprint:         fingerprint,
@@ -350,6 +351,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
 	supersededBy := fs.String("superseded-by", "", "merged artifact URL that explicitly supersedes the recorded artifact")
+	keepRemoteBranch := fs.Bool("keep-remote-branch", false, "finish while the remote source branch stays on the server; what remains is recorded in the result and the issue audit line")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
@@ -415,7 +417,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 		// 가드를 여는 대신 fail-closed로 거부한다(C2-F4).
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot resolve current directory (refusing destructive cleanup): %w", err))
 	}
-	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint, originalMerged, supersedingURL)
+	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint, originalMerged, supersedingURL, *keepRemoteBranch)
 	result, err := cleanupDeps.CleanupFinish(context.Background(), cleanupDeps.IssueOpsStateRoot(), req, deps, prov)
 	var bindErr error
 	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
@@ -435,6 +437,9 @@ func runCleanupFinish(args []string, deps Deps) error {
 	}
 	if result.RecordDeleted {
 		fmt.Printf("cleanup finished: worktree=%v branch=%v record deleted\n", result.WorktreeRemoved, result.BranchDeleted)
+		if kept := result.KeptRemoteBranch; kept != nil {
+			fmt.Printf("remote branch kept: branch=%s state=%s oid=%s\n", kept.Branch, kept.State, kept.RemoteOID)
+		}
 	} else {
 		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
 		if result.NextCommand != "" {
