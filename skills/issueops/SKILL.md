@@ -17,6 +17,7 @@ IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/M
 | parent Issue·provider-native child | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) |
 | implement 단계 구현·child 위임·implementation review | [`issueops-implement`](../issueops-implement/SKILL.md) |
 | GitHub PR·GitLab MR publication | [`issueops-create-pr`](../issueops-create-pr/SKILL.md) |
+| execution completion 기록·generation 반납 | [`issueops-complete`](../issueops-complete/SKILL.md) |
 | issue branch·worktree | [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md) |
 | merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
 
@@ -62,6 +63,7 @@ reply, merge, cleanup을 hook에 맡기지 않는다.
 | ai-slop-clean | diff 기반 cleanup, 전후 품질 지표, 재검증 | `ai-slop-clean.md`, `shannon` |
 | feedback | contract change 반영, review thread 검증 | `review-feedback.md` |
 | pr | readiness, 한국어 body, actor/branch/URL readback | `issueops-create-pr` |
+| pr(완료 기록) | 봉인된 artifact, final head, 보고서, 검증 증거 | `issueops-complete` |
 | cleanup | merge evidence, preview/fingerprint, 사용자 승인 | `issueops-cleanup`, `cleanup-state.md` |
 
 최신 사용자 지시가 이전 계획과 충돌하면 최신 지시를 반영하고 durable
@@ -112,6 +114,7 @@ readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 stat
 | `ai_slop_clean` | `issueops ai-slop-clean record` |
 | contract feedback Issue 반영 | `issueops feedback mark-issue-updated` |
 | PR/MR body·target·actor·readback | `issueops-create-pr` |
+| `execution completion requires pr phase`·`final_head must match`·Turing report 경로 | `issueops-complete` |
 | cleanup readiness | `issueops-cleanup`, `cleanup-state.md` |
 
 승인된 design review에는 refactor plan, 대안, 위험, 검증이 있어야 하고 open

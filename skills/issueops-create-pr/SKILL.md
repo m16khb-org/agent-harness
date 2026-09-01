@@ -9,6 +9,10 @@ description: Create and verify a linked GitHub pull request or GitLab merge requ
 Issue와 child는 [`issueops-create-issue`](../issueops-create-issue/SKILL.md)가
 만든다. 전체 lifecycle은 [`issueops`](../issueops/SKILL.md)가 소유한다.
 
+publish는 완료가 아니다. 이 스킬이 만드는 것은 draft이며, 그 draft를 근거로
+완료 증거를 봉인하고 generation을 반납하는 단계는
+[`issueops-complete`](../issueops-complete/SKILL.md)가 소유한다.
+
 GitHub의 PR과 GitLab의 MR은 같은 publication 계약을 쓴다. CLI의 canonical
 동사는 `remote create-pr`이며, 별도의 `create-mr` alias는 만들지 않는다.
 
