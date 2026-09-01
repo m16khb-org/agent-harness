@@ -946,6 +946,13 @@
           "path": "$HARNESS_ROOT/skills/read-public-artifact"
         },
         {
+          "description": "Detect whether the current branch's parent branch has advanced, then rebase onto it safely using evidence-based parent resolution, a verified backup ref, range-diff proof that no commit was lost, and a confirmed --force-with-lease push. Use when the user asks to rebase onto the parent branch, catch up with the base branch, refresh a stacked branch, or says \"부모 브랜치 rebase\", \"베이스 브랜치 최신화\", \"브랜치 최신으로 맞춰줘\", \"rebase onto parent\", \"catch up with base\", \"sync with base branch\". Torvalds sub-skill; an issueops-owned branch routes to `agent-harness issueops execution sync-base` instead of rebasing.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "rebase-onto-parent",
+          "path": "$HARNESS_ROOT/skills/rebase-onto-parent"
+        },
+        {
           "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Parnas, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (parnas), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5203,6 +5210,7 @@
           "project-docs-optimize",
           "project-docs-update",
           "read-public-artifact",
+          "rebase-onto-parent",
           "review-agent-feedback",
           "self-augment",
           "self-verify",
@@ -7244,6 +7252,13 @@
                 "path": "$HARNESS_ROOT/skills/read-public-artifact"
               },
               {
+                "description": "Detect whether the current branch's parent branch has advanced, then rebase onto it safely using evidence-based parent resolution, a verified backup ref, range-diff proof that no commit was lost, and a confirmed --force-with-lease push. Use when the user asks to rebase onto the parent branch, catch up with the base branch, refresh a stacked branch, or says \"부모 브랜치 rebase\", \"베이스 브랜치 최신화\", \"브랜치 최신으로 맞춰줘\", \"rebase onto parent\", \"catch up with base\", \"sync with base branch\". Torvalds sub-skill; an issueops-owned branch routes to `agent-harness issueops execution sync-base` instead of rebasing.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "rebase-onto-parent",
+                "path": "$HARNESS_ROOT/skills/rebase-onto-parent"
+              },
+              {
                 "description": "Use when an existing GitHub pull request or GitLab merge request already carries review comments from an automated reviewer — Kody/Kodus, CodeRabbit, Copilot, Gemini Code Assist, Parnas, or any other bot — and the user wants those threads validated against the real code, answered in-thread, rated with 👍/👎, and resolved: '봇 리뷰 검증해줘', 'Kody 코멘트 답글', 'CodeRabbit 지적 맞는지 확인', '리뷰 스레드 정리/resolve', 'reply to the bot review', 'review feedback triage'. Not for writing a new review (parnas), an uncommitted local diff (code-review), or human reviewer feedback inside an issueops cycle (issueops review-feedback).",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8310,6 +8325,7 @@
                 "project-docs-optimize",
                 "project-docs-update",
                 "read-public-artifact",
+                "rebase-onto-parent",
                 "review-agent-feedback",
                 "self-augment",
                 "self-verify",
