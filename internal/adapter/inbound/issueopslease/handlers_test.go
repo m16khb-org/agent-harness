@@ -42,7 +42,7 @@ func TestPublicClaimErrorMapsDenialsToStableMessages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapped := publicClaimError(tt.err, 5)
+			mapped := publicClaimError(tt.err, 5, "io-demo")
 			if mapped == nil || !strings.Contains(mapped.Error(), tt.wantSub) {
 				t.Fatalf("mapped = %v, want containing %q", mapped, tt.wantSub)
 			}
@@ -50,11 +50,11 @@ func TestPublicClaimErrorMapsDenialsToStableMessages(t *testing.T) {
 	}
 
 	cause := errors.New("state store offline")
-	if mapped := publicClaimError(&leasecontract.Failure{Code: leasecontract.FailurePersistence, Cause: cause}, 5); !errors.Is(mapped, cause) {
+	if mapped := publicClaimError(&leasecontract.Failure{Code: leasecontract.FailurePersistence, Cause: cause}, 5, "io-demo"); !errors.Is(mapped, cause) {
 		t.Fatalf("failure cause lost: %v", mapped)
 	}
 	plain := errors.New("boom")
-	if mapped := publicClaimError(plain, 5); !errors.Is(mapped, plain) {
+	if mapped := publicClaimError(plain, 5, "io-demo"); !errors.Is(mapped, plain) {
 		t.Fatalf("plain error must pass through: %v", mapped)
 	}
 }
