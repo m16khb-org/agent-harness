@@ -1230,6 +1230,13 @@ def main() -> int:
         print(f"[driver] ERROR: {exc}", file=sys.stderr, flush=True)
         return 2
     args_json = json.loads(Path(ns.args).read_text())
+    # The level is a contract, not a label: post_review.py discloses which verification ran, so a
+    # pack built for an inline level must never reach the fan-out that would understate it.
+    level = args_json.get("level")
+    if level and level != "max":
+        print(f"[driver] ERROR: this driver runs the max pipeline; workflow_args.json says level={level}. "
+              "Re-run preflight with --level max, or run the inline path from SKILL.md instead.", file=sys.stderr)
+        return 2
     budget = resolve_budget(args_json, ns.profile)
     thinking = budget["thinking"]
     if ns.thinking_finder:

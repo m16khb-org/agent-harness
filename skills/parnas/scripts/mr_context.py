@@ -612,6 +612,28 @@ LENS_BUNDLES = [("behavior", ["logic", "boundary", "data", "async"]),
 MODEL_DEFAULTS = {"finder": "opus", "tracer": "opus", "reproducer": "opus"}
 PACK_CAP_BYTES = int(os.environ.get("PARNAS_PACK_CAP_BYTES", str(150_000)))
 
+# Effort 레벨. `max` 는 현행 파이프라인(팬아웃 finder + blind tracer + reproducer)이고, 그 아래는
+# 전부 팬아웃 없이 코디네이터가 팩을 직접 순차로 읽는 인라인 경로다 — 서브에이전트를 한 명도
+# 띄우지 않으므로 비용이 유닛 수에 비례하지 않는다. 레벨 간 차이는 렌즈 수 · 후보 캡 · sweep 유무 ·
+# 정밀도/재현율 편향뿐이고, 결정적 prescreen(scripts/prescreen.py)은 전 레벨에서 돈다.
+#
+# 레벨이 조절하는 수치는 `max_candidates` 하나다 — per_lens_cap() 이 렌즈 수로 나눠 finder 에게 주는
+# 검증 *전* 후보 조리개다. 최종 finding 수에는 하드 캡을 두지 않는다: 무엇을 내보낼지는 이미
+# confidence 바(인라인 ≥80 / 60–79 요약 / <60 폐기)와 --max-inline 이 정하고, 게시가 1회뿐인 MR 에서
+# 심각도 정렬 후 잘라내면 검증을 통과한 critical 이 사라질 수 있다.
+# 값은 렌즈 8개(전형적 선택) 기준 렌즈당 3 / 4 / 6 건으로 실제로 벌어지도록 잡았다.
+# `max_candidates` 가 None 이면 기존 규모 기반 계산(large 12 / 그 외 24)을 그대로 쓴다.
+LEVELS = {
+    "low":    {"fanout": False, "gate": False, "lenses": ["logic", "boundary"], "max_candidates": 6,    "bias": "precision", "sweep": False, "skeptics": False},
+    "medium": {"fanout": False, "gate": True,  "lenses": None,                  "max_candidates": 16,   "bias": "precision", "sweep": False, "skeptics": False},
+    "high":   {"fanout": False, "gate": True,  "lenses": None,                  "max_candidates": 24,   "bias": "recall",    "sweep": False, "skeptics": False},
+    "xhigh":  {"fanout": False, "gate": True,  "lenses": None,                  "max_candidates": 40,   "bias": "recall",    "sweep": True,  "skeptics": False},
+    "max":    {"fanout": True,  "gate": True,  "lenses": None,                  "max_candidates": None, "bias": "recall",    "sweep": True,  "skeptics": True},
+}
+# 기본값은 high — 팬아웃 없이 적용 렌즈를 전부 도는 인라인 경로다. 전 역할 opus 팬아웃(`max`)은
+# 유닛 × finder + 후보 × skeptic 만큼 에이전트를 쓰므로 명시적 opt-in 으로 둔다.
+DEFAULT_LEVEL = "high"
+
 
 def hunk_slug(path: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.\-]", "_", path.replace("/", "__"))
@@ -860,8 +882,12 @@ def main() -> None:
     ap.add_argument("--history", type=int, default=5)
     ap.add_argument("--worktree", action="store_true")
     ap.add_argument("--incremental", action="store_true", help="re-inspect only shards touched since the previous run in --out (carry the rest)")
+    ap.add_argument("--level", choices=list(LEVELS), default=DEFAULT_LEVEL,
+                    help=f"effort level (default: {DEFAULT_LEVEL}). max is the fan-out pipeline with blind tracer + reproducer; "
+                         "every level below it runs the lenses inline in the coordinator with no sub-agents and no skeptics")
     ap.add_argument("--no-fetch", action="store_true")
     a = ap.parse_args()
+    level_plan = LEVELS[a.level]
 
     repo_dir = str(Path(a.repo_dir).resolve())
     hostname, project = detect_remote(repo_dir)
@@ -927,11 +953,16 @@ def main() -> None:
     scale = {"files": len(files), "added": ctx["totals"]["added"], "large": len(files) > 40 or ctx["totals"]["added"] > 2000}
     ctx["scale"] = scale
     ctx["prior_review_threads"] = [t for t in threads if t["is_own_review"]]
+    # post_review.py 가 본문에 검증 수준을 공시하려면 레벨이 context.json 에 있어야 한다.
+    ctx["level"] = a.level
+    ctx["level_plan"] = level_plan
     if (out_dir / "context.json").exists():
         (out_dir / "context.prev.json").write_text((out_dir / "context.json").read_text())
     (out_dir / "context.json").write_text(json.dumps(ctx, ensure_ascii=False, indent=1))
     lenses = load_lenses()
     chosen = [l for l in select_lenses(files, "\n".join(patch_parts), issues, lessons) if l in lenses]
+    if level_plan["lenses"] is not None:
+        chosen = [l for l in chosen if l in level_plan["lenses"]] or ["logic"]
     full_patch = "\n".join(patch_parts)
     sym_pairs = changed_symbols(full_patch, with_files=True)
     defs = collect_defs(checkout, sym_pairs, ctx["verification"]["codegraph"])
@@ -964,7 +995,7 @@ def main() -> None:
     pack_dir.mkdir()
     issues_md = "\n".join(f"### #{i['number']} {i['title']} [{i['state']}]\n{i['description'][:6000]}\n" + ("\n".join(f"- [{'x' if c['done'] else ' '}] {c['text']}" for c in i["checklist"]) if i["checklist"] else "") for i in issues)
     pack_meta = {"title": ctx["title"], "description": ctx["description"] or "(empty)", "issues_md": issues_md, "rules": ctx["rule_pack"], "threads": threads, "lessons": lessons}
-    max_candidates = 12 if scale["large"] else 24
+    max_candidates = level_plan["max_candidates"] or (12 if scale["large"] else 24)
     units = []
     for bundle, blenses in LENS_BUNDLES:
         active = [l for l in blenses if l in chosen]
@@ -997,6 +1028,7 @@ def main() -> None:
             units, carried = plan["units"], plan["carried"]
             print(json.dumps({"incremental": True, "since": prev_head, "changed_files": len(changed_since), "units": len(units), "carried": len(carried), "dropped": plan["dropped"]}, ensure_ascii=False))
     wf_args = {"outDir": str(out_dir), "checkout": checkout, "codegraph": ctx["verification"]["codegraph"],
+               "level": a.level, "levelPlan": level_plan,
                "lenses": chosen, "lensText": {l: lenses[l]["text"] for l in chosen},
                # 파일 목록은 팩 안에 있으므로 args 에는 싣지 않는다 (units.json 참조).
                "units": [{"id": u["id"], "lenses": u["lenses"], "pack": u["pack"], "files": u["files"]} for u in units],
@@ -1014,6 +1046,8 @@ def main() -> None:
          f"author={ctx['author']} source={ctx['source_branch']} → target={ctx['target_branch']} labels={','.join(ctx['labels']) or '-'}",
          f"head={head_sha} base={refs.get('base_sha')} start={refs.get('start_sha')} head_local={have_head} checkout={checkout} isolated_worktree={worktree or '-'}",
          f"eligible={eligibility['eligible']} reasons={reasons or '-'}",
+         f"level={a.level} fanout={level_plan['fanout']} skeptics={level_plan['skeptics']} gate={level_plan['gate']} sweep={level_plan['sweep']} bias={level_plan['bias']}"
+         + ("" if level_plan["fanout"] else " → run the lenses inline in this session; do NOT dispatch finder/skeptic sub-agents"),
          f"scale: files={scale['files']} added={scale['added']} large={scale['large']} → lenses={','.join(chosen)} (workflow_args.json)",
          f"defs.md: {len(symbols)} changed symbols with definition + one-hop callers/callees; pack/: {len(units)} finder units (lens bundle × shard, ≤ ~{PACK_CAP_BYTES // 1000}KB diff each); hunks/: per-file patches",
          f"prior threads by this skill at other heads: {len(ctx['prior_review_threads'])}", "", "## Description", ctx["description"][:3000] or "(empty)", "",
@@ -1042,7 +1076,7 @@ def main() -> None:
         L += [f"  reply: {r[:300]}" for r in l["replies"]]
     L += ["", "## Verification", json.dumps(ctx["verification"], ensure_ascii=False)]
     (out_dir / "summary.md").write_text("\n".join(L) + "\n")
-    print(json.dumps({"provider": p.name, "out_dir": str(out_dir), "number": n, "head_sha": head_sha, "eligible": eligibility["eligible"],
+    print(json.dumps({"provider": p.name, "out_dir": str(out_dir), "number": n, "head_sha": head_sha, "eligible": eligibility["eligible"], "level": a.level,
                       "reasons": reasons, "files": len(files), "added": scale["added"], "large": scale["large"], "lenses": chosen,
                       "units": len(units), "worktree": worktree, "workflow_args": str(out_dir / "workflow_args.json")}, ensure_ascii=False))
 

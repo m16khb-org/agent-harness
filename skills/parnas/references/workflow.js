@@ -50,6 +50,10 @@ const VERDICT = {
 }
 
 const { outDir, checkout, codegraph, lensText, units = [], maxCandidates = 24, perLensCap = 3, hunkRanges = {}, refutedHistory = [], carried = [] } = args
+// The level is a contract, not a label: post_review.py tells the author which verification ran,
+// so a `high` pack must never reach the fan-out that would make that disclosure understate it.
+// Levels below max are executed inline by the coordinator (SKILL.md § 2 Find — inline).
+if (args.level && args.level !== 'max') throw new Error(`workflow.js runs the max pipeline; workflow_args.json says level=${args.level}. Re-run preflight with --level max, or run the inline path from SKILL.md instead.`)
 const M = args.models || {}
 // Omo native has its own pinned adapter path. Keep direct workflow invocations from inheriting
 // the Claude/OpenCode `opus` defaults in workflow_args.json.

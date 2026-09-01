@@ -190,13 +190,29 @@ def norm_ok(x) -> str:
     return str(x)
 
 
+def level_disclosure(level: str) -> str:
+    """What the reader is entitled to assume about these findings.
+
+    Only `max` runs the blind tracer and the reproducer. Below it the lenses run inline with
+    no skeptics, so the footer must not claim every finding was traced and reproduced —
+    that claim is the whole reason a Parnas review is worth more than a one-pass bot's.
+    """
+    if level == "max":
+        return "게시한 지적은 모두 정의·호출자 추적과 테스트/타입체크로 확인했습니다."
+    return (f"이 리뷰는 `{level}` 레벨로 실행되어 렌즈 검사만 인라인으로 수행했습니다 — "
+            "적대적 검증(blind tracer·재현)은 돌지 않았으므로 각 지적은 저자 확인이 필요합니다. "
+            "`--level max` 로 다시 실행하면 검증까지 수행합니다.")
+
+
 def render_summary(ctx: dict, data: dict, posted: list[dict], skipped: list[dict], gate_md: str | None = None,
                    overflow: list[dict] | None = None, invalid: list[dict] | None = None, gate_table: list[dict] | None = None) -> str:
     head = ctx["diff_refs"]["head_sha"]
     verdict = data.get("verdict", "comment")
     n_inline = len(posted)
+    # context.json 이 레벨을 갖기 전에 만들어진 것이면 팬아웃 파이프라인으로 만들어진 것이다.
+    level = ctx.get("level", "max")
     verdict_ko = {"approve": "✅ 병합 가능", "request_changes": "🛑 수정 필요", "comment": "💬 병합 차단 없음"}.get(verdict, verdict)
-    L = [f"## Parnas 리뷰 — {verdict_ko} (인라인 {n_inline})", "", (data.get("summary") or "").strip(), ""]
+    L = [f"## Parnas 리뷰 — {verdict_ko} (인라인 {n_inline}, 레벨 `{level}`)", "", (data.get("summary") or "").strip(), ""]
     if posted:
         L += [f"### 지적 ({len(posted)})", "", "| # | 심각도 | 분류 | 위치 | 요약 |", "|---|---|---|---|---|"]
         L += [f"| {f['id']} | {f['severity']} | {f.get('category', '')} | `{f['path']}:{f['new_line']}` | {f['title']} |" for f in posted]
@@ -237,8 +253,8 @@ def render_summary(ctx: dict, data: dict, posted: list[dict], skipped: list[dict
         L += [f"- `{f.get('path')}:{f.get('new_line')}` {f.get('title')} — {f['invalid_reason']}" for f in invalid] + ["", "</details>", ""]
     if data.get("rule_candidates"):
         L += [f"<details><summary>다음 리뷰 규칙 제안 {len(data['rule_candidates'])}건 (별도 MR 로 반영)</summary>", ""] + [f"- {x}" for x in data["rule_candidates"]] + ["", "</details>", ""]
-    L += [f"<sub>head `{head[:12]}` · 게시한 지적은 모두 정의·호출자 추적과 테스트/타입체크로 확인했습니다. 잘못된 지적은 👎 + 이유를 남겨 주세요. 다음 리뷰 규칙에 반영합니다.</sub>",
-          f"<!-- parnas-review head={head} -->"]
+    L += [f"<sub>head `{head[:12]}` · {level_disclosure(level)} 잘못된 지적은 👎 + 이유를 남겨 주세요. 다음 리뷰 규칙에 반영합니다.</sub>",
+          f"<!-- parnas-review head={head} level={level} -->"]
     return "\n".join(L)
 
 

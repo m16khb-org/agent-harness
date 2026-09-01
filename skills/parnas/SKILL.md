@@ -7,9 +7,10 @@ description: "Use when asked to review, inspect, or comment on a GitLab merge re
 
 **A claim about code you did not open is not a finding.** Every posted defect was traced
 through its real definitions, one hop upstream to the validation boundary and one hop
-downstream to the consumer, checked against the cumulative diff, and attacked by three
-skeptics. One-pass bots post what one model believed; this skill posts what survived
-refutation.
+downstream to the consumer, and checked against the cumulative diff. At `--level max` it was
+also attacked by a blind tracer and, where that failed to refute it, a reproducer — one-pass
+bots post what one model believed; `max` posts what survived refutation. The cheaper levels
+keep the evidence rule and drop the adversarial stage, and say so in the review they post.
 
 Named after David Parnas, whose *Active Design Reviews* (Parnas & Weiss, 1985) showed that
 a passive review produces "looks fine": reviewers must be forced to answer specific
@@ -26,15 +27,41 @@ or GitHub (`gh`). `agents/openai.yaml` exposes it as `$parnas` on Codex.
 ```
 0 Preflight  scripts/mr_context.py  → summary.md, defs.md, pack/, hunks/, context.json, workflow_args.json, checkout
 1 Gate       scripts/quality_gate.py → gate.md / gate.json (deterministic; ~30s)
-2 Find+Verify references/workflow.js → confirmed findings, refuted, verified_ok, refuted_for_history
+2 Find       max: references/workflow.js (fan-out)  ·  below max: you read the packs inline
+2b Screen    scripts/prescreen.py (inline levels; workflow.js does this itself at max)
 3 Merge      you → findings.json
 4 Post       scripts/post_review.py → dry run, then --post, then read-back table
 ```
 
+## Effort levels
+
+`--level` on preflight picks how much is spent. **Only `max` spawns agents.** Every level below
+it runs the same lenses inline in your own context — no finder sub-agents, no skeptics — which
+is why its cost does not scale with the number of units. The default is `high`.
+
+| level | gate | find | verify | 후보 조리개 (렌즈 8개 기준) |
+|---|---|---|---|---|
+| `low` | 생략 | `logic`+`boundary`만, 팩 1패스 | prescreen | 렌즈당 4 |
+| `medium` | ✅ | 적용 렌즈 전부, 인라인 순차 (정밀도 편향) | prescreen | 렌즈당 3 |
+| `high` (기본) | ✅ | 적용 렌즈 전부, 인라인 순차 (재현율 편향) | prescreen | 렌즈당 4 |
+| `xhigh` | ✅ | 전부 + sweep 패스 | prescreen | 렌즈당 6 |
+| `max` | ✅ | workflow.js 팬아웃 | prescreen + blind tracer + reproducer | 규모 기반 (기존) |
+
+`summary.md` prints the resolved plan as a `level=` line; `context.json → level` drives the
+disclosure `post_review.py` puts in the posted body. There is no hard cap on the number of
+findings at any level — the confidence bar (inline ≥ 80 / 60–79 summary / < 60 dropped) and
+`--max-inline` already decide what ships, and truncating by severity would drop a verified
+critical from a review that gets posted once.
+
+**Pick `max` when the review is the gate** — a release branch, a change to money/auth/data, or
+any MR whose findings you intend to state as verified. Pick `high` (or below) for a running
+review of ordinary work. Say which level ran when you report in chat; never describe an inline
+level's output as verified.
+
 ### 0. Preflight
 
 ```bash
-python3 <skill>/scripts/mr_context.py --mr <ref> --repo-dir <repo> --worktree --history 5
+python3 <skill>/scripts/mr_context.py --mr <ref> --repo-dir <repo> --worktree --history 5 --level high
 ```
 
 Read `<out_dir>/summary.md`. Stop and say so when `eligible=false` (closed/merged/draft, or a
@@ -75,7 +102,51 @@ new breach / 60 pre-existing / 50 unanchorable) are the **only findings exempt f
 upstream/downstream rule** — they are measurements, not claims. Numbers in the review come
 from the gate; never estimate them.
 
-### 2. Find + Verify
+Skipped at `--level low` only. It costs no tokens and it is the only place the review's numbers
+can come from, so run it at every other level even when you are reviewing cheaply.
+
+### 2. Find — inline (`low` / `medium` / `high` / `xhigh`)
+
+**Do not dispatch sub-agents at these levels.** You are the finder. Work through the units in
+`units.json` yourself, in this context, in sequence:
+
+1. Read `pack/<unit>.md` whole, in one call — it already holds that slice's diff, the
+   definitions and one-hop neighbours, matching rules, threads and prior lessons. Do not grep
+   around it; that is what the pack exists to prevent.
+2. Apply each of the unit's lenses to that pack **separately**, and tag every candidate with its
+   `lens`. Do not let one lens's conclusion suppress another's.
+3. Emit candidates in the finder JSON shape from `references/lenses.md` (`path`, `new_line`,
+   `severity`, `category`, Korean `title`/`what`/`why`/`how`, `evidence`, `upstream`,
+   `downstream`, `confidence`, `newly_reachable`), at most `perLensCap` per lens.
+4. `xhigh` only: after every unit, take one more pass over the diff as a fresh reviewer holding
+   the current list, looking **only** for defects not already on it — moved/extracted code that
+   dropped a guard, setup/teardown asymmetry in tests, config defaults flipped. Add nothing you
+   already have; return nothing rather than padding.
+
+The evidence rule does not relax because the level is cheap: a candidate still needs the opened
+definition, the upstream hop, the downstream hop and a concrete failure scenario. What the cheap
+levels drop is the **adversarial** stage, not the evidentiary one. A hop you could not find caps
+confidence at 50 and is stated, never guessed.
+
+Bias by level: `low`/`medium` are precision — every candidate should be one a maintainer would
+act on. `high`/`xhigh` are recall — surface anything with a nameable failure scenario and let
+the confidence bar sort it out.
+
+### 2b. Screen — inline levels
+
+Write the candidates to `<out_dir>/candidates.json` and run the deterministic stage:
+
+```bash
+python3 <skill>/scripts/prescreen.py --args <out_dir>/workflow_args.json \
+  --candidates <out_dir>/candidates.json --out <out_dir>/prescreened.json
+```
+
+This is the same dedup + off-hunk screen + committed refutation memory that `workflow.js` runs
+at `max` (`security`/`data` are never suppressed), and it costs no agent. Merge from
+`prescreened.json → candidates`; the dropped ones carry their reason and belong in the chat
+report's refuted line, not in the MR.
+
+### 2 (max). Find + Verify — fan-out
 
 Claude Code: `Workflow({scriptPath: "<skill>/references/workflow.js", args: <contents of
 workflow_args.json>})`. Omo native: **do not execute `workflow.js` through the current Omo
@@ -158,11 +229,15 @@ This leaves the original result untouched and writes `<out_dir>/workflow-retry-r
 Write `<out_dir>/findings.json` (schema: `post_review.py` docstring):
 
 - Start from `gate.json → candidates` (keep their `source`/`metrics`/`pre_existing`/`minor`
-  fields), then add the workflow's `findings` with ids `F1..` (keep `skeptics_passed`,
-  `upstream`, `downstream`).
+  fields), then add the findings with ids `F1..` — at `max` from `workflow-result.json`
+  (keep `skeptics_passed`, `upstream`, `downstream`); at the inline levels from
+  `prescreened.json → candidates` (keep `upstream`/`downstream`; there is no
+  `skeptics_passed`, and never invent one — `post_review.py` reads it as "both skeptics failed
+  to refute this" and lowers the inline bar to 50 on the strength of it).
 - The workflow's `partial` list (refuted candidates where a skeptic still stood at ≥ 70)
   becomes `open_questions`: one line each — the residual risk in the standing skeptic's words,
-  the location, and what the author should confirm.
+  the location, and what the author should confirm. Inline levels have no `partial`; put the
+  hops you could not complete there instead.
 - `verified_ok` entries stay as `{concern, why_ok, loc, thread}` objects; pick at most 8,
   preferring ones that contradict an existing bot thread (`thread` set).
 - Drop a finding whose line already has a bot/human thread unless it contradicts that thread
@@ -195,9 +270,10 @@ instead). Secrets are masked. GitHub `approve` posts as `COMMENT` unless `--allo
 The script refuses a moved head, a closed MR, and a second post for the same head. Report
 the read-back table it prints, not the POST responses.
 
-When the user did not ask to post, the deliverable in chat is: verdict, the "지적" table,
-"저자 확인 요청", the 자동 검사 table, "검토했으나 문제 없음", rule proposals, and one line per
-refuted candidate (title + winning skeptic reason). Do not paste the inline bodies. The
+When the user did not ask to post, the deliverable in chat is: the level that ran, verdict, the
+"지적" table, "저자 확인 요청", the 자동 검사 table, "검토했으나 문제 없음", rule proposals, and one
+line per refuted candidate (title + winning skeptic reason; at the inline levels the prescreen
+reason from `prescreened.json`). Do not paste the inline bodies. The
 summary's first paragraph must name only defects that appear in the tables or in "저자 확인
 요청" — never mention a finding the reader cannot find below.
 
@@ -230,11 +306,16 @@ caller's checkout and it must never be removed. Remove an isolated review worktr
 
 ## Hard rules
 
-- No agent-found finding without an opened definition, an upstream hop, a downstream hop and
-  a failure scenario; "probably/may/could" in `why` means unverified. Gate findings are the
-  only exception.
+- No finding without an opened definition, an upstream hop, a downstream hop and a failure
+  scenario; "probably/may/could" in `why` means unverified. This holds at every level — cheap
+  buys fewer lenses and no skeptics, never a lower evidence bar. Gate findings are the only
+  exception.
+- Below `max`, never call the output verified, and never spawn finder or skeptic sub-agents to
+  "top it up" — that is `max` with the disclosure of a cheaper level. Run `--level max`
+  instead. The level goes in the posted body (`post_review.py`) and in the chat report.
 - A finder must attest every assigned file exactly once in `reviewed_files`; a coverage gap or
   duplicate receipt degrades the review and must be disclosed, never summarized as clean.
+  At the inline levels you are the finder: name any unit you did not read.
 - A single call site never proves a signature or a field. `{ results: users }` reads
   `results`.
 - Only changed or newly-reachable lines. Pre-existing debt appears only if the change makes it
@@ -251,6 +332,8 @@ caller's checkout and it must never be removed. Remove an isolated review worktr
 | Rationalisation | Reality |
 |---|---|
 | "The diff makes it obvious, no need to open the callee" | !5581: the "obvious" empty-string bug was blocked by `@MinLength(1)` upstream and filtered downstream. Open it. |
+| "It's only `high`, so a looser hop is fine" | The level buys fewer lenses and no skeptics, never a lower evidence bar. Without the hops there is no candidate to screen. |
+| "I'll spawn a couple of finders to make `high` better" | Then you ran `max` and disclosed `high`. The level is what the author is told; change the level, not the fan-out. |
 | "Two skeptics per candidate is expensive" | One false positive costs the author a reply and the next real finding its credibility. Cut candidates (`maxCandidates`), not skeptics — the 2026-08-28 measurement showed finders exploring by hand (105 turns each) were the cost, not the skeptics. |
 | "The finder needs to grep around to be sure" | The pack already holds its diff slice, definitions and one-hop neighbours; 10 messages is the budget. Before packs, finders spent 30 turns grepping and never managed to read the 462 KB diff at all. |
 | "It's in CLAUDE.md so I'll flag it" | Only if the rule text names it, the glob matches, and it's on a changed line. |
