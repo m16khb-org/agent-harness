@@ -307,6 +307,7 @@ git worktree prune
 | Skill | How Torvalds integrates |
 |-------|------------------------|
 | **atomic-commit-push** | Basic commit/push workflows belong to atomic-commit-push. Torvalds handles advanced operations (rebase, bisect, conflict, recovery, cherry-pick, worktree). When atomic-commit-push's preflight detects complex state, it delegates to Torvalds. |
+| **rebase-onto-parent** | Bringing one branch up to date with the branch it was created from belongs to rebase-onto-parent: it resolves the parent from recorded evidence, proves the parent advanced, and rebases with a verified backup ref and a leased push. Torvalds handles the interactive rebase, the conflict protocol it delegates to, and any recovery beyond that skill's backup ref. |
 | **hopper** | Hopper calls Torvalds for `git bisect` during debugging. Torvalds handles the git mechanics; Hopper handles the debugging methodology and root cause determination. |
 | **dijkstra** | Dijkstra optimizes algorithms; Torvalds commits each transformation atomically with before/after metrics in the commit message. |
 | **codd** | Schema migration files (DDL) are committed atomically per Torvalds' protocols. |

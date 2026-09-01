@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rebase Onto Parent"
+  short_description: "Rebase a branch onto the branch it was created from"
+  default_prompt: "Use $rebase-onto-parent to resolve the parent branch of the current branch from recorded evidence, confirm that parent with me before acting, prove it has advanced past the divergence point, create and verify a backup ref, rebase onto it, prove with range-diff that every commit survived, and ask before any --force-with-lease push. Route the branch to issueops execution sync-base instead when an IssueOps cycle owns it, and never resolve a conflict without my decision."
