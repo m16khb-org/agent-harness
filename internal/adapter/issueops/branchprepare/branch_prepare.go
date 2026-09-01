@@ -80,14 +80,27 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 	if strings.TrimSpace(record.IssueURL) == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issue must be linked before branch prepare")
 	}
-	if strings.TrimSpace(record.Branch) == "" {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issueops record must be started with branch before branch prepare")
-	}
-	if record.Branch != branch {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
-	}
+	// 이슈 동일성을 브랜치 판단보다 먼저 확정한다. 아래 채택은 이 이슈의
+	// 번호로 검증된 브랜치만 받아들여야 하기 때문이다.
 	if record.IssueURL != issueURL {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
+	}
+	// 브랜치 채택. `IssueOpsProblemReadiness`가 못박듯 issue_url과 branch는
+	// 둘 다 grill artifact이고, 사이클은 둘 다 없이 시작할 수 있다. 이슈
+	// URL에는 `link-issue`라는 사후 연결 표면이 있었지만 브랜치에는 없어서,
+	// 브랜치 없이 시작한 사이클은 `remote create-issue --confirm`으로 원격
+	// 이슈를 만든 뒤 여기서 영구히 막혔다. 브랜치 이름은 `<이슈번호>-`
+	// 접두를 강제받아 이슈 생성 전에는 알 수 없으므로, create-issue 쪽을
+	// 막으면 그 명령이 무용해진다. 되돌릴 수 없는 원격 쓰기 뒤에 사이클을
+	// 버리게 하는 대신 여기서 브랜치를 받는다.
+	//
+	// 채택은 일회성이다. 한 번 정해진 브랜치는 사이클의 정체성이므로 이후
+	// 다른 이름은 거부한다. 채택 시점의 branch는 ValidateBranch와 위의
+	// 이슈 번호 접두 검사를 이미 통과했다.
+	if strings.TrimSpace(record.Branch) == "" {
+		record.Branch = branch
+	} else if record.Branch != branch {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
 	}
 	if reason := umbrellaBaseBranchMismatch(store, record, branch, baseBranch); reason != "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("%s", reason)
