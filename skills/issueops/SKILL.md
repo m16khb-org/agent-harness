@@ -162,6 +162,9 @@ Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 �
 - score 결과를 join한 뒤 threshold 이상 label만 적용한다.
 - label과 concrete assignee가 없으면 쓰지 않는다.
 - title/body는 한국어 중심이며 secret 원문을 포함하지 않는다.
+- 원격에 남는 한국어 텍스트는 write 전에 `fluent-korean` 스킬을 호출해
+  다듬는다. issue와 PR/MR의 제목·본문뿐 아니라 댓글과 review thread 답글도
+  같은 규칙을 따른다.
 - preview와 동일한 요청에만 `--confirm`을 추가한다.
 - provider 호출 결과가 불명확하면 자동 retry하지 않고 reconcile한다.
 - contract-changing feedback가 생기면 원격 Issue body를 갱신하고 durable

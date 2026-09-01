@@ -16,6 +16,9 @@ publish는 완료가 아니다. 이 스킬이 만드는 것은 draft이며, 그 
 GitHub의 PR과 GitLab의 MR은 같은 publication 계약을 쓴다. CLI의 canonical
 동사는 `remote create-pr`이며, 별도의 `create-mr` alias는 만들지 않는다.
 
+provider 세부 규칙과 원격 본문 한국어 규칙은
+[`remote-issue.md`](../issueops/references/remote-issue.md)가 소유한다.
+
 ## 읽는 순서
 
 리뷰어가 처음 보는 순서를 고정한다.
@@ -75,6 +78,11 @@ body 또는 durable completion evidence에 남긴다.
 | 위험·Breaking Changes | 무엇이 깨질 수 있나 | risk / rollback 표 |
 | 사용자 영향·문서 | 누가 영향을 받나 | 영향과 migration 한 문단 |
 | 범위·정리·자동화 | 범위를 지켰나 | 사실만 bullet |
+
+body 초안을 만든 다음, `remote create-pr`을 실행하기 전에 `fluent-korean`
+스킬을 Skill 도구로 호출해서 문장을 다듬는다. 한국어 게이트는 한글 비율만
+보기 때문에 AI가 쓴 티는 걸러지지 않는다. 이 호출을 건너뛴 body로는
+`--confirm`을 붙이지 않는다.
 
 ### 좋은 예: PR/MR body
 
@@ -177,7 +185,8 @@ provider 결과가 불명확하면 create를 반복하지 않는다. execution�
 ## 품질·성능 게이트
 
 - 품질: linked Issue, generation-CAS, head/base, actor, body completeness,
-  label/assignee, live artifact readback, secret redaction.
+  원격 write 전 `fluent-korean` 호출, label/assignee, live artifact readback,
+  secret redaction.
 - 성능: publication 단계에서 issue creation과 전체 lifecycle reference를
   중복 로드하지 않는다. 변경 전후 byte 수와 focused 검증 시간을 기록할 수
   있지만 측정 없는 latency 개선 주장은 하지 않는다.

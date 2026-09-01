@@ -251,6 +251,11 @@ Write `<out_dir>/findings.json` (schema: `post_review.py` docstring):
 - Verdict: `request_changes` if any critical/high; `approve` if nothing ≥ medium and the
   tests lens found the changed behavior covered; else `comment`.
 - Korean prose; identifiers, paths, commands verbatim. Never quote secret values.
+- Before posting, invoke the `fluent-korean` skill and apply it to every Korean prose
+  field the agents produced — `summary`, `verified_ok`, `open_questions`,
+  `rule_candidates`, and each finding's `title`/`what`/`why`/`how`. Sub-agent prose
+  reaches the reviewer's thread unedited otherwise; the polish pass is a precondition
+  for `--post`, not an option. Facts, evidence lines, and identifiers stay as verified.
 
 ### 4. Post
 

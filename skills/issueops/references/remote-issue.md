@@ -156,7 +156,9 @@ The same VCS linking rules apply without a hook:
 
 ## Remote Artifact Writing Quality
 
-한국어 게이트는 한글 비율만 검사한다. 게이트를 통과한 본문도 AI가 쓴 티가 날 수 있다. issue와 child task, PR/MR 제목·본문을 작성하거나 수정할 때는 `fluent-korean` 스킬 지침을 적용하고, 아래 규칙을 확인한다.
+한국어 게이트는 한글 비율만 검사한다. 게이트를 통과한 본문에도 AI가 쓴 티는 그대로 남는다. issue와 child task, PR/MR의 제목과 본문, issue 댓글, review thread 답글을 작성하거나 수정할 때는 원격에 쓰기 전에 `fluent-korean` 스킬을 Skill 도구로 호출해서 초안을 다듬는다.
+
+이 호출은 권고가 아니라 원격 write의 선행 조건이다. 호출하지 않은 초안은 확정하지 않으며, `--confirm`을 붙이지 않는다. 호출한 뒤 아래 규칙까지 확인한다.
 
 1. 명사구나 목록 항목을 제외하면 완성된 문장으로 쓴다. 서술어와 종결어미를 생략하지 않는다.
 2. 단정 회피 어미를 쓰지 않는다. 불확실성이 실제로 있으면 근거를 함께 쓴다.

@@ -29,7 +29,7 @@ When handling remote PR/MR review feedback, first verify each reviewer claim aga
 
 Automated review comments from Kodus, Gemini Code Assist, and similar tools are **review-agent feedback**, not lower-priority noise. Treat each item like any other reviewer claim: classify it, verify whether it is valid, stale, noisy, or a contract change, reply in the original thread with evidence, and resolve only after the fix or obsolescence is verified.
 
-The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
+The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Invoke the `fluent-korean` skill on the updated body, then run the Korean Remote Artifact Gate, then write. The same `fluent-korean` pass applies to every review-thread reply and issue comment this phase publishes.
 
 After the remote issue body is updated for `contract_change` feedback, record that join point in IssueOps state:
 

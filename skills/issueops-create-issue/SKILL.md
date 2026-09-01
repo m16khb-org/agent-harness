@@ -99,6 +99,13 @@ parent body를 안전하게 갱신할 IssueOps 경계가 없으면 raw `gh`/`gla
 
 ## 읽기 좋은 body
 
+body 초안을 만든 다음, 원격에 쓰기 전에 `fluent-korean` 스킬을 Skill 도구로
+호출해서 문장을 다듬는다. 한국어 게이트는 한글 비율만 보기 때문에 굵게 표시
+남발, 화살표 남용, 번역투 명사구, 단락마다 반복되는 마무리 문형을 걸러 내지
+못한다. 이 호출을 건너뛴 body는 확정하지 않는다. 세부 규칙은
+[`remote-issue.md`](../issueops/references/remote-issue.md)의
+`Remote Artifact Writing Quality`가 소유한다.
+
 ### Implementation Issue 좋은 예
 
 ```markdown
@@ -207,8 +214,9 @@ verification, merge condition, cleanup을 넣는다. confirmed child 결과의
 
 ## 품질·성능 게이트
 
-- 품질: template critical validation 0, 한국어 body, score 기록, secret
-  redaction, hierarchy/label/assignee readback.
+- 품질: template critical validation 0, 한국어 body, 원격 write 전
+  `fluent-korean` 호출, score 기록, secret redaction,
+  hierarchy/label/assignee readback.
 - 성능: issue 단계에서만 이 스킬을 로드한다. PR/MR reference를 함께
   중복 로드하지 않는다. 변경 전후 byte 수와 focused 검증 시간을 기록하되
   측정 없는 성능 개선을 주장하지 않는다.

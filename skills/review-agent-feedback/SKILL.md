@@ -86,6 +86,10 @@ shape; the script prepends the reviewer's mention and appends the idempotency ma
 Identifiers, paths, and commands stay verbatim; never quote secret values. A reply
 must contain the evidence that decided the verdict — "확인했습니다" alone is not a reply.
 
+Before posting `plan.json`, invoke the `fluent-korean` skill and apply it to every
+`reply`. These replies are published to a remote thread a human reads, so the polish
+pass is a precondition for posting, not an option.
+
 Rules for the plan:
 
 - `hold` threads (waiting on a human, a follow-up promised in this PR/MR that is not
