@@ -1,6 +1,6 @@
 ---
 name: issueops-complete
-description: Record IssueOps execution completion and release the generation after a draft PR or MR is published and verified, with exact evidence ordering, actor and generation fencing, idempotent recovery, and explicit good and bad examples. Use when a cycle sits in pr phase with an active lease, when the user asks to finish or complete an issue cycle, or says "완료 처리해줘", "사이클 끝내줘", "execution complete", "완료 기록해줘".
+description: Record IssueOps execution completion and release the generation after a draft PR or MR is published and verified, with exact evidence ordering, actor and generation fencing, idempotent recovery, a fixed final completion report, and explicit good and bad examples. Use when a cycle sits in pr phase with an active lease, when the user asks to finish or complete an issue cycle, or says "완료 처리해줘", "사이클 끝내줘", "execution complete", "완료 기록해줘".
 ---
 
 # IssueOps Complete
@@ -26,6 +26,7 @@ flowchart LR
   f -->|거부| g["execution status로 원인 확인"]
   g --> b
   f -->|성공| h["generation 반납·done"]
+  h --> i["완료 보고 출력"]
 ```
 
 ## 시작 게이트
@@ -107,6 +108,63 @@ agent-harness issueops execution complete --id "$ISSUEOPS_ID" \
   `create-pr`을 다시 실행해 상황을 "고치지" 않는다. 이중 publication의 처분은
   `execution reconcile`이 소유한다.
 
+## 완료 보고
+
+`complete`가 성공해도 갱신되는 것은 durable record뿐이고 사용자 화면에는 JSON
+한 덩어리만 남는다. 그래서 completion 직후 아래 다섯 블록을 출력한다. 이 보고는
+스킬의 마지막 산출물이며, 생략하면 사용자가 무엇이 봉인됐는지 확인할 방법이
+`--json`을 직접 읽는 것밖에 없다.
+
+```text
+최종 결과
+
+Durable state record
+  IssueOps id  : io-1732ae338313
+  phase        : done
+  issue        : #2852
+  MR           : !5657 (draft)
+  completion   : generation 1, final_head 0aee8ee05b, lease released
+
+Phase routing
+  problem → grill → issue(#2852) → plan → compatibility-review
+  → implement → ai-slop-clean → feedback → pr → done
+
+Flow evidence
+  intent / plan-prep 4항목 / design review(approved)
+  devils-advocate(pass, 결함 1건 발견·교정) / compatibility review(approved)
+  TDD RED→GREEN, ai-slop-clean 기록, MR 검증(verify-artifact)
+
+Cleanup/readiness
+  pr-readiness --strict: ready
+  cleanup 대기: pr_phase 통과, remote_artifact 확인됨
+  남은 조건: MR merge → issueops-cleanup (워크트리·브랜치·이슈 정리)
+
+MR: https://gitlab.example.com/group/project/-/merge_requests/5657
+
+커밋 2개 (eb0ca1b604 fix, 0aee8ee05b ai-slop-clean), 최종 15 스위트 100개 테스트 통과.
+```
+
+위 예시의 숫자와 URL은 실제 cycle에서 나온 형태를 보여줄 뿐이므로 그대로 옮기지
+않는다. 각 줄은 아래 출처에서 읽은 값으로만 채운다.
+
+| 보고 줄 | 값의 출처 |
+|---|---|
+| IssueOps id·phase·issue | `issueops status --json` |
+| PR/MR 번호와 draft 여부 | 봉인된 `remote_artifact` |
+| generation·final_head·lease | `execution status --json`의 completion과 lease |
+| Phase routing | record가 실제로 지나온 phase 전이 |
+| Flow evidence | status에 기록된 review와 evidence |
+| Cleanup/readiness | `issueops pr-readiness --id ID --strict --json`, `issueops cleanup status --id ID --json` |
+| 커밋·테스트 | 실행한 git 명령과 테스트 명령의 실제 출력 |
+
+- 확인하지 못한 줄은 지어내지 말고 빼거나 `미확인`으로 적는다. `--verification`에
+  적용하는 규칙이 화면 보고에도 똑같이 적용된다.
+- final_head는 화면에서 앞 10자로 줄여 보여주더라도 `--final-head`에는 전체
+  SHA를 넘긴다.
+- GitHub cycle이면 `MR : !iid`를 `PR : #n`으로 바꾸고 URL도 PR 주소를 쓴다.
+- `complete`가 거부되면 이 보고를 출력하지 않는다. 대신 현재 phase, 막힌 지점,
+  `execution status`가 돌려준 `next_command`를 보고한다.
+
 ## 종료 경계
 
 completion은 generation을 반납하고 record를 `done`으로 옮긴다. 그것이 전부다.
@@ -130,6 +188,9 @@ completion은 generation을 반납하고 record를 `done`으로 옮긴다. 그�
 | generation을 기억으로 채움 | 현재 값은 `execution status`가 소유한다 |
 | `complete` 성공을 머지 완료로 보고 cleanup 실행 | completion은 머지하지 않는다. cleanup은 머지 검증을 따로 요구한다 |
 | 실행하지 않은 검증을 `--verification`에 기재 | 완료 기록은 durable artifact다. 연극이 그대로 남는다 |
+| completion 성공을 `ok: true` 한 줄로만 보고 | 사용자가 봉인된 증거를 볼 수 없다. 완료 보고 다섯 블록을 출력한다 |
+| 지나지 않은 phase까지 routing 줄에 나열 | 보고가 record와 어긋난다. 실제 전이만 적는다 |
+| 예시의 id·SHA·테스트 개수를 그대로 복사 | 보고가 다른 cycle의 값을 말한다. 출처 표의 명령에서 읽는다 |
 
 ## 검증
 
