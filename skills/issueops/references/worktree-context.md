@@ -26,6 +26,15 @@ creates or reuses exactly one sibling path:
 ../<repo>.worktrees/<branch-name-with-slashes-replaced>
 ```
 
+Reuse is conditional, not automatic. `execution prepare` adopts a worktree that
+already sits at that path only when all three hold: the path resolves to that
+Git top level, its current branch equals the recorded branch, and its **HEAD
+equals the recorded base SHA**. Any mismatch fails with `existing canonical
+worktree identity does not match branch and base_head`. A worktree created
+before the cycle is therefore adoptable only while it is still untouched at the
+base commit; once it carries a commit, either record that commit as the base SHA
+or remove the worktree and let `execution prepare` create it.
+
 Do not run `git worktree add`, link a different path, or provision dependencies
 from a second workflow. The persisted canonical path, branch, HEAD, base SHA,
 and worktree identity are the contract for both direct and Orca modes.

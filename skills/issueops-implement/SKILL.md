@@ -33,6 +33,13 @@ flowchart LR
 
 다음 하나라도 확인되지 않으면 구현을 시작하지 않는다.
 
+- record가 존재한다. `ISSUEOPS_ID`가 없고 `issueops list --repo "$PWD" --json`에도
+  이 브랜치의 사이클이 없으면 **아직 사이클이 시작되지 않은 것**이다. 워크트리와
+  브랜치만 먼저 만든 뒤 이 스킬로 들어오면 매번 여기서 걸린다. 이때는 상태만 보고하고
+  멈추지 말고 [`issueops`](../issueops/SKILL.md)를 실행한다. 라우터가 problem·grill·
+  plan·compatibility-review를 밟아 record·plan artifact·execution lease를 만들고,
+  implement phase에 도달하면 이 스킬로 되돌아온다. "진행 방향은 사용자 결정"으로
+  끝내는 것은 게이트 통과가 아니라 라우팅 누락이다.
 - record의 phase가 `implement`다. 아직 전이 전이면 이 스킬이 아니라
   [`issueops`](../issueops/SKILL.md) 라우터의 게이트를 먼저 통과한다.
 - design·compatibility·devils-advocate review가 approved 또는 명시적 waive다.
@@ -170,6 +177,7 @@ implement 단계의 출구는 ai-slop-clean 전이다.
 
 | 나쁜 행동 | 문제 |
 |---|---|
+| record가 없는데 게이트 표만 보고하고 "진행 방향은 사용자 결정"으로 멈춤 | 게이트 통과가 아니라 라우팅 누락이다. 사이클이 없으면 `issueops`를 실행한다 |
 | "3줄 수정이니까" source checkout에서 바로 수정 | canonical worktree 계약 위반, 이후 readiness의 head 증거와 어긋난다 |
 | 사용자 구두 확인만으로 `replace --revoke --confirm` | quiescence 증명이 없다. finalize-preview 결과만 증거다 |
 | direct인데 `resume`, orca인데 수동 `claim` 조합 | 모드별 종착 명령을 혼동했다. next_command를 따른다 |

@@ -12,6 +12,8 @@ description: Create an issue-based branch and isolated worktree, then register t
 1. **Active issueops cycle?** Check `ISSUEOPS_ID` in the environment and `agent-harness issueops list --repo "$PWD" --json`. If a cycle owns this issue:
    - Branch/worktree prep is OWNED by issueops. Use `issueops branch prepare` and `issueops execution prepare` / `link-worktree`; this skill only supplies the git mechanics and verification below.
    - GitHub + Orca mode follows the #176 ordering documented in `skills/issueops/SKILL.md` (`branch prepare` base-SHA-only → stage plan → Orca prepare → GraphQL `createLinkedBranch` at the sealed SHA → `branch prepare --link-verified`). Do not reorder it from here.
+
+   **No cycle yet, but the work is meant to run as an issueops cycle?** Run **`issueops`** first and stop here. `issueops execution prepare` provisions the canonical worktree itself, and a worktree this skill created standalone is adopted only when its path, branch, and HEAD all match the recorded base SHA exactly — one commit in it and `execution prepare` fails with `existing canonical worktree identity does not match branch and base_head`. Use this skill standalone only for work that will stay outside issueops.
 2. **Orca available?** Resolve the executable exactly as the installed `orca-cli` skill requires, then load its version-matched guide with `<orca> skills get orca-cli`. If `<orca> status --json` reports a ready runtime, register the finished Git worktree after provider linking. Never use `orca worktree create` for this flow: it creates a second checkout and mints its own branch, conflicting with the pinned SHA, issue-number-first branch, and sibling-path contracts below.
 3. **Provider?** Determine GitHub vs GitLab from the issue URL or `git remote get-url origin`. Verify auth early: `gh auth status` / `glab auth status`.
 
@@ -153,6 +155,14 @@ agent-harness issueops link-worktree --id "$ISSUEOPS_ID" \
 - Primary source checkout branch and status are unchanged, even when the flow was invoked from a linked worktree.
 - If Orca registration succeeded, `worktree show --worktree "path:$WORKTREE_PATH" --json` returns the exact path and branch. Otherwise report one of the explicit non-success statuses from step 5 without weakening the Git/provider result.
 - Report: issue URL, branch, base SHA, worktree path, provider registration evidence, and Orca registration status/evidence.
+
+## What comes next
+
+Branch and worktree are the start of a cycle, not a cycle. When an issueops cycle
+owns this work, hand back to **`issueops`**: it drives problem, grill, plan, and
+compatibility-review, then provisions the execution lease and enters implement,
+where **`issueops-implement`** takes over. Do not invoke `issueops-implement`
+directly from here — with no record it has nothing to hold.
 
 ## Failure handling
 
