@@ -74,6 +74,7 @@ footer; older notes also live in `archive/cautions-incidents.md`.
 
 | Date | Lesson |
 |---|---|
+| 2026-09-01 | [전진한 원격 브랜치가 cleanup을 교착시켰다; finish가 --keep-remote-branch를 받는다](cautions/lessons/2026-09-01-cleanup-deadlock-advanced-remote-branch.md) |
 | 2026-08-29 | [Omo Parnas verdict는 최종 텍스트가 아니라 schema tool로 받아야 한다](cautions/lessons/2026-08-29-omo-parnas-structured-output-tool.md) |
 | 2026-08-28 | [dry-run이 외부 CLI를 실행해 홈 디렉터리를 변경했다](cautions/lessons/2026-08-28-install-dry-run-spawned-the-claude-cli.md) |
 | 2026-08-28 | [devil's-advocate 기록이 플랜에 묶이지 않아 게이트가 연극 가능했다](cautions/lessons/2026-08-28-devils-advocate-record-was-unbound.md) |
