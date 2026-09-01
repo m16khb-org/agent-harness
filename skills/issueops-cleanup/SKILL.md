@@ -102,14 +102,18 @@ worktree HEAD OID exactly equal to the local branch OID. If the provider exposes
 the merged artifact head OID, require it to equal the local branch OID too.
 A detached, repurposed, mismatched, or advanced worktree blocks cleanup.
 
-Before asking for confirmation, require `cleanup status.missing` to be empty.
-That command reports only the local/remote readiness gates (`pr_phase`,
-`remote_artifact_*`, `child_tasks_closed`, `worktree_*`, `branch_match`,
-`remote_branch_*`); it never emits `issue_closed`. The `issue_closed` and
-`completion_reflected` gates belong to `cleanup finish --preview`: before the
-apply steps below, that preview's `missing` may contain exactly those two entries
-(only `issue_closed` once completion is already reflected), and after steps 1-2
-it must be empty.
+Before asking for confirmation, require `cleanup status.missing` to contain
+nothing beyond the two completion gates named below. `cleanup status --merged`
+reports the local/remote readiness gates (`pr_phase`, `remote_artifact_*`,
+`child_tasks_closed`, `worktree_*`, `branch_match`, `remote_branch_*`), and once
+the cycle is `done` with a verified remote artifact it also runs the finish gates,
+so it can additionally report `completion_reflected` and `issue_closed`. Those two
+are cleared by apply steps 1-2 below, not before them: do not read them as a
+blocker to resolve first, and do not wait for an empty `missing` that this ordering
+makes unreachable. `cleanup finish --preview` reports the same two entries (only
+`issue_closed` once completion is already reflected) and renders the exact
+`next_command` for each. After steps 1-2, both previews must report an empty
+`missing`.
 
 The close-issue dry-run must also report `ok: true`. Any other missing gate or
 provider error blocks issue closure; report it and stop before any write.
