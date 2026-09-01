@@ -28,6 +28,12 @@
       "repo": "https://github.com/trycua/cua",
       "path": "libs/cua-driver/rust/Skills/cua-driver",
       "ref": "main"
+    },
+    {
+      "name": "archify",
+      "repo": "https://github.com/tt-a1i/archify",
+      "path": "archify",
+      "ref": "main"
     }
   ]
 }
