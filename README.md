@@ -36,6 +36,7 @@
 | 실행 안전 | workspace/cwd, write/network intent, timeout, redaction, executable fence 정책 |
 | 검증과 개선 | contract, quality, self-verify, self-augment, benchmark를 같은 evidence 모델로 제공 |
 | 공유 스킬 | `skills/` 하나를 Codex, Claude Code, Omo native의 사용자 경로에 연결 |
+| UI/UX 구현 | `ui-ux-craft`가 제품 방향, 컴포넌트 출처별 역할, 접근성, 반응형 상태, 실제 브라우저 QA를 하나의 계약으로 연결 |
 | 브라우저 QA | 기능·UI/UX·통합 웹 QA 스킬 제공, Aside는 선행 설치가 필요한 선택적 외부 도구 |
 
 ## 빠른 시작
@@ -71,11 +72,19 @@
 
 ```bash
 git pull --ff-only
-ah update
+ah update --dry-run --json
+ah update --json
 ah inspect --json
+ah docs --json
+ah daemon status --json
 ```
 
 `agent-harness`가 정식 명령이며 `ah`는 설치기가 관리하는 짧은 심볼릭 링크입니다. 기존 `ah` 파일이나 다른 심볼릭 링크가 있으면 덮어쓰지 않고 설치에 실패합니다. `ah update`는 현재 체크아웃의 코드를 빌드하고 사용자 수준 통합을 갱신하지만 `git pull`은 실행하지 않습니다.
+
+`ah update --dry-run --json`에서는 소스 `root`, Codex·Claude·Omo 호스트별 결과,
+새 링크와 제거할 오래된 링크를 먼저 확인합니다. 실제 업데이트가 끝나면
+`committed`, `transition_id`, 네이티브 활성화 receipt를 확인하고 새 바이너리로
+`inspect`, `docs`, daemon status를 다시 읽습니다.
 
 `install`은 `--interactive`, `--project-local`, `--path-mode=auto|manual|skip`를 지원하고 `bootstrap`은 `--sync`를 추가로 지원합니다. `--project-local`은 `.claude/skills/*`, `.mcp.json`, `.omo/skills/*`, `.omo/mcp.json`을 명시적으로 생성합니다. Host hook과 Omo lifecycle extension 등록은 계속 사용자 수준에 둡니다. 검증된 기존 harness command file을 인수해야 할 때만 `--adopt-command-file`을 사용합니다.
 
@@ -257,9 +266,10 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
-- 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`
-- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-implement`, `issueops-create-pr`, `issueops-branch-worktree`, `issueops-cleanup`
+- 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`, `sharing-backend-work`
+- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `rebase-onto-parent`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-implement`, `issueops-create-pr`, `issueops-complete`, `issueops-branch-worktree`, `issueops-cleanup`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
+- UI/UX 구현: `ui-ux-craft`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - 코드 리뷰: `parnas`, `review-agent-feedback`
 - 운영 개선: `ah-update`, `self-verify`, `self-augment`, `stability-audit`
@@ -267,6 +277,14 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - 다이어그램과 시각화: `diagram-design`
 
 각 스킬의 사용 계약은 해당 `SKILL.md`에 정의되어 있습니다.
+
+[`ui-ux-craft`](skills/ui-ux-craft/SKILL.md)는 기존 디자인 시스템을 먼저 확인한
+뒤 기반 컴포넌트, 페이지 구조, AI 도메인, 모션, 강조 효과의 역할이 겹치지
+않도록 출처를 고릅니다. shadcn/ui, AI SDK Elements, Beautiful UI, beUI,
+Transitions.dev, Rare UI, Magic UI, Aceternity UI 같은 후보의 최신 설치법과
+라이선스는 [UI source catalog](skills/ui-ux-craft/references/source-catalog.md)의
+공식 링크에서 다시 확인하며, 최종 결과는 접근성·반응형 상태·모션 감소 설정과
+실제 브라우저 QA까지 통과해야 합니다.
 
 12개 pioneer skill은 primary, boundary, operational case로 나눠 검증합니다. committed case는 재현 입력이고 정답 fixture가 아닙니다. 실행 receipt, case hash, semantic verdict는 [`testdata/pioneer-holdouts/`](testdata/pioneer-holdouts/)에서 확인할 수 있습니다.
 
