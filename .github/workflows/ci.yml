@@ -54,6 +54,42 @@ jobs:
         with:
           version: v1.64.8
           install-mode: goinstall
+          # The action runs `config verify` before linting, and that fetches the
+          # JSON schema from golangci-lint.run. When the host is slow the fetch
+          # times out and the job dies before a single linter runs (run
+          # 33489702571). The config check moves to the next step, where an
+          # unreachable host is a warning and a real schema violation still fails.
+          verify: false
+
+      - name: Verify .golangci.yml against the golangci-lint schema
+        # `golangci-lint run` silently ignores unknown config keys (checked on
+        # v1.64.8: a bogus key exits 0 with no output), so a typo here would
+        # disable the caps this repo depends on without any signal. `config
+        # verify` is the only check that catches it, and v1.64.8 has no --schema
+        # flag, so the schema can only come over the network. Retry, then let an
+        # unreachable host pass with a warning: an external service is not a
+        # readiness gate for this repo (AGENTS.md philosophy).
+        run: |
+          lint="$(command -v golangci-lint || true)"
+          if [ -z "$lint" ]; then lint="$(go env GOPATH)/bin/golangci-lint"; fi
+          if [ ! -x "$lint" ]; then
+            echo "::error::golangci-lint not found at $lint"; exit 1
+          fi
+          for attempt in 1 2 3; do
+            if out="$("$lint" config verify 2>&1)"; then
+              echo "$out"; exit 0
+            fi
+            echo "$out"
+            if echo "$out" | grep -q 'does not validate with'; then
+              echo "::error::.golangci.yml violates the golangci-lint schema"
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "attempt $attempt could not load the schema; retrying"
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "::warning::skipped .golangci.yml schema check: golangci-lint.run unreachable after 3 attempts"
 
       - name: Validate all skill frontmatter
         # Runs scripts/validate-skill.py over every skills/* dir so no SKILL.md
