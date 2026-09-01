@@ -34,7 +34,9 @@ decision and a separate `issueops cleanup remote-branch` flow.
 2. Run from the record's source repository, never from the worktree that will
    be removed.
 3. The cycle must be `done`, its execution lease must be released, and its
-   PR/MR must be verified merged by the provider.
+   PR/MR must be verified merged by the provider. Both the `done` phase and the
+   released lease come from `issueops execution complete`, which
+   **`issueops-complete`** owns; this skill never records completion itself.
 4. Linked child tasks must already have verified close evidence.
 5. The worktree must be clean. A dirty worktree, active Orca task resource,
    branch mismatch, unreadable provider state, or pending external intent

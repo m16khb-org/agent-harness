@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Complete"
+  short_description: "Record execution completion and release the generation"
+  default_prompt: "Use $issueops-complete only for the IssueOps execution completion step after a draft PR or MR is published and verified. Confirm pr phase, the durable verified remote artifact, the active generation, and a live native actor receipt; write and commit the report inside the canonical worktree, read HEAD after that commit, then record completion with confirm. Do not merge, clean up, or republish. Route PR/MR creation to $issueops-create-pr and post-merge cleanup to $issueops-cleanup."
