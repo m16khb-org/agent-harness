@@ -12,6 +12,7 @@ Native skill examples:
 ```text
 Use $atomic-commit-push to review my changes, split them into atomic commits, and push safely.
 Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> ai-slop-clean -> feedback -> PR/MR cycle.
+Use $ui-ux-craft to build this interface with a coherent selection of shadcn/ui, AI UI, motion, and accent sources.
 ```
 
 Install checks:
@@ -19,6 +20,7 @@ Install checks:
 ```bash
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md && echo ok
 test -f ~/.codex/skills/issueops/SKILL.md && echo ok
+test -f ~/.codex/skills/ui-ux-craft/SKILL.md && echo ok
 codex mcp list
 codex mcp get agent_harness
 ```
@@ -61,6 +63,7 @@ Direct skill invocation example:
 
 ```text
 /atomic-commit-push
+/ui-ux-craft
 ```
 
 MCP checks:
@@ -158,6 +161,7 @@ Checks:
 
 ```bash
 test -f ~/.omo/agent/skills/atomic-commit-push/SKILL.md
+test -f ~/.omo/agent/skills/ui-ux-craft/SKILL.md
 test -f ~/.omo/mcp.json
 test -f ~/.omo/extensions/agent-harness.js
 ```
