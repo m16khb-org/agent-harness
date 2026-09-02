@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI/UX Craft"
+  short_description: "Build coherent React and Next.js interfaces from selected component sources"
+  default_prompt: "Use $ui-ux-craft to build or redesign a React/Next.js interface. Inspect the existing framework, tokens, and primitives before choosing anything, commit to one visual direction, assign each component source a single role instead of mixing catalogs, and preserve semantic HTML, keyboard operation, focus visibility, and reduced motion. Deliver working UI with responsive and non-happy-path states covered, verified by the repository's checks and real browser QA — not a mockup or a dependency install."
