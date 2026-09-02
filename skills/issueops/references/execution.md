@@ -409,6 +409,21 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
   끝난다.
 - 이 디렉토리는 gitignore 대상이다 — 보존은 completion 섹션이 담당한다.
 
+## Cross-Project Cycles
+
+이슈가 있는 프로젝트와 코드가 있는 프로젝트가 다를 수 있다(기획 프로젝트의
+이슈, 서비스 프로젝트의 코드). `branch prepare`는 checkout의 `origin`을 관찰해
+이슈 프로젝트와 다르면 `code_project_key`를 봉인한다. 관찰이 안 되거나 값을
+고정해야 하면 `--code-project-key HOST/GROUP/PROJECT`로 선언한다.
+
+- 봉인된 키가 있으면 `remote create-pr`이 그 프로젝트에 PR/MR을 만들고,
+  `remote verify-artifact`와 `execution complete`가 같은 키와 대조한다.
+- 봉인이 없으면 이슈 프로젝트가 곧 코드 프로젝트다 — 기존 사이클의 동작.
+- 검증이 느슨해지는 것이 아니라 대조 대상이 정확해질 뿐이다. 봉인된 키와 다른
+  프로젝트의 아티팩트는 여전히 거부된다.
+- 이 봉인이 없으면 cross-project 사이클은 `remote_artifact`를 끝내 채우지 못하고
+  cleanup이 `remote_artifact` 미충족으로 멈춘다.
+
 ## Publication Evidence Gates
 
 구현 diff가 확정된 뒤 implementation review **전에** 두 게이트를 통과한다.

@@ -144,6 +144,14 @@ agent-harness issueops link-worktree --id "$ISSUEOPS_ID" \
 ```
 
 - Before running these commands, execute the provider-link check listed in step 7. Pass `--link-verified` only after that check succeeds. GitHub Orca mode: omit it on the first `branch prepare` per the #176 ordering.
+- **Issue and code in different projects.** `branch prepare` observes the checkout's
+  `origin` and seals a `code_project_key` when it differs from the issue's project,
+  so the PR/MR is created in — and validated against — the project that holds the
+  code. Pass `--code-project-key HOST/GROUP/PROJECT` when `origin` is absent,
+  points somewhere else, or the sealed value must be pinned explicitly. Same-project
+  cycles seal nothing and behave exactly as before. Get the value wrong and
+  `remote create-pr`, `remote verify-artifact`, and `execution complete` all reject
+  the artifact, which is the symptom of an unfillable `remote_artifact` at cleanup.
 
 ### 7. Verify
 

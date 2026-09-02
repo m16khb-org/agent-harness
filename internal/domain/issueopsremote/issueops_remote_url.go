@@ -37,12 +37,55 @@ func ValidateArtifactURL(artifactURL, provider, kind string) error {
 }
 
 func ValidateArtifactMatchesIssue(issueURL, artifactURL, provider, kind string) error {
-	issueKey := ProjectKey(issueURL, provider, "issue")
+	return ValidateArtifactMatchesProject(ProjectKey(issueURL, provider, "issue"), artifactURL, provider, kind)
+}
+
+// ValidProjectKey reports whether a caller-supplied project key has the shape
+// ProjectKey produces: a lowercase host followed by at least one path segment,
+// with no scheme, whitespace, or control characters.
+func ValidProjectKey(key string) bool {
+	key = strings.TrimSpace(key)
+	if key == "" || key != strings.ToLower(key) || strings.ContainsAny(key, "\x00\r\n\t :?#") {
+		return false
+	}
+	if strings.HasPrefix(key, "/") || strings.HasSuffix(key, "/") || strings.Contains(key, "//") {
+		return false
+	}
+	parts := SplitURLPath(key)
+	if len(parts) < 2 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+// EffectiveProjectKey resolves the project that must own the artifact: the
+// cycle's sealed code project when it declared one, otherwise the issue's own
+// project. An empty code project key therefore keeps the historical behaviour
+// for every cycle whose issue and code live in the same place.
+func EffectiveProjectKey(codeProjectKey, issueURL, provider string) string {
+	if key := strings.TrimSpace(codeProjectKey); key != "" {
+		return key
+	}
+	return ProjectKey(issueURL, provider, "issue")
+}
+
+// ValidateArtifactMatchesProject binds an artifact to the project that owns the
+// code, which is the issue's project only when both live in the same place. A
+// cycle whose issue is filed in a planning project and whose branch lives in a
+// service project passes its sealed code project key here instead, so the
+// artifact is still pinned to one project — just the right one.
+func ValidateArtifactMatchesProject(projectKey, artifactURL, provider, kind string) error {
+	projectKey = strings.TrimSpace(projectKey)
 	artifactKey := ProjectKey(artifactURL, provider, kind)
-	if issueKey == "" || artifactKey == "" {
+	if projectKey == "" || artifactKey == "" {
 		return fmt.Errorf("remote issue and artifact project authority must both be canonical")
 	}
-	if issueKey != artifactKey {
+	if projectKey != artifactKey {
 		return fmt.Errorf("remote artifact url must match linked issue project")
 	}
 	return nil

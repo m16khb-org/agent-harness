@@ -112,12 +112,14 @@ func snapshot(record leasecontract.Record) (completioncontract.RecordSnapshot, e
 	result := completioncontract.RecordSnapshot{ID: record.ID, Prepared: record.Execution != nil, Phase: record.Phase, IssueURL: record.IssueURL}
 	if len(record.BranchPrepare) > 0 {
 		var branch struct {
-			BaseBranch string `json:"base_branch"`
+			BaseBranch     string `json:"base_branch"`
+			CodeProjectKey string `json:"code_project_key"`
 		}
 		if err := json.Unmarshal(record.BranchPrepare, &branch); err != nil {
 			return completioncontract.RecordSnapshot{}, err
 		}
 		result.BaseBranch = branch.BaseBranch
+		result.CodeProjectKey = branch.CodeProjectKey
 	}
 	if len(record.RemoteArtifact) > 0 {
 		var artifact struct {

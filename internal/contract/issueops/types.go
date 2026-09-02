@@ -37,16 +37,21 @@ type IssueOpsBranchPrepareStep struct {
 }
 
 type IssueOpsBranchPrepare struct {
-	Provider        string                      `json:"provider"`
-	IssueURL        string                      `json:"issue_url"`
-	Branch          string                      `json:"branch"`
-	BaseBranch      string                      `json:"base_branch"`
-	BaseSHA         string                      `json:"base_sha,omitempty"`
-	ParentWorktree  string                      `json:"parent_worktree,omitempty"`
-	RemoteBranchURL string                      `json:"remote_branch_url,omitempty"`
-	LinkVerified    bool                        `json:"link_verified"`
-	Steps           []IssueOpsBranchPrepareStep `json:"steps"`
-	CreatedAt       string                      `json:"created_at"`
+	Provider        string `json:"provider"`
+	IssueURL        string `json:"issue_url"`
+	Branch          string `json:"branch"`
+	BaseBranch      string `json:"base_branch"`
+	BaseSHA         string `json:"base_sha,omitempty"`
+	ParentWorktree  string `json:"parent_worktree,omitempty"`
+	RemoteBranchURL string `json:"remote_branch_url,omitempty"`
+	// CodeProjectKey is the provider project that owns the branch and will own
+	// the PR/MR. It is empty when the code lives in the issue's own project,
+	// which keeps every same-project cycle on the historical path; it is sealed
+	// only when the two differ, and artifact validation then binds to it.
+	CodeProjectKey string                      `json:"code_project_key,omitempty"`
+	LinkVerified   bool                        `json:"link_verified"`
+	Steps          []IssueOpsBranchPrepareStep `json:"steps"`
+	CreatedAt      string                      `json:"created_at"`
 	// Retargets records every provider-observed base change after prepare, oldest
 	// first. BaseBranch always equals the last entry's ToBase.
 	Retargets []IssueOpsBranchRetarget `json:"retargets,omitempty"`
@@ -75,6 +80,7 @@ type IssueOpsBranchPrepareRequest struct {
 	BaseSHA         string `json:"base_sha,omitempty"`
 	ParentWorktree  string `json:"parent_worktree,omitempty"`
 	RemoteBranchURL string `json:"remote_branch_url,omitempty"`
+	CodeProjectKey  string `json:"code_project_key,omitempty"`
 	LinkVerified    bool   `json:"link_verified,omitempty"`
 }
 

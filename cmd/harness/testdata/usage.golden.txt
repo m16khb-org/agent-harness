@@ -33,7 +33,7 @@ Usage:
   agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops child reject --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops child drop --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] RECORD_ACTOR_FLAGS [--json]
+  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--code-project-key HOST/PROJECT] [--link-verified] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]
   agent-harness issueops branch retarget --id ID --base-branch REF --reason TEXT RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops link-worktree --id ID --worktree-path PATH RECORD_ACTOR_FLAGS [--json]

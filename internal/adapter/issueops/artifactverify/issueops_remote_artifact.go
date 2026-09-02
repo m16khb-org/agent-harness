@@ -74,7 +74,12 @@ func verificationFromRequest(record model.IssueOpsRecord, req model.IssueOpsRemo
 	if err := remote.ValidateArtifactURL(artifactURL, provider, kind); err != nil {
 		return model.IssueOpsRemoteArtifactVerification{}, err
 	}
-	if err := remote.ValidateArtifactMatchesIssue(record.IssueURL, artifactURL, provider, kind); err != nil {
+	codeProjectKey := ""
+	if record.BranchPrepare != nil {
+		codeProjectKey = record.BranchPrepare.CodeProjectKey
+	}
+	expectedProject := remote.EffectiveProjectKey(codeProjectKey, record.IssueURL, provider)
+	if err := remote.ValidateArtifactMatchesProject(expectedProject, artifactURL, provider, kind); err != nil {
 		return model.IssueOpsRemoteArtifactVerification{}, err
 	}
 	labels := remote.CleanValues(req.Labels)

@@ -29,6 +29,12 @@ type Store struct {
 	ObserveArtifactTargetBranch func(artifact model.IssueOpsRemoteArtifactVerification) (string, error)
 	// RemoteBranchPresent reports whether origin currently has the branch.
 	RemoteBranchPresent func(repo, branch string) (bool, error)
+	// ObserveCodeProjectKey reads the provider project that owns this checkout,
+	// normally from origin's remote URL. It exists so a cycle whose issue lives
+	// in another project can still bind its PR/MR to the project holding the
+	// code. Returning an error is not fatal: the cycle falls back to the issue's
+	// own project, which is what every same-project cycle already did.
+	ObserveCodeProjectKey func(repo, provider string) (string, error)
 }
 
 func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareRequest) (model.IssueOpsRecord, error) {
@@ -119,6 +125,10 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 			return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_sha %q resolved to an empty commit OID", strings.TrimSpace(req.BaseSHA))
 		}
 	}
+	codeProjectKey, codeProjectErr := resolveCodeProjectKey(store, record, provider, issueURL, req.CodeProjectKey)
+	if codeProjectErr != nil {
+		return model.IssueOpsRecord{OK: false}, codeProjectErr
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.BranchPrepare = &model.IssueOpsBranchPrepare{
 		Provider:        provider,
@@ -128,11 +138,43 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 		BaseSHA:         baseSHA,
 		ParentWorktree:  parentWorktree,
 		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
+		CodeProjectKey:  codeProjectKey,
 		LinkVerified:    req.LinkVerified,
 		Steps:           Steps(provider, issueURL, branch, baseBranch, baseSHA),
 		CreatedAt:       now,
 	}
 	return store.TouchWrite(stateRoot, record)
+}
+
+// resolveCodeProjectKey decides which project owns this cycle's code. An
+// explicit request value wins and must be canonical; otherwise the checkout's
+// origin is observed. The result is sealed only when it differs from the
+// issue's own project — a same-project cycle stays byte-identical to before,
+// and an unobservable remote falls back to the issue project rather than
+// blocking branch preparation.
+func resolveCodeProjectKey(store Store, record model.IssueOpsRecord, provider, issueURL, requested string) (string, error) {
+	issueProjectKey := remote.ProjectKey(issueURL, provider, "issue")
+	if declared := strings.TrimSpace(requested); declared != "" {
+		if !remote.ValidProjectKey(declared) {
+			return "", fmt.Errorf("code_project_key %q must be a canonical provider project key such as example.com/group/project", declared)
+		}
+		if declared == issueProjectKey {
+			return "", nil
+		}
+		return declared, nil
+	}
+	if store.ObserveCodeProjectKey == nil {
+		return "", nil
+	}
+	observed, err := store.ObserveCodeProjectKey(record.Repo, provider)
+	if err != nil {
+		return "", nil
+	}
+	observed = strings.TrimSpace(observed)
+	if observed == "" || observed == issueProjectKey || !remote.ValidProjectKey(observed) {
+		return "", nil
+	}
+	return observed, nil
 }
 
 // umbrellaBaseBranchMismatch는 자식 사이클의 base_branch가 우산 브랜치를

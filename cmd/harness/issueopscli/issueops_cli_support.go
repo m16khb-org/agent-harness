@@ -28,7 +28,7 @@ func issueOpsUsageText() string {
 		cliadapter.IssueOpsActorFlagLegend + "\n"
 }
 
-const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]\n       agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]\n       agent-harness issueops branch retarget --id ID --base-branch REF --reason TEXT [--json]"
+const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--code-project-key HOST/PROJECT] [--link-verified] [--json]\n       agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]\n       agent-harness issueops branch retarget --id ID --base-branch REF --reason TEXT [--json]"
 
 // issueOpsChildUsageText는 canonical catalog에서 child 하위 명령만 골라 렌더한다.
 // usage 문장을 다시 적지 않아 parser/help 계약의 별도 drift를 막는다(#207).
@@ -70,6 +70,7 @@ func runIssueOpsBranch(args []string) error {
 	baseSHA := fs.String("base-sha", "", "optional resolved base commit SHA")
 	parentWorktree := fs.String("parent-worktree", "", "optional canonical parent worktree for Orca lineage")
 	remoteBranchURL := fs.String("remote-branch-url", "", "optional provider branch URL after creation")
+	codeProjectKey := fs.String("code-project-key", "", "provider project that owns the code when it differs from the issue's project")
 	linkVerified := fs.Bool("link-verified", false, "record that the provider issue shows the branch link")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
@@ -83,6 +84,7 @@ func runIssueOpsBranch(args []string) error {
 		BaseSHA:         *baseSHA,
 		ParentWorktree:  *parentWorktree,
 		RemoteBranchURL: *remoteBranchURL,
+		CodeProjectKey:  *codeProjectKey,
 		LinkVerified:    *linkVerified,
 	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)

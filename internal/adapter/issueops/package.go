@@ -16,6 +16,7 @@ import (
 	"agent-harness/internal/adapter/issueops/linking"
 	"agent-harness/internal/adapter/issueops/start"
 	"agent-harness/internal/contract/issueops"
+	remote "agent-harness/internal/domain/issueopsremote"
 	"agent-harness/internal/domain/repoidentity"
 	"agent-harness/internal/domain/stringlist"
 	"agent-harness/internal/port"
@@ -215,6 +216,18 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 		},
 		UmbrellaForChildIssue: func(repo, childIssueURL string) (issueops.IssueOpsRecord, bool) {
 			return active.UmbrellaCycleForChildIssue(issueOpsActiveStore(), repo, childIssueURL)
+		},
+		ObserveCodeProjectKey: func(repo, provider string) (string, error) {
+			// GitCmd는 주입되는 의존이다. 없으면 관찰할 수 없다는 뜻이고,
+			// resolveCodeProjectKey가 이슈 프로젝트로 되돌린다.
+			if GitCmd == nil {
+				return "", fmt.Errorf("git command adapter is unavailable")
+			}
+			code, stdout, stderr := GitCmd(repo, "remote", "get-url", "origin")
+			if code != 0 {
+				return "", fmt.Errorf("git remote get-url origin failed: %s", strings.TrimSpace(stderr))
+			}
+			return remote.ProjectKeyFromGitRemoteURL(strings.TrimSpace(stdout), provider)
 		},
 	}
 }

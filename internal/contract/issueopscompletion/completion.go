@@ -88,8 +88,11 @@ type RecordSnapshot struct {
 	Completion    *Completion
 	Artifact      *RemoteArtifact
 	BaseBranch    string
-	Ledger        map[string]LedgerEntry
-	Orca          *OrcaBinding
+	// CodeProjectKey mirrors the cycle's sealed code project; empty means the
+	// code lives in the issue's own project.
+	CodeProjectKey string
+	Ledger         map[string]LedgerEntry
+	Orca           *OrcaBinding
 }
 
 func (r RecordSnapshot) Clone() RecordSnapshot {

@@ -36,7 +36,13 @@ func ValidateArtifact(record completioncontract.RecordSnapshot, requestedURL str
 	if err := validateArtifactURL(artifact.URL, artifact.Provider, artifact.Kind); err != nil {
 		return err
 	}
-	if artifactProjectKey(artifact.URL, artifact.Provider, artifact.Kind) != artifactProjectKey(record.IssueURL, artifact.Provider, "issue") {
+	// 코드가 이슈와 다른 프로젝트에 있는 사이클은 봉인한 code project key와
+	// 대조한다. 봉인이 없으면 이슈 프로젝트가 곧 코드 프로젝트다.
+	expectedProjectKey := strings.TrimSpace(record.CodeProjectKey)
+	if expectedProjectKey == "" {
+		expectedProjectKey = artifactProjectKey(record.IssueURL, artifact.Provider, "issue")
+	}
+	if artifactProjectKey(artifact.URL, artifact.Provider, artifact.Kind) != expectedProjectKey {
 		return fmt.Errorf("remote artifact url must match linked issue project")
 	}
 	if !slices.Equal(canonicalValues(artifact.Labels), artifact.Labels) || len(artifact.Labels) == 0 {

@@ -110,6 +110,7 @@ type stableV1BranchPrepare struct {
 	BaseSHA         string                      `json:"base_sha,omitempty"`
 	ParentWorktree  string                      `json:"parent_worktree,omitempty"`
 	RemoteBranchURL string                      `json:"remote_branch_url,omitempty"`
+	CodeProjectKey  string                      `json:"code_project_key,omitempty"`
 	LinkVerified    bool                        `json:"link_verified"`
 	Steps           []stableV1BranchPrepareStep `json:"steps"`
 	CreatedAt       string                      `json:"created_at"`

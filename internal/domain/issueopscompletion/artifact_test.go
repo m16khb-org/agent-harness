@@ -78,3 +78,25 @@ func currentArtifactRecord() completioncontract.RecordSnapshot {
 		},
 	}
 }
+
+// 코드가 이슈와 다른 프로젝트에 있는 사이클은 봉인한 code project key와
+// 대조한다. 이 경로가 없으면 verify까지 통과한 아티팩트가 completion에서 다시
+// 막혀 사이클이 done에 도달하지 못한다.
+func TestValidateArtifactBindsToSealedCodeProject(t *testing.T) {
+	record := currentArtifactRecord()
+	record.IssueURL = "https://github.com/acme/planning/issues/232"
+
+	if err := ValidateArtifact(record, record.Artifact.URL); err == nil {
+		t.Fatal("without a sealed code project the artifact must still match the issue project")
+	}
+
+	record.CodeProjectKey = "github.com/acme/repo"
+	if err := ValidateArtifact(record, record.Artifact.URL); err != nil {
+		t.Fatalf("artifact in the sealed code project must be accepted: %v", err)
+	}
+
+	record.CodeProjectKey = "github.com/acme/other"
+	if err := ValidateArtifact(record, record.Artifact.URL); err == nil {
+		t.Fatal("artifact outside the sealed code project must be rejected")
+	}
+}

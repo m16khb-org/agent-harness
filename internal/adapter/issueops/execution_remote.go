@@ -113,7 +113,10 @@ func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (i
 	if record.BranchPrepare == nil {
 		return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create requires branch preparation")
 	}
-	projectKey := remote.ProjectKey(record.IssueURL, provider, "issue")
+	// PR/MR은 코드가 있는 프로젝트에 만들어진다. 이슈가 다른 프로젝트에 있는
+	// 사이클은 branch prepare가 봉인한 code project key를 쓰고, 봉인이 없으면
+	// 이슈 프로젝트가 곧 코드 프로젝트다.
+	projectKey := remote.EffectiveProjectKey(record.BranchPrepare.CodeProjectKey, record.IssueURL, provider)
 	head, base := strings.TrimSpace(req.Head), strings.TrimSpace(req.Base)
 	workspaceBranch := strings.TrimSpace(record.Branch)
 	if record.Execution != nil {
@@ -366,7 +369,13 @@ func validateRemotePullRequestCandidate(record issueops.IssueOpsRecord, payload 
 	if err := remote.ValidateArtifactURL(candidate.URL, payload.Provider, payload.Kind); err != nil {
 		return err
 	}
-	return remote.ValidateArtifactMatchesIssue(record.IssueURL, candidate.URL, payload.Provider, payload.Kind)
+	codeProjectKey := ""
+	if record.BranchPrepare != nil {
+		codeProjectKey = record.BranchPrepare.CodeProjectKey
+	}
+	return remote.ValidateArtifactMatchesProject(
+		remote.EffectiveProjectKey(codeProjectKey, record.IssueURL, payload.Provider),
+		candidate.URL, payload.Provider, payload.Kind)
 }
 
 func verifyRemotePullRequestResult(record issueops.IssueOpsRecord, payload externalRemotePRPayload, url string, verify RemoteArtifactVerifyFunc) error {
