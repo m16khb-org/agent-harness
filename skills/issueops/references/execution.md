@@ -409,6 +409,31 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
   끝난다.
 - 이 디렉토리는 gitignore 대상이다 — 보존은 completion 섹션이 담당한다.
 
+## Publication Evidence Gates
+
+구현 diff가 확정된 뒤 implementation review **전에** 두 게이트를 통과한다.
+두 기록 모두 변경 집합 fingerprint를 봉인하므로 문서 수정이 기록보다 먼저다.
+
+```bash
+agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID"   --verdict updated --doc ".agent-harness/CAUTIONS.md" --evidence "..."   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
+```
+
+- 게이트: `project_docs_review`. verdict는 `updated|no-change`, evidence는 항상
+  1개 이상이다. `updated`는 `--doc` 경로가 실제 변경 집합에 있어야 통과하고,
+  `no-change`는 `--doc`을 받지 않는다.
+- direct·orca 모드 모두 대상이다. 이후 diff가 바뀌면 `project_docs_review_stale`로
+  create-pr·strict readiness가 거부한다.
+
+```bash
+agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID"   --measurement "orders: 8.4M rows(reltuples), idx_orders_user_id 없음"   --source "mcp db-bc-prod execute_sql_bc_prod_market"   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
+```
+
+- 게이트: `schema_evidence`. 변경 집합에 마이그레이션·엔티티·`.sql`·
+  `schema.prisma` 경로가 있을 때만 활성화되고, 없으면 요구되지 않는다.
+- measurement와 source는 짝이다. 관찰이 불가능하면
+  `--waive --waiver-rationale "..."`로 근거를 남긴다.
+- 운영 DB에 전수 스캔을 던지지 않는다. 카탈로그 추정 row 수를 쓴다.
+
 ## Implementation Review Gate (orca mode)
 
 orca 모드 사이클의 owner는 publication 전에 planner급 모델 fresh 서브에이전트로

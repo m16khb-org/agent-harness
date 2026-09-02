@@ -112,6 +112,7 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	if _, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), parent.ID, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsCoreProjectDocsReviewForCLITest(t, parent.ID)
 
 	blockedOut, err := captureStdoutAndErrorForIssueOps(t, func() error {
 		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))

@@ -34,6 +34,8 @@ type stableV1Record struct {
 	LinkedBranchCleanup     *stableV1LinkedBranchCleanup   `json:"linked_branch_cleanup,omitempty"`
 	CleanupAbandonFailure   *stableV1CleanupAbandonFailure `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *stableV1ImplementationReview  `json:"implementation_review,omitempty"`
+	ProjectDocsReview       *stableV1ProjectDocsReview     `json:"project_docs_review,omitempty"`
+	SchemaEvidence          *stableV1SchemaEvidence        `json:"schema_evidence,omitempty"`
 	RoutingTrace            []stableV1SkillRouting         `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                         `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                         `json:"ai_slop_clean_head,omitempty"`
@@ -391,6 +393,21 @@ type stableV1ImplementationReview struct {
 	ReviewerHost        string   `json:"reviewer_host,omitempty"`
 	ReviewerModel       string   `json:"reviewer_model,omitempty"`
 	ReviewerEffort      string   `json:"reviewer_effort,omitempty"`
+	RecordedAt          string   `json:"recorded_at"`
+}
+type stableV1ProjectDocsReview struct {
+	Verdict             string   `json:"verdict"`
+	Docs                []string `json:"docs,omitempty"`
+	Evidence            []string `json:"evidence"`
+	ReviewedFingerprint string   `json:"reviewed_fingerprint"`
+	RecordedAt          string   `json:"recorded_at"`
+}
+type stableV1SchemaEvidence struct {
+	Measurements        []string `json:"measurements,omitempty"`
+	Sources             []string `json:"sources,omitempty"`
+	Waived              bool     `json:"waived,omitempty"`
+	WaiverRationale     string   `json:"waiver_rationale,omitempty"`
+	ReviewedFingerprint string   `json:"reviewed_fingerprint"`
 	RecordedAt          string   `json:"recorded_at"`
 }
 type stableV1SkillRouting struct {

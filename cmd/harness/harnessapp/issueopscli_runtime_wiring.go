@@ -51,6 +51,8 @@ func configureIssueOpsCLIRuntime() {
 		RecordIssueOpsDevilsAdvocateReviewWithActor: issueopscore.RecordIssueOpsDevilsAdvocateReviewWithActor,
 		RecordIssueOpsDomainReviewWithActor:         issueopscore.RecordIssueOpsDomainReviewWithActor,
 		RecordIssueOpsImplementationReview:          issueopscore.RecordIssueOpsImplementationReview,
+		RecordIssueOpsProjectDocsReview:             issueopscore.RecordIssueOpsProjectDocsReview,
+		RecordIssueOpsSchemaEvidence:                issueopscore.RecordIssueOpsSchemaEvidence,
 		RecordIssueOpsIntentWithActor:               issueopscore.RecordIssueOpsIntentWithActor,
 		RecordIssueOpsPlanPrepWithActor:             issueopscore.RecordIssueOpsPlanPrepWithActor,
 		RecordIssueOpsRoutingWithActor:              routing.Record,

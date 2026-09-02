@@ -49,6 +49,8 @@ type Record struct {
 	CleanupFinishFailure    json.RawMessage `json:"cleanup_finish_failure,omitempty"`
 	CleanupAbandonFailure   json.RawMessage `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    json.RawMessage `json:"implementation_review,omitempty"`
+	ProjectDocsReview       json.RawMessage `json:"project_docs_review,omitempty"`
+	SchemaEvidence          json.RawMessage `json:"schema_evidence,omitempty"`
 	RoutingTrace            json.RawMessage `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string          `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string          `json:"ai_slop_clean_head,omitempty"`

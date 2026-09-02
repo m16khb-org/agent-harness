@@ -127,6 +127,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueop
 	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q"); code != 0 {
 		t.Fatalf("git push implementation failed: %s", stderr)
 	}
+	recordIssueOpsCoreProjectDocsReviewForCLITest(t, id)
 	record, err = loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhasePR), actor)
 	if err != nil {
 		t.Fatal(err)
@@ -177,5 +178,18 @@ func assertIssueOpsJSONErrorContains(t *testing.T, out string, err error, want s
 	}
 	if payload["ok"] != false || !strings.Contains(payload["error"].(string), want) {
 		t.Fatalf("unexpected JSON error payload: %#v", payload)
+	}
+}
+
+// recordIssueOpsCoreProjectDocsReviewForCLITest는 publication 게이트가 요구하는
+// project-doc 반영 판정을 기록한다. 테스트 사이클은 운영 문서를 건드리지 않으므로
+// no-change가 정확한 판정이다.
+func recordIssueOpsCoreProjectDocsReviewForCLITest(t *testing.T, id string) {
+	t.Helper()
+	if _, err := issueopscore.RecordIssueOpsProjectDocsReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsProjectDocsReviewRequest{
+		Verdict:  "no-change",
+		Evidence: []string{"이 변경은 운영 문서에 남길 결정을 만들지 않는다"},
+	}); err != nil {
+		t.Fatal(err)
 	}
 }

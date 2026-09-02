@@ -60,6 +60,13 @@ func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOps
 	if reviewMissing := implementationReviewMissing(record, currentFingerprint); strings.HasSuffix(reviewMissing, "_stale") {
 		missing = append(missing, reviewMissing)
 	}
+	if docsMissing := projectDocsReviewMissing(record, currentFingerprint); strings.HasSuffix(docsMissing, "_stale") {
+		missing = append(missing, docsMissing)
+	}
+	// schema_evidence는 non-strict 표면이 판정하지 않으므로 여기서 전체를 본다.
+	if schemaMissing := schemaEvidenceMissing(record, currentFingerprint); schemaMissing != "" {
+		missing = append(missing, schemaMissing)
+	}
 	if strings.TrimSpace(record.AISlopCleanAt) != "" {
 		storedFingerprint := strings.TrimSpace(record.AISlopCleanFingerprint)
 		if storedFingerprint == "" && currentFingerprint != "" {

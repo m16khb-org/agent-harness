@@ -449,6 +449,62 @@ func runIssueOpsImplementationReview(args []string) error {
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
+// runIssueOpsProjectDocsReview는 publication 직전 project-doc 반영 판정을
+// 기록하는 표면이다. verdict updated는 --doc 경로가 실제 변경 집합에 있어야
+// 통과한다.
+func runIssueOpsProjectDocsReview(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops project-docs-review record --id ID --verdict updated|no-change [--doc PATH...] --evidence TEXT... [--json]")
+		return nil
+	}
+	if args[0] != "record" {
+		return fmt.Errorf("unknown issueops project-docs-review subcommand %q", args[0])
+	}
+	fs := flag.NewFlagSet("issueops project-docs-review record", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	verdict := fs.String("verdict", "", "updated|no-change")
+	var docs, evidence repeatedFlag
+	fs.Var(&docs, "doc", "updated project doc path, worktree-relative (repeatable)")
+	fs.Var(&evidence, "evidence", "what was checked and why (repeatable)")
+	addIssueOpsActorFlags(fs)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		return err
+	}
+	record, err := issueOpsCLIDeps.RecordIssueOpsProjectDocsReview(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsProjectDocsReviewRequest{
+		Verdict: *verdict, Docs: docs, Evidence: evidence,
+	})
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+// runIssueOpsSchemaEvidence는 스키마·마이그레이션·엔티티 변경 사이클에서만
+// 요구되는 실측 근거 기록 표면이다.
+func runIssueOpsSchemaEvidence(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops schema-evidence record --id ID --measurement TEXT... --source TEXT... [--waive --waiver-rationale TEXT] [--json]")
+		return nil
+	}
+	if args[0] != "record" {
+		return fmt.Errorf("unknown issueops schema-evidence subcommand %q", args[0])
+	}
+	fs := flag.NewFlagSet("issueops schema-evidence record", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	var measurements, sources repeatedFlag
+	fs.Var(&measurements, "measurement", "observed value such as index presence or row count (repeatable)")
+	fs.Var(&sources, "source", "where the value was observed (repeatable)")
+	waive := fs.Bool("waive", false, "waive the measurement requirement")
+	rationale := fs.String("waiver-rationale", "", "why measurement was not possible")
+	addIssueOpsActorFlags(fs)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		return err
+	}
+	record, err := issueOpsCLIDeps.RecordIssueOpsSchemaEvidence(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsSchemaEvidenceRequest{
+		Measurements: measurements, Sources: sources, Waive: *waive, WaiverRationale: *rationale,
+	})
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
 // runIssueOpsList는 다중 사이클 조망 표면이다. span lock·repair 없이 전량
 // 읽고, scanned_records로 O(N) 비용을 관측 가능하게 한다(설계 v5 WS6).
 func runIssueOpsList(args []string) error {

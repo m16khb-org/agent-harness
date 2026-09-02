@@ -182,6 +182,21 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("ai-slop-clean should be persisted before PR readiness: %#v", cleanedRecord)
 	}
 
+	// publication 게이트: 운영 문서 반영 판정이 없으면 PR readiness가 열리지 않는다.
+	docsReview := captureStdoutForContract(t, func() error {
+		return runIssueOps(withIssueOpsCLIActor([]string{
+			"project-docs-review", "record", "--id", id, "--verdict", "no-change",
+			"--evidence", "이 변경은 운영 문서에 남길 결정을 만들지 않는다", "--json",
+		}, actor))
+	})
+	var docsRecord map[string]any
+	if err := json.Unmarshal([]byte(docsReview), &docsRecord); err != nil {
+		t.Fatalf("project docs review should return JSON: %v\n%s", err, docsReview)
+	}
+	if docsRecord["project_docs_review"] == nil {
+		t.Fatalf("project docs review should be persisted: %#v", docsRecord)
+	}
+
 	readiness := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
 	})

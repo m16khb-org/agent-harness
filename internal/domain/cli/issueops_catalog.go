@@ -56,6 +56,8 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops phase --id ID --to problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude|omo] [--reviewer-model MODEL] [--reviewer-effort EFFORT] RECORD_ACTOR_FLAGS [--json]
+  agent-harness issueops project-docs-review record --id ID --verdict updated|no-change [--doc PATH...] --evidence TEXT... RECORD_ACTOR_FLAGS [--json]
+  agent-harness issueops schema-evidence record --id ID --measurement TEXT... --source TEXT... [--waive --waiver-rationale TEXT] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops regress --id ID --reason TEXT RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops record-routing --id ID --phase PHASE --skill SKILL RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops routing-score --id ID --expect phase:skill,... [--json]

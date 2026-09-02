@@ -406,6 +406,8 @@ type IssueOpsRecord struct {
 	LinkedBranchCleanup     *IssueOpsLinkedBranchCleanup        `json:"linked_branch_cleanup,omitempty"`
 	CleanupAbandonFailure   *IssueOpsCleanupAbandonFailure      `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *IssueOpsImplementationReview       `json:"implementation_review,omitempty"`
+	ProjectDocsReview       *IssueOpsProjectDocsReview          `json:"project_docs_review,omitempty"`
+	SchemaEvidence          *IssueOpsSchemaEvidence             `json:"schema_evidence,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
@@ -433,6 +435,33 @@ type IssueOpsImplementationReview struct {
 	ReviewerModel       string `json:"reviewer_model,omitempty"`
 	ReviewerEffort      string `json:"reviewer_effort,omitempty"`
 	RecordedAt          string `json:"recorded_at"`
+}
+
+// IssueOpsProjectDocsReview captures the pre-publication project-doc pass:
+// 이번 변경이 CAUTIONS/ADR 같은 운영 문서에 남길 결정을 만들었는지 판정한 기록이다.
+// verdict가 updated면 Docs에 적은 문서가 실제 변경 집합 안에 있어야 하므로,
+// "갱신했다"는 자기신고만으로는 게이트를 통과할 수 없다.
+type IssueOpsProjectDocsReview struct {
+	Verdict  string   `json:"verdict"` // updated | no-change
+	Docs     []string `json:"docs,omitempty"`
+	Evidence []string `json:"evidence"`
+	// ReviewedFingerprint는 검토가 본 변경 집합의 content fingerprint다
+	// (implementation_review 선례). 이후 diff가 바뀌면 stale로 거부한다.
+	ReviewedFingerprint string `json:"reviewed_fingerprint"`
+	RecordedAt          string `json:"recorded_at"`
+}
+
+// IssueOpsSchemaEvidence는 스키마·마이그레이션·엔티티 변경이 변경 집합에
+// 들어 있을 때만 요구되는 실측 근거다. 인덱스 현황, row count처럼 실제
+// 데이터베이스에서 관찰한 값과 그 출처를 남긴다. 관찰이 불가능한 상황은
+// 근거를 적어 waive한다.
+type IssueOpsSchemaEvidence struct {
+	Measurements        []string `json:"measurements,omitempty"`
+	Sources             []string `json:"sources,omitempty"`
+	Waived              bool     `json:"waived,omitempty"`
+	WaiverRationale     string   `json:"waiver_rationale,omitempty"`
+	ReviewedFingerprint string   `json:"reviewed_fingerprint"`
+	RecordedAt          string   `json:"recorded_at"`
 }
 
 // IssueOpsCleanupFinishFailure marks the step where a destructive cleanup

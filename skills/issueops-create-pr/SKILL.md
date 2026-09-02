@@ -59,6 +59,12 @@ flowchart LR
 - 현재 branch와 일치하는 `head`, sealed target과 일치하는 `base`
 - provider/auth, project authority, label/assignee
 - native host, session, process, cwd identity
+- 봉인된 `project_docs_review` 판정과, 스키마 변경이 있다면 `schema_evidence`
+
+`project_docs_review`·`schema_evidence`가 없거나 `_stale`로 뜨면 PR을 만들지
+말고 [`issueops-implement`](../issueops-implement/SKILL.md)의 publication
+evidence gates로 돌아간다. stale은 봉인 이후 diff가 바뀌었다는 뜻이므로,
+문서를 다시 대조하고 최신 fingerprint로 재기록해야 한다.
 
 `expected-generation`은 현재 lease와 같아야 한다. branch를 새로 만들거나
 moving default branch를 추측하지 않는다. label score의 선택/거절과 threshold는

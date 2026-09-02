@@ -42,6 +42,8 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"child":                 runIssueOpsChild,
 	"artifact":              runIssueOpsArtifact,
 	"implementation-review": runIssueOpsImplementationReview,
+	"project-docs-review":   runIssueOpsProjectDocsReview,
+	"schema-evidence":       runIssueOpsSchemaEvidence,
 	"branch":                runIssueOpsBranch,
 	"phase":                 runIssueOpsPhase,
 	"record-routing":        runIssueOpsRecordRouting,

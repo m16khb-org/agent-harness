@@ -27,7 +27,18 @@ func HasEvidence(record model.IssueOpsRecord) bool {
 	return fileTreeHasImplementationChange(record, worktree)
 }
 
-func ChangeFingerprint(record model.IssueOpsRecord) string {
+// ChangedPaths는 현재 변경 집합의 repo-상대 경로를 정렬해 반환한다.
+// ChangeFingerprint가 해시하는 것과 같은 집합이므로, fingerprint를 봉인하는
+// 게이트가 "어떤 파일이 그 fingerprint에 들어 있는지"를 되물을 수 있다.
+func ChangedPaths(record model.IssueOpsRecord) []string {
+	gitRoot := changeGitRoot(record)
+	if gitRoot == "" {
+		return nil
+	}
+	return changedPathsIn(record, gitRoot)
+}
+
+func changeGitRoot(record model.IssueOpsRecord) string {
 	gitRoot := readinesspaths.StrictGitRoot(record)
 	if gitRoot == "" {
 		return ""
@@ -35,6 +46,10 @@ func ChangeFingerprint(record model.IssueOpsRecord) string {
 	if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
 		return ""
 	}
+	return gitRoot
+}
+
+func changedPathsIn(record model.IssueOpsRecord, gitRoot string) []string {
 	paths := map[string]bool{}
 	if base := diffBaseRef(record, gitRoot); base != "" {
 		_, names, _ := GitCmd(gitRoot, "diff", "--name-only", base+"..HEAD", "--")
@@ -50,14 +65,23 @@ func ChangeFingerprint(record model.IssueOpsRecord) string {
 			paths[path] = true
 		}
 	}
-	if len(paths) == 0 {
-		return ""
-	}
 	ordered := make([]string, 0, len(paths))
 	for path := range paths {
 		ordered = append(ordered, path)
 	}
 	sort.Strings(ordered)
+	return ordered
+}
+
+func ChangeFingerprint(record model.IssueOpsRecord) string {
+	gitRoot := changeGitRoot(record)
+	if gitRoot == "" {
+		return ""
+	}
+	ordered := changedPathsIn(record, gitRoot)
+	if len(ordered) == 0 {
+		return ""
+	}
 	var b strings.Builder
 	b.WriteString("issueops-ai-slop-clean:v1\n")
 	for _, rel := range ordered {

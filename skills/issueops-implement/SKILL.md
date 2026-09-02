@@ -134,6 +134,64 @@ agent-harness issueops child status --parent "$ISSUEOPS_ID" \
 - parent는 child record를 대신 수정하지 않는다. child contract prompt 템플릿과
   상세 rubric은 [`orchestration.md`](../issueops/references/orchestration.md)를 따른다.
 
+## Publication evidence gates
+
+구현 diff가 확정된 뒤, implementation review **전에** 두 게이트를 통과한다.
+두 게이트 모두 검토한 change fingerprint를 봉인하므로, 문서를 고치는 일은
+반드시 기록보다 먼저다. 순서를 뒤집으면 봉인한 fingerprint가 곧바로 stale이 된다.
+
+### project-doc 반영 판정 (모든 사이클)
+
+구현 diff를 `.agent-harness/` 운영 문서와 양방향으로 대조한다.
+
+- **문서 → 구현**: CONSTITUTION의 원칙, CONVENTIONS의 계층·패키지 경계,
+  ARCHITECTURE의 책임 분리, CAUTIONS의 기존 함정을 이번 diff가 어기지 않았는가.
+  어겼으면 문서가 아니라 구현을 고친다.
+- **구현 → 문서**: 이번 변경이 CAUTIONS에 남길 재발 함정이나 ADR에 남길 결정을
+  만들었는가. 새 명령·컨벤션·구조가 생겼으면 해당 문서가 그것을 아직 모른다.
+
+evidence에는 무엇을 대조했고 어느 쪽으로 판정했는지를 적는다. 갱신이 필요하면
+[`project-docs-update`](../project-docs-update/SKILL.md)의 route → read(SHA) →
+append/revise 계약으로 **문서를 먼저 고친 뒤** 기록한다.
+
+```bash
+agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID" \
+  --verdict updated --doc ".agent-harness/CAUTIONS.md" \
+  --evidence "$WHAT_WAS_CHECKED" \
+  --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+```
+
+- verdict는 `updated|no-change`이고 evidence는 항상 1개 이상이다.
+- `updated`는 `--doc` 경로가 **실제 변경 집합 안에** 있어야 통과한다. 고치지
+  않고 "갱신했다"고 기록하면 거부된다.
+- `no-change`는 `--doc`을 받지 않는다. 무엇을 확인하고 왜 남길 것이 없다고
+  판단했는지를 evidence에 적는다.
+- direct·orca 모드 모두 대상이다. direct 사이클도 운영 문서에 남길 결정을 만든다.
+
+### 스키마 실측 근거 (조건부)
+
+변경 집합에 마이그레이션·엔티티·`.sql`·`schema.prisma` 파일이 있을 때만 활성화된다.
+없으면 이 게이트는 아예 뜨지 않는다. 활성화되면 추정이 아니라 **실제 데이터베이스
+관찰값**을 요구한다: 대상 테이블의 기존 인덱스 현황과 row 수, 그리고 그 값을
+어디서 봤는지. 조회는 `codd` 스킬 또는 DB MCP 서버로 한다.
+
+커넥션을 소모하는 대형 스캔을 던지지 않는다. `COUNT(*)` 전수 대신 카탈로그의
+추정 row 수(`pg_class.reltuples`, `information_schema`, `SHOW INDEX`)를 쓰고,
+필요하면 `LIMIT`을 건다. 운영 DB에서 무거운 쿼리 하나가 커넥션 풀을 마르게 한다.
+
+```bash
+agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID" \
+  --measurement "orders: 8.4M rows(reltuples), idx_orders_user_id 없음" \
+  --source "mcp db-bc-prod execute_sql_bc_prod_market" \
+  --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
+```
+
+- measurement와 source는 짝이다. 출처 없는 수치는 추정과 구분되지 않는다.
+- 관찰이 불가능하면 `--waive --waiver-rationale "..."`로 근거를 남긴다.
+  rationale 없는 waive는 게이트를 열지 않는다.
+- 실측 결과는 구현에 반영한다. row 수가 크면 인덱스 생성 전략(concurrent 여부),
+  마이그레이션 잠금 시간, 백필 배치 크기가 달라진다.
+
 ## Implementation review gate
 
 orca mode 사이클은 publication 전에 구현 diff에 대한 적대 리뷰가 필수다.
@@ -183,6 +241,9 @@ implement 단계의 출구는 ai-slop-clean 전이다.
 | direct인데 `resume`, orca인데 수동 `claim` 조합 | 모드별 종착 명령을 혼동했다. next_command를 따른다 |
 | timeout 뒤 prepare/create 재실행 | 이중 mutation 위험이 있다. 처분은 reconcile이 소유한다 |
 | 리뷰 없이 `implementation-review record --verdict pass` | 게이트 연극이다. 리뷰 실행이 기록보다 먼저다 |
+| 문서를 고치지 않고 `project-docs-review record --verdict updated` | `--doc`이 변경 집합에 없어 거부된다. 문서 수정이 기록보다 먼저다 |
+| 운영 DB에 `SELECT COUNT(*)` 전수 스캔으로 row 수 측정 | 커넥션을 소모한다. 카탈로그 추정치를 쓴다 |
+| 실측 없이 "일반적으로 인덱스가 필요하다"로 schema evidence 기록 | source 없는 수치는 추정이다. 관찰 불가면 waive에 근거를 적는다 |
 | implement 직후 `execution complete` | complete는 pr phase에서 remote artifact 검증 후에만 가능하다 |
 | 구두 승인으로 child scope 확장 | sanctioned 경로는 새 child 분리 또는 plan 개정뿐이다 |
 | 존재가 불확실한 서브커맨드를 --help 프로브로 확정 | 이 CLI의 --help 프로브는 신뢰할 수 없다. usage 카탈로그와 소스가 기준이다 |

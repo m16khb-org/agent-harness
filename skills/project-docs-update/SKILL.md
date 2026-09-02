@@ -19,6 +19,15 @@ missing, route to `project-docs-bootstrap` first. If documents are oversized
 or ownership is duplicated, route to `project-docs-optimize`; do not
 restructure here.
 
+## IssueOps publication gate
+
+An IssueOps cycle reaches this skill through its `project_docs_review` gate:
+publication is blocked until the cycle records whether the change left anything
+for the operating docs. Update the documents here **first**, then record the
+verdict from `issueops-implement` — the gate seals the change fingerprint, and a
+document edited after the record makes that seal stale. `--verdict updated`
+requires the doc path to be in the change set, so an unedited file cannot pass.
+
 ## When to Trigger
 
 Route the current task first to avoid injecting every doc into context:

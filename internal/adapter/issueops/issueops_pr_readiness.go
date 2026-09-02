@@ -27,6 +27,11 @@ func IssueOpsPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadin
 	if reviewMissing := implementationReviewMissing(record, ""); reviewMissing != "" {
 		missing = append(missing, reviewMissing)
 	}
+	if docsMissing := projectDocsReviewMissing(record, ""); docsMissing != "" {
+		missing = append(missing, docsMissing)
+	}
+	// schema_evidence는 변경 집합을 읽어야 활성 여부를 알 수 있다. 이 표면은
+	// record만으로 판정하는 경량 경로이므로 그 게이트는 strict가 소유한다.
 	if issueOpsHasUnresolvedContractFeedback(record) {
 		missing = append(missing, "contract_feedback_issue_update")
 	}

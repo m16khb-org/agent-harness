@@ -51,6 +51,8 @@ type executionOwnerCommands struct {
 	RemoteCreate         string `json:"remote_create"`
 	Complete             string `json:"complete"`
 	ImplementationReview string `json:"implementation_review"`
+	ProjectDocsReview    string `json:"project_docs_review"`
+	SchemaEvidence       string `json:"schema_evidence"`
 	EnterPR              string `json:"enter_pr"`
 }
 
@@ -237,6 +239,8 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"AI_SLOP_CLEAN_RECORD_COMMAND":    packet.Commands.AISlopCleanRecord,
 		"ENTER_AI_SLOP_CLEAN_COMMAND":     packet.Commands.EnterAISlopClean,
 		"IMPLEMENTATION_REVIEW_COMMAND":   packet.Commands.ImplementationReview,
+		"PROJECT_DOCS_REVIEW_COMMAND":     packet.Commands.ProjectDocsReview,
+		"SCHEMA_EVIDENCE_COMMAND":         packet.Commands.SchemaEvidence,
 		"ENTER_PR_COMMAND":                packet.Commands.EnterPR,
 		"REQUIRED_DOCS":                   renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
 		"ACCEPTANCE_IDS": strings.Join(packet.AcceptanceIDs, ", "), "VERIFICATION_COMMANDS": renderExecutionOwnerLines(packet.Verification),
@@ -278,7 +282,10 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"ai_slop_clean_record_command", packet.Commands.AISlopCleanRecord}, {"enter_ai_slop_clean_command", packet.Commands.EnterAISlopClean},
 		{"remote_create_command", packet.Commands.RemoteCreate}, {"complete_command", packet.Commands.Complete},
 		{"reviewer_model", packet.ReviewerModel}, {"reviewer_effort", packet.ReviewerEffort},
-		{"implementation_review_command", packet.Commands.ImplementationReview}, {"enter_pr_command", packet.Commands.EnterPR},
+		{"implementation_review_command", packet.Commands.ImplementationReview},
+		{"project_docs_review_command", packet.Commands.ProjectDocsReview},
+		{"schema_evidence_command", packet.Commands.SchemaEvidence},
+		{"enter_pr_command", packet.Commands.EnterPR},
 	}
 	for _, scalar := range scalars {
 		if strings.ContainsAny(scalar.value, "\r\n") || executionPromptPlaceholder.MatchString(scalar.value) {
@@ -396,6 +403,10 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		implementationReview += " --reviewer-effort " + quoteExecutionOwnerArg(plannerEffort)
 	}
 	implementationReview += " " + shortActor + " --json"
+	projectDocsReview := "agent-harness issueops project-docs-review record --id " + quoteExecutionOwnerArg(record.ID) +
+		" --verdict <PROJECT_DOCS_VERDICT> --doc <UPDATED_DOC_PATH> --evidence <PROJECT_DOCS_EVIDENCE> " + shortActor + " --json"
+	schemaEvidence := "agent-harness issueops schema-evidence record --id " + quoteExecutionOwnerArg(record.ID) +
+		" --measurement <OBSERVED_VALUE> --source <OBSERVATION_SOURCE> " + shortActor + " --json"
 	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
@@ -405,7 +416,9 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
 		CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
 		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,
-		ImplementationReview: implementationReview, EnterPR: enterPR,
+		ImplementationReview: implementationReview,
+		ProjectDocsReview:    projectDocsReview, SchemaEvidence: schemaEvidence,
+		EnterPR:      enterPR,
 		RemoteCreate: remote, Complete: complete,
 	}
 }
@@ -413,7 +426,8 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	for _, path := range []string{
 		"execution status", "execution claim", "branch prepare", "link-plan", "compatibility review", "phase", "ai-slop-clean record",
-		"implementation-review record", "remote create-pr", "execution complete",
+		"implementation-review record", "project-docs-review record", "schema-evidence record",
+		"remote create-pr", "execution complete",
 	} {
 		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
 			return fmt.Errorf("IssueOps v1 command catalog is not ready: missing %s", path)
@@ -430,7 +444,9 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 		{commands.LinkPlan, "link-plan"}, {commands.CompatibilityReview, "compatibility review"},
 		{commands.EnterImplement, "phase"},
 		{commands.AISlopCleanRecord, "ai-slop-clean record"}, {commands.EnterAISlopClean, "phase"},
-		{commands.ImplementationReview, "implementation-review record"}, {commands.EnterPR, "phase"},
+		{commands.ImplementationReview, "implementation-review record"},
+		{commands.ProjectDocsReview, "project-docs-review record"}, {commands.SchemaEvidence, "schema-evidence record"},
+		{commands.EnterPR, "phase"},
 		{commands.RemoteCreate, "remote create-pr"}, {commands.Complete, "execution complete"},
 	}
 	for _, check := range checks {

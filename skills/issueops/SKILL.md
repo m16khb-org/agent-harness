@@ -62,6 +62,7 @@ reply, merge, cleanup을 hook에 맡기지 않는다.
 | implement | current generation, TDD, focused verification | `issueops-implement`, 필요 시 `hopper`·`turing` |
 | ai-slop-clean | diff 기반 cleanup, 전후 품질 지표, 재검증 | `ai-slop-clean.md`, `shannon` |
 | feedback | contract change 반영, review thread 검증 | `review-feedback.md` |
+| pr(전 게이트) | project-doc 반영 판정, 스키마 실측 근거 | `issueops-implement`, `project-docs-update`, `codd` |
 | pr | readiness, 한국어 body, actor/branch/URL readback | `issueops-create-pr` |
 | pr(완료 기록) | 봉인된 artifact, final head, 보고서, 검증 증거 | `issueops-complete` |
 | cleanup | merge evidence, preview/fingerprint, 사용자 승인 | `issueops-cleanup`, `cleanup-state.md` |
@@ -111,6 +112,8 @@ readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 stat
 | `devils_advocate_review` | `issueops devils-advocate review` |
 | branch·worktree·plan·execution lease | `issueops-branch-worktree`, `execution.md` |
 | `implementation_review`·`implementation_review_stale` | `issueops-implement` |
+| `project_docs_review`·`project_docs_review_stale` | `issueops-implement`, `project-docs-update` |
+| `schema_evidence`·`schema_evidence_stale` | `issueops-implement`, `codd` |
 | `ai_slop_clean` | `issueops ai-slop-clean record` |
 | contract feedback Issue 반영 | `issueops feedback mark-issue-updated` |
 | PR/MR body·target·actor·readback | `issueops-create-pr` |
@@ -149,6 +152,12 @@ parent는 child record를 대신 수정하지 않는다. parent가 소유하는 
   완료를 선언하지 않는다.
 - ai-slop-clean은 실제 diff가 생긴 뒤 실행하고, cleanup 후 관련 검증을 다시
   실행한다.
+- publication 전에 구현 diff를 project docs와 양방향으로 대조한다. CONSTITUTION·
+  CONVENTIONS·ARCHITECTURE를 어겼으면 구현을 고치고, CAUTIONS에 남길 재발 함정이나
+  ADR에 남길 결정이 생겼으면 문서를 먼저 고친 뒤 기록한다. 남길 것이 없으면 확인
+  근거와 함께 `no-change`로 기록한다.
+- 변경 집합에 마이그레이션·엔티티·SQL 스키마 파일이 있으면 실제 데이터베이스에서
+  인덱스 현황과 대상 테이블 row 수를 관찰해 관찰값과 출처를 기록한다.
 - Git staging/push는 `atomic-commit-push`, 고급 history 작업은 `torvalds`가
   소유한다. 사용자 지시 없이 commit하거나 push하지 않는다.
 - destructive cleanup은 exact target과 fingerprint를 preview한 뒤 별도 사용자
@@ -196,7 +205,8 @@ Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 �
 - design open question, compatibility blocker, stale review가 남아 있다.
 - branch/worktree/plan/generation/actor가 current record와 맞지 않는다.
 - strict PR readiness가 Issue, branch link, plan, worktree, upstream,
-  ai-slop-clean, contract feedback를 누락했다고 보고한다.
+  ai-slop-clean, project-doc 반영 판정, 스키마 실측 근거, contract feedback를
+  누락했다고 보고한다.
 - label·assignee·한국어 body·target branch·live readback이 검증되지 않았다.
 - merge evidence 없이 cleanup을 요청한다.
 

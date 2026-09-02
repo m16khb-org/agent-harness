@@ -105,3 +105,5 @@ type (
 )
 
 type IssueOpsImplementationReviewRequest = issueopscontract.IssueOpsImplementationReviewRequest
+type IssueOpsProjectDocsReviewRequest = issueopscontract.IssueOpsProjectDocsReviewRequest
+type IssueOpsSchemaEvidenceRequest = issueopscontract.IssueOpsSchemaEvidenceRequest

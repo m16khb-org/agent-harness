@@ -65,7 +65,7 @@ func parseExactIssueOpsTokens(tokens []string) (ExactIssueOpsCommand, bool) {
 	if len(tokens) > 3 {
 		switch tokens[2] {
 		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision", "child",
-			"intent", "domain-review", "design", "plan-prep":
+			"intent", "domain-review", "design", "plan-prep", "project-docs-review", "schema-evidence":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -82,7 +82,8 @@ func ExactIssueOpsOwnerMutation(command ExactIssueOpsCommand) (map[string][]stri
 	switch command.Path {
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare", "branch retarget", "intent record", "domain-review record", "design review", "regress",
+		"implementation-review record", "project-docs-review record", "schema-evidence record",
+		"branch prepare", "branch retarget", "intent record", "domain-review record", "design review", "regress",
 		"plan-prep record",
 		"link-child", "link-related", "feedback add",
 		"child start", "child status", "child accept", "child reject", "child drop",
@@ -332,6 +333,16 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		r["--finding"] = true
 		r["--evidence"] = true
 		return values, b("--json"), r, true
+	case "project-docs-review record":
+		values := v("--id", "--verdict", "--doc", "--evidence", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--doc"] = true
+		r["--evidence"] = true
+		return values, b("--json"), r, true
+	case "schema-evidence record":
+		values := v("--id", "--measurement", "--source", "--waiver-rationale", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--measurement"] = true
+		r["--source"] = true
+		return values, b("--json", "--waive"), r, true
 	case "artifact unstage":
 		return v("--id", "--name"), b("--json"), r, true
 	case "artifact stage":

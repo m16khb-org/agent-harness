@@ -125,22 +125,32 @@ publication과 종료:
 2. Turing report를 포함한 구현 diff를 더 이상 수정할 필요가 없는 상태로 만든 뒤 다음 exact command로
    ai-slop-clean phase에 진입한다:
    {ENTER_AI_SLOP_CLEAN_COMMAND}
-3. 모든 acceptance와 승인된 verification이 PASS한 뒤, planner급 모델 {REVIEWER_MODEL}
+3. 구현 diff를 project docs와 대조한다. 이번 변경이 CAUTIONS에 남길 재발 함정이나 ADR에
+   남길 결정을 만들었으면 문서를 **먼저 고친 뒤** verdict `updated`와 고친 경로로 기록하고,
+   남길 것이 없으면 무엇을 확인했는지 evidence에 적어 verdict `no-change`로 기록한다.
+   변경 집합에 없는 문서를 적으면 기록이 거부된다:
+   {PROJECT_DOCS_REVIEW_COMMAND}
+4. 변경 집합에 마이그레이션·엔티티·SQL 스키마 파일이 있으면 실제 데이터베이스에서 인덱스
+   현황과 대상 테이블 row 수를 관찰해 관찰값과 출처를 기록한다. 커넥션을 소모하는 대형
+   스캔 대신 카탈로그 조회와 추정 row 수를 쓴다. 관찰이 불가능하면 근거를 적어 waive한다.
+   스키마 변경이 없으면 이 단계는 요구되지 않는다:
+   {SCHEMA_EVIDENCE_COMMAND}
+5. 모든 acceptance와 승인된 verification이 PASS한 뒤, planner급 모델 {REVIEWER_MODEL}
    ({REVIEWER_EFFORT})의 fresh 서브에이전트로 구현 diff에 대한 brooks 적대 리뷰를
    수행한다. 실제 verdict와 findings/evidence를 다음 command로 기록한다. verdict가 `revise`면
    지적을 수정하고 cleanup 검증과 fresh 리뷰를 반복하며, verdict가 `stop`이면 blocker를 보고하고
    종료한다. `pass`일 때만 commit/push/PR로 진행한다:
    {IMPLEMENTATION_REVIEW_COMMAND}
-4. 리뷰가 봉인한 diff를 더 수정하지 않고 atomic-commit-push 계약으로 commit/push한다. 변경이
+6. 리뷰가 봉인한 diff를 더 수정하지 않고 atomic-commit-push 계약으로 commit/push한다. 변경이
    필요해지면 cleanup 검증과 구현 리뷰를 새 fingerprint로 다시 수행한다.
-5. clean/synced branch를 확인한 뒤 다음 exact command로 pr phase에 진입한다:
+7. clean/synced branch를 확인한 뒤 다음 exact command로 pr phase에 진입한다:
    {ENTER_PR_COMMAND}
-6. exact governed command로 draft PR/MR을 만든다:
+8. exact governed command로 draft PR/MR을 만든다:
    {REMOTE_CREATE_COMMAND}
-7. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
-8. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
+9. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
+10. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
    {COMPLETE_COMMAND}
-9. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
+11. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
    결과를 받으라고 기다리거나 worktree/branch를 cleanup하지 않는다.
 
 막힘 규칙:

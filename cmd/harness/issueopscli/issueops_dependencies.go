@@ -47,6 +47,8 @@ type IssueOpsCLIDeps struct {
 	RecordIssueOpsDevilsAdvocateReviewWithActor func(stateRoot, id string, req issueopscontract.IssueOpsDevilsAdvocateReviewRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsDomainReviewWithActor         func(stateRoot, id string, req issueopscontract.IssueOpsDomainReviewRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsImplementationReview          func(stateRoot, id string, req issueopscontract.IssueOpsImplementationReviewRequest) (issueopscontract.IssueOpsRecord, error)
+	RecordIssueOpsProjectDocsReview             func(stateRoot, id string, req issueopscontract.IssueOpsProjectDocsReviewRequest) (issueopscontract.IssueOpsRecord, error)
+	RecordIssueOpsSchemaEvidence                func(stateRoot, id string, req issueopscontract.IssueOpsSchemaEvidenceRequest) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsIntentWithActor               func(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsPlanPrepWithActor             func(stateRoot, id string, req issueopscontract.IssueOpsPlanPrepRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsRoutingWithActor              func(stateRoot, id, phase, skill string, actor issueopsroutingcontract.Actor) (issueopsroutingcontract.Record, error)
@@ -136,6 +138,12 @@ func ConfigureIssueOpsRuntime2(deps IssueOpsCLIDeps) {
 	}
 	if deps.RecordIssueOpsImplementationReview != nil {
 		issueOpsCLIDeps.RecordIssueOpsImplementationReview = deps.RecordIssueOpsImplementationReview
+	}
+	if deps.RecordIssueOpsProjectDocsReview != nil {
+		issueOpsCLIDeps.RecordIssueOpsProjectDocsReview = deps.RecordIssueOpsProjectDocsReview
+	}
+	if deps.RecordIssueOpsSchemaEvidence != nil {
+		issueOpsCLIDeps.RecordIssueOpsSchemaEvidence = deps.RecordIssueOpsSchemaEvidence
 	}
 	if deps.RecordIssueOpsIntentWithActor != nil {
 		issueOpsCLIDeps.RecordIssueOpsIntentWithActor = deps.RecordIssueOpsIntentWithActor
@@ -246,6 +254,12 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
 		RecordIssueOpsImplementationReview: func(stateRoot, id string, req issueopscontract.IssueOpsImplementationReviewRequest) (issueopscontract.IssueOpsRecord, error) {
+			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		},
+		RecordIssueOpsProjectDocsReview: func(stateRoot, id string, req issueopscontract.IssueOpsProjectDocsReviewRequest) (issueopscontract.IssueOpsRecord, error) {
+			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		},
+		RecordIssueOpsSchemaEvidence: func(stateRoot, id string, req issueopscontract.IssueOpsSchemaEvidenceRequest) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
 		},
 		RecordIssueOpsIntentWithActor: func(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
