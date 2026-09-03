@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"agent-harness/cmd/harness/installcli"
+	agyadapter "agent-harness/internal/adapter/agy"
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
 	"agent-harness/internal/adapter/install"
@@ -25,7 +26,7 @@ func installDependencies() installcli.Deps {
 		ActivationBackend:    nativeActivationBackend(),
 		NativeInstallRequest: install.DefaultNativeInstallRequest,
 		InstallNative: func(req port.NativeInstallRequest) (port.NativeInstallResult, error) {
-			return install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), omoadapter.NewInstaller())
+			return install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), omoadapter.NewInstaller(), agyadapter.NewInstaller())
 		},
 		ActivationReadback: func(req port.NativeInstallRequest) activationport.ReadbackVerifier {
 			return hostActivationReadback{request: req}
@@ -52,6 +53,10 @@ func (readback hostActivationReadback) Verify(_ context.Context, harnessRoot, ta
 	if err != nil {
 		return activationport.Readback{}, err
 	}
+	agyEvidence, err := agyadapter.VerifyActivation(readback.request)
+	if err != nil {
+		return activationport.Readback{}, err
+	}
 	tools := mcpadapter.IssueOpsBasicTools()
 	if len(tools) != 1 || tools[0].Name != "issueops_execution" {
 		return activationport.Readback{}, fmt.Errorf("IssueOps v1 MCP activation catalog must contain exactly issueops_execution")
@@ -62,6 +67,7 @@ func (readback hostActivationReadback) Verify(_ context.Context, harnessRoot, ta
 	}
 	evidence := append(codexEvidence, claudeEvidence...)
 	evidence = append(evidence, omoEvidence...)
+	evidence = append(evidence, agyEvidence...)
 	result := make([]activationport.Evidence, 0, len(evidence))
 	for _, item := range evidence {
 		result = append(result, activationport.Evidence{

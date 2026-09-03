@@ -148,6 +148,7 @@ func validateReadback(readback activationport.Readback) (activationport.Readback
 		"codex\x00mcp": true, "codex\x00hooks": true,
 		"claude\x00mcp": true, "claude\x00hooks": true,
 		"omo\x00mcp": true, "omo\x00hooks": true,
+		"agy\x00mcp": true,
 	}
 	paths := map[string]bool{}
 	for _, evidence := range readback.Evidence {
@@ -160,8 +161,8 @@ func validateReadback(readback activationport.Readback) (activationport.Readback
 		delete(expected, key)
 		paths[evidence.Path] = true
 	}
-	if len(expected) != 0 || len(readback.Evidence) != 6 {
-		return activationport.Readback{}, fmt.Errorf("native activation requires exactly six first-party MCP/hook readbacks")
+	if len(expected) != 0 || len(readback.Evidence) != 7 {
+		return activationport.Readback{}, fmt.Errorf("native activation requires exactly seven first-party MCP/hook readbacks")
 	}
 	readback.Evidence = append([]activationport.Evidence(nil), readback.Evidence...)
 	sort.Slice(readback.Evidence, func(left, right int) bool {

@@ -4,6 +4,7 @@ import (
 	installclit4deps "agent-harness/cmd/harness/installcli"
 	projectclit4deps "agent-harness/cmd/harness/projectcli"
 	nativeintegrationt4deps "agent-harness/cmd/harness/validationcli/nativeintegration"
+	agyt4deps "agent-harness/internal/adapter/agy"
 	claudet4deps "agent-harness/internal/adapter/claude"
 	codext4deps "agent-harness/internal/adapter/codex"
 	installadapter "agent-harness/internal/adapter/install"
@@ -50,6 +51,13 @@ func configureAdapterTail() {
 	omot4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 	omot4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
 	omot4deps.MCPCatalogSHA256 = func() (string, error) {
+		return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
+	}
+	agyt4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+	agyt4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+	agyt4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+	agyt4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
+	agyt4deps.MCPCatalogSHA256 = func() (string, error) {
 		return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
 	}
 	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL

@@ -1,6 +1,7 @@
 package adapter_test
 
 import (
+	agyadapter "agent-harness/internal/adapter/agy"
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
 	installutiladapter "agent-harness/internal/adapter/installutil"
@@ -8,7 +9,7 @@ import (
 	mcpdomain "agent-harness/internal/domain/mcp"
 )
 
-// production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 세 host adapter의
+// production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 네 host adapter의
 // 계약을 함께 확인하므로 모든 의존을 채운다.
 func init() {
 	claudeadapter.NewInstallPlan = func(host string, dryRun bool) claudeadapter.InstallPlan {
@@ -28,6 +29,11 @@ func init() {
 	}
 	omoadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
 	omoadapter.WriteTextPlan = installutiladapter.WriteTextPlan
+	agyadapter.NewInstallPlan = func(host string, dryRun bool) agyadapter.InstallPlan {
+		return installutiladapter.NewPlan(host, dryRun)
+	}
+	agyadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
+	agyadapter.WriteTextPlan = installutiladapter.WriteTextPlan
 	for _, set := range []func(){
 		func() {
 			claudeadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
@@ -56,6 +62,15 @@ func init() {
 			omoadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 			omoadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
 			omoadapter.MCPCatalogSHA256 = func() (string, error) {
+				return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
+			}
+		},
+		func() {
+			agyadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+			agyadapter.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+			agyadapter.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+			agyadapter.SemanticSHA256 = installutiladapter.SemanticSHA256
+			agyadapter.MCPCatalogSHA256 = func() (string, error) {
 				return installutiladapter.SemanticSHA256(mcpdomain.AdvertisedTools())
 			}
 		},

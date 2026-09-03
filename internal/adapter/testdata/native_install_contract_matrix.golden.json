@@ -5,6 +5,7 @@
       "project_local": true,
       "ok": true,
       "skill_names": [
+        "agy-only",
         "alpha",
         "beta",
         "claude-only",
@@ -12,6 +13,76 @@
         "omo-only"
       ],
       "hosts": [
+        {
+          "host": "agy",
+          "ok": true,
+          "files": [
+            {
+              "kind": "agy_project_mcp_config",
+              "path": "$ROOT/.agents/mcp_config.json",
+              "written": true,
+              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content": ""
+            },
+            {
+              "kind": "agy_project_mcp_template",
+              "path": "$ROOT/configs/agy/mcp_config.json",
+              "written": true,
+              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content": ""
+            },
+            {
+              "kind": "agy_user_mcp_config",
+              "path": "$HOME/.gemini/config/mcp_config.json",
+              "written": true,
+              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content": ""
+            }
+          ],
+          "links": [
+            {
+              "path": "$HOME/.gemini/config/skills/agy-only",
+              "target": "$ROOT/skills/agy-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.gemini/config/skills/alpha",
+              "target": "$ROOT/skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.gemini/config/skills/beta",
+              "target": "$ROOT/skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.agents/skills/agy-only",
+              "target": "../../skills/agy-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.agents/skills/alpha",
+              "target": "../../skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.agents/skills/beta",
+              "target": "../../skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            }
+          ],
+          "messages": [
+            "skip skill for agy: claude-only",
+            "skip skill for agy: codex-only",
+            "skip skill for agy: omo-only"
+          ]
+        },
         {
           "host": "claude",
           "ok": true,
@@ -91,6 +162,7 @@
             }
           ],
           "messages": [
+            "skip skill for claude: agy-only",
             "skip skill for claude: codex-only",
             "skip skill for claude: omo-only"
           ]
@@ -149,6 +221,7 @@
             }
           ],
           "messages": [
+            "skip skill for codex: agy-only",
             "skip skill for codex: claude-only",
             "skip skill for codex: omo-only"
           ]
@@ -232,6 +305,7 @@
             }
           ],
           "messages": [
+            "skip skill for omo: agy-only",
             "skip skill for omo: claude-only",
             "skip skill for omo: codex-only"
           ]
@@ -250,6 +324,7 @@
       "project_local": false,
       "ok": true,
       "skill_names": [
+        "agy-only",
         "alpha",
         "beta",
         "claude-only",
@@ -257,6 +332,51 @@
         "omo-only"
       ],
       "hosts": [
+        {
+          "host": "agy",
+          "ok": true,
+          "files": [
+            {
+              "kind": "agy_project_mcp_template",
+              "path": "$ROOT/configs/agy/mcp_config.json",
+              "written": true,
+              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content": ""
+            },
+            {
+              "kind": "agy_user_mcp_config",
+              "path": "$HOME/.gemini/config/mcp_config.json",
+              "written": true,
+              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content": ""
+            }
+          ],
+          "links": [
+            {
+              "path": "$HOME/.gemini/config/skills/agy-only",
+              "target": "$ROOT/skills/agy-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.gemini/config/skills/alpha",
+              "target": "$ROOT/skills/alpha",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.gemini/config/skills/beta",
+              "target": "$ROOT/skills/beta",
+              "created": true,
+              "resolves_to_root_skill": true
+            }
+          ],
+          "messages": [
+            "skip skill for agy: claude-only",
+            "skip skill for agy: codex-only",
+            "skip skill for agy: omo-only"
+          ]
+        },
         {
           "host": "claude",
           "ok": true,
@@ -311,6 +431,7 @@
             }
           ],
           "messages": [
+            "skip skill for claude: agy-only",
             "skip skill for claude: codex-only",
             "skip skill for claude: omo-only"
           ]
@@ -369,6 +490,7 @@
             }
           ],
           "messages": [
+            "skip skill for codex: agy-only",
             "skip skill for codex: claude-only",
             "skip skill for codex: omo-only"
           ]
@@ -427,6 +549,7 @@
             }
           ],
           "messages": [
+            "skip skill for omo: agy-only",
             "skip skill for omo: claude-only",
             "skip skill for omo: codex-only"
           ]
