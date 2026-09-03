@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	bodysynccontract "agent-harness/internal/contract/issueopsbodysync"
 	issueopsremote "agent-harness/internal/domain/issueopsremote"
 	"agent-harness/internal/port"
 )
@@ -41,6 +42,7 @@ type RemoteDeps struct {
 	ResolveRecordProvider                      func(record issueopscontract.IssueOpsRecord) string
 	ResolveProviderProjectAuthority            func(repo, provider string) (string, error)
 	ScoreIssueOpsRemoteCandidates              func(req issueopsremote.IssueOpsRemoteScoringRequest) (issueopsremote.IssueOpsRemoteScoringResult, error)
+	SyncRemoteArtifactBody                     func(ctx context.Context, stateRoot, id string, cmd bodysynccontract.Command, prov port.IssueProvider, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, bodysynccontract.Result, error)
 	SyncRemoteIssueGraph                       func(record issueopscontract.IssueOpsRecord) (map[string]any, error)
 	UmbrellaBranchGateReason                   func(record issueopscontract.IssueOpsRecord) string
 	ValidateIssueOpsMutationActor              func(stateRoot, id string, actor issueopscontract.IssueOpsActor) error
@@ -112,6 +114,9 @@ func ConfigureRemote(deps RemoteDeps) {
 	}
 	if deps.ScoreIssueOpsRemoteCandidates != nil {
 		remoteDeps.ScoreIssueOpsRemoteCandidates = deps.ScoreIssueOpsRemoteCandidates
+	}
+	if deps.SyncRemoteArtifactBody != nil {
+		remoteDeps.SyncRemoteArtifactBody = deps.SyncRemoteArtifactBody
 	}
 	if deps.SyncRemoteIssueGraph != nil {
 		remoteDeps.SyncRemoteIssueGraph = deps.SyncRemoteIssueGraph
@@ -186,6 +191,9 @@ func neutralRemoteDeps() RemoteDeps {
 		},
 		ScoreIssueOpsRemoteCandidates: func(req issueopsremote.IssueOpsRemoteScoringRequest) (issueopsremote.IssueOpsRemoteScoringResult, error) {
 			return issueopsremote.IssueOpsRemoteScoringResult{}, errRemoteNotConfigured
+		},
+		SyncRemoteArtifactBody: func(ctx context.Context, stateRoot, id string, cmd bodysynccontract.Command, prov port.IssueProvider, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, bodysynccontract.Result, error) {
+			return issueopscontract.IssueOpsRecord{}, bodysynccontract.Result{}, errRemoteNotConfigured
 		},
 		SyncRemoteIssueGraph: func(record issueopscontract.IssueOpsRecord) (map[string]any, error) {
 			return nil, errRemoteNotConfigured

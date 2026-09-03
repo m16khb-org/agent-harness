@@ -19,6 +19,7 @@ type stableV1Record struct {
 	IssueLinks              []stableV1IssueLink            `json:"issue_links,omitempty"`
 	BranchPrepare           *stableV1BranchPrepare         `json:"branch_prepare,omitempty"`
 	RemoteArtifact          *stableV1RemoteArtifact        `json:"remote_artifact,omitempty"`
+	BodySyncs               []stableV1BodySync             `json:"body_syncs,omitempty"`
 	Decisions               []stableV1Decision             `json:"decisions,omitempty"`
 	PlanPrep                *stableV1PlanPrep              `json:"plan_prep,omitempty"`
 	CompatibilityReview     *stableV1CompatibilityReview   `json:"compatibility_review,omitempty"`
@@ -45,6 +46,17 @@ type stableV1Record struct {
 	PhaseLedger             map[string]stableV1LedgerEntry `json:"phase_ledger,omitempty"`
 	CreatedAt               string                         `json:"created_at"`
 	UpdatedAt               string                         `json:"updated_at"`
+}
+
+// stableV1BodySync mirrors the remote body-sync baseline so a lease transition
+// preserves it instead of dropping the artifact's staleness reference point.
+type stableV1BodySync struct {
+	Kind       string `json:"kind"`
+	URL        string `json:"url"`
+	FromSHA256 string `json:"from_sha256,omitempty"`
+	ToSHA256   string `json:"to_sha256"`
+	Generation uint64 `json:"generation,omitempty"`
+	SyncedAt   string `json:"synced_at"`
 }
 
 type stableV1IssueCreateIntent struct {

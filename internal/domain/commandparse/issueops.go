@@ -87,7 +87,8 @@ func ExactIssueOpsOwnerMutation(command ExactIssueOpsCommand) (map[string][]stri
 		"plan-prep record",
 		"link-child", "link-related", "feedback add",
 		"child start", "child status", "child accept", "child reject", "child drop",
-		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
+		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate",
+		"remote sync-issue", "remote sync-pr":
 	default:
 		return nil, false
 	}
@@ -378,6 +379,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--provider", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
 	case "remote close-issue":
 		return v("--id", "--provider"), b("--confirm", "--json"), r, true
+	// 본문 최신화는 durable artifact를 다시 쓰므로 create와 같은 actor 검증을
+	// 받는다. --expected-body-sha256은 confirm의 compare-and-swap 입력이다.
+	case "remote sync-issue":
+		return v("--id", "--provider", "--url", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"), b("--accept-remote-edits", "--confirm", "--json"), r, true
+	case "remote sync-pr":
+		return v("--id", "--provider", "--expected-generation", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"), b("--accept-remote-edits", "--confirm", "--json"), r, true
 	default:
 		return nil, nil, nil, false
 	}

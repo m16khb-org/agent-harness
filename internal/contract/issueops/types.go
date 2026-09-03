@@ -84,6 +84,27 @@ type IssueOpsBranchPrepareRequest struct {
 	LinkVerified    bool   `json:"link_verified,omitempty"`
 }
 
+// MaxIssueOpsBodySyncs bounds the sync baselines a record keeps. One entry per
+// artifact is enough for staleness detection, and the cap stops a long-running
+// cycle with many children from growing the record without limit.
+const MaxIssueOpsBodySyncs = 16
+
+// IssueOpsRemoteBodySync is the last body the harness wrote to one remote
+// artifact. It is the baseline the next staleness check compares against, so a
+// body edited outside the harness shows up as an outside edit instead of being
+// silently overwritten.
+type IssueOpsRemoteBodySync struct {
+	Kind string `json:"kind"`
+	URL  string `json:"url"`
+	// FromSHA256 is the body that was replaced; ToSHA256 is what the provider
+	// read back afterwards, never what the caller intended to write.
+	FromSHA256 string `json:"from_sha256,omitempty"`
+	ToSHA256   string `json:"to_sha256"`
+	// Generation records the execution lease that authorized a PR/MR sync.
+	Generation uint64 `json:"generation,omitempty"`
+	SyncedAt   string `json:"synced_at"`
+}
+
 type IssueOpsRemoteArtifactVerification struct {
 	Provider   string   `json:"provider"`
 	Kind       string   `json:"kind"`
@@ -397,6 +418,7 @@ type IssueOpsRecord struct {
 	IssueLinks              []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
 	BranchPrepare           *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
 	RemoteArtifact          *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	BodySyncs               []IssueOpsRemoteBodySync            `json:"body_syncs,omitempty"`
 	Decisions               []IssueOpsDecision                  `json:"decisions,omitempty"`
 	PlanPrep                *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
 	CompatibilityReview     *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`

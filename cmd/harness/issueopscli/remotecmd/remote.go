@@ -37,6 +37,8 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude|omo --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude|omo --session-id SESSION [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote sync-issue --id ID [--provider github|gitlab] [--url CHILD_URL] [--body TEXT|--body-file PATH] [--expected-body-sha256 SHA] [--accept-remote-edits] [--host codex|claude|omo] [--session-id SESSION] [--agent-id ID] [--cwd WORKER_PATH] [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote sync-pr --id ID --expected-generation N [--provider github|gitlab] [--body TEXT|--body-file PATH] [--expected-body-sha256 SHA] [--accept-remote-edits] --host codex|claude|omo --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote reflect-devils-advocate --id ID [--provider github|gitlab] --host codex|claude|omo --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote reflect-completion --id ID [--provider github|gitlab] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote close-issue --id ID [--provider github|gitlab] [--confirm] [--json]")
@@ -167,6 +169,10 @@ func Run(args []string, deps Deps) error {
 		return runRemoteCreatePR(args[1:], deps)
 	case "sync-graph":
 		return runRemoteSyncGraph(args[1:], deps)
+	case "sync-issue":
+		return runRemoteSyncIssue(context.Background(), args[1:], deps)
+	case "sync-pr":
+		return runRemoteSyncPR(context.Background(), args[1:], deps)
 	case "reflect-devils-advocate":
 		return runRemoteReflectDevilsAdvocate(args[1:], deps)
 	case "reflect-completion":

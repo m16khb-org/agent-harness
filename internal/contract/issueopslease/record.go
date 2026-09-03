@@ -35,6 +35,7 @@ type Record struct {
 	IssueLinks              json.RawMessage `json:"issue_links,omitempty"`
 	BranchPrepare           json.RawMessage `json:"branch_prepare,omitempty"`
 	RemoteArtifact          json.RawMessage `json:"remote_artifact,omitempty"`
+	BodySyncs               json.RawMessage `json:"body_syncs,omitempty"`
 	Decisions               json.RawMessage `json:"decisions,omitempty"`
 	PlanPrep                json.RawMessage `json:"plan_prep,omitempty"`
 	CompatibilityReview     json.RawMessage `json:"compatibility_review,omitempty"`

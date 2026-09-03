@@ -256,3 +256,78 @@ type IssueProvider interface {
 	CloseIssue(req IssueProviderCloseIssueRequest) (IssueProviderCloseIssueResult, error)
 	UpdateIssueBodySection(req IssueProviderUpdateIssueBodySectionRequest) (IssueProviderUpdateIssueBodySectionResult, error)
 }
+
+// Artifact-body sync capabilities.
+//
+// These are optional interfaces rather than IssueProvider methods on purpose:
+// IssueProvider is implemented by every provider fake in the test suite, so
+// widening it would break them all. Callers type-assert and fail closed when an
+// adapter does not implement the capability, which is the same shape the
+// context and reconcile capabilities above already use.
+
+// IssueProviderArtifactBodyRequest reads one remote artifact's current body.
+type IssueProviderArtifactBodyRequest struct {
+	Repo string `json:"repo"` // local repo path for provider auth context
+	Kind string `json:"kind"` // issue | child | pr | mr
+	URL  string `json:"url"`  // artifact URL
+}
+
+// IssueProviderArtifactBody is the live body plus the lifecycle state a caller
+// needs to decide whether the artifact may still be edited.
+type IssueProviderArtifactBody struct {
+	Provider string `json:"provider"`
+	Kind     string `json:"kind"`
+	URL      string `json:"url"`
+	Body     string `json:"body"`
+	State    string `json:"state,omitempty"`
+}
+
+type IssueProviderArtifactBodyReader interface {
+	ReadArtifactBody(context.Context, IssueProviderArtifactBodyRequest) (IssueProviderArtifactBody, error)
+}
+
+// IssueProviderReplaceArtifactBodyRequest replaces a remote artifact's body
+// wholesale. Managed-section preservation is decided before this call; the
+// adapter writes exactly the body it is given.
+type IssueProviderReplaceArtifactBodyRequest struct {
+	Repo    string `json:"repo"`
+	Kind    string `json:"kind"`
+	URL     string `json:"url"`
+	Body    string `json:"body"`
+	Confirm bool   `json:"confirm"` // must be true to write; false = dry-run preview
+}
+
+// IssueProviderReplaceArtifactBodyResult reports the write and the readback
+// that verified it. VerifiedBodySHA256 is hashed from a fresh read, never from
+// the request, so a silently-rejected edit cannot look successful.
+type IssueProviderReplaceArtifactBodyResult struct {
+	Provider           string `json:"provider"`
+	OK                 bool   `json:"ok"`
+	URL                string `json:"url,omitempty"`
+	Updated            bool   `json:"updated"`
+	VerifiedBodySHA256 string `json:"verified_body_sha256,omitempty"`
+	Preview            string `json:"preview,omitempty"`
+}
+
+type IssueProviderArtifactBodyReplacer interface {
+	ReplaceArtifactBody(context.Context, IssueProviderReplaceArtifactBodyRequest) (IssueProviderReplaceArtifactBodyResult, error)
+}
+
+// IssueProviderChildHierarchyRequest asks whether ChildURL is a provider-native
+// child of ParentIssueURL. Syncing a child body verifies this first so a typo'd
+// URL cannot rewrite an unrelated issue.
+type IssueProviderChildHierarchyRequest struct {
+	Repo           string `json:"repo"`
+	ParentIssueURL string `json:"parent_issue_url"`
+	ChildURL       string `json:"child_url"`
+}
+
+type IssueProviderChildHierarchyResult struct {
+	Provider string `json:"provider"`
+	OK       bool   `json:"ok"`
+	Verified bool   `json:"hierarchy_verified"`
+}
+
+type IssueProviderChildHierarchyVerifier interface {
+	VerifyChildHierarchy(context.Context, IssueProviderChildHierarchyRequest) (IssueProviderChildHierarchyResult, error)
+}
