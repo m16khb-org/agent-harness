@@ -165,3 +165,96 @@ func containsString(items []string, want string) bool {
 	}
 	return false
 }
+
+func TestInitProjectLifecycleStateUpdatesExistingWithMetadata(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+
+	initial, err := InitProjectLifecycleState(repo, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	meta := ProjectProfile{
+		Languages: []string{"Go"},
+	}
+	updated, err := InitProjectLifecycleState(repo, true, meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !updated.OK || !updated.Exists || !updated.NamespaceValid {
+		t.Fatalf("unexpected updated state: %+v", updated)
+	}
+	if updated.Profile == nil || updated.Profile.Metadata == nil || len(updated.Profile.Metadata.Languages) == 0 || updated.Profile.Metadata.Languages[0] != "Go" {
+		t.Fatalf("expected metadata to be updated: %+v", updated.Profile)
+	}
+	if updated.Profile.CreatedAt != initial.Profile.CreatedAt {
+		t.Fatalf("createdAt changed on update: %q vs %q", updated.Profile.CreatedAt, initial.Profile.CreatedAt)
+	}
+}
+
+func TestInitProjectLifecycleStateWithInvalidNamespaceDoesNotOverwrite(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	written, err := InitProjectLifecycleState(repo, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profile ProjectLifecycleProfile
+	b, err := os.ReadFile(written.ProjectJSONPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.Fingerprint.RepoRoot = filepath.Join(t.TempDir(), "mismatch")
+	b, err = json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(written.ProjectJSONPath, append(b, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := InitProjectLifecycleState(repo, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.NamespaceValid {
+		t.Fatalf("expected namespace to be invalid: %+v", res)
+	}
+}
+
+func TestResolveProjectLifecycleStateCorruptedJSON(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	written, err := InitProjectLifecycleState(repo, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(written.ProjectJSONPath, []byte("not valid json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := ResolveProjectLifecycleState(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(plan.Warnings, "project_json_read_error") {
+		t.Fatalf("expected project_json_read_error warning: %+v", plan)
+	}
+}
+
+func TestResolveProjectLifecycleStateNormalizeError(t *testing.T) {
+	oldNormalize := NormalizeRepoRoot
+	defer func() { NormalizeRepoRoot = oldNormalize }()
+	NormalizeRepoRoot = func(root string) (string, error) {
+		return "", os.ErrNotExist
+	}
+
+	plan, err := ResolveProjectLifecycleState("non-existent")
+	if err == nil || plan.OK {
+		t.Fatalf("expected error and OK=false, got plan=%+v, err=%v", plan, err)
+	}
+}
