@@ -189,205 +189,291 @@ func generatedCommandProvenanceValueFlag(name string) bool {
 	}
 }
 
+type issueOpsSpec struct {
+	values     []string
+	booleans   []string
+	repeatable []string
+}
+
+func toBoolMap(names []string) map[string]bool {
+	out := make(map[string]bool, len(names))
+	for _, name := range names {
+		out[name] = true
+	}
+	return out
+}
+
+var issueOpsCommandSpecs = map[string]issueOpsSpec{
+	"status": {
+		values:   []string{"--id"},
+		booleans: []string{"--json"},
+	},
+	"list": {
+		values:   []string{"--repo"},
+		booleans: []string{"--json"},
+	},
+	"pr-readiness": {
+		values:   []string{"--id"},
+		booleans: []string{"--strict", "--json"},
+	},
+	"execution status": {
+		values:   []string{"--id"},
+		booleans: []string{"--json"},
+	},
+	"execution prepare": {
+		values:   []string{"--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--issue-snapshot-file", "--direct-reason", "--expected-readiness-fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--confirm", "--json"},
+	},
+	"execution claim": {
+		values:   []string{"--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--claim-current-token", "--json"},
+	},
+	"execution release": {
+		values:   []string{"--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"execution replace": {
+		values:   []string{"--id", "--expected-generation", "--completion-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"},
+	},
+	"execution resume": {
+		values:   []string{"--id", "--expected-generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--confirm", "--json"},
+	},
+	"execution whoami": {
+		booleans: []string{"--json"},
+	},
+	"branch prepare": {
+		values:   []string{"--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--parent-worktree", "--remote-branch-url", "--code-project-key", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--link-verified", "--json"},
+	},
+	"child start": {
+		values:     []string{"--parent", "--branch", "--title", "--scope", "--acceptance", "--child-issue-url", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--acceptance"},
+		booleans:   []string{"--json"},
+	},
+	"child status": {
+		values:   []string{"--parent", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--repair", "--json"},
+	},
+	"child list": {
+		values:   []string{"--parent", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"child accept": {
+		values:     []string{"--parent", "--child", "--evidence", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--evidence"},
+		booleans:   []string{"--json"},
+	},
+	"child reject": {
+		values:   []string{"--parent", "--child", "--reason", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"child drop": {
+		values:   []string{"--parent", "--child", "--reason", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"intent record": {
+		values:     []string{"--id", "--raw-request", "--interpreted-intent", "--success-criteria", "--constraint", "--ambiguity", "--non-goal", "--intent-class", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--success-criteria", "--constraint", "--ambiguity", "--non-goal"},
+		booleans:   []string{"--json"},
+	},
+	"domain-review record": {
+		values:     []string{"--id", "--model-fit", "--terminology", "--risk", "--uncertainty", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--terminology", "--risk", "--uncertainty"},
+		booleans:   []string{"--json"},
+	},
+	"design review": {
+		values:     []string{"--id", "--problem-summary", "--proposed-design", "--refactor-plan", "--alternative", "--risk", "--verification", "--open-question", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--alternative", "--risk", "--verification", "--open-question"},
+		booleans:   []string{"--approved", "--json"},
+	},
+	"plan-prep record": {
+		values:     []string{"--id", "--decisions-evidence", "--decisions-waive", "--related-score-ref", "--related-waive", "--web-research-evidence", "--web-research-waive", "--codebase-survey-evidence", "--codebase-survey-waive", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--decisions-evidence", "--related-score-ref", "--web-research-evidence", "--codebase-survey-evidence"},
+		booleans:   []string{"--json"},
+	},
+	"regress": {
+		values:   []string{"--id", "--reason", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"execution reconcile": {
+		values:   []string{"--id", "--operation-id", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--preview", "--confirm", "--json"},
+	},
+	"execution complete": {
+		values:     []string{"--id", "--generation", "--final-head", "--turing-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		repeatable: []string{"--verification"},
+		booleans:   []string{"--confirm", "--json"},
+	},
+	"execution sync-base": {
+		values:   []string{"--id", "--completion-generation", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--preview", "--apply", "--finalize", "--abort", "--confirm", "--json"},
+	},
+	"execution switch-mode": {
+		values:   []string{"--id", "--mode", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		booleans: []string{"--apply", "--confirm", "--json"},
+	},
+	"link-plan": {
+		values:   []string{"--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"link-worktree": {
+		values:   []string{"--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"link-child": {
+		values:   []string{"--id", "--child-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"link-related": {
+		values:   []string{"--id", "--type", "--related-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"feedback add": {
+		values:   []string{"--id", "--source", "--body", "--classification", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"compatibility review": {
+		values:     []string{"--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker"},
+		repeatable: []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"},
+		booleans:   []string{"--approved", "--json"},
+	},
+	"devils-advocate review": {
+		values:     []string{"--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--reviewer-context", "--finding", "--waiver-rationale"},
+		repeatable: []string{"--finding"},
+		booleans:   []string{"--waive", "--json"},
+	},
+	"phase": {
+		values:   []string{"--id", "--to", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--force", "--json"},
+	},
+	"decision add": {
+		values:     []string{"--id", "--host", "--session-id", "--agent-id", "--cwd", "--title", "--body", "--kind", "--rationale", "--alternative", "--affected-link", "--affected-artifact"},
+		repeatable: []string{"--alternative", "--affected-link", "--affected-artifact"},
+		booleans:   []string{"--json"},
+	},
+	"ai-slop-clean record": {
+		values:     []string{"--id", "--host", "--session-id", "--agent-id", "--cwd", "--category", "--verification"},
+		repeatable: []string{"--category", "--verification"},
+		booleans:   []string{"--json"},
+	},
+	"feedback mark-issue-updated": {
+		values:   []string{"--id", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"feedback resolve": {
+		values:   []string{"--id", "--host", "--session-id", "--agent-id", "--cwd", "--index", "--resolution"},
+		booleans: []string{"--json"},
+	},
+	"remote create-pr": {
+		values:     []string{"--id", "--expected-generation", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd", "--label", "--assignee", "--field"},
+		repeatable: []string{"--label", "--assignee", "--field"},
+		booleans:   []string{"--confirm", "--json"},
+	},
+	"remote create-child": {
+		values:     []string{"--id", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--host", "--session-id", "--agent-id", "--cwd", "--label", "--assignee", "--field"},
+		repeatable: []string{"--label", "--assignee", "--field"},
+		booleans:   []string{"--confirm", "--json"},
+	},
+	"remote verify-artifact": {
+		values:     []string{"--id", "--provider", "--kind", "--url", "--target-branch", "--label", "--labels", "--assignee", "--assignees", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--label", "--labels", "--assignee", "--assignees"},
+		booleans:   []string{"--json"},
+	},
+	"remote score": {
+		values:   []string{"--input", "--judge", "--judge-file"},
+		booleans: []string{"--json"},
+	},
+	"implementation-review record": {
+		values:     []string{"--id", "--verdict", "--finding", "--evidence", "--reviewer-host", "--reviewer-model", "--reviewer-effort", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--finding", "--evidence"},
+		booleans:   []string{"--json"},
+	},
+	"project-docs-review record": {
+		values:     []string{"--id", "--verdict", "--doc", "--evidence", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--doc", "--evidence"},
+		booleans:   []string{"--json"},
+	},
+	"schema-evidence record": {
+		values:     []string{"--id", "--measurement", "--source", "--waiver-rationale", "--host", "--session-id", "--agent-id", "--cwd"},
+		repeatable: []string{"--measurement", "--source"},
+		booleans:   []string{"--json", "--waive"},
+	},
+	"artifact unstage": {
+		values:   []string{"--id", "--name"},
+		booleans: []string{"--json"},
+	},
+	"artifact stage": {
+		values:   []string{"--id", "--name", "--file", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"branch await-link": {
+		values:   []string{"--id", "--timeout", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"branch retarget": {
+		values:   []string{"--id", "--base-branch", "--reason", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--json"},
+	},
+	"cleanup status": {
+		values:   []string{"--id", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--merged", "--json"},
+	},
+	"cleanup close-children": {
+		values:   []string{"--id", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--merged", "--confirm", "--json"},
+	},
+	"cleanup orphan": {
+		values:   []string{"--id", "--repo", "--worktree", "--branch", "--provider", "--kind", "--artifact-url", "--fingerprint", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--apply", "--confirm", "--json"},
+	},
+	"cleanup finish": {
+		values:   []string{"--id", "--provider", "--fingerprint", "--superseded-by"},
+		booleans: []string{"--preview", "--apply", "--confirm", "--keep-remote-branch", "--json"},
+	},
+	"cleanup remote-branch": {
+		values:   []string{"--id", "--fingerprint", "--superseded-by"},
+		booleans: []string{"--preview", "--apply", "--confirm", "--json"},
+	},
+	"cleanup linked-branch": {
+		values:   []string{"--id", "--fingerprint"},
+		booleans: []string{"--preview", "--apply", "--confirm", "--json"},
+	},
+	"cleanup abandon": {
+		values:   []string{"--id", "--reason", "--fingerprint"},
+		booleans: []string{"--preview", "--apply", "--confirm", "--json"},
+	},
+	"remote reflect-completion": {
+		values:   []string{"--id", "--provider"},
+		booleans: []string{"--confirm", "--json"},
+	},
+	"remote reflect-devils-advocate": {
+		values:   []string{"--id", "--provider", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--confirm", "--json"},
+	},
+	"remote close-issue": {
+		values:   []string{"--id", "--provider"},
+		booleans: []string{"--confirm", "--json"},
+	},
+	"remote sync-issue": {
+		values:   []string{"--id", "--provider", "--url", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--accept-remote-edits", "--confirm", "--json"},
+	},
+	"remote sync-pr": {
+		values:   []string{"--id", "--provider", "--expected-generation", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"},
+		booleans: []string{"--accept-remote-edits", "--confirm", "--json"},
+	},
+}
+
 // IssueOpsCommandSpec은 정확한 issueops subcommand path에 대한 (values,
 // booleans, repeatable, ok) flag spec을 반환한다. 알 수 없는 path면 ok는 false다.
 func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[string]bool, bool) {
-	v := func(names ...string) map[string]bool {
-		out := map[string]bool{}
-		for _, name := range names {
-			out[name] = true
-		}
-		return out
-	}
-	b := func(names ...string) map[string]bool { return v(names...) }
-	r := map[string]bool{}
-	switch path {
-	case "status":
-		return v("--id"), b("--json"), r, true
-	case "list":
-		return v("--repo"), b("--json"), r, true
-	case "pr-readiness":
-		return v("--id"), b("--strict", "--json"), r, true
-	case "execution status":
-		return v("--id"), b("--json"), r, true
-	case "execution prepare":
-		return v("--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--issue-snapshot-file", "--direct-reason", "--expected-readiness-fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
-	case "execution claim":
-		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--claim-current-token", "--json"), r, true
-	case "execution release":
-		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
-	case "execution replace":
-		return v("--id", "--expected-generation", "--completion-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
-	case "execution resume":
-		return v("--id", "--expected-generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
-	case "execution whoami":
-		return v(), b("--json"), r, true
-	case "branch prepare":
-		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--parent-worktree", "--remote-branch-url", "--code-project-key", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
-	case "child start":
-		values := v("--parent", "--branch", "--title", "--scope", "--acceptance", "--child-issue-url", "--host", "--session-id", "--agent-id", "--cwd")
-		r["--acceptance"] = true
-		return values, b("--json"), r, true
-	case "child status":
-		return v("--parent", "--host", "--session-id", "--agent-id", "--cwd"), b("--repair", "--json"), r, true
-	case "child list":
-		return v("--parent", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "child accept":
-		values := v("--parent", "--child", "--evidence", "--host", "--session-id", "--agent-id", "--cwd")
-		r["--evidence"] = true
-		return values, b("--json"), r, true
-	case "child reject", "child drop":
-		return v("--parent", "--child", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "intent record":
-		values := v("--id", "--raw-request", "--interpreted-intent", "--success-criteria", "--constraint", "--ambiguity", "--non-goal", "--intent-class", "--host", "--session-id", "--agent-id", "--cwd")
-		for _, name := range []string{"--success-criteria", "--constraint", "--ambiguity", "--non-goal"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "domain-review record":
-		values := v("--id", "--model-fit", "--terminology", "--risk", "--uncertainty", "--host", "--session-id", "--agent-id", "--cwd")
-		for _, name := range []string{"--terminology", "--risk", "--uncertainty"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "design review":
-		values := v("--id", "--problem-summary", "--proposed-design", "--refactor-plan", "--alternative", "--risk", "--verification", "--open-question", "--host", "--session-id", "--agent-id", "--cwd")
-		for _, name := range []string{"--alternative", "--risk", "--verification", "--open-question"} {
-			r[name] = true
-		}
-		return values, b("--approved", "--json"), r, true
-	case "plan-prep record":
-		values := v("--id", "--decisions-evidence", "--decisions-waive", "--related-score-ref", "--related-waive", "--web-research-evidence", "--web-research-waive", "--codebase-survey-evidence", "--codebase-survey-waive", "--host", "--session-id", "--agent-id", "--cwd")
-		for _, name := range []string{"--decisions-evidence", "--related-score-ref", "--web-research-evidence", "--codebase-survey-evidence"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "regress":
-		return v("--id", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "execution reconcile":
-		return v("--id", "--operation-id", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
-	case "execution complete":
-		return v("--id", "--generation", "--final-head", "--turing-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), map[string]bool{"--verification": true}, true
-	case "execution sync-base":
-		return v("--id", "--completion-generation", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--apply", "--finalize", "--abort", "--confirm", "--json"), r, true
-	case "execution switch-mode":
-		return v("--id", "--mode", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--apply", "--confirm", "--json"), r, true
-	case "link-plan":
-		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "link-worktree":
-		return v("--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "link-child":
-		return v("--id", "--child-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "link-related":
-		return v("--id", "--type", "--related-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "feedback add":
-		return v("--id", "--source", "--body", "--classification", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "compatibility review":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
-		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
-			r[name] = true
-		}
-		return values, b("--approved", "--json"), r, true
-	case "devils-advocate review":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--reviewer-context", "--finding", "--waiver-rationale")
-		r["--finding"] = true
-		return values, b("--waive", "--json"), r, true
-	case "phase":
-		return v("--id", "--to", "--host", "--session-id", "--agent-id", "--cwd"), b("--force", "--json"), r, true
-	case "decision add":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--title", "--body", "--kind", "--rationale", "--alternative", "--affected-link", "--affected-artifact")
-		for _, name := range []string{"--alternative", "--affected-link", "--affected-artifact"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "ai-slop-clean record":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--category", "--verification")
-		r["--category"] = true
-		r["--verification"] = true
-		return values, b("--json"), r, true
-	case "feedback mark-issue-updated":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "feedback resolve":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--index", "--resolution"), b("--json"), r, true
-	case "remote create-pr":
-		values := v("--id", "--expected-generation", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd", "--label", "--assignee", "--field")
-		for _, name := range []string{"--label", "--assignee", "--field"} {
-			r[name] = true
-		}
-		return values, b("--confirm", "--json"), r, true
-	case "remote create-child":
-		values := v("--id", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--host", "--session-id", "--agent-id", "--cwd", "--label", "--assignee", "--field")
-		for _, name := range []string{"--label", "--assignee", "--field"} {
-			r[name] = true
-		}
-		return values, b("--confirm", "--json"), r, true
-	case "remote verify-artifact":
-		values := v("--id", "--provider", "--kind", "--url", "--target-branch", "--label", "--labels", "--assignee", "--assignees", "--host", "--session-id", "--agent-id", "--cwd")
-		for _, name := range []string{"--label", "--labels", "--assignee", "--assignees"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "remote score":
-		return v("--input", "--judge", "--judge-file"), b("--json"), r, true
-	case "implementation-review record":
-		values := v("--id", "--verdict", "--finding", "--evidence", "--reviewer-host", "--reviewer-model", "--reviewer-effort", "--host", "--session-id", "--agent-id", "--cwd")
-		r["--finding"] = true
-		r["--evidence"] = true
-		return values, b("--json"), r, true
-	case "project-docs-review record":
-		values := v("--id", "--verdict", "--doc", "--evidence", "--host", "--session-id", "--agent-id", "--cwd")
-		r["--doc"] = true
-		r["--evidence"] = true
-		return values, b("--json"), r, true
-	case "schema-evidence record":
-		values := v("--id", "--measurement", "--source", "--waiver-rationale", "--host", "--session-id", "--agent-id", "--cwd")
-		r["--measurement"] = true
-		r["--source"] = true
-		return values, b("--json", "--waive"), r, true
-	case "artifact unstage":
-		return v("--id", "--name"), b("--json"), r, true
-	case "artifact stage":
-		return v("--id", "--name", "--file", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	// branch await-link는 읽기 전용 대기다. pre-link 창에서 owner가 쓸 수
-	// 있어야 하므로 가드가 이 형태 하나를 명시적으로 허용한다(#319).
-	case "branch await-link":
-		return v("--id", "--timeout", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "branch retarget":
-		return v("--id", "--base-branch", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "cleanup status":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--json"), r, true
-	case "cleanup close-children":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--confirm", "--json"), r, true
-	case "cleanup orphan":
-		return v("--id", "--repo", "--worktree", "--branch", "--provider", "--kind", "--artifact-url", "--fingerprint", "--host", "--session-id", "--agent-id", "--cwd"), b("--apply", "--confirm", "--json"), r, true
-	case "cleanup finish":
-		return v("--id", "--provider", "--fingerprint", "--superseded-by"), b("--preview", "--apply", "--confirm", "--keep-remote-branch", "--json"), r, true
-	// cleanup remote-branch는 source checkout 전용 표면이라 워크트리 cwd에서는
-	// 가드가 미분류 셸로 차단한다. 이 등록은 typed 통과 권한이 아니라 usage와
-	// spec의 관례 parity 목적이다(brooks B2 — spec-only 등록은 가드에 무효).
-	case "cleanup remote-branch":
-		return v("--id", "--fingerprint", "--superseded-by"), b("--preview", "--apply", "--confirm", "--json"), r, true
-	// cleanup linked-branch도 source checkout 전용이다. remote-branch와 같은
-	// 이유로 여기 등록은 usage/spec parity 목적이며 가드 통과 권한이 아니다.
-	case "cleanup linked-branch":
-		return v("--id", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
-	case "cleanup abandon":
-		return v("--id", "--reason", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
-	case "remote reflect-completion":
-		return v("--id", "--provider"), b("--confirm", "--json"), r, true
-	case "remote reflect-devils-advocate":
-		return v("--id", "--provider", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
-	case "remote close-issue":
-		return v("--id", "--provider"), b("--confirm", "--json"), r, true
-	// 본문 최신화는 durable artifact를 다시 쓰므로 create와 같은 actor 검증을
-	// 받는다. --expected-body-sha256은 confirm의 compare-and-swap 입력이다.
-	case "remote sync-issue":
-		return v("--id", "--provider", "--url", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"), b("--accept-remote-edits", "--confirm", "--json"), r, true
-	case "remote sync-pr":
-		return v("--id", "--provider", "--expected-generation", "--body", "--body-file", "--expected-body-sha256", "--host", "--session-id", "--agent-id", "--cwd"), b("--accept-remote-edits", "--confirm", "--json"), r, true
-	default:
+	spec, ok := issueOpsCommandSpecs[path]
+	if !ok {
 		return nil, nil, nil, false
 	}
+	return toBoolMap(spec.values), toBoolMap(spec.booleans), toBoolMap(spec.repeatable), true
 }
 
 // ContainsASCIITerminalControl은 value에 ASCII C0 control이나 DEL 문자(PTY를

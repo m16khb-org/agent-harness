@@ -106,138 +106,162 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 	}
 	switch req.Stage {
 	case port.ExecutionOrcaIntentWorktree:
-		rows, err := p.client.ListWorktrees(ctx, req.Workspace.SourceRoot)
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
-		for _, row := range rows {
-			if !samePath(row.Path, req.Workspace.Root) && strings.TrimSpace(row.Comment) != req.Marker {
-				continue
-			}
-			if err := validateExecutionWorktree(row, req.Workspace, req.Probe); err != nil {
-				return port.ExecutionOrcaIntentInventory{}, err
-			}
-			receipt := executionWorkspaceReceipt(req.Workspace, row)
-			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{Workspace: &receipt})
-		}
-		return executionIntentInventory(candidates), nil
+		return p.inspectIntentWorktree(ctx, req)
 	case port.ExecutionOrcaIntentTerminal:
-		client, err := p.intentInventoryClient()
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		inventory, err := client.listTerminalsInventory(ctx, req.Prepared.WorktreeID)
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
-		for _, row := range inventory.Rows {
-			if strings.TrimSpace(row.Title) != req.Marker && strings.TrimSpace(row.StableTabTitle) != req.Marker {
-				continue
-			}
-			if err := validateExecutionIntentTerminal(row, *req.Prepared, req.Marker); err != nil {
-				return port.ExecutionOrcaIntentInventory{}, err
-			}
-			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TerminalPTYID: row.PTYID})
-		}
-		return executionIntentInventory(candidates), nil
+		return p.inspectIntentTerminal(ctx, req)
 	case port.ExecutionOrcaIntentRun:
-		client, err := p.runInventoryClient()
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		inventory, err := client.listRunsInventory(ctx)
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
-		for _, row := range inventory.Rows {
-			if strings.TrimSpace(row.Objective) != req.Marker {
-				continue
-			}
-			if err := validateExecutionIntentRun(row, *req.Prepared, req.Marker); err != nil {
-				return port.ExecutionOrcaIntentInventory{}, err
-			}
-			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{RunID: row.ID})
-		}
-		return executionIntentInventory(candidates), nil
+		return p.inspectIntentRun(ctx, req)
 	case port.ExecutionOrcaIntentRunBind:
-		client, err := p.runInventoryClient()
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		inventory, err := client.currentRunInventory(ctx)
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if inventory.Run == nil || inventory.Run.ID != req.RunID {
-			return executionIntentInventory(nil), nil
-		}
-		if err := validateExecutionIntentRun(*inventory.Run, *req.Prepared, req.Marker); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		return executionIntentInventory([]port.ExecutionOrcaIntentReceipt{{RunID: inventory.Run.ID, RunBound: true}}), nil
+		return p.inspectIntentRunBind(ctx, req)
 	case port.ExecutionOrcaIntentTask:
-		client, err := p.intentInventoryClient()
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		inventory, err := client.listRunTasksInventory(ctx, req.RunID, "--brief")
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		title := executionTaskTitle(req.Marker, req.Launch.PromptSHA256)
-		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
-		for _, row := range inventory.Rows {
-			candidateTitle := strings.TrimSpace(row.Title)
-			if candidateTitle != title {
-				continue
-			}
-			if err := validateExecutionIntentTask(row, *req.Prepared, req.RunID, candidateTitle, req.Workspace.Branch); err != nil {
-				return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca owner task candidate does not match the sealed intent")
-			}
-			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TaskID: row.ID})
-		}
-		return executionIntentInventory(candidates), nil
+		return p.inspectIntentTask(ctx, req)
 	case port.ExecutionOrcaIntentDispatch:
-		client, err := p.intentInventoryClient()
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		inventory, err := client.showDispatchInventory(ctx, req.TaskID)
-		if err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		if inventory.Dispatch == nil {
-			return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{}, AuthoritativeZero: true}, nil
-		}
-		dispatch := *inventory.Dispatch
-		if req.Probe.Host == "omo" {
-			return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca Omo prompt delivery is unproven after dispatch")
-		}
-		if err := validateExecutionObservedDispatch(dispatch, req.Prepared.RuntimeID, req.TaskID); err != nil {
-			return port.ExecutionOrcaIntentInventory{}, err
-		}
-		return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{{TaskID: dispatch.TaskID, DispatchID: dispatch.ID}}}, nil
+		return p.inspectIntentDispatch(ctx, req)
 	default:
 		return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("unsupported Orca execution intent stage %q", req.Stage)
 	}
+}
+
+func (p *ExecutionProvisioner) inspectIntentWorktree(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	rows, err := p.client.ListWorktrees(ctx, req.Workspace.SourceRoot)
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
+	for _, row := range rows {
+		if !samePath(row.Path, req.Workspace.Root) && strings.TrimSpace(row.Comment) != req.Marker {
+			continue
+		}
+		if err := validateExecutionWorktree(row, req.Workspace, req.Probe); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		receipt := executionWorkspaceReceipt(req.Workspace, row)
+		candidates = append(candidates, port.ExecutionOrcaIntentReceipt{Workspace: &receipt})
+	}
+	return executionIntentInventory(candidates), nil
+}
+
+func (p *ExecutionProvisioner) inspectIntentTerminal(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	client, err := p.intentInventoryClient()
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	inventory, err := client.listTerminalsInventory(ctx, req.Prepared.WorktreeID)
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
+	for _, row := range inventory.Rows {
+		if strings.TrimSpace(row.Title) != req.Marker && strings.TrimSpace(row.StableTabTitle) != req.Marker {
+			continue
+		}
+		if err := validateExecutionIntentTerminal(row, *req.Prepared, req.Marker); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TerminalPTYID: row.PTYID})
+	}
+	return executionIntentInventory(candidates), nil
+}
+
+func (p *ExecutionProvisioner) inspectIntentRun(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	client, err := p.runInventoryClient()
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	inventory, err := client.listRunsInventory(ctx)
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
+	for _, row := range inventory.Rows {
+		if strings.TrimSpace(row.Objective) != req.Marker {
+			continue
+		}
+		if err := validateExecutionIntentRun(row, *req.Prepared, req.Marker); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		candidates = append(candidates, port.ExecutionOrcaIntentReceipt{RunID: row.ID})
+	}
+	return executionIntentInventory(candidates), nil
+}
+
+func (p *ExecutionProvisioner) inspectIntentRunBind(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	client, err := p.runInventoryClient()
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	inventory, err := client.currentRunInventory(ctx)
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if inventory.Run == nil || inventory.Run.ID != req.RunID {
+		return executionIntentInventory(nil), nil
+	}
+	if err := validateExecutionIntentRun(*inventory.Run, *req.Prepared, req.Marker); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	return executionIntentInventory([]port.ExecutionOrcaIntentReceipt{{RunID: inventory.Run.ID, RunBound: true}}), nil
+}
+
+func (p *ExecutionProvisioner) inspectIntentTask(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	client, err := p.intentInventoryClient()
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	inventory, err := client.listRunTasksInventory(ctx, req.RunID, "--brief")
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	title := executionTaskTitle(req.Marker, req.Launch.PromptSHA256)
+	candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
+	for _, row := range inventory.Rows {
+		candidateTitle := strings.TrimSpace(row.Title)
+		if candidateTitle != title {
+			continue
+		}
+		if err := validateExecutionIntentTask(row, *req.Prepared, req.RunID, candidateTitle, req.Workspace.Branch); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca owner task candidate does not match the sealed intent")
+		}
+		candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TaskID: row.ID})
+	}
+	return executionIntentInventory(candidates), nil
+}
+
+func (p *ExecutionProvisioner) inspectIntentDispatch(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	client, err := p.intentInventoryClient()
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	inventory, err := client.showDispatchInventory(ctx, req.TaskID)
+	if err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	if inventory.Dispatch == nil {
+		return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{}, AuthoritativeZero: true}, nil
+	}
+	dispatch := *inventory.Dispatch
+	if req.Probe.Host == "omo" {
+		return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca Omo prompt delivery is unproven after dispatch")
+	}
+	if err := validateExecutionObservedDispatch(dispatch, req.Prepared.RuntimeID, req.TaskID); err != nil {
+		return port.ExecutionOrcaIntentInventory{}, err
+	}
+	return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{{TaskID: dispatch.TaskID, DispatchID: dispatch.ID}}}, nil
 }
 
 func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
