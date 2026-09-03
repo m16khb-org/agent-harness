@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Sync PR"
+  short_description: "Refresh a stale linked PR or MR body"
+  default_prompt: "Use $issueops-sync-pr only to refresh the body of the pull request or merge request this cycle already verified. Preserve the generation and native actor fences, run the preview first, fold reviewer edits into the new body before passing --accept-remote-edits, polish with fluent-korean, then confirm with the exact expected_body_sha256 the preview reported and verify the live readback. Route issue bodies to $issueops-sync-issue and completion recording to $issueops-complete."

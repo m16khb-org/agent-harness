@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Sync Issue"
+  short_description: "Refresh a stale linked issue or child body"
+  default_prompt: "Use $issueops-sync-issue only to refresh the body of an issue or provider-native child this cycle already published. Run the preview first, read the reported drift, fold any outside edits into the new body before passing --accept-remote-edits, leave every managed block out of the body file, polish with fluent-korean, then confirm with the exact expected_body_sha256 the preview reported and verify the readback. Route new issue creation to $issueops-create-issue and PR/MR bodies to $issueops-sync-pr."

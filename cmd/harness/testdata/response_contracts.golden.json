@@ -904,6 +904,20 @@
           "path": "$HARNESS_ROOT/skills/issueops-implement"
         },
         {
+          "description": "Refresh the body of an issue or provider-native child this cycle already published, with drift classification, managed-section preservation, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when a linked issue's text no longer matches the cycle it describes.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-sync-issue",
+          "path": "$HARNESS_ROOT/skills/issueops-sync-issue"
+        },
+        {
+          "description": "Refresh the body of a GitHub pull request or GitLab merge request this cycle already published, with generation and actor fencing, drift classification, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when the diff moved on and the PR/MR description did not.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-sync-pr",
+          "path": "$HARNESS_ROOT/skills/issueops-sync-pr"
+        },
+        {
           "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5218,6 +5232,8 @@
           "issueops-create-issue",
           "issueops-create-pr",
           "issueops-implement",
+          "issueops-sync-issue",
+          "issueops-sync-pr",
           "karpathy",
           "parnas",
           "project-bootstrap",
@@ -7226,6 +7242,20 @@
                 "path": "$HARNESS_ROOT/skills/issueops-implement"
               },
               {
+                "description": "Refresh the body of an issue or provider-native child this cycle already published, with drift classification, managed-section preservation, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when a linked issue's text no longer matches the cycle it describes.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-sync-issue",
+                "path": "$HARNESS_ROOT/skills/issueops-sync-issue"
+              },
+              {
+                "description": "Refresh the body of a GitHub pull request or GitLab merge request this cycle already published, with generation and actor fencing, drift classification, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when the diff moved on and the PR/MR description did not.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-sync-pr",
+                "path": "$HARNESS_ROOT/skills/issueops-sync-pr"
+              },
+              {
                 "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8349,6 +8379,8 @@
                 "issueops-create-issue",
                 "issueops-create-pr",
                 "issueops-implement",
+                "issueops-sync-issue",
+                "issueops-sync-pr",
                 "karpathy",
                 "parnas",
                 "project-bootstrap",

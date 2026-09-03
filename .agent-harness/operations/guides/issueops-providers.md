@@ -20,6 +20,44 @@ Use the focused skill for the current publication step:
   reconciliation.
 - [`issueops-create-pr`](../../../skills/issueops-create-pr/SKILL.md) owns
   linked PR/MR publication and live artifact verification.
+- [`issueops-sync-issue`](../../../skills/issueops-sync-issue/SKILL.md) and
+  [`issueops-sync-pr`](../../../skills/issueops-sync-pr/SKILL.md) own refreshing
+  a body that has fallen behind the cycle that published it.
+
+### Refreshing a published body
+
+`sync-issue` and `sync-pr` replace the authored body of an artifact this cycle
+already published. They never touch the managed blocks
+(`issueops:completion`, `issueops:devils-advocate`, `agent-harness:issue-create`):
+those are lifted out of the live body and spliced back after the replacement, so
+a full-body rewrite cannot strand the cleanup readback that looks for the
+completion marker.
+
+Preview first. It reports `drift` (`in_sync` | `stale` | `remote_edited`), the
+sections it will preserve, and the `expected_body_sha256` a confirm has to name.
+
+```bash
+agent-harness issueops remote sync-issue --id ID --body-file BODY.md --json
+```
+
+A confirm is a compare-and-swap on the body: without `--expected-body-sha256`,
+or when the live body no longer hashes to it, nothing is written. A body edited
+outside the harness (`drift=remote_edited`) additionally needs
+`--accept-remote-edits`, so an outside edit is folded into the replacement
+deliberately rather than erased by accident.
+
+```bash
+agent-harness issueops remote sync-issue \
+  --id ID --body-file BODY.md --expected-body-sha256 SHA \
+  --host codex --session-id SESSION --cwd WORKER_PATH --confirm --json
+```
+
+`sync-issue --url` addresses a provider-native child, and the hierarchy is
+verified against the linked parent before anything is written. `sync-pr`
+addresses only the artifact this cycle verified, is fenced by
+`--expected-generation` like `create-pr`, and refuses a merged or closed
+artifact. Every confirmed write is verified by readback and stored as the
+record's `body_syncs` baseline for the next staleness check.
 
 ### Durable parent issue creation and recovery
 

@@ -17,6 +17,8 @@ IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/M
 | parent Issue·provider-native child | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) |
 | implement 단계 구현·child 위임·implementation review | [`issueops-implement`](../issueops-implement/SKILL.md) |
 | GitHub PR·GitLab MR publication | [`issueops-create-pr`](../issueops-create-pr/SKILL.md) |
+| 낡은 Issue·child 본문 최신화 | [`issueops-sync-issue`](../issueops-sync-issue/SKILL.md) |
+| 낡은 PR·MR 본문 최신화 | [`issueops-sync-pr`](../issueops-sync-pr/SKILL.md) |
 | execution completion 기록·generation 반납 | [`issueops-complete`](../issueops-complete/SKILL.md) |
 | issue branch·worktree | [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md) |
 | merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
