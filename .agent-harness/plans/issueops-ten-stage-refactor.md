@@ -1728,7 +1728,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-clean as the AI slop cleanup stage` | Files: 위 파일
 
-- [ ] **T20. `issueops-verify` 신설 (6단계: 검증)**
+- [x] **T20. `issueops-verify` 신설 (7단계: 검증)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-20-order.txt`, `task-20-exit.txt`. 절 1~4가 번호 순서대로 있고 금지 문자열은 0건이다.
+
+  **실행 결과와 계획 대비 편차**: `verify-work`의 자리표시자를 `<검증 명령>`이 아니라 `"$VERIFY_COMMAND"`로 썼다. shell 검사기가 `<`를 리다이렉션으로 읽어 거부한다.
 
   **Files:**
   - Create: `skills/issueops-verify/SKILL.md`

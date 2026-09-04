@@ -982,6 +982,13 @@
           "path": "$HARNESS_ROOT/skills/issueops-sync-pr"
         },
         {
+          "description": "Run the IssueOps verify stage on the sealed diff without touching any file. Re-run the gate ledger and the repository's verification battery read-only, record the conditional schema evidence, run the adversarial implementation review through issueops-review, re-check compatibility against the real diff, and prove strict PR readiness leaves only commit and push. Use when \"issueops next\" reports verify, or when the user says \"검증 단계\", \"검증해줘\", \"리뷰 돌리고 검증\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-verify",
+          "path": "$HARNESS_ROOT/skills/issueops-verify"
+        },
+        {
           "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5305,6 +5312,7 @@
           "issueops-review",
           "issueops-sync-issue",
           "issueops-sync-pr",
+          "issueops-verify",
           "karpathy",
           "parnas",
           "project-bootstrap",
@@ -7391,6 +7399,13 @@
                 "path": "$HARNESS_ROOT/skills/issueops-sync-pr"
               },
               {
+                "description": "Run the IssueOps verify stage on the sealed diff without touching any file. Re-run the gate ledger and the repository's verification battery read-only, record the conditional schema evidence, run the adversarial implementation review through issueops-review, re-check compatibility against the real diff, and prove strict PR readiness leaves only commit and push. Use when \"issueops next\" reports verify, or when the user says \"검증 단계\", \"검증해줘\", \"리뷰 돌리고 검증\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-verify",
+                "path": "$HARNESS_ROOT/skills/issueops-verify"
+              },
+              {
                 "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8523,6 +8538,7 @@
                 "issueops-review",
                 "issueops-sync-issue",
                 "issueops-sync-pr",
+                "issueops-verify",
                 "karpathy",
                 "parnas",
                 "project-bootstrap",

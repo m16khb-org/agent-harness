@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Verify"
+  short_description: "Verify the sealed diff without touching a single file"
+  default_prompt: "Use $issueops-verify when `issueops next` reports verify. Every command here is a read or a record write: re-read the gate ledger without --write, run the repository's verification battery through verify-work, record schema evidence when the change set touches migrations or entities, run $issueops-review with --target diff (no mode is exempt), refresh the compatibility verdict against the real diff, and prove strict PR readiness leaves only commit and push. Touching a file here invalidates the ai-slop-clean seal and the project-docs verdict, so fixes go back to the implement stage."
