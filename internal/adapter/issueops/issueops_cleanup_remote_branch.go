@@ -96,8 +96,9 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	// fully-qualified ref는 동명 태그를 배제하고, force-with-lease는 preview→push
 	// 사이에 남은 TOCTOU를 서버측에서 원자적으로 봉쇄한다(brooks H7).
 	ref := "refs/heads/" + inventory.Branch
-	if code, out := deps.Git(ctx, record.Repo, "push", "origin", "--delete", ref,
-		"--force-with-lease="+ref+":"+inventory.RemoteOID); code != 0 {
+	if code, out := deleteRemoteBranchRef(
+		func(args ...string) (int, string) { return deps.Git(ctx, record.Repo, args...) },
+		inventory.Branch, inventory.RemoteOID); code != 0 {
 		result.OK = false
 		result.FailedStep = "remote_branch_delete"
 		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup remote-branch --id %s --preview --json", record.ID)

@@ -503,6 +503,12 @@ const (
 	// CleanupFailureStepWorkspaceProcessesStop은 apply ①′(워크트리 점유 프로세스·
 	// Orca 터미널 종료)이 재관측에서 점유 0을 증명하지 못한 지점이다(#477).
 	CleanupFailureStepWorkspaceProcessesStop = "workspace_processes_stop"
+	// 아래 셋은 abandon의 원격 효과 단계다. 로컬 단계보다 먼저 실행되므로
+	// 여기서 멈추면 레코드도 워크트리도 그대로 남는다 — 원격만 부분적으로
+	// 바뀐 상태를 사람이 보고 다시 결정할 수 있어야 한다.
+	CleanupFailureStepClosePR            = "close_pr"
+	CleanupFailureStepCloseIssue         = "close_issue"
+	CleanupFailureStepRemoteBranchDelete = "remote_branch_delete"
 )
 
 type IssueOpsCleanupFinishFailure struct {

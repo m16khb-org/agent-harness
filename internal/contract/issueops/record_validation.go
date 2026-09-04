@@ -151,6 +151,9 @@ func knownCleanupFinishFailureStep(step string) bool {
 func knownCleanupAbandonFailureStep(step string) bool {
 	switch step {
 	case CleanupFailureStepApplying,
+		CleanupFailureStepClosePR,
+		CleanupFailureStepCloseIssue,
+		CleanupFailureStepRemoteBranchDelete,
 		CleanupFailureStepWorkspaceProcessesStop,
 		CleanupFailureStepWorktreeRemove,
 		CleanupFailureStepBranchDelete,

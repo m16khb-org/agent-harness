@@ -14,7 +14,7 @@ import (
 func wireCleanupForTests() {
 	feedbackcleanup.ConfigureCleanup(feedbackcleanup.CleanupDeps{
 		AddIssueOpsFeedbackWithActor: issueopscore.AddIssueOpsFeedbackWithActor,
-		CleanupAbandon: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupAbandonRequest, d feedbackcleanup.Deps) (issueopscontract.CleanupAbandonResult, error) {
+		CleanupAbandon: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupAbandonRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupAbandonResult, error) {
 			return issueopscore.CleanupAbandon(ctx, stateRoot, req, issueopscore.CleanupAbandonDeps{Orca: d.OrcaIntent, OrcaOwner: d.OrcaOwner})
 		},
 		CleanupFinish: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupFinishRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupFinishResult, error) {

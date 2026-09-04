@@ -38,6 +38,16 @@ type CleanupAbandonRequest struct {
 	// 네트워크 관측을 인벤토리에 섞으면 일시적 원격 오류가 preview 재발급
 	// 루프를 만든다(finish의 remote_branch_absent와 같은 규율).
 	ArtifactUnmerged bool
+	// ClosePR·CloseIssue·DeleteRemoteBranch는 폐기가 원격에 남길 효과를 고른다.
+	// 기본은 셋 다 거짓이며 그때 abandon은 원격을 전혀 건드리지 않는다. 미머지
+	// 사이클의 원격 정리 경로는 이것뿐이다 — `remote close-issue`와 `cleanup
+	// remote-branch`는 머지 증적을 요구하므로 폐기에는 쓸 수 없다.
+	//
+	// 세 값은 fingerprint 입력이다. 플래그가 다른 preview는 다른 승인이므로
+	// 서로의 fingerprint로 apply할 수 없다.
+	ClosePR            bool
+	CloseIssue         bool
+	DeleteRemoteBranch bool
 }
 
 // CleanupFinishRequest는 record-backed 머지 후 정리(설계 v5 WS3)의 입력이다.
@@ -96,21 +106,32 @@ type CleanupAbandonResult struct {
 	Missing []string `json:"missing,omitempty"`
 	// UnresolvedChildren는 no_children을 유발한 자식들이다. 개수만 알려주면
 	// 사용자가 무엇을 먼저 끝내야 할지 알 수 없다(#437).
-	UnresolvedChildren   []string `json:"unresolved_children,omitempty"`
-	ReasonError          string   `json:"reason_error,omitempty"`
-	PendingIntentError   string   `json:"pending_intent_error,omitempty"`
-	OrcaResidueError     string   `json:"orca_residue_error,omitempty"`
-	Fingerprint          string   `json:"fingerprint,omitempty"`
-	WorktreePath         string   `json:"worktree_path,omitempty"`
-	Branch               string   `json:"branch,omitempty"`
-	WorktreePresent      bool     `json:"worktree_present"`
-	BranchPresent        bool     `json:"branch_present"`
-	WorktreeCanonical    bool     `json:"worktree_canonical"`
-	WorktreeClean        bool     `json:"worktree_clean"`
-	WorktreeHead         string   `json:"worktree_head,omitempty"`
-	BranchOID            string   `json:"branch_oid,omitempty"`
-	BranchCheckoutPath   string   `json:"branch_checkout_path,omitempty"`
-	RemovalPlan          []string `json:"removal_plan,omitempty"`
+	UnresolvedChildren []string `json:"unresolved_children,omitempty"`
+	ReasonError        string   `json:"reason_error,omitempty"`
+	PendingIntentError string   `json:"pending_intent_error,omitempty"`
+	OrcaResidueError   string   `json:"orca_residue_error,omitempty"`
+	Fingerprint        string   `json:"fingerprint,omitempty"`
+	WorktreePath       string   `json:"worktree_path,omitempty"`
+	Branch             string   `json:"branch,omitempty"`
+	WorktreePresent    bool     `json:"worktree_present"`
+	BranchPresent      bool     `json:"branch_present"`
+	WorktreeCanonical  bool     `json:"worktree_canonical"`
+	WorktreeClean      bool     `json:"worktree_clean"`
+	WorktreeHead       string   `json:"worktree_head,omitempty"`
+	BranchOID          string   `json:"branch_oid,omitempty"`
+	BranchCheckoutPath string   `json:"branch_checkout_path,omitempty"`
+	RemovalPlan        []string `json:"removal_plan,omitempty"`
+	// RemoteEffects는 요청된 원격 효과와 그 관측 결과다(`close_pr`,
+	// `close_pr:already_closed`, `close_issue`, `remote_branch_delete`,
+	// `remote_branch_delete:absent`). preview에서는 계획이고 apply에서는 실행
+	// 기록이다.
+	RemoteEffects        []string `json:"remote_effects,omitempty"`
+	RemoteArtifactState  string   `json:"remote_artifact_state,omitempty"`
+	IssueState           string   `json:"issue_state,omitempty"`
+	RemoteBranchOID      string   `json:"remote_branch_oid,omitempty"`
+	PRClosed             bool     `json:"pr_closed,omitempty"`
+	IssueClosed          bool     `json:"issue_closed,omitempty"`
+	RemoteBranchDeleted  bool     `json:"remote_branch_deleted,omitempty"`
 	RemoteBranchDeletion string   `json:"remote_branch_deletion"`
 	PendingOperationID   string   `json:"pending_operation_id,omitempty"`
 	IntentRowsDeleted    []string `json:"intent_rows_deleted,omitempty"`

@@ -1063,7 +1063,14 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(issueops): add the read-only next command that classifies the current stage` | Files: 위 파일 + 골든 2개
 
-- [ ] **T7. `cleanup abandon` 원격 효과 확장 (`--close-pr`, `--close-issue`, `--delete-remote-branch`)**
+- [x] **T7. `cleanup abandon` 원격 효과 확장 (`--close-pr`, `--close-issue`, `--delete-remote-branch`)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-7-abandon-preview.json`(실기 preview, GitLab 이슈 상태 closed 관측, mutation 없음), `task-7-abandon-noflag-diff.txt`(플래그 없는 출력 무변경 + 머지 거부).
+
+  **실행 결과와 계획 대비 편차**:
+  - **관측한 원격 *상태*는 fingerprint에 넣지 않았다.** 계획 3번은 `RemoteArtifactState`·`IssueState`를 인벤토리에 넣으라고 했지만, 인벤토리는 곧 fingerprint 입력이고 `CleanupAbandonRequest.ArtifactUnmerged`의 주석이 "네트워크 관측을 인벤토리에 섞으면 일시적 원격 오류가 preview 재발급 루프를 만든다"는 규율을 이미 세워 두었다. fingerprint에는 **플래그 세 개**와 `RemoteBranchOID`만 넣는다. 플래그는 결정적 입력이라 승인을 구분하고(요구 (a) 충족), OID는 `--force-with-lease` CAS의 대상이라 승인의 일부다(`cleanup remote-branch` 선례). 상태 변화는 apply가 단계마다 재관측해 잡는다.
+  - **provider는 CLI가 해석해 어댑터로 넘긴다**(`CleanupFinish`·`CleanupRemoteBranch`와 같은 모양). `CleanupDeps.CleanupAbandon` 시그니처에 `prov port.IssueProvider`가 붙었고 fake 셋을 함께 고쳤다. 플래그가 없으면 provider를 해석조차 하지 않으므로 원격 정체가 없는 사이클의 폐기가 막히지 않는다.
+  - **상태 관측기를 새로 만들지 않았다.** 두 provider가 이미 `IssueProviderArtifactBodyReader`로 같은 readback을 노출하므로 그것을 쓴다.
+  - preview가 다른 게이트(예: `no_children`)에 막혀도 관측한 원격 상태는 그대로 보여 준다. `ok:false`와 missing이 "지금은 실행되지 않는다"를 말하고, 관측값은 무엇을 먼저 정리해야 하는지 알려 준다. 원격 관측 자체가 결격일 때만 계획을 비운다.
+  - 실기 대상은 `io-15f1518189ca`였고 게이트 `no_children`에 막혔다. 그래도 이 태스크가 검증하려던 것은 전부 관측됐다: `--close-issue` 플래그가 GitLab 이슈를 실제로 읽어 `issue_state: closed`를 돌려주고, `remote_effects`가 `close_issue:already_closed`로 계획되며, mutation은 없었다.
 
   **Files:**
   - Modify: `internal/contract/issueops/types.go` (`IssueOpsCleanupAbandonRequest`에 `ClosePR`, `CloseIssue`, `DeleteRemoteBranch bool`; `CleanupAbandonResult`에 `RemoteEffects []string`, `RemoteArtifactState`, `IssueState`, `RemoteBranchOID`, `PRClosed`, `IssueClosed`, `RemoteBranchDeleted`. record 구조체에는 필드를 추가하지 않는다)

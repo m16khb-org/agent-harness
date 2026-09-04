@@ -73,7 +73,7 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]
   agent-harness issueops cleanup linked-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--keep-remote-branch] [--json]
-  agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]
+  agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr] [--close-issue] [--delete-remote-branch] (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops remote score --input PATH [--judge none|prompt|file] [--judge-file PATH] [--json]
   agent-harness issueops remote-score --input PATH [--judge none|prompt|file] [--judge-file PATH] [--json]
   agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]

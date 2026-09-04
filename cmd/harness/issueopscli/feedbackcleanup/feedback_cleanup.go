@@ -535,6 +535,9 @@ func runCleanupAbandon(args []string, deps Deps) error {
 	apply := fs.Bool("apply", false, "remove the sealed local worktree and branch, then delete the record and its external intent rows")
 	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	closePR := fs.Bool("close-pr", false, "also close the unmerged PR/MR recorded on this cycle")
+	closeIssue := fs.Bool("close-issue", false, "also close the linked issue as not planned")
+	deleteRemoteBranch := fs.Bool("delete-remote-branch", false, "also delete the remote branch (force-with-lease against the observed OID)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
@@ -547,14 +550,37 @@ func runCleanupAbandon(args []string, deps Deps) error {
 	if !*preview && !*apply {
 		return fmt.Errorf("cleanup abandon requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
 	}
+	// provider는 원격 효과가 요청됐을 때만 해석한다. 플래그 없는 폐기는
+	// provider 없이도 성립해야 한다 — 원격 정체가 없는 사이클이 정리되지 못하면
+	// 출구가 사라진다.
+	var prov port.IssueProvider
+	if *closePR || *closeIssue || *deleteRemoteBranch {
+		record, readErr := cleanupDeps.ReadIssueOps(cleanupDeps.IssueOpsStateRoot(), *id)
+		if readErr != nil {
+			return printCleanupFinishError(deps, *jsonOut, readErr)
+		}
+		providerName := cleanupDeps.ResolveRecordProvider(record)
+		if providerName == "" {
+			return printCleanupFinishError(deps, *jsonOut,
+				fmt.Errorf("cannot determine provider from IssueOps record; remote abandon effects need one"))
+		}
+		resolved, provErr := deps.Provider(providerName)
+		if provErr != nil {
+			return printCleanupFinishError(deps, *jsonOut, provErr)
+		}
+		prov = resolved
+	}
 	result, err := cleanupDeps.CleanupAbandon(context.Background(), cleanupDeps.IssueOpsStateRoot(), issueopscontract.CleanupAbandonRequest{
-		ID:               *id,
-		Reason:           *reason,
-		Apply:            *apply,
-		Confirm:          *confirm,
-		Fingerprint:      *fingerprint,
-		ArtifactUnmerged: cleanupArtifactUnmerged(*id, deps),
-	}, deps)
+		ID:                 *id,
+		Reason:             *reason,
+		Apply:              *apply,
+		Confirm:            *confirm,
+		Fingerprint:        *fingerprint,
+		ArtifactUnmerged:   cleanupArtifactUnmerged(*id, deps),
+		ClosePR:            *closePR,
+		CloseIssue:         *closeIssue,
+		DeleteRemoteBranch: *deleteRemoteBranch,
+	}, deps, prov)
 	if result.NextCommand != "" {
 		record, readErr := cleanupDeps.ReadIssueOps(cleanupDeps.IssueOpsStateRoot(), *id)
 		if readErr != nil {
@@ -581,13 +607,33 @@ func runCleanupAbandon(args []string, deps Deps) error {
 	if result.RecordDeleted {
 		fmt.Printf("cleanup abandoned: worktree_removed=%t branch_deleted=%t record_deleted=%t intent_rows=%d at=%s\n",
 			result.WorktreeRemoved, result.BranchDeleted, result.RecordDeleted, len(result.IntentRowsDeleted), result.AbandonedAt)
+		printCleanupAbandonRemoteEffects(result)
 	} else {
 		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
+		printCleanupAbandonRemoteEffects(result)
 		if result.NextCommand != "" {
 			fmt.Printf("next: %s\n", result.NextCommand)
 		}
 	}
 	return nil
+}
+
+// printCleanupAbandonRemoteEffects는 승인 대상을 명시한다. 원격 효과는 되돌릴
+// 수 없으므로 관측한 상태를 함께 보여 준다.
+func printCleanupAbandonRemoteEffects(result issueopscontract.CleanupAbandonResult) {
+	if len(result.RemoteEffects) == 0 {
+		return
+	}
+	fmt.Printf("remote effects: %s\n", strings.Join(result.RemoteEffects, ", "))
+	if result.RemoteArtifactState != "" {
+		fmt.Printf("  artifact state: %s\n", result.RemoteArtifactState)
+	}
+	if result.IssueState != "" {
+		fmt.Printf("  issue state: %s\n", result.IssueState)
+	}
+	if result.RemoteBranchOID != "" {
+		fmt.Printf("  remote branch oid: %s\n", result.RemoteBranchOID)
+	}
 }
 
 func cleanupExecutionGeneration(record issueopscontract.IssueOpsRecord) uint64 {

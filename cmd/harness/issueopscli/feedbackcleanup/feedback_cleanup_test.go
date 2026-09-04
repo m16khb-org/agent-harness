@@ -678,7 +678,7 @@ func TestRunCleanupAbandonDispatchesToAdapter(t *testing.T) {
 	wired := cleanupDeps
 	wired.IssueOpsStateRoot = func() string { return os.Getenv("HARNESS_STATE_DIR") }
 	wired.ReadIssueOps = issueopscore.ReadIssueOps
-	wired.CleanupAbandon = func(_ context.Context, _ string, req issueopscontract.CleanupAbandonRequest, _ Deps) (issueopscontract.CleanupAbandonResult, error) {
+	wired.CleanupAbandon = func(_ context.Context, _ string, req issueopscontract.CleanupAbandonRequest, _ Deps, _ port.IssueProvider) (issueopscontract.CleanupAbandonResult, error) {
 		requests = append(requests, req)
 		return issueopscontract.CleanupAbandonResult{OK: true, ID: req.ID}, nil
 	}

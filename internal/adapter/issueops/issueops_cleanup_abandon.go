@@ -49,6 +49,11 @@ type CleanupAbandonDeps struct {
 	// 터미널 종료) 표면이다(#477).
 	Processes     CleanupProcessDeps
 	OrcaTerminals port.CleanupOrcaTerminals
+	// Remote는 원격 효과 플래그(--close-pr, --close-issue,
+	// --delete-remote-branch)가 있을 때만 쓰인다. 플래그 없이 폐기하면 이
+	// 필드는 nil이어도 되고 원격은 전혀 조회되지 않는다. 플래그가 있는데
+	// 없으면 게이트가 막는다 — 어댑터 부재는 통과가 아니라 거부다.
+	Remote port.IssueProvider
 }
 
 // cleanupAbandonInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -77,6 +82,16 @@ type cleanupAbandonInventory struct {
 	// OrcaAppPID는 ①′가 시그널에서 제외할 Orca 앱 pid다(finish와 같은 계약).
 	OrcaAppPID       int  `json:"orca_app_pid,omitempty"`
 	OrcaRuntimeReady bool `json:"orca_runtime_ready,omitempty"`
+	// 아래 넷은 원격 효과가 요청됐을 때만 채워진다. 전부 omitempty이므로
+	// 플래그 없는 폐기의 fingerprint는 이 확장 전과 같은 값이다.
+	//
+	// 관측한 원격 *상태*는 여기 넣지 않는다(ArtifactUnmerged와 같은 규율).
+	// RemoteBranchOID만 예외인데, 삭제가 force-with-lease CAS로 그 값을
+	// 사용하므로 승인 대상의 일부이기 때문이다.
+	ClosePR            bool   `json:"close_pr,omitempty"`
+	CloseIssue         bool   `json:"close_issue,omitempty"`
+	DeleteRemoteBranch bool   `json:"delete_remote_branch,omitempty"`
+	RemoteBranchOID    string `json:"remote_branch_oid,omitempty"`
 }
 
 // CleanupAbandon은 게이트를 평가하고, apply에서 원격을 건드리지 않은 채 로컬
@@ -114,8 +129,8 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	snapshot := record
 	result.Record = &snapshot
 	if !req.Apply {
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q --apply --confirm --fingerprint %s --json",
-			record.ID, result.Reason, fingerprint)
+		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q%s --apply --confirm --fingerprint %s --json",
+			record.ID, result.Reason, cleanupAbandonRemoteFlags(req), fingerprint)
 		return result, nil
 	}
 	if !req.Confirm {
@@ -133,6 +148,11 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		result.OK = false
 		return result, err
 	}
+	// ①″ 원격 효과. 로컬 삭제보다 먼저 실행한다 — 레코드가 사라진 뒤에는
+	// `--id` 기반 명령이 동작하지 않아 원격 정리 경로가 없어진다.
+	if err := cleanupAbandonApplyRemote(ctx, stateRoot, record, req, deps, inventory, fingerprint, &result); err != nil {
+		return result, err
+	}
 	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료(finish와 같은 계약). 재관측으로
 	// 점유 0을 증명하지 못하면 워크트리를 건드리지 않고 멈춘다(#477).
 	if inventory.WorktreePresent && (len(result.WorkspaceProcesses) > 0 || len(inventory.OrcaTerminals) > 0 || inventory.OrcaRuntimeReady) {
@@ -143,7 +163,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 			result.OK = false
 			result.FailedStep = issueops.CleanupFailureStepWorkspaceProcessesStop
 			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, stopErr, fingerprint, inventory)
-			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason, req)
 			return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon workspace stop failed (record and worktree preserved): %v", stopErr), receiptErr)
 		}
 	}
@@ -153,7 +173,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 				result.OK = false
 				result.FailedStep = issueops.CleanupFailureStepWorktreeRemove
 				receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
-				result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+				result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason, req)
 				return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon worktree removal failed (record preserved): %s", out), receiptErr)
 			}
 		}
@@ -168,7 +188,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 			result.OK = false
 			result.FailedStep = issueops.CleanupFailureStepBranchDelete
 			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
-			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason, req)
 			return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon branch deletion failed (record preserved): %s", out), receiptErr)
 		}
 		result.BranchDeleted = true
@@ -178,7 +198,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		result.OK = false
 		result.FailedStep = issueops.CleanupFailureStepRecordDelete
 		receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, err, fingerprint, inventory)
-		result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+		result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason, req)
 		return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon deletion failed (record preserved): %v", err), receiptErr)
 	}
 	result.IntentRowsDeleted = deleted
@@ -187,8 +207,26 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	return result, nil
 }
 
-func cleanupAbandonPreviewCommand(id, reason string) string {
-	return fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q --preview --json", id, reason)
+// cleanupAbandonRemoteFlags는 승인 대상과 재실행 명령이 같은 효과를 가리키게
+// 한다. preview가 렌더한 명령에서 플래그가 빠지면 사용자가 승인한 것과 실행될
+// 것이 달라진다.
+func cleanupAbandonRemoteFlags(req CleanupAbandonRequest) string {
+	flags := ""
+	if req.ClosePR {
+		flags += " --close-pr"
+	}
+	if req.CloseIssue {
+		flags += " --close-issue"
+	}
+	if req.DeleteRemoteBranch {
+		flags += " --delete-remote-branch"
+	}
+	return flags
+}
+
+func cleanupAbandonPreviewCommand(id, reason string, req CleanupAbandonRequest) string {
+	return fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q%s --preview --json",
+		id, reason, cleanupAbandonRemoteFlags(req))
 }
 
 func recordCleanupAbandonFailure(stateRoot, id, step string, stepErr error, fingerprint string, inventory cleanupAbandonInventory) error {
@@ -394,6 +432,10 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		missing = append(missing, "orca_resources_absent")
 		result.OrcaResidueError = err.Error()
 	}
+	// ⑩ 원격 효과. 요청된 것만 관측하며, 플래그가 없으면 provider를 호출하지
+	// 않는다.
+	inventory, remoteMissing := cleanupAbandonObserveRemote(ctx, record, req, deps, inventory, result)
+	missing = append(missing, remoteMissing...)
 	return inventory, missing
 }
 
