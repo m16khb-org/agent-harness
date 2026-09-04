@@ -764,7 +764,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(provider): add ClosePullRequest for GitHub and GitLab` | Files: 위 파일
 
-- [ ] **T3. `issueops-create-issue` 재작성 (1단계: 이슈 확정·생성)**
+- [x] **T3. `issueops-create-issue` 재작성 (1단계: 이슈 확정·생성)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-3-order.txt`(여섯 명령이 순서대로), `task-3-links.txt`(issue-preflight 참조 0).
+
+  **실행 결과와 계획 대비 편차**: QA 시나리오의 정규식은 `decision add --kind scope`처럼 플래그가 붙지 않은 형태를 가정했는데, 실제 명령은 저장소 관례대로 `--id`가 먼저 온다. 문서를 정규식에 맞추는 대신 정규식을 실제 형태(`decision add .* --kind scope`, `phase .* --to grill`)로 고쳐 증거를 남겼다. 옛 `## 흐름` mermaid와 `## 시작 게이트`는 새 `## 이 스킬이 맞는지 확인`·`## 기록 순서`가 대체하므로 지웠다.
 
   **Files:**
   - Modify: `skills/issueops-create-issue/SKILL.md` (전면 재작성)
