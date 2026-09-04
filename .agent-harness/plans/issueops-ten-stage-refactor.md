@@ -1663,7 +1663,11 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: NO (발견한 결함은 해당 태스크 범위의 fixup 커밋 + CAUTIONS lesson 추가 후 T16 재실행)
 
-- [ ] **T18. 사용자 전역 CLAUDE.md 문단과 메모리 갱신 (사용자 승인 필요)**
+- [~] **T18. 사용자 전역 CLAUDE.md 문단과 메모리 갱신 (사용자 승인 필요)** — 메모리는 완료(2026-09-05), 전역 CLAUDE.md는 **사용자 승인 대기**.
+
+  메모리: `issueops-ten-stage-plan.md`로 이름과 내용을 갱신했고(9단계 시절 파일은 삭제), `issueops-worktree-prepare-removed.md`에 10단계 재편 문단을 덧붙였으며, `MEMORY.md` 색인을 고쳤다. 증거: `.agent-harness/evidence/task-18-memory.txt`.
+
+  전역 CLAUDE.md: 교체 문안을 준비했다(스크래치패드 `global-claude-md-proposal.md`). 승인 전에는 편집하지 않는다. 현재 문단은 `issueops worktree prepare`를 **금지 문맥으로만** 언급하므로 그 자체는 틀리지 않지만, "implement-phase contract is owned by `issueops-implement`"가 10단계 기준으로 불완전하다.
 
   **What to do**:
   1. `~/.claude/CLAUDE.md`의 "IssueOps integration (updated 2026-08-31)" 문단을 10단계 기준으로 바꾸는 교체 문안을 제시하고, 사용자가 승인하면 편집한다. 문안 골격: branch·worktree는 `issueops-prepare`가 만들고 lease는 부여하지 않는다. implementer 세션은 `issueops-prepare`가 출력한 명령(또는 `orca terminal create --worktree path:<wt> --command "..."`)으로 띄우며, 그 세션의 `issueops` 스킬이 `next`로 단계를 판별한다. `orca worktree create`는 여전히 금지. 탈출·재개는 `issueops-abandon`.
@@ -2155,10 +2159,10 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
 > 전부 APPROVE여야 한다. 결과를 사용자에게 모아 보고하고 명시적 "okay"를 받은 뒤 완료한다.
 
-- [ ] F1. Plan Compliance Audit: 모든 TODO가 지정대로 실행됐는가. 설계 요약 1과 7의 표와 실제 스킬 디렉터리 목록(`ls skills | grep -E '^issueops|^gates-ledger'`)이 일치하는가.
-- [ ] F2. Code Quality Review: `issueopsnext`와 close-pr diff에 AI slop, dead code, 단일 호출자 추상화가 없는가. `shannon`으로 전후 SNR을 측정한다.
-- [ ] F3. Real Manual QA: T0b 스파이크 evidence 3개와 T17 시나리오 4개 PASS 증거가 있는가.
-- [ ] F4. Scope Fidelity Check: record schema, lease 상태 기계, hook, MCP가 변하지 않았는가(`git diff main --stat -- internal/contract/issueops/execution.go internal/domain/issueopslease cmd/harness/hookcli internal/domain/mcp`가 0건).
+- [x] F1. Plan Compliance Audit — APPROVE. 미완료 TODO 0건(T18만 사용자 승인 대기로 `[~]`). `ls skills | grep -E '^issueops|^gates-ledger'`가 설계 요약 1·7의 17개와 정확히 일치한다: gates-ledger, issueops, issueops-abandon, issueops-clean, issueops-cleanup, issueops-complete, issueops-create-issue, issueops-create-pr, issueops-docs, issueops-implement, issueops-plan, issueops-prepare, issueops-remote-write, issueops-review, issueops-sync-issue, issueops-sync-pr, issueops-verify.
+- [x] F2. Code Quality Review — APPROVE. `issueopsnext` vertical 네 층과 CLI·wiring 합계 1,828줄(테스트 포함). 정의만 있고 호출되지 않는 헬퍼 0건, `go vet` 무경고, contract 상수 전부 참조됨. close-pr diff는 두 provider가 각각 하나의 파일(`close_pull_request.go`, `close_merge_request.go`)이며 공통 로직은 기존 `readGh*State`/`runGlabAPI` 층을 재사용한다. `shannon` 측정은 생략했다 — 전후 비교 대상인 "정리 전 diff"가 없는 신규 코드이고, 대신 위 세 지표를 관측했다.
+- [x] F3. Real Manual QA — APPROVE. T0b 스파이크 증거 3개(`task-0b-adopt.json`, `task-0b-access.txt`, `task-0b-fingerprint.json`)와 T17 시나리오 4개 로그 모두 존재하고 마지막 줄이 PASS다.
+- [x] F4. Scope Fidelity Check — APPROVE. `git diff main --stat -- internal/contract/issueops/execution.go internal/domain/issueopslease cmd/harness/hookcli internal/domain/mcp` 0건. `IssueOpsSchemaVersion`은 1 그대로다. record 구조체에 필드를 추가하지 않았고, `types.go`의 변경은 abandon 실패 단계 상수 세 개뿐이다(기존 문자열 필드에 들어가는 값).
 
 ## Commit Strategy
 
