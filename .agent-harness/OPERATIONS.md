@@ -43,7 +43,13 @@ instead of duplicating their content here or in a guide.
 
 1. Native skills: `ah-update`, `atomic-commit-push`, `issueops`, `self-augment`,
    `project-bootstrap`, `self-verify`, `stability-audit`, plus the named
-   specialist skills in `skills/`.
+   specialist skills in `skills/`. The IssueOps stage skills are
+   `issueops-create-issue`, `issueops-prepare`, `issueops-plan`,
+   `issueops-implement`, `issueops-clean`, `issueops-docs`, `issueops-verify`,
+   `issueops-create-pr`, `issueops-complete`, `issueops-cleanup`, and
+   `issueops-abandon`; the shared ones are `issueops-review`, `gates-ledger`,
+   and `issueops-remote-write`. `agent-harness issueops next` decides which stage
+   a cycle is in and which command advances it.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared
    user-level `agent-harness daemon`.
 3. CLI: 29 top-level commands (`install/update/bootstrap/version`,

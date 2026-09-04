@@ -122,11 +122,24 @@ and native-integration projection.
 
 ### Start an IssueOps cycle
 
+Ask first, whatever stage you are in. The command is read-only: it uses the durable
+record and local observation, never the network.
+
 ```bash
-agent-harness issueops start \
-  --repo "$PWD" \
-  --branch "123-short-description" \
-  --json
+agent-harness issueops next --json
+```
+
+```text
+stage 3/10 plan.review  cycle io-xxxx  phase plan  lease active(gen 1, self)
+missing: devils_advocate_review
+next: agent-harness issueops devils-advocate review --id io-xxxx --reviewer-context subagent ...
+exits: pause=agent-harness issueops execution release --id io-xxxx --generation 1 ... abandon=agent-harness issueops cleanup abandon --id io-xxxx --reason <TEXT> --preview takeover=-
+```
+
+With no cycle in the repository, `next` returns the command that starts one.
+
+```bash
+agent-harness issueops start --repo "$PWD" --branch "123-short-description" --json
 ```
 
 IssueOps keeps this workflow in one durable record and one generation-fenced
@@ -242,8 +255,29 @@ agent-harness issueops benchmark run \
 
 IssueOps records conversational work context as issues, plans, worktrees, feedback, and verification evidence so the same work contract survives session and host changes.
 
-Its workflow order is below. `issue` is the linkage step, not a durable phase;
-`cleanup` runs after `done`:
+Users see ten stages, one skill each. `agent-harness issueops next` owns the stage
+decision, so any agent on any host gets the same answer.
+
+| Stage | Skill | What it does |
+|---|---|---|
+| 1 confirm and create the issue | `issueops-create-issue` | settle the contract through research and blocking questions, then publish the issue |
+| 2 prepare the branch | `issueops-prepare` | pin the base SHA and link the branch to the issue |
+| 3 documents, plan, review, handoff | `issueops-plan` | read the operating docs, write the plan, pass review, create the implementation session |
+| 4 implement | `issueops-implement` | TDD inside the canonical worktree |
+| 5 AI slop clean | `issueops-clean` | remove residue and seal the change set |
+| 6 project documents | `issueops-docs` | record decisions and pitfalls, then re-seal |
+| 7 verify | `issueops-verify` | re-verify, review, and prove readiness without touching a file |
+| 8 commit and push | `atomic-commit-push` | commit the sealed change set |
+| 9 publish and complete | `issueops-create-pr`, `issueops-complete` | open the draft, seal the completion evidence |
+| 10 post-merge cleanup | `issueops-cleanup` | close the issue, reclaim the worktree and branch |
+
+`issueops-abandon` owns the exit from any stage: pause releases the lease, abandon
+closes the draft PR/MR, the issue, and the remote branch as chosen, then deletes the
+record. Shared procedures live in `issueops-review` (adversarial review),
+`gates-ledger` (gate ledgers), and `issueops-remote-write` (remote write protocol).
+
+The durable phase enum is unchanged. `issue` is the linkage step, not a durable
+phase; `cleanup` runs after `done`:
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
@@ -279,7 +313,9 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 - Planning and critique: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - Execution and verification: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - Research and collaboration: `berners-lee`, `engelbart`, `slack-delegate`
-- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-prepare`, `issueops-cleanup`
+- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`
+- IssueOps stages: `issueops` (router), `issueops-create-issue`, `issueops-prepare`, `issueops-plan`, `issueops-implement`, `issueops-clean`, `issueops-docs`, `issueops-verify`, `issueops-create-pr`, `issueops-complete`, `issueops-cleanup`, `issueops-abandon`
+- IssueOps shared: `issueops-review`, `gates-ledger`, `issueops-remote-write`, `issueops-sync-issue`, `issueops-sync-pr`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - Code review: `parnas`, `review-agent-feedback`

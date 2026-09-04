@@ -1387,7 +1387,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `refactor(skill)!: rewrite the issueops router around issueops next and delete retired references` | Files: 위 파일
 
-- [ ] **T12. openai.yaml, README, README.en, OPERATIONS 스킬 목록**
+- [x] **T12. openai.yaml, README, README.en, OPERATIONS 스킬 목록** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-12-readme.txt`(두 README 모두 `issueops next` 예시), `task-12-ops.txt`(OPERATIONS 112줄). 아홉 스킬이 세 문서 모두에 있고 `issueops-branch-worktree`는 0건이다.
+
+  **실행 결과와 계획 대비 편차**: `.gitlab/issue_templates/implementation_task.md`는 `issueops-create-issue` 경로를 그대로 가리키므로 고치지 않았다(계획이 예상한 대로). TECH_STACK은 T4에서 이미 고쳤다.
 
   **Files:**
   - Modify: `README.md:122-131`(cycle 시작 절을 10단계 요약으로), `:237-262`(IssueOps 절: `next`, 10단계, 공용 스킬, abandon 한 문단씩), `:270`(스킬 목록: `issueops-branch-worktree` 제거, `issueops-prepare`·`issueops-plan`·`issueops-clean`·`issueops-docs`·`issueops-verify`·`issueops-abandon`·`issueops-review`·`issueops-remote-write`·`gates-ledger` 추가)

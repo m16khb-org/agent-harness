@@ -121,11 +121,24 @@ projection입니다.
 
 ### IssueOps cycle 시작
 
+어느 단계에 있든 먼저 물어봅니다. 이 명령은 읽기 전용이며 record와 로컬 관측만
+사용합니다.
+
 ```bash
-agent-harness issueops start \
-  --repo "$PWD" \
-  --branch "123-short-description" \
-  --json
+agent-harness issueops next --json
+```
+
+```text
+stage 3/10 plan.review  cycle io-xxxx  phase plan  lease active(gen 1, self)
+missing: devils_advocate_review
+next: agent-harness issueops devils-advocate review --id io-xxxx --reviewer-context subagent ...
+exits: pause=agent-harness issueops execution release --id io-xxxx --generation 1 ... abandon=agent-harness issueops cleanup abandon --id io-xxxx --reason <TEXT> --preview takeover=-
+```
+
+사이클이 없으면 `next`가 `issueops start`를 돌려줍니다.
+
+```bash
+agent-harness issueops start --repo "$PWD" --branch "123-short-description" --json
 ```
 
 IssueOps는 아래 사용자 관점 workflow를 하나의 durable record와
@@ -238,7 +251,31 @@ agent-harness issueops benchmark run \
 
 IssueOps는 대화 속 작업 맥락을 issue, plan, worktree, feedback, verification evidence로 기록해 세션이나 호스트가 바뀌어도 동일한 작업 계약을 유지합니다.
 
-사용자 관점 workflow는 다음 순서입니다. `issue`는 linkage 단계이고 `cleanup`은 `done` 뒤 후처리입니다.
+사용자가 보는 단계는 열 개이고, 각 단계에 스킬이 하나씩 있습니다. 단계 판별은
+`agent-harness issueops next`가 소유하므로 어느 에이전트에서 시작해도 같은 답을
+얻습니다.
+
+| 단계 | 스킬 | 하는 일 |
+|---|---|---|
+| 1 이슈 확정·생성 | `issueops-create-issue` | 조사와 blocking 질문으로 계약을 확정하고 이슈를 만든다 |
+| 2 브랜치 준비 | `issueops-prepare` | base SHA를 봉인하고 브랜치를 이슈에 연결한다 |
+| 3 문서 확인·계획·검토·인계 | `issueops-plan` | 운영 문서를 읽고 계획을 쓰고 검토를 통과한 뒤 구현 세션을 만든다 |
+| 4 구현 | `issueops-implement` | canonical worktree에서 TDD로 구현한다 |
+| 5 AI slop 정리 | `issueops-clean` | 찌꺼기를 걷어 내고 변경 집합을 봉인한다 |
+| 6 프로젝트 문서 반영 | `issueops-docs` | 결정과 함정을 운영 문서에 남기고 재봉인한다 |
+| 7 검증 | `issueops-verify` | 파일을 만지지 않고 재검증·리뷰·readiness를 확인한다 |
+| 8 커밋·푸시 | `atomic-commit-push` | 봉인된 변경을 커밋하고 푸시한다 |
+| 9 PR/MR 발행·완료 | `issueops-create-pr`, `issueops-complete` | draft를 만들고 완료 증거를 봉인한다 |
+| 10 머지 후 정리 | `issueops-cleanup` | 이슈를 닫고 워크트리·브랜치를 회수한다 |
+
+어느 단계에서든 빠져나오는 길은 `issueops-abandon`이 소유합니다. 일시 중단은 lease만
+놓고, 폐기는 draft PR/MR·이슈·원격 브랜치를 고른 만큼 정리한 뒤 record까지 지웁니다.
+
+여러 단계가 함께 쓰는 절차는 공용 스킬로 분리돼 있습니다. 적대 리뷰는
+`issueops-review`, 게이트 원장은 `gates-ledger`, 원격 쓰기 프로토콜은
+`issueops-remote-write`가 소유합니다.
+
+durable phase enum은 그대로입니다.
 
 ```text
 problem → grill → issue → plan → compatibility-review → implement
@@ -267,7 +304,9 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 - 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - 조사와 팀 협업: `berners-lee`, `engelbart`, `slack-delegate`, `sharing-backend-work`
-- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `rebase-onto-parent`, `gitlab-usecase`, `issueops`, `issueops-create-issue`, `issueops-implement`, `issueops-create-pr`, `issueops-complete`, `issueops-sync-issue`, `issueops-sync-pr`, `issueops-prepare`, `issueops-cleanup`
+- Git과 작업 운영: `torvalds`, `atomic-commit-push`, `rebase-onto-parent`, `gitlab-usecase`
+- IssueOps 단계: `issueops`(라우터), `issueops-create-issue`, `issueops-prepare`, `issueops-plan`, `issueops-implement`, `issueops-clean`, `issueops-docs`, `issueops-verify`, `issueops-create-pr`, `issueops-complete`, `issueops-cleanup`, `issueops-abandon`
+- IssueOps 공용: `issueops-review`, `gates-ledger`, `issueops-remote-write`, `issueops-sync-issue`, `issueops-sync-pr`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - UI/UX 구현: `ui-ux-craft`
 - 브라우저 QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
