@@ -1665,11 +1665,11 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: NO (발견한 결함은 해당 태스크 범위의 fixup 커밋 + CAUTIONS lesson 추가 후 T16 재실행)
 
-- [~] **T18. 사용자 전역 CLAUDE.md 문단과 메모리 갱신 (사용자 승인 필요)** — 메모리는 완료(2026-09-05), 전역 CLAUDE.md는 **사용자 승인 대기**.
+- [x] **T18. 사용자 전역 CLAUDE.md 문단과 메모리 갱신 (사용자 승인 필요)** — 완료(2026-09-05). 사용자가 "반영"으로 승인해 전역 CLAUDE.md를 편집했다. 증거: `.agent-harness/evidence/task-18-global.txt`(`issueops-prepare`·`issueops-abandon` 각 1건, `issueops-branch-worktree` 0건), `task-18-memory.txt`.
 
   메모리: `issueops-ten-stage-plan.md`로 이름과 내용을 갱신했고(9단계 시절 파일은 삭제), `issueops-worktree-prepare-removed.md`에 10단계 재편 문단을 덧붙였으며, `MEMORY.md` 색인을 고쳤다. 증거: `.agent-harness/evidence/task-18-memory.txt`.
 
-  전역 CLAUDE.md: 교체 문안을 준비했다(스크래치패드 `global-claude-md-proposal.md`). 승인 전에는 편집하지 않는다. 현재 문단은 `issueops worktree prepare`를 **금지 문맥으로만** 언급하므로 그 자체는 틀리지 않지만, "implement-phase contract is owned by `issueops-implement`"가 10단계 기준으로 불완전하다.
+  전역 CLAUDE.md: `- **IssueOps integration**` 문단을 10단계 기준으로 교체했다. 단계 판별이 `issueops next` 소유라는 것, 브랜치 정체성과 워크트리 provisioning의 소유자가 다르다는 것, 모드는 `--mode auto`가 고른다는 것, 단계 스킬 11개와 공용 3개, 탈출은 `issueops-abandon`이라는 것을 담았다. `orca worktree create` 금지와 legacy `worktree prepare` 금지는 그대로 유지했다.
 
   **What to do**:
   1. `~/.claude/CLAUDE.md`의 "IssueOps integration (updated 2026-08-31)" 문단을 10단계 기준으로 바꾸는 교체 문안을 제시하고, 사용자가 승인하면 편집한다. 문안 골격: branch·worktree는 `issueops-prepare`가 만들고 lease는 부여하지 않는다. implementer 세션은 `issueops-prepare`가 출력한 명령(또는 `orca terminal create --worktree path:<wt> --command "..."`)으로 띄우며, 그 세션의 `issueops` 스킬이 `next`로 단계를 판별한다. `orca worktree create`는 여전히 금지. 탈출·재개는 `issueops-abandon`.
