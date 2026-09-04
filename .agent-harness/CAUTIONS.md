@@ -62,6 +62,7 @@ lesson으로 분리됐고, 여기서는 핵심 한 줄과 탐색 링크만 둔�
 | [security.md](cautions/security.md) | shell/command policy, secrets, git identity, publication git-config authority |
 | [integrations.md](cautions/integrations.md) | host adapters, native hooks, MCP, shared skills, external tools, Slack, Stop-hook output |
 | [issueops-lifecycle.md](cautions/issueops-lifecycle.md) | branches, worktree guards, numbered choices, domain vocab, readiness gates, golden drift |
+| [issueops-stages.md](cautions/issueops-stages.md) | ten-stage boundaries, mode selection, worktree adoption, unmerged retirement, fingerprint sealing order |
 | [issueops-orchestration.md](cautions/issueops-orchestration.md) | Orca create/dispatch/terminal/mailbox/rollover, sealed reconciliation, publication |
 | [issueops-execution.md](cautions/issueops-execution.md) | v1 fence liveness, lease authority, operational-health diagnosis, exact-reader immutability |
 | [audit-and-process.md](cautions/audit-and-process.md) | self-verify/augment drift, stability-audit contracts, JSON/QA process, cross-process helpers |

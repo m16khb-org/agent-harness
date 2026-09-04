@@ -1521,7 +1521,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs(issueops): describe the ten-stage operation and session boundary` | Files: 위 파일
 
-- [ ] **T15. CAUTIONS 모듈 추가, docs checker, 골든 최종 재생성**
+- [x] **T15. CAUTIONS 모듈 추가, docs checker, 골든 최종 재생성** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-15-budget.txt`(134·221·95줄), `task-15-golden.txt`(두 골든 통과). docs checker `ok: true`(문서 358개). 여섯 항목을 새 모듈에 넣었고 `issueops-lifecycle.md`는 건드리지 않았다.
 
   **Files:**
   - Create: `.agent-harness/cautions/issueops-stages.md` (새 모듈. `issueops-lifecycle.md`는 이미 221행이라 250행 예산 안에 여섯 항목을 더 넣을 수 없다. 새 책임 클래스 "단계 운영 함정"이므로 CAUTIONS Update workflow 1의 모듈 추가 조건에 맞는다)
