@@ -1202,7 +1202,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-plan for the document check, plan, review, and handoff stage` | Files: 위 2개
 
-- [ ] **T9. `issueops-implement` 재작성 (4단계: 구현)**
+- [x] **T9. `issueops-implement` 재작성 (4단계: 구현)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-9-exit.txt`, `task-9-start.txt`. 219줄(기준 220 이하), 금지 문자열 0건.
+
+  **실행 결과와 계획 대비 편차**: frontmatter description도 함께 고쳤다. 계획은 `agents/openai.yaml`만 지목했지만, 스킬을 고르는 것은 frontmatter description이고 그것이 여전히 "pre-publication implementation review gate"를 이 스킬의 일로 말하고 있었다.
 
   **Files:**
   - Modify: `skills/issueops-implement/SKILL.md`
