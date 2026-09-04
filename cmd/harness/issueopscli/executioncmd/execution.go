@@ -256,6 +256,17 @@ type nativeSessionIdentity struct {
 	Source    string
 }
 
+// ResolveNativeSessionIdentity는 현재 세션의 native host와 session id를
+// 환경변수에서 읽는다. 같은 규칙을 다른 표면이 복제하지 않도록 이 한 곳을
+// 노출한다.
+func ResolveNativeSessionIdentity(getenv func(string) string) (host, sessionID, source string, err error) {
+	identity, err := nativeSessionIdentityFromEnv(getenv)
+	if err != nil {
+		return "", "", "", err
+	}
+	return identity.Host, identity.SessionID, identity.Source, nil
+}
+
 func nativeSessionIdentityFromEnv(getenv func(string) string) (nativeSessionIdentity, error) {
 	identity := nativeSessionIdentity{}
 	for _, candidate := range []nativeSessionIdentity{

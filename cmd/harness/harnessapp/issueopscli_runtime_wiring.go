@@ -23,6 +23,7 @@ func configureIssueOpsCLIRuntime() {
 		DropIssueOpsChildWithActor:     issueopscore.DropIssueOpsChildWithActor,
 		IssueOpsChildStatusWithActor:   issueopscore.IssueOpsChildStatusWithActor,
 		IssueOpsPRReadiness:            issueopscore.IssueOpsPRReadiness,
+		IssueOpsNext:                   issueOpsNextHandler(artifacts.Names, observer),
 		IssueOpsStateRoot:              issueopscore.IssueOpsStateRoot,
 		IssueOpsStatus:                 issueOpsStatusHandler(observer),
 		LinkIssueOpsChildWithActor:     issueopscore.LinkIssueOpsChildWithActor,

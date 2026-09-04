@@ -19,6 +19,7 @@ import "strings"
 const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--branch NAME] [--json]
   agent-harness issueops status --id ID [--json]
   agent-harness issueops list [--repo PATH] [--json]
+  agent-harness issueops next [--id ID] [--cwd PATH] [--json]
   agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops plan-prep record --id ID [--decisions-evidence TEXT | --decisions-waive REASON] [--related-score-ref TEXT | --related-waive REASON] [--web-research-evidence TEXT | --web-research-waive REASON] [--codebase-survey-evidence TEXT | --codebase-survey-waive REASON] RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops domain-review record --id ID --model-fit TEXT [--terminology TEXT] [--risk TEXT] [--uncertainty TEXT] RECORD_ACTOR_FLAGS [--json]
@@ -107,7 +108,7 @@ lease transitions and generation-fenced publication verify the live session proc
 // 여기 없는 명령은 `issueops --help`에서만 보인다. 어느 명령을 최상위에 노출할지는
 // 별개 판단이며 `#188`은 현재 선정을 그대로 옮겼다.
 var abridgedIssueOpsMainKeys = []string{
-	"start", "status", "list",
+	"start", "status", "list", "next",
 	"intent record", "link-issue", "link-child",
 	"child start", "child status", "child list", "child accept", "child reject", "child drop",
 	"branch prepare", "branch await-link", "branch retarget", "link-worktree",

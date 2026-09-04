@@ -9,9 +9,23 @@ import (
 	"agent-harness/internal/domain/stringlist"
 )
 
+// IssueOpsLocalPRReadiness는 네트워크를 건드리지 않는 판정이다. strict에서
+// `git fetch`와 그 결과에 기대는 upstream 동기화 판정만 뺐다. 단계 분류처럼
+// 자주 부르는 읽기 전용 표면이 원격을 때리지 않게 하려는 분리다.
+func IssueOpsLocalPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
+	return issueOpsObservedPRReadiness(record, false)
+}
+
 func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
+	return issueOpsObservedPRReadiness(record, true)
+}
+
+// issueOpsObservedPRReadiness는 두 표면의 유일한 본체다. syncUpstream이 false면
+// fetch와 동기화 판정을 건너뛴다. 나머지 관측은 한 번만 수행한다 — local을
+// 부른 뒤 strict가 같은 git 명령을 다시 실행하지 않게 하려는 것이다.
+func issueOpsObservedPRReadiness(record issueops.IssueOpsRecord, syncUpstream bool) issueops.IssueOpsReadiness {
 	ready := IssueOpsPRReadiness(record)
-	ready.Strict = true
+	ready.Strict = syncUpstream
 	missing := append([]string{}, ready.Missing...)
 	warnings := []string{}
 	currentHead := ""
@@ -36,7 +50,7 @@ func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOps
 		upstream := strings.TrimSpace(GitOut(gitRoot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"))
 		if upstream == "" {
 			missing = append(missing, "upstream")
-		} else {
+		} else if syncUpstream {
 			if code, _, stderr := GitCmd(gitRoot, "fetch", "--quiet"); code != 0 {
 				missing = append(missing, "upstream_fetch")
 				if strings.TrimSpace(stderr) != "" {

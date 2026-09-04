@@ -9,6 +9,7 @@ import (
 	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
 	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
 	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsnextcontract "agent-harness/internal/contract/issueopsnext"
 	issueopsretentioncontract "agent-harness/internal/contract/issueopsretention"
 	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
 	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
@@ -27,6 +28,7 @@ type IssueOpsCLIDeps struct {
 	DropIssueOpsChildWithActor                  func(stateRoot, parentID, childID, reason string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error)
 	IssueOpsChildStatusWithActor                func(stateRoot, parentID string, repair bool, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsChildStatusResult, error)
 	IssueOpsPRReadiness                         func(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness
+	IssueOpsNext                                func(stateRoot, cwd, id string) (issueopsnextcontract.Result, error)
 	IssueOpsStateRoot                           func() string
 	IssueOpsStatus                              func(stateRoot, id string) (issueopsstatuscontract.Record, error)
 	LinkIssueOpsChildWithActor                  func(stateRoot, id, childURL, title string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
@@ -99,6 +101,9 @@ func ConfigureIssueOpsRuntime2(deps IssueOpsCLIDeps) {
 	}
 	if deps.LinkIssueOpsWorktreeWithActor != nil {
 		issueOpsCLIDeps.LinkIssueOpsWorktreeWithActor = deps.LinkIssueOpsWorktreeWithActor
+	}
+	if deps.IssueOpsNext != nil {
+		issueOpsCLIDeps.IssueOpsNext = deps.IssueOpsNext
 	}
 	if deps.ListIssueOpsCycles != nil {
 		issueOpsCLIDeps.ListIssueOpsCycles = deps.ListIssueOpsCycles
@@ -219,6 +224,9 @@ func neutralIssueOpsCLIDeps() IssueOpsCLIDeps {
 		},
 		LinkIssueOpsWorktreeWithActor: func(stateRoot, id, worktreePath string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 			return issueopscontract.IssueOpsRecord{}, errIssueOpsCLINotConfigured
+		},
+		IssueOpsNext: func(stateRoot, cwd, id string) (issueopsnextcontract.Result, error) {
+			return issueopsnextcontract.Result{}, errIssueOpsCLINotConfigured
 		},
 		ListIssueOpsCycles: func(stateRoot, repo string) (issueopsinventorycontract.ListResult, error) {
 			return issueopsinventorycontract.ListResult{}, errIssueOpsCLINotConfigured

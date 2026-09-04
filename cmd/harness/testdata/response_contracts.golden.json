@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "6e1e5a060610a2c2951c9da23b2e82aaa66c4839bc040eaee3cb67d64bed7f98",
+      "hash": "9f08410e67e6a11b18130a17f495f39c32debc77435b38a2d2b2971ad9e8615d",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -489,6 +489,21 @@
           "owner_prompt_path",
           "owner_prompt_sha256",
           "next_command"
+        ],
+        "issueops_next": [
+          "ok",
+          "generated_at",
+          "cwd",
+          "cwd_role",
+          "source_root",
+          "stage",
+          "lease",
+          "missing",
+          "next_command",
+          "next_command_kind",
+          "exits",
+          "review",
+          "warnings"
         ],
         "issueops_pr_readiness": [
           "ok",
@@ -6575,7 +6590,7 @@
                 "name": "version"
               }
             ],
-            "hash": "6e1e5a060610a2c2951c9da23b2e82aaa66c4839bc040eaee3cb67d64bed7f98",
+            "hash": "9f08410e67e6a11b18130a17f495f39c32debc77435b38a2d2b2971ad9e8615d",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6806,6 +6821,21 @@
                 "owner_prompt_path",
                 "owner_prompt_sha256",
                 "next_command"
+              ],
+              "issueops_next": [
+                "ok",
+                "generated_at",
+                "cwd",
+                "cwd_role",
+                "source_root",
+                "stage",
+                "lease",
+                "missing",
+                "next_command",
+                "next_command_kind",
+                "exits",
+                "review",
+                "warnings"
               ],
               "issueops_pr_readiness": [
                 "ok",

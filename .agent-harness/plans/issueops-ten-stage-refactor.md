@@ -546,7 +546,16 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: NO
 
-- [ ] **T1. `issueopsnext` contract + domain (순수 분류기)**
+- [x] **T1. `issueopsnext` contract + domain (순수 분류기)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-1-classify.txt`(44 PASS, 0 FAIL). `go list -deps ./internal/domain/issueopsnext | grep -c internal/adapter` = 0.
+
+  **실행 결과와 계획 대비 편차**:
+  - **분류표의 "현재 index"를 phase→단계 번호 표 하나로 확정했다**: problem·grill 1, plan 3, compatibility-review·implement 4, ai-slop-clean 5, feedback 7, pr 9, done 10. 계획 초안의 테스트 케이스 세 줄(`blocked.pending`·`blocked.holder_live`·`takeover`의 implement phase)이 index 3을 기대했는데, 그것은 9단계 시절 번호가 남은 것이다. 같은 표를 쓰는 규칙 6(`claim`)이 implement에서 4를 기대하므로 3은 표와 모순이었다. 4로 확정하고 테스트를 그렇게 고쳤다.
+  - **규칙 8~12에 phase 상한을 넣었다**. 계획의 규칙 8은 "issue_url 있음 + execution == nil + branch_prepare 없음"만 봤는데, 그러면 `pr` phase에 execution이 없는 이상 사이클도 2단계로 분류된다(계획 자신의 테스트는 그 경우 `unknown`을 기대했다). 준비 규칙은 problem·grill·plan·compatibility-review·implement에서만 발화한다.
+  - **Input에 두 필드를 더했다**: `RootConflictID`(규칙 3이 필요로 하는데 계획의 Input에 없었다)와 `WriterlessRecovery`(규칙 5의 명령은 어댑터가 렌더한다). 둘 다 관측 결과를 주입하는 값이므로 domain은 여전히 순수하다.
+  - `plan_artifact`를 새 missing 키로 만들었다. staged plan 부재를 가리키는 기존 게이트 키가 없었다. `OwnerCommand`가 `artifact stage --name plan`으로 매핑한다.
+  - `HolderLive == nil`(관측 실패)은 **살아 있음**으로 본다. 확인하지 않은 세션의 lease를 빼앗으라고 권하지 않기 위한 fail-closed 방향이며 `TestClassifyTreatsUnobservedHolderAsLive`가 고정한다.
+  - `next_command_kind`는 규칙마다 적지 않고 `<`·`$ACTOR_FLAGS` 포함 여부로 파생한다(소유자 하나).
+  - stage key 상수는 domain이 아니라 contract 패키지가 소유한다. 라우터가 읽는 wire 값이기 때문이다.
 
   **Files:**
   - Create: `internal/contract/issueopsnext/types.go`
@@ -941,7 +950,16 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-abandon for pause, takeover, and abandon` | Files: 위 2개
 
-- [ ] **T6. `issueops next` application + inbound + wiring + CLI + catalog + goldens + architecture ratchet + local readiness 분리**
+- [x] **T6. `issueops next` application + inbound + wiring + CLI + catalog + goldens + architecture ratchet + local readiness 분리** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-6-next-source.json`, `task-6-next-worktree.json`, `task-6-next-other.json`.
+
+  **실행 결과와 계획 대비 편차**:
+  - **T1과 한 커밋으로 묶었다.** `internal/architecture/orphan_package_test.go`의 `TestProductionPackagesHaveImporters`는 import되지 않는 프로덕션 패키지를 실패로 본다. T1만 커밋하면 `internal/domain/issueopsnext`가 고아가 되어 그 커밋에서 CI가 빨갛다. 두 태스크는 배선까지 가야 초록이다.
+  - **`IssueOpsStrictPRReadiness`가 local을 호출하는 대신, 둘 다 `issueOpsObservedPRReadiness(record, syncUpstream bool)` 한 본체를 부른다.** 감싸는 형태로 만들면 strict가 gitRoot·branch·status·upstream 관측을 두 번 실행한다. 게이트 판정 결과는 계획과 같고(`local` = strict − fetch − `upstream_fetch`/`upstream_synced`), 기존 strict 테스트 9개가 그대로 통과한다.
+  - **application 계층은 `path/filepath`를 import할 수 없다**(`TestProductionGraphHasNoLegacyAdapterEdges`의 `application_must_not_import_implementation`). 경로 정규화를 `Ports.CleanPath`로 주입하고 composition root가 `filepath.Clean`을 꽂는다.
+  - **저장소 밖 판정을 추가했다.** `CleanPath.Normalize`는 git이 실패해도 준 경로를 그대로 돌려주므로 `/tmp`도 source root처럼 보였다. `WorktreeState(cwd)`로 저장소 여부를 먼저 보고, 아니면 `cwd_role=other` + warning `not a git repository`로 끊는다. 목록 조회도 건너뛴다 — repo 필터가 빈 값이면 모든 사이클이 후보가 되기 때문이다.
+  - `ProcessLive` 포트는 `*bool`을 돌려준다(관측 실패는 nil). 구현은 `ObserveNativeProcessReceipt`가 아니라 PID 재사용까지 판정하는 `InspectNativeProcessReceipt`를 쓴다.
+  - 실기 검증 대상 워크트리가 바뀌었다. 계획이 지목한 `api-servers.worktrees/2900-...`는 사라졌다. `2899-first-and-second-round-reward`(io-63b7ffe020d9, pr phase)로 대체했고, 다른 세션이 lease를 쥔 상태라 `blocked.holder_live`/index 9로 분류됐다.
+  - `issueops --help`는 stderr로 출력한다. 수용 기준의 grep은 `2>&1`이 필요하다(기존 동작이며 이 태스크가 바꾸지 않았다).
 
   **Files:**
   - Create: `internal/application/issueopsnext/ports.go`, `internal/application/issueopsnext/service.go`

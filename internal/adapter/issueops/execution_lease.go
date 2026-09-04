@@ -331,6 +331,13 @@ func executionReseedCommand(id string, generation, completionGeneration uint64, 
 	return command
 }
 
+// ExecutionWriterAbsentRecoveryCommand는 writer 없는 lease의 회복 명령을
+// 노출한다. 본체는 아래 한 곳뿐이며, 단계 분류가 같은 문자열을 다시 만들지
+// 않도록 감싸기만 한다.
+func ExecutionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string {
+	return executionWriterAbsentRecoveryCommand(record)
+}
+
 func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string {
 	if record.Execution == nil {
 		return ""
