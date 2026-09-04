@@ -117,7 +117,10 @@ agent-harness issueops execution prepare \
   --json
 ```
 
-The preview response seals the selection evidence in `readiness_fingerprint` and renders the exact confirm as `next_command`. Confirm must supply `--expected-readiness-fingerprint`; any changed probe result, owner profile, provider/issue identity, or explicit-direct reason fails before mutation. Explicit `--mode direct` is reserved for a bounded operator-approved exception and requires `--direct-reason`; it performs no Orca probe. Durable status exposes the same fields under `execution.selection`.
+The preview response reports `requested_mode` and `resolved_mode` so the caller sees
+which adapter the probe chose before any mutation, seals the selection evidence as a
+readiness fingerprint in `readiness_fingerprint`, and renders the exact confirm as
+`next_command`. Confirm must supply `--expected-readiness-fingerprint`; any changed probe result, owner profile, provider/issue identity, or explicit-direct reason fails before mutation. Explicit `--mode direct` is reserved for a bounded operator-approved exception and requires `--direct-reason`; it performs no Orca probe. Durable status exposes the same fields under `execution.selection`.
 
 `ACTOR_FLAGS` are the exact native process identity and cwd:
 
@@ -148,7 +151,24 @@ fenced when a dispatch exists but prompt delivery is not provable.
 The provisioned path is the fixed sibling
 `${repo}.worktrees/<branch-with-slashes-replaced>`. Preparation creates or
 reuses only that exact branch/worktree pair and records its base SHA. Do not
-create or link another worktree manually.
+create or link another worktree manually: `execution prepare` is the only owner
+of local workspace provisioning, in both direct and Orca mode. Earlier stages
+record the branch identity and never run `git worktree add`.
+
+Reuse is conditional, not automatic. `execution prepare` adopts a worktree that
+already sits at that path only when all three hold: the path resolves to that
+Git top level, its current branch equals the recorded branch, and its **HEAD
+equals the recorded base SHA**. Any mismatch fails with `existing canonical
+worktree identity does not match branch and base_head`. A worktree created
+before the cycle is therefore adoptable only while it is still untouched at the
+base commit; once it carries a commit, either record that commit as the base SHA
+or remove the worktree and let `execution prepare` create it.
+
+Root every patch, edit, search, and code-intelligence tool at that path. Use
+`rg`, CodeGraph when the repository is indexed, and native file tools rooted at
+the canonical worktree; any separately installed code-intelligence tool must use
+the same root. After edits, combine exact-string search with the relevant tests
+so stale references and wrong-root changes are observable.
 
 엄브렐라 자식은 branch prepare에서
 `--parent-worktree ${repo}.worktrees/<base-branch-with-slashes-replaced>`를

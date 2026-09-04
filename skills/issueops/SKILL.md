@@ -1,30 +1,117 @@
 ---
 name: issueops
-description: Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.
+description: Route an issue-driven work cycle across its ten user-facing stages. Run "issueops next" to decide which stage a cycle is in, hand the work to that stage's skill, and hold the invariants every stage shares. Use when the user asks to start, resume, or continue an issue cycle, when the current stage is unclear, or when they say "이슈옵스", "이슈 작업 시작", "이어서 진행".
 ---
 
 # IssueOps
 
-IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/MR까지
-하나의 durable record로 연결하는 lifecycle router다. 이 파일은 **단계 선택과
-공통 불변식만** 설명한다. 현재 단계의 전용 스킬·reference만 읽는다.
+IssueOps는 이슈, 브랜치, 계획, 실행 lease, 검증 증거, PR/MR을 durable record
+하나로 묶는다. 이 스킬은 **라우터**다. 단계의 일은 단계 스킬이 하고, 이 파일은
+어느 단계인지 정하는 방법과 모든 단계가 공유하는 불변식만 소유한다.
 
-## 책임 분리
+## 먼저 실행
 
-| 현재 작업 | owner |
-|---|---|
-| 전체 lifecycle·phase·execution lease | `issueops` |
-| parent Issue·provider-native child | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) |
-| implement 단계 구현·child 위임·implementation review | [`issueops-implement`](../issueops-implement/SKILL.md) |
-| GitHub PR·GitLab MR publication | [`issueops-create-pr`](../issueops-create-pr/SKILL.md) |
-| 낡은 Issue·child 본문 최신화 | [`issueops-sync-issue`](../issueops-sync-issue/SKILL.md) |
-| 낡은 PR·MR 본문 최신화 | [`issueops-sync-pr`](../issueops-sync-pr/SKILL.md) |
-| execution completion 기록·generation 반납 | [`issueops-complete`](../issueops-complete/SKILL.md) |
-| issue 브랜치 정체성 봉인 | [`issueops-prepare`](../issueops-prepare/SKILL.md) |
-| merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
+```bash
+agent-harness issueops next --json
+```
 
-Issue 단계에서 MR 스킬을, PR/MR 단계에서 Issue 스킬을 함께 읽지 않는다.
-Provider mutation을 raw `gh`/`glab` 명령으로 우회하지 않는다.
+이 명령은 읽기 전용이다. record와 로컬 관측만 쓰고 fetch도 provider 호출도 하지
+않는다. 출력을 이렇게 읽는다.
+
+1. `stage.key`를 아래 `## 단계 표`로 스킬과 한국어 label로 바꾼다.
+2. `lease`, `missing`, `next_command`, `exits`를 사용자에게 그대로 보여 준다.
+   `next_command_kind`가 `template`이면 `<...>`와 `$ACTOR_FLAGS`에 채울 값을 함께
+   보여 주고, 실행은 사용자가 값을 확인한 뒤에 한다.
+3. 아래 선택지 네 줄을 묻는다.
+
+```text
+1. 이어서 진행: <스킬> (<label>) (추천)
+2. 다른 단계 지정: 원하는 단계 번호를 말해 주세요
+3. 중단: issueops-abandon (일시 중단·폐기)
+4. 새 사이클 시작: issueops-create-issue (이 저장소에 다른 사이클이 있어도 새로 시작한다)
+```
+
+- `blocked.*`면 진행하지 않는다. 1번을 `1. 대기: <next_command>로 상태를 다시
+  읽습니다`로 바꾼다.
+- `ambiguous`면 `candidates`를 보여 주고 어느 ID인지 고르게 한다. 추측해서 고르지
+  않는다.
+- `none`이면 1번과 4번이 같으므로 4번을 생략한다.
+
+## 10단계와 스킬
+
+| 단계 | 스킬 | 함께 쓰는 스킬 |
+|---|---|---|
+| 1 이슈 확정·생성 | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) | `von-neumann`(인터뷰), `berners-lee`(외부 조사) |
+| 2 브랜치 준비 | [`issueops-prepare`](../issueops-prepare/SKILL.md) | — |
+| 3 문서 확인·계획·검토·인계 | [`issueops-plan`](../issueops-plan/SKILL.md) | `von-neumann`, `brooks`, `codd`, `dijkstra`, `karpathy` |
+| 4 구현 | [`issueops-implement`](../issueops-implement/SKILL.md) | `hopper`, `turing`, `shannon` |
+| 5 AI slop 정리 | [`issueops-clean`](../issueops-clean/SKILL.md) | `shannon`, `turing` |
+| 6 프로젝트 문서 반영 | [`issueops-docs`](../issueops-docs/SKILL.md) | `project-docs-update` |
+| 7 검증 | [`issueops-verify`](../issueops-verify/SKILL.md) | `codd`, `turing` |
+| 8 커밋·푸시 | [`atomic-commit-push`](../atomic-commit-push/SKILL.md) | `torvalds`(history 수술) |
+| 9 PR/MR 발행·완료 | [`issueops-create-pr`](../issueops-create-pr/SKILL.md), [`issueops-complete`](../issueops-complete/SKILL.md) | — |
+| 10 머지 후 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) | — |
+| 탈출(어느 단계든) | [`issueops-abandon`](../issueops-abandon/SKILL.md) | — |
+| 공용: 적대 리뷰 | [`issueops-review`](../issueops-review/SKILL.md) | 3·7단계 |
+| 공용: 게이트 원장 | [`gates-ledger`](../gates-ledger/SKILL.md) | 3·4·5·7단계 |
+| 공용: 원격 쓰기 | [`issueops-remote-write`](../issueops-remote-write/SKILL.md) | 1·9·10단계, 본문 동기화 |
+
+이미 만든 본문이 사이클보다 낡으면 [`issueops-sync-issue`](../issueops-sync-issue/SKILL.md)와
+[`issueops-sync-pr`](../issueops-sync-pr/SKILL.md)이 관리 블록을 보존한 채 교체한다.
+
+Issue 단계에서 PR/MR 스킬을, PR/MR 단계에서 Issue 스킬을 함께 읽지 않는다.
+
+## 세션 경계
+
+- **1·2단계는 source checkout의 준비 세션**이 수행한다. 워크트리는 아직 없다.
+- **3단계**도 같은 세션이 수행하고, 그 끝의 `execution prepare --mode auto`가 워크트리와
+  구현 세션을 만든다. Orca가 준비돼 있으면 Orca가, 아니면 direct가 고른다.
+- **4단계 이후는 구현 세션**이 canonical worktree에서 수행한다. Orca 모드면 prepare가
+  띄운 세션이 봉인된 claim으로 홀더가 되고, direct 모드면 3단계 세션이 그대로 이어간다.
+- lease는 3단계의 인계에서 생긴다. 다른 세션이나 다른 호스트에서 이어받는 경로는
+  [`issueops-abandon`](../issueops-abandon/SKILL.md)의 재개·인수 절이 설명한다.
+
+## 공통 불변식
+
+단계 스킬은 이 절을 링크하고 복사하지 않는다.
+
+**(a) 단계 판별.** 모든 단계 스킬은 `agent-harness issueops next --json`으로 시작하고
+`stage.key`가 자기 단계인지 확인한다. 아니면 표가 지목하는 스킬로 안내한다. `blocked.*`
+면 중단한다. phase를 추정하지 않는다.
+
+**(b) actor 플래그.** `agent-harness issueops execution whoami --json`이 돌려주는
+`record_actor_flags`와 `claim_actor_flags`를 그대로 쓴다. 손으로 조립하지 않는다.
+
+**(c) lease fencing.** durable mutation(phase 전이, record 기록, artifact stage) 전마다
+exact lifecycle ID·generation·native actor·canonical cwd를 현재 record와 대조한다.
+record 기록은 `RECORD_ACTOR_FLAGS`, lease 전이와 publication은 `ACTOR_FLAGS`를 쓴다.
+두 축약의 정의는 `issueops --help`의 legend가 소유한다. 불일치는 stop이다. 사용자의
+"그 세션은 내가 껐어"는 quiescence 증거가 아니다.
+
+**(d) 편집 대상 확인.** 편집 배치마다 셸 프롬프트를 믿지 말고 실측한다.
+
+```bash
+pwd
+git branch --show-current
+git rev-parse HEAD
+test "$PWD" = "$EXPECTED_WORKTREE"
+git -C "$SOURCE_CHECKOUT" status --short
+git status --short
+```
+
+patch·edit·생성 도구의 루트를 `$EXPECTED_WORKTREE`로 둔다. 도구가 다른 체크아웃에
+썼으면 멈추고, 자기 변경만 canonical worktree로 옮긴 뒤 두 status를 다시 확인한다.
+worker 프롬프트에는 exact lifecycle ID, generation, branch, worktree, 허용 경로,
+수락 기준, 중단 규칙을 넣는다.
+
+**(e) mutation 전 대조.** durable mutation 직전에 ID·generation·actor·cwd를 다시 읽고
+record와 다르면 실행하지 않는다. 모호한 결과는 재실행이 아니라 reconcile이 처분한다.
+
+**(f) 코드베이스 존중.** 새로 만들기보다 기존 구현의 확장과 재사용을 먼저 본다. 계약
+표면의 하위 호환성, 성능 영향, 파일·원격·상태의 side effect를 세 곳에서 명시한다:
+계획의 필수 절 세 개(`## 재사용하는 기존 구현`, `## 성능 영향`,
+`## 하위 호환성과 side effect`), 구현 루프의 네 규칙, 리뷰의 네 렌즈. 근거는
+`AGENTS.md` §2 Simplicity First와 §3 Surgical Changes다.
 
 ## Core contract
 
@@ -52,97 +139,32 @@ state를 소유한다. hook은 SessionStart에서 project-doc context만 제공�
 Issue 생성, 파일 수정, 테스트, 대기, branch/worktree 준비, PR/MR publication,
 reply, merge, cleanup을 hook에 맡기지 않는다.
 
-## 단계별 라우팅
+## 단계 표
 
-| 단계 | main agent가 남길 증거 | 읽을 문서·스킬 |
+`stage.key`를 스킬과 label로 바꾸는 유일한 표다. CLI는 이 표를 모른다.
+
+| stage.key | 스킬 | label |
 |---|---|---|
-| problem | 요청, 성공 기준, 제약, ambiguity, non-goal, intent class | `von-neumann` |
-| grill | code/docs/runtime 조사, domain model·용어 검토 | `issue-preflight.md`, 필요 시 `berners-lee` |
-| issue | 한국어 body, score, label/assignee, URL readback, split/no-split | `issueops-create-issue` |
-| plan | plan-prep 4항목, 설계, 대안, 위험, 검증 | `von-neumann`, `codd`, `dijkstra`, `karpathy` |
-| compatibility-review | 호환성, side effect, rollback, blocker, 승인 | `evidence-contract.md` |
-| implement | current generation, TDD, focused verification | `issueops-implement`, 필요 시 `hopper`·`turing` |
-| ai-slop-clean | diff 기반 cleanup, 전후 품질 지표, 재검증 | `ai-slop-clean.md`, `shannon` |
-| feedback | contract change 반영, review thread 검증 | `review-feedback.md` |
-| pr(전 게이트) | project-doc 반영 판정, 스키마 실측 근거 | `issueops-implement`, `project-docs-update`, `codd` |
-| pr | readiness, 한국어 body, actor/branch/URL readback | `issueops-create-pr` |
-| pr(완료 기록) | 봉인된 artifact, final head, 보고서, 검증 증거 | `issueops-complete` |
-| cleanup | merge evidence, preview/fingerprint, 사용자 승인 | `issueops-cleanup`, `cleanup-state.md` |
+| `none`, `issue` | `issueops-create-issue` | 이슈 확정·생성 |
+| `prepare` | `issueops-prepare` | 브랜치 준비 |
+| `plan.write`, `plan.design`, `plan.review`, `plan.handoff` | `issueops-plan` | 문서 확인·계획·검토·인계 |
+| `claim` | 스킬 없음. Orca가 띄운 세션은 자기 프롬프트의 봉인된 claim을 정확히 한 번 실행하고, 그 밖의 세션은 `next_command`가 돌려주는 체인을 lease가 active(self)가 될 때까지 따라간 뒤 `next`를 다시 실행한다 | 현재 index의 label |
+| `implement.enter`, `implement` | `issueops-implement` | 구현 |
+| `clean` | `issueops-clean` | AI slop 정리 |
+| `docs` | `issueops-docs` | 프로젝트 문서 반영 |
+| `verify` | `issueops-verify` | 검증 |
+| `commit-push` | `atomic-commit-push` | 커밋·푸시 |
+| `pr.create` | `issueops-create-pr` | PR/MR 발행·완료 |
+| `pr.complete` | `issueops-complete` | PR/MR 발행·완료 |
+| `done` | `issueops-cleanup` | 머지 후 정리 |
+| `takeover` | 스킬 없음. `next_command`를 실행하고 결과가 돌려주는 `next_command`를 따라간다. 죽은 홀더 인수는 `issueops-abandon`이 설명한다 | 현재 index의 label |
+| `blocked.pending`, `blocked.holder_live` | 없음. `next_command`로 상태를 다시 읽는다 | 현재 index의 label |
+| `blocked.root_conflict` | 충돌 사이클을 `issueops-cleanup`(머지됨) 또는 `issueops-abandon`(미머지)으로 먼저 정리한다 | 현재 index의 label |
+| `unknown`, `invalid` | 없음. `next_command`로 record를 읽고 `warnings`의 missing 키를 사용자에게 보여 준다 | 현재 index의 label |
+| `ambiguous` | 사용자에게 `candidates` 중 ID 선택 또는 새 사이클 시작을 요청 | 없음 |
 
-최신 사용자 지시가 이전 계획과 충돌하면 최신 지시를 반영하고 durable
-contract를 갱신한다. 충돌하지 않는 기존 목표는 유지한다.
-
-## 시작 순서
-
-1. `issueops list --repo "$PWD" --json`으로 동일 repo의 cycle을 확인한다.
-2. 없으면 `issueops start`; 있으면 exact ID로 `status`를 읽는다.
-3. `agent-harness issueops intent record`로 요청 계약을 기록한다.
-4. `issueops plan-prep record`로 다음 네 항목을 evidence 또는 waive reason과
-   함께 기록한다.
-   - decisions
-   - related issue/label score
-   - web research
-   - codebase survey
-5. Issue는 `issueops-create-issue`로 생성·연결한다.
-6. Issue 번호로 시작하는 branch 이름을 정한다. `feature/123-*`가 아니라
-   `123-*` 형식이다.
-7. base SHA를 고정하고 plan을 stage한 뒤
-   `agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto`를
-   preview한다. 출력된 readiness fingerprint가 든 `next_command`로 confirm한다.
-
-`--mode direct`는 예외이며 `--direct-reason`이 필요하다. Orca는 owner/workspace
-adapter일 뿐 두 번째 workflow authority가 아니다. GitHub Orca의 sealed
-base-SHA linked-branch 순서는 다음과 같다.
-
-`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`
-
-status의 selection에서 `requested_mode`, `resolved_mode`, readiness fingerprint를
-다시 읽는다. 상세 복구 명령은 `execution.md`만 소유한다.
-
-## Gate map
-
-readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 state owner를
-실행한다.
-
-| missing state | owner command/reference |
-|---|---|
-| `intent_contract` | `issueops intent record` |
-| `plan_prep_*` | `issueops plan-prep record` |
-| Issue URL·label·assignee·hierarchy | `issueops-create-issue` |
-| `design_review` | `agent-harness issueops design review` |
-| `compatibility_review` | `issueops compatibility review` |
-| `devils_advocate_review` | `issueops devils-advocate review` |
-| branch·worktree·plan·execution lease | `issueops-prepare`, `execution.md` |
-| `implementation_review`·`implementation_review_stale` | `issueops-implement` |
-| `project_docs_review`·`project_docs_review_stale` | `issueops-implement`, `project-docs-update` |
-| `schema_evidence`·`schema_evidence_stale` | `issueops-implement`, `codd` |
-| `ai_slop_clean` | `issueops ai-slop-clean record` |
-| contract feedback Issue 반영 | `issueops feedback mark-issue-updated` |
-| PR/MR body·target·actor·readback | `issueops-create-pr` |
-| `execution completion requires pr phase`·`final_head must match`·Turing report 경로 | `issueops-complete` |
-| cleanup readiness | `issueops-cleanup`, `cleanup-state.md` |
-
-승인된 design review에는 refactor plan, 대안, 위험, 검증이 있어야 하고 open
-question은 없어야 한다. compatibility review는 blocker가 없어야 한다.
-plan이 바뀌면 plan hash에 묶인 devil's-advocate·implementation review freshness를
-다시 확인한다.
-
-## Child와 delegation
-
-원격 parent/child 분리는 `issueops-create-issue`가 소유한다. 기본은 no split,
-child는 `[p]`가 기본이고 `[s]`는 이름 있는 hard dependency가 있을 때만 쓴다.
-
-실행 중 delegated child cycle은 별도 개념이다. 다음 조건이 모두 맞을 때만
-`issueops child start`를 사용한다.
-
-- parent가 `implement` phase다.
-- design·compatibility·devil's-advocate gate가 승인 또는 명시적으로 waive됐다.
-- plan이 sub-agent pattern, scope, acceptance, verification, fallback,
-  tradeoff를 기록한다.
-
-parent는 child record를 대신 수정하지 않는다. parent가 소유하는 것은
-`accept`, `reject`, `drop` verdict뿐이다. 자세한 prompt와 scope-drift 규칙은
-`orchestration.md`를 따른다.
+`missing` 키를 어떤 명령이 해소하는지는 `issueops next`의 `next_command`가 렌더한다.
+그 대응표는 CLI가 소유하므로 여기 복사하지 않는다.
 
 ## 구현·검증 규칙
 
@@ -165,21 +187,11 @@ parent는 child record를 대신 수정하지 않는다. parent가 소유하는 
 - destructive cleanup은 exact target과 fingerprint를 preview한 뒤 별도 사용자
   승인을 받는다.
 
-## Remote write 공통 게이트
+## 원격 쓰기
 
-Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 소유한다.
-공통 규칙만 유지한다.
-
-- score 결과를 join한 뒤 threshold 이상 label만 적용한다.
-- label과 concrete assignee가 없으면 쓰지 않는다.
-- title/body는 한국어 중심이며 secret 원문을 포함하지 않는다.
-- 원격에 남는 한국어 텍스트는 write 전에 `fluent-korean` 스킬을 호출해
-  다듬는다. issue와 PR/MR의 제목·본문뿐 아니라 댓글과 review thread 답글도
-  같은 규칙을 따른다.
-- preview와 동일한 요청에만 `--confirm`을 추가한다.
-- provider 호출 결과가 불명확하면 자동 retry하지 않고 reconcile한다.
-- contract-changing feedback가 생기면 원격 Issue body를 갱신하고 durable
-  state에 반영 사실을 기록한다.
+원격 본문 쓰기의 공통 프로토콜은
+[`issueops-remote-write`](../issueops-remote-write/SKILL.md)가 소유한다. 명령별 본문
+형식은 각 생성·동기화 스킬이 소유한다.
 
 ## Reference map
 
@@ -187,15 +199,12 @@ Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 �
 
 | reference | 책임 |
 |---|---|
-| `references/issue-preflight.md` | ambiguity 감소, ideal Issue prompt |
-| `references/remote-issue.md` | provider relation·hierarchy·한국어 공통 규칙 |
+| `references/remote-issue.md` | provider relation과 hierarchy |
 | `references/evidence-contract.md` | domain/API/live/review/completion evidence |
-| `references/worktree-context.md` | branch·worktree·local config |
 | `references/execution.md` | direct/Orca, generation, claim/recovery/publication |
 | `references/orchestration.md` | delegated child contract |
 | `references/review-feedback.md` | feedback·thread resolution |
 | `references/cleanup-state.md` | post-merge cleanup |
-| `references/operational-start.md` | start/resume command sequence |
 
 ## Stop conditions
 

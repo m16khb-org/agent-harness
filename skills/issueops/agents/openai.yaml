@@ -1,4 +1,4 @@
 interface:
   display_name: "IssueOps"
-  short_description: "Run issue-driven problem to PR/MR cycles with 100-point quality gates"
-default_prompt: "Use $issueops as the lifecycle coordinator for the issue-driven cycle: problem→grill→issue→plan→compatibility-review→implement→ai-slop-clean→feedback→pr→cleanup. Delegate parent and provider-native child issue publication to $issueops-create-issue, and delegate linked GitHub PR/GitLab MR publication to $issueops-create-pr. Keep durable state, execution leases, branch/worktree gates, feedback, cleanup, specialized skills, shannon measurement, and the 100-point IssueOps benchmark under the lifecycle contract; never duplicate creation logic or bypass provider verification with raw gh/glab mutation."
+  short_description: "Route an issue-driven cycle across its ten stages"
+  default_prompt: "Use $issueops to find out where a cycle is and who owns the next step. Run `agent-harness issueops next --json` first, translate stage.key through the router's stage table into a skill and a Korean label, show the user the lease, the missing gates, the next command, and the exits, then offer to continue, jump to another stage, stop through $issueops-abandon, or start a fresh cycle. Blocked stages do not proceed. The router owns only the stage table and the shared invariants; every stage's work belongs to that stage's skill."

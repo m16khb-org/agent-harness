@@ -7,16 +7,28 @@ import (
 	"testing"
 )
 
+// 라우터는 phase enum과 공통 규칙을 소유하고, 단계 명령은 단계 스킬이 소유한다.
+// 두 축을 각각 고정해 명령이 라우터로 되돌아오는 것과 스킬에서 사라지는 것을
+// 함께 막는다.
 func TestIssueOpsSkillKeepsCoreWorkflowContract(t *testing.T) {
 	skill := readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md")
 	for _, want := range []string{
 		"problem", "grill", "issue", "plan", "compatibility-review", "implement",
 		"ai-slop-clean", "feedback", "pr", "cleanup", "RED→GREEN→SURFACE→CLEAN",
-		"agent-harness issueops intent record", "agent-harness issueops design review",
-		"agent-harness issueops execution prepare --id \"$ISSUEOPS_ID\" --mode auto",
+		"agent-harness issueops next --json",
 	} {
 		if !strings.Contains(skill, want) {
-			t.Fatalf("IssueOps skill missing current workflow contract %q", want)
+			t.Fatalf("IssueOps router missing current workflow contract %q", want)
+		}
+	}
+	stages := map[string]string{
+		"agent-harness issueops intent record":                                       readIssueOpsContractFile(t, "skills", "issueops-create-issue", "SKILL.md"),
+		"agent-harness issueops design review":                                       readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
+		"agent-harness issueops execution prepare --id \"$ISSUEOPS_ID\" --mode auto": readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
+	}
+	for want, document := range stages {
+		if !strings.Contains(document, want) {
+			t.Fatalf("stage skill missing owned command %q", want)
 		}
 	}
 }
@@ -26,8 +38,8 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 		"skill":        readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
 		"execution":    readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"cleanup":      readIssueOpsContractFile(t, "skills", "issueops", "references", "cleanup-state.md"),
-		"worktree":     readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
-		"start":        readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
+		"plan":         readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
+		"providers":    readIssueOpsContractFile(t, ".agent-harness", "operations", "guides", "issueops-providers.md"),
 		"workflow":     readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
 		"operations":   readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md"),
 		"architecture": readIssueOpsContractFile(t, ".agent-harness", "ARCHITECTURE.md"),
@@ -64,10 +76,10 @@ func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
 	if !strings.Contains(operationsIndex, "operations/guides/issueops-providers.md") {
 		t.Fatal("OPERATIONS.md must route provider ordering to operations/guides/issueops-providers.md")
 	}
+	// 순서 문자열의 소유자는 둘이다: 실행 계약 레퍼런스와 provider 운영 가이드.
+	// 단계 스킬은 그 둘을 링크하고 순서를 복사하지 않는다.
 	documents := map[string]string{
-		"skill":      readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
 		"execution":  readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
-		"start":      readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
 		"operations": readIssueOpsContractFile(t, ".agent-harness", "operations", "guides", "issueops-providers.md"),
 	}
 	const want = "`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`"
@@ -84,7 +96,7 @@ func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
 func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.T) {
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
 		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
-		"worktree":  readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
+		"router":    readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
 		"workflow":  readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
 	}))
 	for _, want := range []string{

@@ -1305,7 +1305,13 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs(skill): route pr, complete, cleanup, and sync skills through issueops next` | Files: 위 파일
 
-- [ ] **T11. `issueops` 라우터 재작성 + 레퍼런스 삭제 + cleanup-state·remote-issue 절 삭제 + skill-contract ratchet**
+- [x] **T11. `issueops` 라우터 재작성 + 레퍼런스 삭제 + cleanup-state·remote-issue 절 삭제 + skill-contract ratchet** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-11-first.txt`(첫 명령이 `issueops next --json`), `task-11-links.txt`(깨진 링크 0건). 244줄(기준 260 이하), 네 레퍼런스 삭제 확인.
+
+  **실행 결과와 계획 대비 편차**:
+  - **`execution.md`에 넣으라던 두 문장은 넣지 않았다.** 계획은 "기본 경로는 `issueops-prepare`가 만든 워크트리를 implementer 세션이 `--mode direct`로 채택하는 것"을 적으라고 했는데, 그것은 9단계 시절 설계다. 사용자 결정(모드는 `--mode auto`가 고른다)과 T4 이후 2단계가 워크트리를 만들지 않는다는 사실 둘 다와 어긋난다.
+  - **삭제한 `worktree-context.md`의 남은 세 절을 버리지 않고 옮겼다.** 계획은 "Dependencies And Local Configuration"(T8)과 "Edit Target Guard"(T11)만 배정했는데, "Branch And Canonical Worktree"(워크트리 채택 3조건과 canonical 경로), "Context Routing"은 소유자가 없었다. `execution.md`의 Prepare 절로 옮겼다. "Parallel Independence"는 `execution.md`에 이미 같은 내용이 있어 그대로 뒀다.
+  - **`requested_mode`·`resolved_mode`·readiness fingerprint 문구**도 삭제된 라우터 절에만 있었다. `execution.md`의 preview 설명으로 옮겼다.
+  - Go 계약 테스트 네 곳을 고쳤다. 단계 명령 핀(`intent record`, `design review`, `--mode auto`)은 라우터가 아니라 그 명령을 소유한 단계 스킬을 읽게 했고, GitHub Orca ordering 핀은 `execution.md`와 providers 가이드 둘만 남겼다. `torvalds`의 worktree 링크도 `execution.md`로 고쳤다.
 
   **Files:**
   - Modify: `skills/issueops/SKILL.md` (전면 재작성)

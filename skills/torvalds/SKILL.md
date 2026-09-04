@@ -298,7 +298,7 @@ git worktree prune
 - Always verify with `git worktree list` before removing
 - The main worktree cannot be removed — it's always the first in `git worktree list`
 - Worktrees share the same `.git` directory — operations in one worktree affect refs visible in others
-- IssueOps worktree management is in `skills/issueops/references/worktree-context.md` — don't duplicate those rules
+- IssueOps worktree management is in `skills/issueops/references/execution.md` — don't duplicate those rules
 
 ---
 

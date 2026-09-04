@@ -112,6 +112,31 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 	}
 }
 
+// 라우터는 stage.key를 스킬로 바꾸는 유일한 표를 소유한다. 그 표가 사라지거나
+// 은퇴한 레퍼런스가 되살아나면 어느 단계에서 무엇을 읽어야 하는지가 문서에서
+// 사라진다.
+func TestIssueOpsRouterPinsStageContract(t *testing.T) {
+	assertSkillContains(t, "issueops", []string{
+		"agent-harness issueops next --json",
+		"issueops-create-issue", "issueops-prepare", "issueops-plan",
+		"issueops-implement", "issueops-create-pr", "issueops-complete",
+		"issueops-cleanup", "issueops-abandon",
+		"issueops-clean", "issueops-docs", "issueops-verify",
+		"issueops-review", "gates-ledger", "issueops-remote-write",
+		"## 공통 불변식", "## 단계 표",
+	})
+	body := readSkillForTest(t, "issueops")
+	for _, retired := range []string{
+		"issue-preflight.md", "worktree-context.md", "operational-start.md",
+		"ai-slop-clean.md", "issueops-branch-worktree",
+		"## Remote write 공통 게이트", "## Gate map",
+	} {
+		if strings.Contains(body, retired) {
+			t.Fatalf("issueops router still references retired %q", retired)
+		}
+	}
+}
+
 func TestKarpathySkillPinsPrivacyAndProportionalityContract(t *testing.T) {
 	assertSkillContains(t, "karpathy", []string{
 		// CoT privacy guardrail (the holdout-fixed boundary).
