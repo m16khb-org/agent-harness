@@ -1615,7 +1615,13 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: NO (수정이 생기면 해당 태스크 커밋 메시지로 fixup 커밋)
 
-- [ ] **T17. 일회용 저장소 E2E 프로브**
+- [x] **T17. 일회용 저장소 E2E 프로브** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-17-e2e-1.log`(정방향 10단계 + 일시 중단·재개), `task-17-e2e-2.log`(죽은 홀더 인수), `task-17-e2e-3.log`(dirty 워크트리 폐기 + draft PR 폐기), `task-17-e2e-4.log`(모호·새 사이클·저장소 밖 + 정리 확인). 네 파일 모두 마지막 줄이 PASS다. 프로브 저장소는 삭제했고 실제 state에 오염이 없다.
+
+  **프로브가 잡은 결함 2건**:
+  1. **인수 체인이 첫 걸음에서 끊겼다.** `execution replace --preview`가 active lease에서 `next_command`를 비워 돌려줘, 죽은 홀더를 인수하려는 세션이 다음 명령(`--revoke`)을 스스로 지어내야 했다. 그것은 라우터가 금지하는 추측이다. `previewExecutionReplacement`에 active lease 분기를 더해 revoke 단계를 template으로 렌더하게 고쳤고 `TestReplacePreviewRendersTheRevokeStepForAnActiveLease`로 고정했다.
+  2. **`issueops-abandon`의 게이트 표에 두 게이트가 빠져 있었다**: `worktree_clean`과 `requester_occupies_worktree`. 실제 폐기 시도가 그 둘로 막혔다. 표에 추가했다.
+
+  **실행 결과와 계획 대비 편차**: 시나리오 1의 구현 단계는 planner 세션이 직접 수행했고, 두 번째 세션(tmux + `claude -p`)은 계획이 요구한 **재개 지점**에서 실제로 lease를 이어받았다(generation 2, 다른 session id). 그 세션이 종료하면서 죽은 홀더가 생겨 시나리오 2가 실제 상황으로 이어졌다. `--mode auto`는 Orca가 ready였지만 프로브 저장소가 Orca에 등록돼 있지 않아 `fallback_code=repo_unresolved`로 direct를 골랐다 — 폴백 경로가 실제로 동작함을 확인한 셈이다.
 
   **What to do**: 메모리 `issueops-e2e-probe-method` 절차로 GitHub 일회용 저장소를 만들고, 새 스킬 순서대로 전 구간을 실제로 돌린다. 각 시나리오는 tmux 세션의 로그와 `issueops next --json` 출력을 evidence로 남긴다. 프롬프트는 자기완결적으로 쓴다(ISSUEOPS_ID, 워크트리, 실행할 스킬 이름, 보고 형식).
   ```bash

@@ -119,12 +119,25 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
 	result := replaceResult(record, req.Action, fingerprint, "", "")
-	if record.Execution.Lease.Status == issueops.LeaseStatusReleased ||
-		record.Execution.Lease.Status == issueops.LeaseStatusClaimable {
+	switch {
+	case record.Execution.Lease.Status == issueops.LeaseStatusReleased ||
+		record.Execution.Lease.Status == issueops.LeaseStatusClaimable:
 		result.NextCommand = executionReseedCommand(
 			record.ID,
 			record.Execution.Lease.Generation,
 			req.CompletionGeneration,
+			fingerprint,
+			req.Actor,
+			record.Execution.Workspace.Root,
+		)
+	case record.Execution.Lease.Status == issueops.LeaseStatusActive &&
+		refuseSelfRevoke(record.ID, record.Execution.Lease, req.Actor) == nil:
+		// 인수 체인의 다음 걸음이다. 여기서 비워 두면 죽은 홀더를 인수하려는
+		// 세션이 다음 명령을 스스로 지어내야 하고, 그것이 라우터가 금지하는
+		// 바로 그 추측이다. `--reason`만 사람이 채우므로 template으로 렌더한다.
+		result.NextCommand = executionRevokeCommand(
+			record.ID,
+			record.Execution.Lease.Generation,
 			fingerprint,
 			req.Actor,
 			record.Execution.Workspace.Root,
@@ -328,6 +341,28 @@ func executionReseedCommand(id string, generation, completionGeneration uint64, 
 		" --session-started-at " + quoteExecutionOwnerArg(process.StartedAt) +
 		" --session-executable " + quoteExecutionOwnerArg(process.Executable) +
 		" --cwd " + quoteExecutionOwnerArg(cwd) + " --confirm"
+	return command
+}
+
+// executionRevokeCommand는 인수 체인의 revoke 단계를 렌더한다. reseed와 달리
+// `--reason`은 사람이 채워야 하므로 자리표시자로 남는다 — 그래서 이 명령은
+// 그대로 실행하는 exact가 아니라 값을 채우는 template이다.
+func executionRevokeCommand(id string, generation uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
+	process := actor.SessionProcess
+	command := "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+		" --expected-generation " + strconv.FormatUint(generation, 10) +
+		" --revoke --reason <TEXT> --inventory-fingerprint " + fingerprint +
+		" --host " + quoteExecutionOwnerArg(actor.Host) +
+		" --session-id " + quoteExecutionOwnerArg(actor.SessionID)
+	if actor.AgentID != "" {
+		command += " --agent-id " + quoteExecutionOwnerArg(actor.AgentID)
+	}
+	if process != nil {
+		command += " --session-pid " + strconv.Itoa(process.PID) +
+			" --session-started-at " + quoteExecutionOwnerArg(process.StartedAt) +
+			" --session-executable " + quoteExecutionOwnerArg(process.Executable)
+	}
+	command += " --cwd " + quoteExecutionOwnerArg(cwd) + " --confirm"
 	return command
 }
 
