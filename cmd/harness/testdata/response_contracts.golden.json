@@ -884,6 +884,20 @@
           "path": "$HARNESS_ROOT/skills/issueops"
         },
         {
+          "description": "Leave an IssueOps cycle safely from any stage. Pause by releasing the execution lease so another session or host can resume it, or abandon the cycle by closing its draft PR or MR, closing the issue, deleting the remote branch, and removing the worktree, local branch, and record through one fingerprinted cleanup abandon. Use when the user says \"중단\", \"탈출\", \"이슈옵스 정리\", \"일시 중단\", \"abandon the cycle\", or when \"issueops next\" reports an abandon exit.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-abandon",
+          "path": "$HARNESS_ROOT/skills/issueops-abandon"
+        },
+        {
+          "description": "Run the IssueOps ai-slop-clean stage on the canonical worktree. Confirm the phase, remove lazy agent residue from the task diff one pass at a time while preserving behavior, measure before and after with shannon, re-run the gate ledger and the focused verification, and record the cleanup evidence that seals the change fingerprint. Use when \"issueops next\" reports clean, or when the user says \"AI slop 정리\", \"slop 치워줘\", \"정리 단계\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-clean",
+          "path": "$HARNESS_ROOT/skills/issueops-clean"
+        },
+        {
           "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -898,7 +912,7 @@
           "path": "$HARNESS_ROOT/skills/issueops-complete"
         },
         {
-          "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
+          "description": "Confirm and create the IssueOps issue that a cycle contracts on. Interview the user only on blocking ambiguity, survey the codebase and background sources into plan-prep evidence, record the intent contract, domain review, split decision, and plan prep, then publish a readable Korean issue through the shared remote write protocol and link it. Use at the start of a cycle, when \"issueops next\" reports stage none or issue, or when the user says \"이슈 만들어줘\", \"이슈부터 시작하자\", \"child task 만들어줘\".",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops-create-issue",
@@ -912,11 +926,18 @@
           "path": "$HARNESS_ROOT/skills/issueops-create-pr"
         },
         {
-          "description": "Run the implement phase of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, delegated child cycles, and the pre-publication implementation review gate. Use when an IssueOps cycle enters or resumes the implement phase, when the user asks to start or continue issue implementation, delegate bounded implementation work to child cycles, or record an implementation review, or says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
+          "description": "Run the implement stage of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, a gate ledger for the RED and GREEN evidence, and delegated child cycles. Enter through link-plan, the compatibility review, and the ledger; exit by moving the cycle to ai-slop-clean. Use when \"issueops next\" reports implement.enter or implement, or when the user says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops-implement",
           "path": "$HARNESS_ROOT/skills/issueops-implement"
+        },
+        {
+          "description": "Turn a branch-prepared IssueOps cycle into an implementable contract from the source checkout. Read the operating documents that constrain the change, write the plan, stage it as the sealed plan artifact, approve the design review, run the adversarial review loop until it passes, then hand off with \"execution prepare --mode auto\" so Orca launches the implementation session when it is available and direct keeps the current session when it is not. Use when \"issueops next\" reports plan.write, plan.design, plan.review, or plan.handoff, or when the user says \"계획 세워줘\", \"계획 검토해줘\", \"구현 인계\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-plan",
+          "path": "$HARNESS_ROOT/skills/issueops-plan"
         },
         {
           "description": "Give an IssueOps cycle its branch identity. Resolve and pin the exact base SHA, record it with \"issueops branch prepare\", create and verify the provider-side branch link, and move the cycle to the plan phase. Creating the worktree is not this skill's job — \"issueops execution prepare\" owns it and picks git or Orca. Use when the user says \"준비\", \"브랜치 만들어줘\", \"prepare the issue branch\", or when \"issueops next\" reports stage prepare.",
@@ -5263,11 +5284,14 @@
           "gitlab-usecase",
           "hopper",
           "issueops",
+          "issueops-abandon",
+          "issueops-clean",
           "issueops-cleanup",
           "issueops-complete",
           "issueops-create-issue",
           "issueops-create-pr",
           "issueops-implement",
+          "issueops-plan",
           "issueops-prepare",
           "issueops-remote-write",
           "issueops-review",
@@ -7261,6 +7285,20 @@
                 "path": "$HARNESS_ROOT/skills/issueops"
               },
               {
+                "description": "Leave an IssueOps cycle safely from any stage. Pause by releasing the execution lease so another session or host can resume it, or abandon the cycle by closing its draft PR or MR, closing the issue, deleting the remote branch, and removing the worktree, local branch, and record through one fingerprinted cleanup abandon. Use when the user says \"중단\", \"탈출\", \"이슈옵스 정리\", \"일시 중단\", \"abandon the cycle\", or when \"issueops next\" reports an abandon exit.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-abandon",
+                "path": "$HARNESS_ROOT/skills/issueops-abandon"
+              },
+              {
+                "description": "Run the IssueOps ai-slop-clean stage on the canonical worktree. Confirm the phase, remove lazy agent residue from the task diff one pass at a time while preserving behavior, measure before and after with shannon, re-run the gate ledger and the focused verification, and record the cleanup evidence that seals the change fingerprint. Use when \"issueops next\" reports clean, or when the user says \"AI slop 정리\", \"slop 치워줘\", \"정리 단계\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-clean",
+                "path": "$HARNESS_ROOT/skills/issueops-clean"
+              },
+              {
                 "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7275,7 +7313,7 @@
                 "path": "$HARNESS_ROOT/skills/issueops-complete"
               },
               {
-                "description": "Create and verify durable GitHub or GitLab IssueOps issues and provider-native child tasks with scored metadata, readable Korean body contracts, safe recovery, and explicit good and bad examples. Use during the IssueOps issue phase or parent-child issue publication.",
+                "description": "Confirm and create the IssueOps issue that a cycle contracts on. Interview the user only on blocking ambiguity, survey the codebase and background sources into plan-prep evidence, record the intent contract, domain review, split decision, and plan prep, then publish a readable Korean issue through the shared remote write protocol and link it. Use at the start of a cycle, when \"issueops next\" reports stage none or issue, or when the user says \"이슈 만들어줘\", \"이슈부터 시작하자\", \"child task 만들어줘\".",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops-create-issue",
@@ -7289,11 +7327,18 @@
                 "path": "$HARNESS_ROOT/skills/issueops-create-pr"
               },
               {
-                "description": "Run the implement phase of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, delegated child cycles, and the pre-publication implementation review gate. Use when an IssueOps cycle enters or resumes the implement phase, when the user asks to start or continue issue implementation, delegate bounded implementation work to child cycles, or record an implementation review, or says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
+                "description": "Run the implement stage of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, a gate ledger for the RED and GREEN evidence, and delegated child cycles. Enter through link-plan, the compatibility review, and the ledger; exit by moving the cycle to ai-slop-clean. Use when \"issueops next\" reports implement.enter or implement, or when the user says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops-implement",
                 "path": "$HARNESS_ROOT/skills/issueops-implement"
+              },
+              {
+                "description": "Turn a branch-prepared IssueOps cycle into an implementable contract from the source checkout. Read the operating documents that constrain the change, write the plan, stage it as the sealed plan artifact, approve the design review, run the adversarial review loop until it passes, then hand off with \"execution prepare --mode auto\" so Orca launches the implementation session when it is available and direct keeps the current session when it is not. Use when \"issueops next\" reports plan.write, plan.design, plan.review, or plan.handoff, or when the user says \"계획 세워줘\", \"계획 검토해줘\", \"구현 인계\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-plan",
+                "path": "$HARNESS_ROOT/skills/issueops-plan"
               },
               {
                 "description": "Give an IssueOps cycle its branch identity. Resolve and pin the exact base SHA, record it with \"issueops branch prepare\", create and verify the provider-side branch link, and move the cycle to the plan phase. Creating the worktree is not this skill's job — \"issueops execution prepare\" owns it and picks git or Orca. Use when the user says \"준비\", \"브랜치 만들어줘\", \"prepare the issue branch\", or when \"issueops next\" reports stage prepare.",
@@ -8449,11 +8494,14 @@
                 "gitlab-usecase",
                 "hopper",
                 "issueops",
+                "issueops-abandon",
+                "issueops-clean",
                 "issueops-cleanup",
                 "issueops-complete",
                 "issueops-create-issue",
                 "issueops-create-pr",
                 "issueops-implement",
+                "issueops-plan",
                 "issueops-prepare",
                 "issueops-remote-write",
                 "issueops-review",

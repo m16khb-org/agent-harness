@@ -393,7 +393,7 @@ Loop per goal. Cap at 5 cycles per goal (after 5, checkpoint and surface diagnos
 Trigger when every goal's criteria are passing.
 
 1. **Targeted verification**: Re-run the changed behavior tests.
-2. **AI slop clean**: Run targeted verification plus the IssueOps `ai-slop-clean` reference (`skills/issueops/references/ai-slop-clean.md`) when cleanup is in scope; use `agent-harness self-verify` for harness-level health, not as a generic cleanup substitute.
+2. **AI slop clean**: Run targeted verification plus the IssueOps cleanup stage skill (`skills/issueops-clean/SKILL.md`) when cleanup is in scope; use `agent-harness self-verify` for harness-level health, not as a generic cleanup substitute.
 3. **Re-verify** after cleanup.
 4. **Reviewer (when required by the recorded risk decision)**: For full mode and any user-facing or hard-to-reverse work, spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work. For a trivially reversible low-risk change in proportionate mode, record the skip rationale instead.
    - The reviewer's verdict is BINDING as a gate: do not pass while a concern remains unresolved.

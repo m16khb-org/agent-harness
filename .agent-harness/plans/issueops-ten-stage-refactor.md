@@ -1673,7 +1673,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: NO (저장소 밖)
 
-- [ ] **T19. `issueops-clean` 신설 (4단계: AI slop 정리)**
+- [x] **T19. `issueops-clean` 신설 (5단계: AI slop 정리)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-19-prompt.txt`(Step 1~5 이동), `task-19-turing.txt`. 정리 프롬프트 전체를 옮기고 원본 레퍼런스를 지웠으며, 라우터의 레퍼런스 표에서도 그 행을 뺐다. 스킬 목록이 골든에 들어 있어 골든도 재생성했다.
 
   **Files:**
   - Create: `skills/issueops-clean/SKILL.md`

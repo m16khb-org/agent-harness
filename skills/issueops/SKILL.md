@@ -193,7 +193,6 @@ Issue와 PR/MR publication의 body·예시·명령은 전용 생성 스킬이 �
 | `references/worktree-context.md` | branch·worktree·local config |
 | `references/execution.md` | direct/Orca, generation, claim/recovery/publication |
 | `references/orchestration.md` | delegated child contract |
-| `references/ai-slop-clean.md` | diff cleanup |
 | `references/review-feedback.md` | feedback·thread resolution |
 | `references/cleanup-state.md` | post-merge cleanup |
 | `references/operational-start.md` | start/resume command sequence |

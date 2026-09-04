@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Clean"
+  short_description: "Remove agent residue from the task diff and seal the change fingerprint"
+  default_prompt: "Use $issueops-clean when `issueops next` reports clean. Work only inside the cleanup boundary of the current task diff: lock behavior first, classify the slop, run one pass at a time, then measure before and after with shannon, re-run the gate ledger and the focused tests, finalize the turing report inside the worktree, and record ai-slop-clean with only the categories actually removed. That record seals the change fingerprint, so any later file edit sends the cycle back here — which is intended, not a failure. Do not commit; do not touch operating docs or the implementation review."
