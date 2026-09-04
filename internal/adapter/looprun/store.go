@@ -1,13 +1,13 @@
 package looprun
 
 import (
-	loopruncontract "agent-harness/internal/contract/looprun"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	loopruncontract "issueops/internal/contract/looprun"
 	"path/filepath"
 	"strings"
 	"time"

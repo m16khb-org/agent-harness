@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	completionapp "agent-harness/internal/application/issueopscompletion"
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/port"
+	completionapp "issueops/internal/application/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/port"
 )
 
 func TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex(t *testing.T) {
 	record, actor := completionRepositoryRecord(t)
 	record.Execution.CompletionHistory = []leasecontract.CompletionHistoryEntry{{
 		Generation: 4,
-		Completion: leasecontract.Completion{FinalHead: "d6d8c6a5a98fcca6bca33edf9e7965636429ce28", TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-01T00:00:00Z"},
+		Completion: leasecontract.Completion{FinalHead: "d6d8c6a5a98fcca6bca33edf9e7965636429ce28", VerificationReportPath: ".issueops/verified-execution/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-01T00:00:00Z"},
 		Reason:     "functional HEAD moved",
 		ReopenedAt: "2026-08-02T00:00:00Z",
 	}}
@@ -40,7 +40,7 @@ func TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex(t *testing.
 		before.Lease.Status = "released"
 		before.Lease.Holder = nil
 		before.Lease.ReleasedAt = "2026-08-02T01:02:03.000000004Z"
-		before.Completion = &completioncontract.Completion{Generation: 5, FinalHead: strings.Repeat("a", 40), TuringReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-02T01:02:03.000000004Z"}
+		before.Completion = &completioncontract.Completion{Generation: 5, FinalHead: strings.Repeat("a", 40), VerificationReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-02T01:02:03.000000004Z"}
 		before.Ledger["pr"] = completioncontract.LedgerEntry{Phase: "pr", EnteredAt: "2026-08-02T00:00:03Z", CompletedAt: "2026-08-02T01:02:03.000000004Z", Artifacts: []string{"strict_pr_readiness", "children_complete", "remote_artifact", "target_branch_match"}}
 		before.Ledger["done"] = completioncontract.LedgerEntry{Phase: "done", EnteredAt: "2026-08-02T01:02:03.000000004Z"}
 		return before, true, nil

@@ -1,7 +1,7 @@
 package gates
 
 import (
-	gatescontract "agent-harness/internal/contract/gates"
+	gatescontract "issueops/internal/contract/gates"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +45,7 @@ func TestInitDefaultsToScopeNamespacedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.File != filepath.Join(".agent-harness", "gates", "issue-42-merge-proof-gates.md") {
+	if result.File != filepath.Join(".issueops", "gates", "issue-42-merge-proof-gates.md") {
 		t.Fatalf("default file = %q, want namespaced gate path", result.File)
 	}
 	if _, err := os.Stat(result.File); err != nil {

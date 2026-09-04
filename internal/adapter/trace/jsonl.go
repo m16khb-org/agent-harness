@@ -1,14 +1,14 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"bufio"
 	"encoding/json"
 	"fmt"
+	tracecontract "issueops/internal/contract/trace"
 	"strings"
 
-	"agent-harness/internal/domain/policy"
-	"agent-harness/internal/domain/traceclassification"
+	"issueops/internal/domain/policy"
+	"issueops/internal/domain/traceclassification"
 )
 
 func analyzeTraceJSONL(text string) ([]tracecontract.TraceAnalysisFinding, []string) {

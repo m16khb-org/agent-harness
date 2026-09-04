@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func skipOnWindows(t *testing.T) {

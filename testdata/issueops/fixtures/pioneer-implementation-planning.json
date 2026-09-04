@@ -1,0 +1,16 @@
+{
+  "id": "pioneer-implementation-planning",
+  "title": "Ambiguous multi-step feature needs a decision-complete plan",
+  "user_prompt": "여러 모듈에 걸친 기능을 구현할 계획을 먼저 결정 완결적으로 세워줘",
+  "repo_context": "A multi-module change needs repo grounding, explicit assumptions and defaults, unresolved-question handling, and implementation-ready acceptance criteria before execution.",
+  "pioneer_skill_target": "implementation-planning",
+  "expected_routing": [{"phase": "plan", "skill": "implementation-planning"}],
+  "expected_issue": ["records assumptions and defaults", "defines acceptance criteria", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["grounds in repo evidence", "resolves implementation decisions", "includes verification"],
+  "expected_tasks": ["bounded ownership"],
+  "expected_tdd": ["names failing tests before implementation"],
+  "expected_subagents": ["verifies pwd branch and HEAD before work"],
+  "expected_pr": ["links decision-complete plan", "links issue", "is written in Korean", "references issue/pr guideline"],
+  "expected_pioneer_artifact": ["Repo grounding", "Decision-complete plan", "Assumptions/defaults", "Unresolved questions", "Acceptance criteria"],
+  "critical_failures": ["skips pioneer method", "skips expected routing", "works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

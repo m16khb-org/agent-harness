@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/domain/pioneerskill"
+	"issueops/internal/domain/pioneerskill"
 )
 
 func TestPioneerFixturesLoadWithTargets(t *testing.T) {

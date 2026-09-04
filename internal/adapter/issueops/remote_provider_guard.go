@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // 아래 세 함수는 provider 호출 전에 사용 가능 여부를 확인하는 얇은 가드다.

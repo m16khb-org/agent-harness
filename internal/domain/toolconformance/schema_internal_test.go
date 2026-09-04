@@ -1,8 +1,8 @@
 package toolconformance
 
 import (
-	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"encoding/json"
+	toolconformancecontract "issueops/internal/contract/toolconformance"
 	"reflect"
 	"strings"
 	"testing"

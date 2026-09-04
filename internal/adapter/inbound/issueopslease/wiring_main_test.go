@@ -1,7 +1,7 @@
 package issueopslease
 
 import (
-	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscore "issueops/internal/adapter/issueops"
 	"os"
 	"testing"
 )

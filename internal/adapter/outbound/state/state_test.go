@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestStateReadUsesGenericInvalidStateAndPreservesAbsent(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	for name, raw := range map[string]string{
 		"malformed":      `{`,
 		"missing-schema": `{"key":"missing-schema","content":"x","bytes":1}`,
@@ -60,7 +60,7 @@ func TestWithKeyLockPropagatesActiveRoot(t *testing.T) {
 
 func TestWriteStateRecordRejectsKeyMismatch(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	// A caller-built record whose Key diverges from the write key would persist a
 	// record StateRead later rejects; WriteStateRecord must reject it up front.
 	if _, err := WriteStateRecord(dir, "foo", statecontract.RecordEnvelope{Key: "bar", SchemaVersion: statecontract.SchemaVersion, Content: "x", Bytes: 1}); err == nil || !strings.Contains(err.Error(), "does not match") {
@@ -77,7 +77,7 @@ func TestWriteStateRecordRejectsKeyMismatch(t *testing.T) {
 
 func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 
 	// rec builds a valid persistable record; StateUpdate delegates record
 	// construction (incl. Bytes, which StateRead validates) to the transform.
@@ -151,7 +151,7 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 
 func TestStateRoundtrip(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 
 	content := "seed=42\nLore: state roundtrip\n"
 	written, err := StateWrite("checkpoint-1", content)
@@ -200,7 +200,7 @@ func TestStateRoundtrip(t *testing.T) {
 func TestStateReadMissingStoreDoesNotCreateFiles(t *testing.T) {
 	parent := t.TempDir()
 	dir := filepath.Join(parent, "missing")
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 
 	if _, err := StateRead("checkpoint"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("StateRead missing store error=%v", err)
@@ -216,7 +216,7 @@ func TestStateReadMissingStoreDoesNotCreateFiles(t *testing.T) {
 
 func TestStateWriteWaitsForKeyLock(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 
 	locked := make(chan struct{})
 	release := make(chan struct{})
@@ -262,7 +262,7 @@ func TestStateWriteWaitsForKeyLock(t *testing.T) {
 }
 
 func TestStateRejectsPathTraversalKeys(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	for _, key := range []string{"", "../x", "x/y", "x\\y", "x..y"} {
 		if _, err := StateWrite(key, "content"); err == nil {
 			t.Fatalf("StateWrite(%q) succeeded; want error", key)
@@ -272,7 +272,7 @@ func TestStateRejectsPathTraversalKeys(t *testing.T) {
 
 func TestStatePruneDryRunAndConfirm(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	if _, err := StateWrite("old", "old content"); err != nil {
 		t.Fatalf("StateWrite old: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestStatePruneDryRunAndConfirm(t *testing.T) {
 
 func TestStatePrunePrefixAppliesAgeAndCountOnlyToMatchingKeys(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 
 	write := func(key, updatedAt string) {
 		t.Helper()
@@ -363,7 +363,7 @@ func TestStatePrunePrefixAppliesAgeAndCountOnlyToMatchingKeys(t *testing.T) {
 }
 
 func TestStatePruneRejectsInvalidMaxAge(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if _, err := StatePrune(0, false); err == nil {
 		t.Fatalf("StatePrune accepted zero max age")
 	}

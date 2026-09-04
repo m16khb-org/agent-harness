@@ -1,7 +1,7 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 	"sort"
 	"strings"
 	"testing"
@@ -46,8 +46,8 @@ func adequacyFixtureForTest() issueopscontract.IssueOpsBenchmarkFixture {
 		ID:                 "adequacy-full",
 		Title:              "Adequacy full fixture",
 		UserPrompt:         "exercise every scoring dimension",
-		PioneerSkillTarget: "codd",
-		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}},
+		PioneerSkillTarget: "database-design",
+		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "database-design"}},
 		// 이 suite는 deterministic 차원 channel만 검증하므로 의도적으로
 		// CriticalFailures를 두지 않는다.
 	}
@@ -56,7 +56,7 @@ func adequacyFixtureForTest() issueopscontract.IssueOpsBenchmarkFixture {
 func adequacyArtifactForTest() issueopscontract.IssueOpsBenchmarkArtifact {
 	a := completeBenchmarkArtifactForTest()
 	a.PioneerSkillEvidence = coddKeywordEvidence
-	a.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}
+	a.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "database-design"}}
 	return a
 }
 
@@ -190,7 +190,7 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			// PRDraft에서 issue-link 절만 제거한다. GuidelineRef는 보존하므로
 			// issue_quality가 공유하는 guideline 절에는 영향이 없다.
 			mutate: func(a issueopscontract.IssueOpsBenchmarkArtifact) issueopscontract.IssueOpsBenchmarkArtifact {
-				a.PRDraft = strings.ReplaceAll(a.PRDraft, "Issue: https://example.com/acme/agent-harness/issues/1\n", "")
+				a.PRDraft = strings.ReplaceAll(a.PRDraft, "Issue: https://example.com/acme/issueops/issues/1\n", "")
 				return a
 			},
 		},

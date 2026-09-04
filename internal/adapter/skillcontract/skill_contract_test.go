@@ -1,8 +1,8 @@
 package skillcontract
 
 import (
-	issueopscore "agent-harness/internal/adapter/issueops"
 	"fmt"
+	issueopscore "issueops/internal/adapter/issueops"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,56 +39,56 @@ func readRepoFileForTest(t *testing.T, relPath string) string {
 }
 
 func TestP1PioneerCorrectnessContracts(t *testing.T) {
-	assertSkillContains(t, "berners-lee", []string{
+	assertSkillContains(t, "web-research", []string{
 		"high-volume-exploration",
 		"devils-advocate-review",
 		"parallel-independent-research",
 		"cross-verification-consensus",
 	})
-	assertSkillContains(t, "boehm", []string{
+	assertSkillContains(t, "requirements-analysis", []string{
 		"verified high-coverage analysis",
 		"full-page-ocr",
 		"region-ocr",
 		"claimed-but-unverified",
 		"validate_analysis_report.py",
 	})
-	assertSkillContains(t, "brooks", []string{
+	assertSkillContains(t, "design-review", []string{
 		"## IssueOps Integration",
-		"agent-harness issueops devils-advocate review",
+		"issueops devils-advocate review",
 		"--reviewer-context subagent|inline",
 		"reviewed_plan_digest",
 		"delta review",
 	})
-	assertSkillContains(t, "karpathy", []string{
-		"Shannon measures generated code artifacts, not prompt quality.",
+	assertSkillContains(t, "prompt-engineering", []string{
+		"Code Quality Metrics measures generated code artifacts, not prompt quality.",
 	})
-	assertSkillContains(t, "turing", []string{
+	assertSkillContains(t, "verified-execution", []string{
 		"skills/issueops/references/execution.md",
 		"current host's available browser tool",
 		"AppleScript on macOS",
 		"`xdotool` on Linux only",
 	})
-	turing := readSkillForTest(t, "turing")
-	if strings.Contains(turing, "Chrome / agent-browser") {
-		t.Fatal("turing SKILL.md must not name the nonexistent agent-browser tool")
+	verifiedExecution := readSkillForTest(t, "verified-execution")
+	if strings.Contains(verifiedExecution, "Chrome / agent-browser") {
+		t.Fatal("verified-execution SKILL.md must not name the nonexistent agent-browser tool")
 	}
-	rebase := readRepoFileForTest(t, filepath.Join("skills", "torvalds", "references", "rebase-protocol.md"))
+	rebase := readRepoFileForTest(t, filepath.Join("skills", "git-operations", "references", "rebase-protocol.md"))
 	for _, want := range []string{"Backup refs persist until explicitly deleted.", "git branch -D <backup-ref>"} {
 		if !strings.Contains(rebase, want) {
 			t.Fatalf("rebase protocol missing P1 retention phrase %q", want)
 		}
 	}
-	vonNeumann := readSkillForTest(t, "von-neumann")
+	vonNeumann := readSkillForTest(t, "implementation-planning")
 	if strings.Contains(vonNeumann, "task(subagent_type=") {
-		t.Fatal("von-neumann SKILL.md must not prescribe a host-specific task pseudo-API")
+		t.Fatal("implementation-planning SKILL.md must not prescribe a host-specific task pseudo-API")
 	}
 	if !strings.Contains(vonNeumann, "current host's delegation tool") {
-		t.Fatal("von-neumann SKILL.md must use host-neutral delegation wording")
+		t.Fatal("implementation-planning SKILL.md must use host-neutral delegation wording")
 	}
-	assertSkillContains(t, "hopper", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
-	dijkstra := readSkillForTest(t, "dijkstra")
-	if !strings.Contains(dijkstra, "```text\n   Equivalent in any language") {
-		t.Fatal("dijkstra SKILL.md must keep scaling-test interpretation inside its fenced block")
+	assertSkillContains(t, "debugging", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
+	algorithmOptimization := readSkillForTest(t, "algorithm-optimization")
+	if !strings.Contains(algorithmOptimization, "```text\n   Equivalent in any language") {
+		t.Fatal("algorithm-optimization SKILL.md must keep scaling-test interpretation inside its fenced block")
 	}
 
 	fixtures, err := issueopscore.LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"))
@@ -101,7 +101,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 			pioneerCount++
 		}
 	}
-	dashboard := readRepoFileForTest(t, filepath.Join(".agent-harness", "operations", "quality-dashboard.md"))
+	dashboard := readRepoFileForTest(t, filepath.Join(".issueops", "operations", "quality-dashboard.md"))
 	for _, want := range []string{
 		"historical 2026-06-16 isolated-rubric cohort: 9 skills",
 		fmt.Sprintf("current IssueOps benchmark fixture loader: %d pioneer-targeted fixtures", pioneerCount),
@@ -117,7 +117,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 // 사라진다.
 func TestIssueOpsRouterPinsStageContract(t *testing.T) {
 	assertSkillContains(t, "issueops", []string{
-		"agent-harness issueops next --json",
+		"issueops next --json",
 		"issueops-create-issue", "issueops-prepare", "issueops-plan",
 		"issueops-implement", "issueops-create-pr", "issueops-complete",
 		"issueops-cleanup", "issueops-abandon",
@@ -138,7 +138,7 @@ func TestIssueOpsRouterPinsStageContract(t *testing.T) {
 }
 
 func TestKarpathySkillPinsPrivacyAndProportionalityContract(t *testing.T) {
-	assertSkillContains(t, "karpathy", []string{
+	assertSkillContains(t, "prompt-engineering", []string{
 		// CoT privacy guardrail (the holdout-fixed boundary).
 		"hidden/private chain-of-thought",
 		// Tool-truth guardrail.
@@ -155,15 +155,15 @@ func TestStabilityAuditSkillPinsSafetyModelContract(t *testing.T) {
 		"Never kill active `codex`, `claude`, `tmux`, or unrelated MCP processes",
 		"evidence-first audit",
 		// Operational-measurement fixes (STA-O findings).
-		"`./bin/agent-harness install --dry-run --json`",
-		"`./bin/agent-harness install --json` only for full install tasks",
+		"`./bin/issueops install --dry-run --json`",
+		"`./bin/issueops install --json` only for full install tasks",
 		"intended dogfood setup",
 		"exact current-v1 state write/read/doctor",
 	})
 	body := readSkillForTest(t, "stability-audit")
 	for _, retired := range []string{
 		strings.Join([]string{"state", "migrate"}, " "),
-		strings.Join([]string{"agent-harness", "install-native"}, " "),
+		strings.Join([]string{"issueops", "install-native"}, " "),
 	} {
 		if strings.Contains(body, retired) {
 			t.Fatalf("stability-audit skill still instructs agents to run retired command %q", retired)
@@ -172,9 +172,9 @@ func TestStabilityAuditSkillPinsSafetyModelContract(t *testing.T) {
 }
 
 func TestBernersLeeSkillPrefersHarnessWebFetchContract(t *testing.T) {
-	assertSkillContains(t, "berners-lee", []string{
+	assertSkillContains(t, "web-research", []string{
 		"`web_fetch_resilient`",
-		"`agent-harness web-fetch fetch`",
+		"`issueops web-fetch fetch`",
 		"Report `auth_required`, `paywalled`, `challenge`, or `blocked`",
 		"Do not add host-specific fictional tools",
 	})
@@ -200,7 +200,7 @@ func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
 
 func TestGitLabSnapshotSkillsPinPortableVCSContract(t *testing.T) {
 	assertSkillContains(t, "gitlab-usecase", []string{
-		".agent-harness/VCS.md",
+		".issueops/VCS.md",
 		"glab_api",
 		"flags.hostname",
 		"server namespace",
@@ -214,7 +214,7 @@ func TestGitLabSnapshotSkillsPinPortableVCSContract(t *testing.T) {
 	})
 	execution := readRepoFileForTest(t, filepath.Join("skills", "issueops", "references", "execution.md"))
 	for _, want := range []string{
-		".agent-harness/VCS.md",
+		".issueops/VCS.md",
 		"glab_api",
 		"flags.hostname",
 		"issue_snapshot",
@@ -235,8 +235,8 @@ func TestGitLabSnapshotSkillsPinPortableVCSContract(t *testing.T) {
 	for _, relPath := range []string{
 		filepath.Join("skills", "gitlab-usecase", "SKILL.md"),
 		filepath.Join("skills", "issueops", "references", "execution.md"),
-		filepath.Join(".agent-harness", "OPERATIONS.md"),
-		filepath.Join(".agent-harness", "AGENT_WORKFLOW.md"),
+		filepath.Join(".issueops", "OPERATIONS.md"),
+		filepath.Join(".issueops", "AGENT_WORKFLOW.md"),
 	} {
 		body := readRepoFileForTest(t, relPath)
 		privateHome := "/Users/" + "ha" + "bin"
@@ -268,7 +268,7 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 		}
 	}
 	for _, hostSpecificRecipe := range []string{
-		"./cmd/harness/hookcli/hookinput",
+		"./cmd/issueops/hookcli/hookinput",
 	} {
 		if strings.Contains(body, hostSpecificRecipe) {
 			t.Fatalf("self-verify SKILL.md must keep host-specific handoff recipe in IssueOps/Turing: %q", hostSpecificRecipe)
@@ -281,17 +281,17 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 }
 
 func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
-	testingIndex := readRepoFileForTest(t, filepath.Join(".agent-harness", "TESTING.md"))
+	testingIndex := readRepoFileForTest(t, filepath.Join(".issueops", "TESTING.md"))
 	if !strings.Contains(testingIndex, "testing/issueops-execution.md") {
-		t.Fatal(".agent-harness/TESTING.md must route handoff probes to testing/issueops-execution.md")
+		t.Fatal(".issueops/TESTING.md must route handoff probes to testing/issueops-execution.md")
 	}
 	for _, relPath := range []string{
-		filepath.Join(".agent-harness", "testing", "issueops-execution.md"),
-		filepath.Join(".agent-harness", "operations", "verification.md"),
+		filepath.Join(".issueops", "testing", "issueops-execution.md"),
+		filepath.Join(".issueops", "operations", "verification.md"),
 	} {
 		body := readRepoFileForTest(t, relPath)
 		for _, want := range []string{
-			"./cmd/harness/hookcli/hookinput",
+			"./cmd/issueops/hookcli/hookinput",
 			"Codex",
 			"Claude",
 		} {
@@ -309,11 +309,11 @@ func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
 }
 
 func TestTuringSkillPinsThreeHostExecutionContract(t *testing.T) {
-	body := readSkillForTest(t, "turing")
+	body := readSkillForTest(t, "verified-execution")
 	if !strings.Contains(body, "First-party hosts are exactly Codex, Claude Code, and Omo native.") {
-		t.Fatal("turing SKILL.md must state the exact first-party host set")
+		t.Fatal("verified-execution SKILL.md must state the exact first-party host set")
 	}
-	assertRetiredHostsAbsent(t, "turing SKILL.md", body)
+	assertRetiredHostsAbsent(t, "verified-execution SKILL.md", body)
 }
 
 func assertRetiredHostsAbsent(t *testing.T, name, body string) {

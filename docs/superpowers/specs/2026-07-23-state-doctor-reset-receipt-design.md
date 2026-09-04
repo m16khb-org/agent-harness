@@ -2,7 +2,7 @@
 
 ## Problem
 
-`agent-harness update` writes the IssueOps v1 activation receipt to the
+`issueops update` writes the IssueOps v1 activation receipt to the
 top-level state directory `issueops_reset_v1`. The state doctor currently
 recognizes other harness-owned top-level stores but not this one, so a clean
 installation immediately reports `unexpected_directory` and makes the

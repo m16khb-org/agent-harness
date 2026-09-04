@@ -1,11 +1,11 @@
-// Package sqlstore는 harness state root를 위한 공용 SQLite 기반 record store다.
-// state root 디렉터리 하나는 SQLite 파일 두 개를 소유한다. harness.db는 모든
-// record를 (bucket, id, data-JSON) row로 보관하고, harness.lock.db는 프로세스
+// Package sqlstore는 issueops state root를 위한 공용 SQLite 기반 record store다.
+// state root 디렉터리 하나는 SQLite 파일 두 개를 소유한다. issueops.db는 모든
+// record를 (bucket, id, data-JSON) row로 보관하고, issueops.lock.db는 프로세스
 // 간 span lock을 실어 나르기 위해서만 존재한다. read-modify-write span은
 // 프로세스 안에서는 디렉터리별 token gate로, 프로세스 간에는 span이 지속되는
 // 동안 lock 데이터베이스에 BEGIN IMMEDIATE 트랜잭션을 유지하는 방식으로
 // 직렬화한다 — write lock은 프로세스와 함께 죽으므로, holder가 crash해도 이후
-// 경쟁자가 deadlock에 빠질 수 없다. 데이터 write는 harness.db에서 autocommit
+// 경쟁자가 deadlock에 빠질 수 없다. 데이터 write는 issueops.db에서 autocommit
 // 되므로 span 자신의 write가 그 span과 동시 reader에게 계속 보이며, 이는 이전
 // flock 기반 파일 레이아웃이 가졌던 가시성과 동일하다. Apply는 여러 data row를
 // 한 트랜잭션으로 commit해야 하는 호출자를 위한 좁은 예외다.
@@ -23,16 +23,16 @@ import (
 	"sync"
 	"time"
 
-	"agent-harness/internal/port"
-	stateport "agent-harness/internal/port/state"
+	"issueops/internal/port"
+	stateport "issueops/internal/port/state"
 
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
 const (
-	dataDBFile      = "harness.db"
-	spanDBFile      = "harness.lock.db"
+	dataDBFile      = "issueops.db"
+	spanDBFile      = "issueops.lock.db"
 	spanLockMaxWait = 60 * time.Second
 	// 짧은 cross-process span이 풀린 직후 10ms 고정 tick까지 기다리지 않도록
 	// 1ms에서 시작하되, 장기 경합의 SQLite syscall 밀도는 기존 10ms로 제한한다.
@@ -666,7 +666,7 @@ func (d *DB) Mutate(mutations []stateport.Mutation) error {
 	return d.Apply(context.Background(), converted)
 }
 
-// Apply는 모든 mutation을 harness.db 트랜잭션 하나로 commit한다.
+// Apply는 모든 mutation을 issueops.db 트랜잭션 하나로 commit한다.
 func (d *DB) Apply(ctx context.Context, mutations []port.RecordMutation) error {
 	if len(mutations) == 0 {
 		return nil

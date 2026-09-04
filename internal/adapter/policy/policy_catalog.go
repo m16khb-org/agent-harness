@@ -57,7 +57,7 @@ func builtinPolicyCatalogSnapshot() policyCatalog {
 }
 
 // PolicyOverrides describes additional allow/deny entries loaded from
-// .agent-harness/policy.json. Every field is additive; overrides cannot
+// .issueops/policy.json. Every field is additive; overrides cannot
 // remove entries from the built-in catalog.
 type PolicyOverrides struct {
 	AdditionalShellInterpreters   []string            `json:"additional_shell_interpreters,omitempty"`
@@ -83,7 +83,7 @@ func policyCatalogForWorkspace(repoRoot string) policyCatalog {
 }
 
 func readPolicyOverrides(repoRoot string) (*PolicyOverrides, error) {
-	path := filepath.Join(repoRoot, ".agent-harness", "policy.json")
+	path := filepath.Join(repoRoot, ".issueops", "policy.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {

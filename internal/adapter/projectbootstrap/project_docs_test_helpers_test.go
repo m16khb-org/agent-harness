@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	projectdocs "agent-harness/internal/contract/projectdocs"
-	projectdoc "agent-harness/internal/domain/projectdoc"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	projectdocs "issueops/internal/contract/projectdocs"
+	projectdoc "issueops/internal/domain/projectdoc"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 )
 
 func mustWrite(t *testing.T, path, content string) {

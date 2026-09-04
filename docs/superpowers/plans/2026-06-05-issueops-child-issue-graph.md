@@ -6,7 +6,7 @@
 
 **Architecture:** Keep graph state in `internal/core/issueops.go` so Codex, Claude, CLI, and MCP see the same contract. CLI and MCP only parse transport arguments and call the core DTO.
 
-**Tech Stack:** Go standard library, existing `agent-harness issueops` CLI, existing MCP tool registry in `cmd/harness/main.go`.
+**Tech Stack:** Go standard library, existing `issueops` CLI, existing MCP tool registry in `cmd/issueops/main.go`.
 
 ---
 
@@ -39,9 +39,9 @@ Expected: PASS.
 ### Task 2: CLI Contract
 
 **Files:**
-- Modify: `cmd/harness/issueops.go`
+- Modify: `cmd/issueops/issueops.go`
 - Modify: `internal/adapter/cli/usage.go`
-- Test: `cmd/harness/issueops_test.go`
+- Test: `cmd/issueops/issueops_test.go`
 
 - [ ] **Step 1: Write the failing CLI test**
 
@@ -49,7 +49,7 @@ Extend `TestRunIssueOpsLifecycle` to call `issueops link-child --id <id> --child
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `go test ./cmd/harness -run TestRunIssueOpsLifecycle -count=1`
+Run: `go test ./cmd/issueops -run TestRunIssueOpsLifecycle -count=1`
 
 Expected: FAIL because the CLI subcommand is unknown.
 
@@ -59,16 +59,16 @@ Add a `link-child` case with flags `--id`, `--child-url`, `--title`, and `--json
 
 - [ ] **Step 4: Run targeted CLI test**
 
-Run: `go test ./cmd/harness -run TestRunIssueOpsLifecycle -count=1`
+Run: `go test ./cmd/issueops -run TestRunIssueOpsLifecycle -count=1`
 
 Expected: PASS.
 
 ### Task 3: MCP Contract
 
 **Files:**
-- Modify: `cmd/harness/main.go`
-- Test: `cmd/harness/issueops_mcp_test.go`
-- Update golden if needed: `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/main.go`
+- Test: `cmd/issueops/issueops_mcp_test.go`
+- Update golden if needed: `cmd/issueops/testdata/mcp_tools.golden.json`, `cmd/issueops/testdata/usage.golden.txt`
 
 - [ ] **Step 1: Write the failing MCP test**
 
@@ -76,7 +76,7 @@ Add an MCP test that starts an IssueOps record, calls `issueops_link_child`, and
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `go test ./cmd/harness -run TestMCPIssueOpsLinkChild -count=1`
+Run: `go test ./cmd/issueops -run TestMCPIssueOpsLinkChild -count=1`
 
 Expected: FAIL because the MCP tool is not registered.
 
@@ -86,7 +86,7 @@ Add `issueops_link_child` to the tool list and route it in `handleToolCall` to `
 
 - [ ] **Step 4: Run golden and package tests**
 
-Run: `go test ./cmd/harness -run 'Test(MCPIssueOpsLinkChild|Golden)' -count=1`
+Run: `go test ./cmd/issueops -run 'Test(MCPIssueOpsLinkChild|Golden)' -count=1`
 
 Expected: PASS, updating goldens only if the new tool surface changes expected snapshots.
 
@@ -99,7 +99,7 @@ Expected: PASS, updating goldens only if the new tool surface changes expected s
 
 - [ ] **Step 1: Document the local state command**
 
-Add `agent-harness issueops link-child` to the IssueOps operational examples and clarify that it records provider-native remote child links after creation.
+Add `issueops link-child` to the IssueOps operational examples and clarify that it records provider-native remote child links after creation.
 
 - [ ] **Step 2: Update IDD gap status**
 
@@ -111,10 +111,10 @@ Run:
 
 ```bash
 go test ./internal/core -count=1
-go test ./cmd/harness -count=1
+go test ./cmd/issueops -count=1
 go test ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness issueops start --repo "$PWD" --branch issueops-child-smoke --json
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops start --repo "$PWD" --branch issueops-child-smoke --json
 ```
 
 Expected: all commands exit 0.

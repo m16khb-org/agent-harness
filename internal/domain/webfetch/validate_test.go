@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
 )
 
 // ValidateResponse는 웹 응답을 grid 카테고리로 분류한다. 상태코드/본문

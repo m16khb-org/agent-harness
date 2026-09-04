@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	statecontract "agent-harness/internal/contract/state"
+	issueopscontract "issueops/internal/contract/issueops"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestDecodeRejectsRecordInvariantViolations(t *testing.T) {

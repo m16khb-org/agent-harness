@@ -211,15 +211,15 @@ kubectl-live-approval-<session-hash>.json          # 기존 port-forward one-sho
 ### 검증 명령
 
 ```bash
-go test ./internal/core/commandguard ./internal/core/lifecycle/... ./cmd/harness/hookcli ./internal/adapter/hook -count=1
+go test ./internal/core/commandguard ./internal/core/lifecycle/... ./cmd/issueops/hookcli ./internal/adapter/hook -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 ## 문서 반영
 
-구현과 함께 `.agent-harness/CAUTIONS.md`와 `.agent-harness/OPERATIONS.md`의 one-shot exec 설명을 session-scoped exact allowlist와 30분 sliding TTL 계약으로 갱신한다. Port-forward one-shot과 Claude native ask 보존을 명시한다.
+구현과 함께 `.issueops/CAUTIONS.md`와 `.issueops/OPERATIONS.md`의 one-shot exec 설명을 session-scoped exact allowlist와 30분 sliding TTL 계약으로 갱신한다. Port-forward one-shot과 Claude native ask 보존을 명시한다.
 
 ## 범위 밖
 

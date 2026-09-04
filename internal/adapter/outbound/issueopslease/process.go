@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 const processProbeTimeout = 3 * time.Second

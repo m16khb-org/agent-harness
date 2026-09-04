@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestReadIssueSnapshotUsesBoundedExactGitHubURL(t *testing.T) {

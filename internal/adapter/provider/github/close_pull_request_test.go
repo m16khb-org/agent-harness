@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestGitHubClosePullRequestPreview(t *testing.T) {

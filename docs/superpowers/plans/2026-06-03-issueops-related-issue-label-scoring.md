@@ -8,7 +8,7 @@ Make `$issueops` proactively score related issues and labels when creating or up
 
 - Add a shared external LLM print wrapper for all `Z.AI Coding Plan` usage.
 - Route existing `zai` call sites through the wrapper with `--dangerously-skip-permissions`.
-- Add `agent-harness issueops remote score` with deterministic scoring and active `zai` judge support.
+- Add `issueops remote score` with deterministic scoring and active `zai` judge support.
 - Update the IssueOps skill so agents propose related issue/label scoring and issue-body SOT updates without waiting for the user to suggest them.
 - Cover GitHub and GitLab apply instructions.
 
@@ -22,7 +22,7 @@ Make `$issueops` proactively score related issues and labels when creating or up
 2. CLI surface and contracts
    - Add `issueops remote score`.
    - Update usage and response contract goldens.
-   - Verify with `go test ./cmd/harness -run 'IssueOps|Golden' -count=1`.
+   - Verify with `go test ./cmd/issueops -run 'IssueOps|Golden' -count=1`.
 
 3. Skill behavior
    - Document threshold-based related issue and label scoring.
@@ -36,7 +36,7 @@ Make `$issueops` proactively score related issues and labels when creating or up
 ## Verification
 
 - `go test ./internal/core -count=1`
-- `go test ./cmd/harness -run 'IssueOps|Golden' -count=1`
+- `go test ./cmd/issueops -run 'IssueOps|Golden' -count=1`
 - `go test ./... -count=1`
-- `go build -o bin/agent-harness ./cmd/harness`
+- `go build -o bin/issueops ./cmd/issueops`
 - `python3 skills/issueops/scripts/remote_artifact_gate.py --kind issue --title "$TITLE" --body-file "$BODY_FILE"`

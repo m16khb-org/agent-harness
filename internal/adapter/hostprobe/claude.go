@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-const claudeProbeServer = "agent_harness_probe"
+const claudeProbeServer = "issueops_probe"
 
 type ClaudeRunner struct {
 	harnessBinary string
@@ -79,10 +79,10 @@ func (r ClaudeRunner) Run(ctx context.Context, request port.HostProbeRequest) po
 		return failedResult(r.Name(), "", request, started, r.deps, "harness_environment", "mcp_config_write_failed")
 	}
 
-	hookSmoke := r.deps.Getenv("HARNESS_CHILD_SMOKE_HOOKS") == "1"
+	hookSmoke := r.deps.Getenv("ISSUEOPS_CHILD_SMOKE_HOOKS") == "1"
 	envNames := []string{}
 	if hookSmoke {
-		envNames = append(envNames, "HARNESS_CHILD_SMOKE_HOOKS", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE")
+		envNames = append(envNames, "ISSUEOPS_CHILD_SMOKE_HOOKS", "ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE")
 	}
 	output, err := r.deps.Process.Run(ctx, CommandRequest{
 		Cwd:     root,

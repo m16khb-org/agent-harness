@@ -1,15 +1,15 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"encoding/json"
+	tracecontract "issueops/internal/contract/trace"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	corestate "agent-harness/internal/adapter/outbound/state"
-	"agent-harness/internal/contract/failurecause"
+	corestate "issueops/internal/adapter/outbound/state"
+	"issueops/internal/contract/failurecause"
 )
 
 func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
@@ -22,7 +22,7 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
     "failure_clusters": [
       {"step": "contract golden tests", "count": 2, "seeds": [100, 101]}
     ],
-    "rerun_commands": ["go test ./cmd/harness -run Golden -count=1"],
+    "rerun_commands": ["go test ./cmd/issueops -run Golden -count=1"],
     "failure_cause": "transport",
     "failure_cause_evidence": [
       {"cause": "transport", "code": "mcp-framing", "source": "conformance_probe"}
@@ -46,7 +46,7 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
 	if !strings.Contains(finding.RecurringPattern, "contract golden tests failed 2 time") {
 		t.Fatalf("unexpected recurring pattern: %+v", finding)
 	}
-	if finding.VerificationCommand != "go test ./cmd/harness -run Golden -count=1" {
+	if finding.VerificationCommand != "go test ./cmd/issueops -run Golden -count=1" {
 		t.Fatalf("unexpected verification command: %+v", finding)
 	}
 	if finding.FailureCause != failurecause.Transport {
@@ -63,7 +63,7 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
 
 func TestTraceAnalyzeDocUpkeepJSONLRedactsSecretEvidence(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "queue.jsonl")
-	body := `{"kind":"code_change","target_docs":["OPERATIONS.md"],"summary":"TOKEN=secret-value","evidence":["cmd/harness/main.go"],"source":"test"}
+	body := `{"kind":"code_change","target_docs":["OPERATIONS.md"],"summary":"TOKEN=secret-value","evidence":["cmd/issueops/main.go"],"source":"test"}
 {"event":"step_end","step":"go test","ok":false}
 `
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
@@ -237,7 +237,7 @@ func TestTraceAnalyzeRedactsFailureCauseEvidence(t *testing.T) {
 	}
 }
 func TestTraceAnalyzeReadsStateKey(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if _, err := corestate.StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {
 		t.Fatal(err)
 	}

@@ -3,8 +3,8 @@ package issueopsretention
 import (
 	"context"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	issueopsretentioncontract "agent-harness/internal/contract/issueopsretention"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	issueopsretentioncontract "issueops/internal/contract/issueopsretention"
 )
 
 const artifactStageBucket = "artifact_stage_v1"

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // recordAtPhaseForRegressTest persists a started cycle at the given phase with a
@@ -14,7 +14,7 @@ func recordAtPhaseForRegressTest(t *testing.T, phase issueops.IssueOpsPhase) (st
 	t.Helper()
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-brooks"})
+	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-design-review"})
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestRegressIssueOpsForReplanFromPlan(t *testing.T) {
 		t.Fatalf("regress: %v", err)
 	}
 	if out.Phase != IssueOpsPhaseGrill {
-		t.Fatalf("brooks stop must regress to grill, got %s", out.Phase)
+		t.Fatalf("design-review stop must regress to grill, got %s", out.Phase)
 	}
 	if out.DesignReview == nil || out.DesignReview.Approved {
 		t.Fatalf("regression must clear design approval to force re-plan: %#v", out.DesignReview)
@@ -51,7 +51,7 @@ func TestRegressIssueOpsForReplanFromPlan(t *testing.T) {
 	if out.DevilsAdvocateReview != nil {
 		t.Fatalf("regression must clear the devil's-advocate review so the gate re-fires: %#v", out.DevilsAdvocateReview)
 	}
-	// audit: a scope decision captures the brooks stop reason
+	// audit: a scope decision captures the design-review stop reason
 	found := false
 	for _, d := range out.Decisions {
 		if d.Kind == "scope" && strings.Contains(d.Body, "second-system effect") {

@@ -1,6 +1,6 @@
 package toolconformance
 
-import toolconformancecontract "agent-harness/internal/contract/toolconformance"
+import toolconformancecontract "issueops/internal/contract/toolconformance"
 
 // 계약 타입은 contract 계층이 소유한다. 어댑터는 같은 이름으로 재노출만 한다.
 type (

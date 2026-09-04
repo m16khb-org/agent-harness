@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
-	issueopsartifactdomain "agent-harness/internal/domain/issueopsartifact"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
+	issueopsartifactdomain "issueops/internal/domain/issueopsartifact"
 )
 
 type Service struct {

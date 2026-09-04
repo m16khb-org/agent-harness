@@ -2,24 +2,24 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `agent-harness verify-work --json` produce structured completion evidence that a host adapter can inspect, then mark the existing `completion-evidence-audit` self-verification candidate as satisfied only after tests prove the behavior.
+**Goal:** Make `issueops verify-work --json` produce structured completion evidence that a host adapter can inspect, then mark the existing `completion-evidence-audit` self-verification candidate as satisfied only after tests prove the behavior.
 
-**Architecture:** Keep the logic in the Go CLI/core surface already used by both Codex and Claude Code. Do not create host-specific hook behavior. Extend the existing `VerifyWorkResult` DTO in `cmd/harness/status_verify.go`; keep legacy `evidence` strings for compatibility; add machine-readable `evidence_matrix` and `suggested_commands` fields. Update the candidate catalog and export validation in the CLI after the matrix is covered by tests.
+**Architecture:** Keep the logic in the Go CLI/core surface already used by both Codex and Claude Code. Do not create host-specific hook behavior. Extend the existing `VerifyWorkResult` DTO in `cmd/issueops/status_verify.go`; keep legacy `evidence` strings for compatibility; add machine-readable `evidence_matrix` and `suggested_commands` fields. Update the candidate catalog and export validation in the CLI after the matrix is covered by tests.
 
-**Tech Stack:** Go standard library tests, existing `go test` golden flow, existing `agent-harness` CLI.
+**Tech Stack:** Go standard library tests, existing `go test` golden flow, existing `issueops` CLI.
 
 ---
 
 ## File Structure
 
 ```
-cmd/harness/status_verify.go                         # Extend verify-work JSON DTO and builder
-cmd/harness/status_verify_test.go                    # New TDD coverage for evidence matrix and suggestions
-cmd/harness/self_verify_candidates.go                # Mark completion-evidence-audit satisfied
-cmd/harness/self_augment_summary_test.go             # Update candidate export expectations
-cmd/harness/main.go                                  # Update candidate export self-verify validation
-cmd/harness/response_contract_golden_test.go           # Add verify_work JSON response snapshot
-cmd/harness/testdata/response_contracts.golden.json  # Regenerated response contract fixture
+cmd/issueops/status_verify.go                         # Extend verify-work JSON DTO and builder
+cmd/issueops/status_verify_test.go                    # New TDD coverage for evidence matrix and suggestions
+cmd/issueops/self_verify_candidates.go                # Mark completion-evidence-audit satisfied
+cmd/issueops/self_augment_summary_test.go             # Update candidate export expectations
+cmd/issueops/main.go                                  # Update candidate export self-verify validation
+cmd/issueops/response_contract_golden_test.go           # Add verify_work JSON response snapshot
+cmd/issueops/testdata/response_contracts.golden.json  # Regenerated response contract fixture
 skills/self-verify/CANDIDATES.md                     # Document satisfied candidate state
 ```
 
@@ -31,24 +31,24 @@ skills/self-verify/CANDIDATES.md                     # Document satisfied candid
 - The `completion-evidence-audit` self-verification candidate is listed as satisfied, not open.
 - Golden response contracts are updated from the tested CLI behavior.
 - Verification commands pass:
-  - `go test ./cmd/harness -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1`
-  - `go test ./cmd/harness -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1`
-  - `go test ./cmd/harness -run TestResponseContractsGolden -count=1`
+  - `go test ./cmd/issueops -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1`
+  - `go test ./cmd/issueops -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1`
+  - `go test ./cmd/issueops -run TestResponseContractsGolden -count=1`
   - `go test ./... -count=1`
-  - `go build -o bin/agent-harness ./cmd/harness`
-  - `./bin/agent-harness verify-work --json -- git status --short`
+  - `go build -o bin/issueops ./cmd/issueops`
+  - `./bin/issueops verify-work --json -- git status --short`
 
 ---
 
 ## Task 1: Add structured `verify-work` completion evidence
 
 **Files:**
-- `cmd/harness/status_verify.go`
-- `cmd/harness/status_verify_test.go`
+- `cmd/issueops/status_verify.go`
+- `cmd/issueops/status_verify_test.go`
 
 ### TDD Steps
 
-- [x] Add this failing test in a new `cmd/harness/status_verify_test.go`:
+- [x] Add this failing test in a new `cmd/issueops/status_verify_test.go`:
 
 ```go
 package main
@@ -139,10 +139,10 @@ func equalStringSlices(a []string, b []string) bool {
 - [x] Run the focused test and confirm RED before production edits:
 
 ```bash
-go test ./cmd/harness -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
+go test ./cmd/issueops -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
 ```
 
-- [x] Extend `VerifyWorkResult` and add two small DTOs in `cmd/harness/status_verify.go`:
+- [x] Extend `VerifyWorkResult` and add two small DTOs in `cmd/issueops/status_verify.go`:
 
 ```go
 type VerifyWorkEvidenceItem struct {
@@ -171,25 +171,25 @@ SuggestedCommands []VerifyWorkSuggestedCommand  `json:"suggested_commands,omitem
   - `git_preflight`: `passed` when `preflight.OK`, otherwise `failed`.
   - `guard_check`: `passed` when `guard.OK`, otherwise `failed`.
   - `read_only_command`: `passed` or `failed` when an argv is provided; `skipped` when no argv is provided.
-- [x] Populate `SuggestedCommands` through a small helper that calls `core.AnalyzeProjectSignals(root)` and converts `TestCommands`, `BuildCommands`, and `LintCommands` into deterministic command suggestions. Use `strings.Fields` for the existing simple command strings, include the signal confidence/evidence in the reason, and do not suggest agent-harness-specific build commands for arbitrary target repositories.
+- [x] Populate `SuggestedCommands` through a small helper that calls `core.AnalyzeProjectSignals(root)` and converts `TestCommands`, `BuildCommands`, and `LintCommands` into deterministic command suggestions. Use `strings.Fields` for the existing simple command strings, include the signal confidence/evidence in the reason, and do not suggest issueops-specific build commands for arbitrary target repositories.
 
 - [x] Run the focused test and confirm GREEN:
 
 ```bash
-go test ./cmd/harness -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
+go test ./cmd/issueops -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
 ```
 
 ## Task 2: Mark `completion-evidence-audit` satisfied after evidence exists
 
 **Files:**
-- `cmd/harness/self_verify_candidates.go`
-- `cmd/harness/self_augment_summary_test.go`
-- `cmd/harness/main.go`
+- `cmd/issueops/self_verify_candidates.go`
+- `cmd/issueops/self_augment_summary_test.go`
+- `cmd/issueops/main.go`
 - `skills/self-verify/CANDIDATES.md`
 
 ### TDD Steps
 
-- [x] Update `TestExportSelfVerificationCandidatesSelectsNextOpenCandidate` in `cmd/harness/self_augment_summary_test.go` so it proves the candidate is satisfied and no longer selected:
+- [x] Update `TestExportSelfVerificationCandidatesSelectsNextOpenCandidate` in `cmd/issueops/self_augment_summary_test.go` so it proves the candidate is satisfied and no longer selected:
 
 ```go
 if result.SelectedCandidate != nil {
@@ -206,12 +206,12 @@ if !containsString(result.SatisfiedCandidateIDs, "completion-evidence-audit") {
 - [x] Run the focused test and confirm RED:
 
 ```bash
-go test ./cmd/harness -run TestExportSelfVerificationCandidatesSelectsNextOpenCandidate -count=1
+go test ./cmd/issueops -run TestExportSelfVerificationCandidatesSelectsNextOpenCandidate -count=1
 ```
 
 - [x] Change the `completion-evidence-audit` candidate status in `selfVerificationCandidateCatalog()` from `selfAugmentCandidateStatusOpen` to `selfAugmentCandidateStatusSatisfied`.
 - [x] Add satisfaction evidence to the candidate, including exact behavior names: `verify-work evidence_matrix`, `verify-work suggested_commands`, and `verify_work response contract golden`.
-- [x] Update `validateSelfVerifyCandidateExport` in `cmd/harness/main.go` so the built-in self-verification expects:
+- [x] Update `validateSelfVerifyCandidateExport` in `cmd/issueops/main.go` so the built-in self-verification expects:
   - `completion-evidence-audit` is in `SatisfiedCandidateIDs`.
   - `OpenCandidateIDs` is empty.
   - `SelectedCandidate` is `nil`.
@@ -220,14 +220,14 @@ go test ./cmd/harness -run TestExportSelfVerificationCandidatesSelectsNextOpenCa
 - [x] Run the focused tests and confirm GREEN:
 
 ```bash
-go test ./cmd/harness -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1
+go test ./cmd/issueops -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1
 ```
 
 ## Task 3: Regenerate golden contracts and run final verification
 
 **Files:**
-- `cmd/harness/response_contract_golden_test.go`, `cmd/harness/testdata/response_contracts.golden.json`
-- `bin/agent-harness`
+- `cmd/issueops/response_contract_golden_test.go`, `cmd/issueops/testdata/response_contracts.golden.json`
+- `bin/issueops`
 
 ### Steps
 
@@ -236,30 +236,30 @@ go test ./cmd/harness -run 'TestExportSelfVerificationCandidates|TestSelfVerific
 - [x] Regenerate response contract golden output:
 
 ```bash
-go test ./cmd/harness -run TestResponseContractsGolden -update -count=1
+go test ./cmd/issueops -run TestResponseContractsGolden -update -count=1
 ```
 
 - [x] Confirm the regenerated fixture is stable:
 
 ```bash
-go test ./cmd/harness -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops -run TestResponseContractsGolden -count=1
 ```
 
 - [x] Run focused and full verification:
 
 ```bash
-go test ./cmd/harness -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
-go test ./cmd/harness -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1
+go test ./cmd/issueops -run TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions -count=1
+go test ./cmd/issueops -run 'TestExportSelfVerificationCandidates|TestSelfVerificationCandidateExport' -count=1
 go test ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness verify-work --json -- git status --short
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops verify-work --json -- git status --short
 ```
 
 - [x] Inspect the final diff for unrelated changes:
 
 ```bash
 git diff --stat
-git diff -- docs/superpowers/plans/2026-05-31-completion-evidence-audit.md cmd/harness/status_verify.go cmd/harness/status_verify_test.go cmd/harness/self_verify_candidates.go cmd/harness/self_augment_summary_test.go cmd/harness/main.go skills/self-verify/CANDIDATES.md cmd/harness/response_contract_golden_test.go cmd/harness/testdata/response_contracts.golden.json
+git diff -- docs/superpowers/plans/2026-05-31-completion-evidence-audit.md cmd/issueops/status_verify.go cmd/issueops/status_verify_test.go cmd/issueops/self_verify_candidates.go cmd/issueops/self_augment_summary_test.go cmd/issueops/main.go skills/self-verify/CANDIDATES.md cmd/issueops/response_contract_golden_test.go cmd/issueops/testdata/response_contracts.golden.json
 ```
 
 ## Stop Condition

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type codexFakeProcess struct {
@@ -44,7 +44,7 @@ func TestCodexRunnerPreflightUsesSharedExecutableCheck(t *testing.T) {
 		}
 		return CommandOutput{Stdout: []byte("codex 1.2.3\n")}, nil
 	}}
-	runner := NewCodexRunner("/opt/bin/agent-harness", Dependencies{
+	runner := NewCodexRunner("/opt/bin/issueops", Dependencies{
 		Process:  process,
 		LookPath: func(string) (string, error) { return "/opt/bin/codex", nil },
 		Environ:  func() []string { return []string{"PATH=/opt/bin"} },
@@ -62,7 +62,7 @@ func TestCodexRunnerPreflightUsesSharedExecutableCheck(t *testing.T) {
 func TestCodexRunnerPreflightMissingExecutable(t *testing.T) {
 	t.Parallel()
 
-	runner := NewCodexRunner("/opt/bin/agent-harness", Dependencies{
+	runner := NewCodexRunner("/opt/bin/issueops", Dependencies{
 		LookPath: func(string) (string, error) { return "", errors.New("not found") },
 	})
 
@@ -76,7 +76,7 @@ func TestCodexRunnerRunUsesIsolatedProbe(t *testing.T) {
 	t.Parallel()
 
 	parent := t.TempDir()
-	harnessRelative := filepath.Join("testdata", "agent-harness")
+	harnessRelative := filepath.Join("testdata", "issueops")
 	harnessBinary, err := filepath.Abs(harnessRelative)
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestCodexRunnerRunUsesIsolatedProbe(t *testing.T) {
 	var episodeRoot string
 	process := &codexFakeProcess{run: func(_ context.Context, request CommandRequest) (CommandOutput, error) {
 		episodeRoot = request.Cwd
-		if request.Cwd == parent || !strings.HasPrefix(filepath.Base(request.Cwd), "agent-harness-conformance-codex-") {
+		if request.Cwd == parent || !strings.HasPrefix(filepath.Base(request.Cwd), "issueops-conformance-codex-") {
 			t.Errorf("cwd = %q, want a fresh Codex episode root", request.Cwd)
 		}
 		info, err := os.Stat(request.Cwd)
@@ -117,9 +117,9 @@ func TestCodexRunnerRunUsesIsolatedProbe(t *testing.T) {
 			"--skip-git-repo-check",
 			"-C", request.Cwd,
 			"-c", "approval_policy=" + jsonString("never"),
-			"-c", "mcp_servers.agent_harness_probe.command=" + jsonString(harnessBinary),
-			"-c", "mcp_servers.agent_harness_probe.args=" + string(encodedServe),
-			"-c", "mcp_servers.agent_harness_probe.default_tools_approval_mode=" + jsonString("approve"),
+			"-c", "mcp_servers.issueops_probe.command=" + jsonString(harnessBinary),
+			"-c", "mcp_servers.issueops_probe.args=" + string(encodedServe),
+			"-c", "mcp_servers.issueops_probe.default_tools_approval_mode=" + jsonString("approve"),
 			"--model", "gpt-5",
 			"call the probe",
 		}
@@ -199,7 +199,7 @@ func TestCodexRunnerRunModelSelection(t *testing.T) {
 				writeCodexCapture(t, filepath.Join(request.Cwd, "result.json"), "run-token")
 				return CommandOutput{}, nil
 			}}
-			runner := NewCodexRunner(filepath.Join(parent, "agent-harness"), Dependencies{
+			runner := NewCodexRunner(filepath.Join(parent, "issueops"), Dependencies{
 				Process:  process,
 				LookPath: func(string) (string, error) { return filepath.Join(parent, "codex"), nil },
 				TempDir:  os.MkdirTemp,
@@ -217,7 +217,7 @@ func TestCodexRunnerRunMissingCaptureIsTransportFailure(t *testing.T) {
 	t.Parallel()
 
 	parent := t.TempDir()
-	runner := NewCodexRunner(filepath.Join(parent, "agent-harness"), Dependencies{
+	runner := NewCodexRunner(filepath.Join(parent, "issueops"), Dependencies{
 		Process:  &codexFakeProcess{},
 		LookPath: func(string) (string, error) { return filepath.Join(parent, "codex"), nil },
 		TempDir:  os.MkdirTemp,

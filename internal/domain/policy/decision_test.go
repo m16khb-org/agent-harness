@@ -1,10 +1,10 @@
 package policy_test
 
 import (
-	policycontract "agent-harness/internal/contract/policy"
+	policycontract "issueops/internal/contract/policy"
 	"testing"
 
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "issueops/internal/domain/policy"
 )
 
 func TestResolveTierPreservesCapabilityPrecedence(t *testing.T) {

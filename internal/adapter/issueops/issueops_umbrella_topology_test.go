@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestUmbrellaBranchGateReasonRequiresPreparedBranch(t *testing.T) {

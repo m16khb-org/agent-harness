@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 const MaxEnvelopeBytes = 2 * 1024 * 1024

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	completioncontract "issueops/internal/contract/issueopscompletion"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 var fixedCompletionTime = time.Date(2026, 8, 2, 1, 2, 3, 4, time.UTC)
@@ -60,7 +60,7 @@ func TestCompleteIdenticalRetrySkipsEnvironmentWithoutOrcaSettle(t *testing.T) {
 	record.Lease.Holder = nil
 	record.Lease.ReleasedAt = fixedCompletionTime.Format(time.RFC3339Nano)
 	record.Completion = &completioncontract.Completion{
-		FinalHead: strings.Repeat("a", 40), TuringReportPath: "/worktree/report.json",
+		FinalHead: strings.Repeat("a", 40), VerificationReportPath: "/worktree/report.json",
 		Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198",
 		CompletedAt: fixedCompletionTime.Format(time.RFC3339Nano),
 	}
@@ -130,7 +130,7 @@ func TestCompleteReopenedGenerationKeepsExactlyOnceContract(t *testing.T) {
 			request := validRequest()
 			request.Generation = test.generation
 			request.FinalHead = test.newHead
-			request.TuringReportPath = "/worktree/new-report.json"
+			request.VerificationReportPath = "/worktree/new-report.json"
 			request.Verification = []string{"new verification"}
 			request.RemoteArtifactURL = "https://github.com/acme/repo/pull/304"
 
@@ -220,7 +220,7 @@ func tracedLiveInspector(trace *[]string) ProcessInspector {
 
 func validRequest() Request {
 	receipt := completioncontract.ProcessReceipt{PID: 198, StartedAt: "2026-08-02T00:00:00Z", Executable: "/bin/codex"}
-	return Request{ID: "io-198", Generation: 1, Actor: completioncontract.Actor{Host: "codex", SessionID: "session-198", Process: &receipt}, Ancestry: []completioncontract.ProcessReceipt{receipt}, CWD: "/worktree", FinalHead: strings.Repeat("a", 40), TuringReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", Confirm: true}
+	return Request{ID: "io-198", Generation: 1, Actor: completioncontract.Actor{Host: "codex", SessionID: "session-198", Process: &receipt}, Ancestry: []completioncontract.ProcessReceipt{receipt}, CWD: "/worktree", FinalHead: strings.Repeat("a", 40), VerificationReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", Confirm: true}
 }
 
 func activeCompletionRecord(mode string) completioncontract.RecordSnapshot {

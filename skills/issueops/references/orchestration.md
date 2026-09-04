@@ -59,7 +59,7 @@ child contract:
 - Child cycle: <child id>
 - Branch: <child branch>
 - Expected worktree: <absolute child worktree>
-- Export before work: export HARNESS_EXPECTED_WORKTREE=<absolute child worktree>
+- Export before work: export ISSUEOPS_EXPECTED_WORKTREE=<absolute child worktree>
 - Scope: <bounded child scope>
 - Acceptance criteria: <criteria>
 - Owner command: issueops child status --parent <parent id> --json

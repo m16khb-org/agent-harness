@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
-	webfetchport "agent-harness/internal/port/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
+	webfetchport "issueops/internal/port/webfetch"
 )
 
 func TestFetchOwnsRetryOrderingAndResponseBodyFlow(t *testing.T) {

@@ -1,8 +1,8 @@
 package projectbootstrap
 
 import (
-	projectdocadapter "agent-harness/internal/adapter/projectdoc"
-	projectdocspddeps "agent-harness/internal/adapter/projectdocs"
+	projectdocadapter "issueops/internal/adapter/projectdoc"
+	projectdocspddeps "issueops/internal/adapter/projectdocs"
 )
 
 // production wiring과 같은 문서 reader를 설치한다.

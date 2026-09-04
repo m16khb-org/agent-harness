@@ -1,13 +1,13 @@
 ---
 name: project-docs-bootstrap
-description: "Initial creation or template refresh of repo-local .agent-harness operating documents and the AGENTS.md routing block from repository evidence, through the deterministic agent-harness project bootstrap pass followed by an agent enrichment pass. Use when asked to bootstrap, initialize, or regenerate project docs for a repository, or to set up AGENTS.md agent guidance. For incremental refresh during ongoing work use project-docs-update; for restructuring oversized docs use project-docs-optimize."
+description: "Initial creation or template refresh of repo-local .issueops operating documents and the AGENTS.md routing block from repository evidence, through the deterministic issueops project bootstrap pass followed by an agent enrichment pass. Use when asked to bootstrap, initialize, or regenerate project docs for a repository, or to set up AGENTS.md agent guidance. For incremental refresh during ongoing work use project-docs-update; for restructuring oversized docs use project-docs-optimize."
 ---
 
 # Project Docs Bootstrap
 
 ## Goal
 
-Create or refresh the repo-local `.agent-harness` document family and the
+Create or refresh the repo-local `.issueops` document family and the
 `AGENTS.md` routing block from repository evidence. Two passes run in order:
 the deterministic static pass (CLI engine), then the agent enrichment pass
 (`PROMPT.md` in this skill). This skill is the docs dimension of the
@@ -15,20 +15,20 @@ the deterministic static pass (CLI engine), then the agent enrichment pass
 
 ## Use and Boundaries
 
-agent-harness is an open-source library applied to many different projects.
+issueops is an open-source library applied to many different projects.
 Defaults and templates are starting points, never mandates: a target repo's
 own conventions, doc language, and curated content are always authoritative.
 
-Use for first-time creation of `.agent-harness` docs, or an explicit template
+Use for first-time creation of `.issueops` docs, or an explicit template
 refresh of existing generated docs. Route instead:
 
 - incremental refresh while work is happening → `project-docs-update`;
 - oversized or badly structured docs → `project-docs-optimize`;
-- a repo with legacy flat `.agent-harness` family roots and no modular
+- a repo with legacy flat `.issueops` family roots and no modular
   manifest → `project-docs-optimize` (bootstrap preserves the flat layout and
   reports `legacy_flat_layout_preserved` instead of half-migrating it).
 
-If `.agent-harness` documents already exist and the user did not ask for a
+If `.issueops` documents already exist and the user did not ask for a
 refresh, do not run the write pass; route to `project-docs-update`.
 
 ## Inputs
@@ -41,7 +41,7 @@ refresh, do not run the write pass; route to `project-docs-update`.
 ## Safety Rules
 
 1. Never overwrite an existing `AGENTS.md` wholesale. The engine may prepend
-   the behavioral block when missing and manages only the `AGENT_HARNESS`
+   the behavioral block when missing and manages only the `ISSUEOPS`
    marker block after that.
 2. Run the dry-run plan first when any doubt exists about what will change.
 3. Without `--sync`, existing generated docs are preserved; report the
@@ -78,7 +78,7 @@ See `PROMPT.md` for the full fill targets per document.
 1. Plan without writing:
 
    ```bash
-   agent-harness project bootstrap --repo . --dry-run --json
+   issueops project bootstrap --repo . --dry-run --json
    ```
 
    MCP alternative: `project_docs_bootstrap_plan`.
@@ -94,14 +94,14 @@ See `PROMPT.md` for the full fill targets per document.
 3. Write files and repo profile metadata when the plan is acceptable:
 
    ```bash
-   agent-harness project bootstrap --repo . --json
+   issueops project bootstrap --repo . --json
    ```
 
    Add `--sync` only for an explicitly requested refresh of existing
    generated docs.
 
 4. Run the agent enrichment pass using `PROMPT.md` in this skill directory.
-   It reads repository evidence and updates `.agent-harness` docs through the
+   It reads repository evidence and updates `.issueops` docs through the
    MCP contract (`project_docs_route` → `project_docs_read` →
    `project_docs_revise` / `project_docs_append`) rather than blindly
    accepting static template text. It also evaluates the engineering
@@ -125,7 +125,7 @@ See `PROMPT.md` for the full fill targets per document.
      layout when its script is available:
 
      ```bash
-     uv run --directory <agent-harness>/skills/project-docs-optimize \
+     uv run --directory <issueops>/skills/project-docs-optimize \
        python -m scripts.check --root "$PWD" --mode check --json
      ```
 
@@ -135,11 +135,11 @@ See `PROMPT.md` for the full fill targets per document.
 ## Generated Documents
 
 `AGENTS.md` (behavioral block + managed marker block) and the
-`.agent-harness` family: ARCHITECTURE, CAUTIONS, COMMIT_POLICY,
+`.issueops` family: ARCHITECTURE, CAUTIONS, COMMIT_POLICY,
 CONSTITUTION, CONVENTIONS, TECH_STACK, TESTING, OPEN_API_SPEC, ADR,
 OPERATIONS, AGENT_WORKFLOW. In client repositories (detected `frontend`
 or `desktop-client` project type) bootstrap also creates
-`.agent-harness/DESIGN.md`, a design-system contract that points at a
+`.issueops/DESIGN.md`, a design-system contract that points at a
 curated root `DESIGN.md` when the repo already maintains one.
 
 ## Completion Evidence

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestServiceStagesListsAndUnstagesArtifacts(t *testing.T) {

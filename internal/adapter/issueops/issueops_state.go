@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	statecontract "issueops/internal/contract/state"
+	"issueops/internal/port"
 )
 
 // 현재 schema는 legacy row를 해석하지 않도록 물리 namespace까지 분리한다.

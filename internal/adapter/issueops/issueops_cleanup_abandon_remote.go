@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // 폐기의 원격 효과다. 미머지 사이클의 원격 정리는 이 경로만 할 수 있다 —

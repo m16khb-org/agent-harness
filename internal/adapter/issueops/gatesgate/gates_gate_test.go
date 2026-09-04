@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/implementation"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func initGatesGateRepo(t *testing.T) string {
@@ -105,7 +105,7 @@ func writeGatesLedger(t *testing.T, root, content string) {
 }
 
 func TestStrictPRReadinessWithoutLedgerStaysReady(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	if !ready.Ready {
@@ -114,7 +114,7 @@ func TestStrictPRReadinessWithoutLedgerStaysReady(t *testing.T) {
 }
 
 func TestStrictPRReadinessBlocksOnUnmetGates(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	writeGatesLedger(t, record.Repo, "# Gates: cycle\n\n- [ ] G1: tests pass\n  CHECK: go test ./...\n  EVIDENCE: pending\n\n- [x] G2: stale claim\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
@@ -130,7 +130,7 @@ func TestStrictPRReadinessBlocksOnUnmetGates(t *testing.T) {
 }
 
 func TestStrictPRReadinessPassesOnMetAndAbandonedGates(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	writeGatesLedger(t, record.Repo, "# Gates: cycle\n\n- [x] G1: tests pass\n  EVIDENCE: go test ./... — all packages ok\n\n- [ ] G2: manual doc polish\n  EVIDENCE: pending\n\nABANDON: G2 outcome verified by review\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
@@ -140,7 +140,7 @@ func TestStrictPRReadinessPassesOnMetAndAbandonedGates(t *testing.T) {
 }
 
 func TestStrictPRReadinessBlocksOnEvidencePendingOnly(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	writeGatesLedger(t, record.Repo, "- [x] G1: claimed done\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
@@ -150,7 +150,7 @@ func TestStrictPRReadinessBlocksOnEvidencePendingOnly(t *testing.T) {
 }
 
 func TestAdvancePhaseGuardsPRWithGates(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), func() issueopscontract.IssueOpsRecord {
 		regressed := record
@@ -223,23 +223,23 @@ func writeGatesLedgerAt(t *testing.T, root, rel, content string) {
 const metLedger = "# Gates: cycle\n\n- [x] G1: done\n  EVIDENCE: verified by test\n"
 
 func TestStrictPRReadinessReadsIssueFolderLedger(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", "# Gates: cycle\n\n- [ ] G1: open\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", "# Gates: cycle\n\n- [ ] G1: open\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
-	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/21/gates.md") {
+	if !containsMissing(ready.Missing, "gates_incomplete:.issueops/issues/21/gates.md") {
 		t.Fatalf("issue folder ledger must gate readiness: %+v", ready.Missing)
 	}
 }
 
 func TestStrictPRReadinessDuplicateIssueArtifactFailsClosed(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t) // linked issue 21
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/issue-21.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/issue-21.md", metLedger)
 	// 다른 이슈의 중복은 이 사이클을 막지 않는다.
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", metLedger)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/248-other.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/248/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/248-other.md", metLedger)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	if ready.Ready || !containsMissing(ready.Missing, "duplicate_issue_artifact:21") {
 		t.Fatalf("same issue in both ledger paths must fail closed: %+v", ready)
@@ -250,12 +250,12 @@ func TestStrictPRReadinessDuplicateIssueArtifactFailsClosed(t *testing.T) {
 }
 
 func TestStrictPRReadinessDuplicateIssueArtifactLegacyNumberPrefix(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/21-cleanup.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/21-cleanup.md", metLedger)
 	// 210-*는 21이 아니다.
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/210-other.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/210-other.md", metLedger)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	if !containsMissing(ready.Missing, "duplicate_issue_artifact:21") {
 		t.Fatalf("<n>-slug legacy name must count as duplicate: %+v", ready.Missing)
@@ -263,12 +263,12 @@ func TestStrictPRReadinessDuplicateIssueArtifactLegacyNumberPrefix(t *testing.T)
 }
 
 func TestStrictPRReadinessDuplicateSkippedWithoutIssueNumber(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	record.IssueURL = ""
 	record.BranchPrepare.IssueURL = ""
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/issue-21.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/issue-21.md", metLedger)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	for _, m := range ready.Missing {
 		if strings.HasPrefix(m, "duplicate_issue_artifact:") {
@@ -278,9 +278,9 @@ func TestStrictPRReadinessDuplicateSkippedWithoutIssueNumber(t *testing.T) {
 }
 
 func TestStrictPRReadinessSingleIssueFolderLedgerIsNotDuplicate(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", metLedger)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	if !ready.Ready {
 		t.Fatalf("one met ledger at the canonical path must stay ready: %+v %+v", ready.Missing, ready.Warnings)
@@ -290,31 +290,31 @@ func TestStrictPRReadinessSingleIssueFolderLedgerIsNotDuplicate(t *testing.T) {
 func TestScopeLedgersJudgesOwnAndAnonymousOnly(t *testing.T) {
 	root := "/repo"
 	files := []string{
-		"/repo/.agent-harness/issues/21/gates.md",
-		"/repo/.agent-harness/issues/021/gates.md",
-		"/repo/.agent-harness/issues/210/gates.md",
-		"/repo/.agent-harness/issues/_unnumbered/gates.md",
+		"/repo/.issueops/issues/21/gates.md",
+		"/repo/.issueops/issues/021/gates.md",
+		"/repo/.issueops/issues/210/gates.md",
+		"/repo/.issueops/issues/_unnumbered/gates.md",
 		"/repo/GATES.md",
-		"/repo/.agent-harness/gates/issue-21.md",
-		"/repo/.agent-harness/gates/21-cleanup.md",
-		"/repo/.agent-harness/gates/248-other.md",
-		"/repo/.agent-harness/gates/notes.md",
+		"/repo/.issueops/gates/issue-21.md",
+		"/repo/.issueops/gates/21-cleanup.md",
+		"/repo/.issueops/gates/248-other.md",
+		"/repo/.issueops/gates/notes.md",
 		"/repo/gates/legacy.md",
 	}
 	judged, skipped := scopeLedgers(root, files, "21")
 	wantJudged := []string{
-		"/repo/.agent-harness/issues/21/gates.md",
-		"/repo/.agent-harness/issues/_unnumbered/gates.md",
+		"/repo/.issueops/issues/21/gates.md",
+		"/repo/.issueops/issues/_unnumbered/gates.md",
 		"/repo/GATES.md",
-		"/repo/.agent-harness/gates/issue-21.md",
-		"/repo/.agent-harness/gates/21-cleanup.md",
-		"/repo/.agent-harness/gates/notes.md",
+		"/repo/.issueops/gates/issue-21.md",
+		"/repo/.issueops/gates/21-cleanup.md",
+		"/repo/.issueops/gates/notes.md",
 		"/repo/gates/legacy.md",
 	}
 	wantSkipped := []string{
-		"/repo/.agent-harness/issues/021/gates.md",
-		"/repo/.agent-harness/issues/210/gates.md",
-		"/repo/.agent-harness/gates/248-other.md",
+		"/repo/.issueops/issues/021/gates.md",
+		"/repo/.issueops/issues/210/gates.md",
+		"/repo/.issueops/gates/248-other.md",
 	}
 	if strings.Join(judged, ",") != strings.Join(wantJudged, ",") {
 		t.Fatalf("judged = %v, want %v", judged, wantJudged)
@@ -329,40 +329,40 @@ func TestScopeLedgersJudgesOwnAndAnonymousOnly(t *testing.T) {
 }
 
 func TestStrictPRReadinessSkipsOtherIssuesLedgers(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t) // linked issue 21
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", metLedger)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/gates/250-other.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", metLedger)
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/gates/250-other.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
 	if !ready.Ready {
 		t.Fatalf("other issues' unmet ledgers must not block this cycle: %+v", ready)
 	}
 	joined := strings.Join(ready.Warnings, "\n")
-	if !strings.Contains(joined, "gates_skipped:2 (") || !strings.Contains(joined, ".agent-harness/issues/248/gates.md") || !strings.Contains(joined, ".agent-harness/gates/250-other.md") || strings.Count(joined, "gates_skipped:") != 1 {
+	if !strings.Contains(joined, "gates_skipped:2 (") || !strings.Contains(joined, ".issueops/issues/248/gates.md") || !strings.Contains(joined, ".issueops/gates/250-other.md") || strings.Count(joined, "gates_skipped:") != 1 {
 		t.Fatalf("skipped ledgers must be aggregated into one warning: %+v", ready.Warnings)
 	}
 }
 
 func TestStrictPRReadinessStillJudgesOwnAndAnonymousLedgers(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/21/gates.md", "# Gates: mine\n\n- [ ] G1: open here\n  EVIDENCE: pending\n")
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/_unnumbered/gates.md", "# Gates: anon\n\n- [ ] G1: open anon\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/21/gates.md", "# Gates: mine\n\n- [ ] G1: open here\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/_unnumbered/gates.md", "# Gates: anon\n\n- [ ] G1: open anon\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
-	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/21/gates.md") || !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/_unnumbered/gates.md") {
+	if !containsMissing(ready.Missing, "gates_incomplete:.issueops/issues/21/gates.md") || !containsMissing(ready.Missing, "gates_incomplete:.issueops/issues/_unnumbered/gates.md") {
 		t.Fatalf("own and anonymous ledgers must still gate: %+v", ready.Missing)
 	}
 }
 
 func TestStrictPRReadinessWithoutIssueNumberJudgesEverything(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyGatesGateRecord(t)
 	record.IssueURL = ""
 	record.BranchPrepare.IssueURL = ""
-	writeGatesLedgerAt(t, record.Repo, ".agent-harness/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
+	writeGatesLedgerAt(t, record.Repo, ".issueops/issues/248/gates.md", "# Gates: other\n\n- [ ] G1: open elsewhere\n  EVIDENCE: pending\n")
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)
-	if !containsMissing(ready.Missing, "gates_incomplete:.agent-harness/issues/248/gates.md") {
+	if !containsMissing(ready.Missing, "gates_incomplete:.issueops/issues/248/gates.md") {
 		t.Fatalf("no linked issue number must keep judging every ledger: %+v", ready.Missing)
 	}
 }

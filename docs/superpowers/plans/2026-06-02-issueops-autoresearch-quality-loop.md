@@ -4,28 +4,28 @@
 
 **Goal:** Add a measurable IssueOps autoresearch quality gate that evaluates a research candidate against stored baseline/candidate benchmark runs, edit-surface constraints, and keep/discard rules.
 
-**Architecture:** Reuse the existing IssueOps benchmark run/compare model. Add a small core candidate contract plus gate evaluator, then expose it as `agent-harness issueops benchmark gate` so agents can make a deterministic keep/discard decision before accepting an IssueOps improvement candidate.
+**Architecture:** Reuse the existing IssueOps benchmark run/compare model. Add a small core candidate contract plus gate evaluator, then expose it as `issueops benchmark gate` so agents can make a deterministic keep/discard decision before accepting an IssueOps improvement candidate.
 
-**Tech Stack:** Go core and CLI in `internal/core` and `cmd/harness`; JSON candidate files; existing IssueOps benchmark state; existing usage/response contract golden tests.
+**Tech Stack:** Go core and CLI in `internal/core` and `cmd/issueops`; JSON candidate files; existing IssueOps benchmark state; existing usage/response contract golden tests.
 
-**IssueOps Context:** Issue https://github.com/example/agent-harness/issues/9. Worktree must be `/tmp/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop` on branch `feature/9-issueops-autoresearch-quality-loop`.
+**IssueOps Context:** Issue https://github.com/example/issueops/issues/9. Worktree must be `/tmp/issueops.worktrees/feature-9-issueops-autoresearch-quality-loop` on branch `feature/9-issueops-autoresearch-quality-loop`.
 
 ---
 
 ## File Structure
 
-- Modify: `internal/core/issueops_benchmark.go`  
+- Modify: `internal/core/issueops_benchmark.go`
   Add candidate/gate DTOs, edit-surface matching, target-dimension regression checks, and keep/discard evaluation.
-- Modify: `internal/core/issueops_benchmark_test.go`  
+- Modify: `internal/core/issueops_benchmark_test.go`
   Add focused unit tests for passing gate, edit surface violation, target dimension regression, and non-passing candidate benchmark.
-- Modify: `cmd/harness/issueops.go`  
+- Modify: `cmd/issueops/issueops.go`
   Add `issueops benchmark gate` CLI parsing and JSON/text output.
-- Modify: `cmd/harness/issueops_benchmark_test.go`  
+- Modify: `cmd/issueops/issueops_benchmark_test.go`
   Add CLI tests for gate JSON success and discard reasons.
-- Modify: `internal/adapter/cli/usage.go` and `cmd/harness/testdata/usage.golden.txt`  
+- Modify: `internal/adapter/cli/usage.go` and `cmd/issueops/testdata/usage.golden.txt`
   Add command usage text.
-- Modify: `cmd/harness/contract.go` and `cmd/harness/testdata/response_contracts.golden.json` if the response contract generator requires a new sample.
-- Modify: `skills/issueops/SKILL.md`  
+- Modify: `cmd/issueops/contract.go` and `cmd/issueops/testdata/response_contracts.golden.json` if the response contract generator requires a new sample.
+- Modify: `skills/issueops/SKILL.md`
   Document the IssueOps autoresearch candidate brief and quality gate command.
 
 ---
@@ -43,7 +43,7 @@ Run:
 pwd
 git branch --show-current
 git rev-parse --short HEAD
-test "$PWD" = "/tmp/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop"
+test "$PWD" = "/tmp/issueops.worktrees/feature-9-issueops-autoresearch-quality-loop"
 test "$(git branch --show-current)" = "feature/9-issueops-autoresearch-quality-loop"
 ```
 
@@ -90,7 +90,7 @@ func TestEvaluateIssueOpsAutoresearchGateRejectsEditSurfaceViolation(t *testing.
 		Candidate:    candidate,
 		BaselineRun:  issueOpsBenchmarkRunForGateTest("baseline", 100, 100, 0),
 		CandidateRun: issueOpsBenchmarkRunForGateTest("candidate", 100, 100, 0),
-		ChangedPaths: []string{"cmd/harness/issueops.go"},
+		ChangedPaths: []string{"cmd/issueops/issueops.go"},
 	})
 
 	if result.KeepCandidate || len(result.EditSurfaceViolations) != 1 || !containsFold(strings.Join(result.DiscardReasons, "\n"), "edit surface") {
@@ -371,17 +371,17 @@ git commit -m "feat(issueops): add autoresearch quality gate" -m "Lore:
 ### Task 3: CLI Gate Command
 
 **Files:**
-- Modify: `cmd/harness/issueops.go`
-- Modify: `cmd/harness/issueops_benchmark_test.go`
+- Modify: `cmd/issueops/issueops.go`
+- Modify: `cmd/issueops/issueops_benchmark_test.go`
 
 - [ ] **Step 1: Add failing CLI tests**
 
-Append to `cmd/harness/issueops_benchmark_test.go`:
+Append to `cmd/issueops/issueops_benchmark_test.go`:
 
 ```go
 func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
 	baseline := core.IssueOpsBenchmarkRunResult{
 		ID: "baseline",
 		Scores: []core.IssueOpsBenchmarkScore{{
@@ -424,7 +424,7 @@ func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 
 func TestRunIssueOpsBenchmarkGateCLIDiscardsOutsideEditSurface(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
 	run := core.FinalizeIssueOpsBenchmarkRunResult(core.IssueOpsBenchmarkRunResult{
 		ID: "baseline",
 		Scores: []core.IssueOpsBenchmarkScore{{
@@ -449,7 +449,7 @@ func TestRunIssueOpsBenchmarkGateCLIDiscardsOutsideEditSurface(t *testing.T) {
 	})
 
 	out := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"benchmark", "gate", "--baseline", "baseline", "--candidate", "baseline", "--candidate-file", candidatePath, "--changed-path", "cmd/harness/issueops.go", "--json"})
+		return runIssueOps([]string{"benchmark", "gate", "--baseline", "baseline", "--candidate", "baseline", "--candidate-file", candidatePath, "--changed-path", "cmd/issueops/issueops.go", "--json"})
 	})
 	var result core.IssueOpsAutoresearchGateResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
@@ -474,7 +474,7 @@ func writeIssueOpsCandidateForCLITest(t *testing.T, candidate core.IssueOpsAutor
 }
 ```
 
-Add `agent-harness/internal/core` to the test imports if it is not already imported:
+Add `issueops/internal/core` to the test imports if it is not already imported:
 
 ```go
 import (
@@ -483,7 +483,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core"
+	"issueops/internal/core"
 )
 ```
 
@@ -492,14 +492,14 @@ import (
 Run:
 
 ```bash
-go test ./cmd/harness -run IssueOpsBenchmarkGate -count=1
+go test ./cmd/issueops -run IssueOpsBenchmarkGate -count=1
 ```
 
 Expected: FAIL with unknown `benchmark` subcommand `gate` or missing core DTO imports.
 
 - [ ] **Step 3: Add candidate loader and gate command**
 
-In `cmd/harness/issueops.go`, add imports:
+In `cmd/issueops/issueops.go`, add imports:
 
 ```go
 import (
@@ -509,7 +509,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/core"
+	"issueops/internal/core"
 )
 ```
 
@@ -555,7 +555,7 @@ Add a new `case "gate"` inside `runIssueOpsBenchmark`:
 		return nil
 ```
 
-Add helper types/functions near the bottom of `cmd/harness/issueops.go`:
+Add helper types/functions near the bottom of `cmd/issueops/issueops.go`:
 
 ```go
 type repeatedFlag []string
@@ -591,7 +591,7 @@ func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresear
 Run:
 
 ```bash
-go test ./cmd/harness -run IssueOpsBenchmarkGate -count=1
+go test ./cmd/issueops -run IssueOpsBenchmarkGate -count=1
 ```
 
 Expected: PASS.
@@ -602,9 +602,9 @@ Expected: PASS.
 
 **Files:**
 - Modify: `internal/adapter/cli/usage.go`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Modify: `cmd/harness/contract.go`
-- Modify: `cmd/harness/testdata/response_contracts.golden.json`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/contract.go`
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json`
 - Modify: `skills/issueops/SKILL.md`
 
 - [ ] **Step 1: Add usage line**
@@ -612,25 +612,25 @@ Expected: PASS.
 In `internal/adapter/cli/usage.go`, add this line after benchmark compare usage:
 
 ```text
-  agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
+  issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
 ```
 
 Run:
 
 ```bash
-go test ./cmd/harness -run TestUsageGolden -count=1
+go test ./cmd/issueops -run TestUsageGolden -count=1
 ```
 
-Expected: FAIL until `cmd/harness/testdata/usage.golden.txt` is updated.
+Expected: FAIL until `cmd/issueops/testdata/usage.golden.txt` is updated.
 
 - [ ] **Step 2: Update usage golden**
 
-Add the same usage line to `cmd/harness/testdata/usage.golden.txt`.
+Add the same usage line to `cmd/issueops/testdata/usage.golden.txt`.
 
 Run:
 
 ```bash
-go test ./cmd/harness -run TestUsageGolden -count=1
+go test ./cmd/issueops -run TestUsageGolden -count=1
 ```
 
 Expected: PASS.
@@ -640,10 +640,10 @@ Expected: PASS.
 Run:
 
 ```bash
-go test ./cmd/harness -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops -run TestResponseContractsGolden -count=1
 ```
 
-Expected: PASS if no response contract sample is needed. If it fails because `issueops benchmark gate` is part of the command contract, update `cmd/harness/contract.go` with a compact fake-state sample and refresh `cmd/harness/testdata/response_contracts.golden.json` using the repo's existing golden update path.
+Expected: PASS if no response contract sample is needed. If it fails because `issueops benchmark gate` is part of the command contract, update `cmd/issueops/contract.go` with a compact fake-state sample and refresh `cmd/issueops/testdata/response_contracts.golden.json` using the repo's existing golden update path.
 
 - [ ] **Step 4: Document the gate in the IssueOps skill**
 
@@ -653,7 +653,7 @@ In `skills/issueops/SKILL.md`, add this section after "Run the 100-point quality
 Run the autoresearch keep/discard gate for IssueOps improvement candidates:
 
 ```bash
-agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
+issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
 ```
 
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
@@ -674,7 +674,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add cmd/harness/issueops.go cmd/harness/issueops_benchmark_test.go internal/adapter/cli/usage.go cmd/harness/testdata/usage.golden.txt cmd/harness/contract.go cmd/harness/testdata/response_contracts.golden.json skills/issueops/SKILL.md
+git add cmd/issueops/issueops.go cmd/issueops/issueops_benchmark_test.go internal/adapter/cli/usage.go cmd/issueops/testdata/usage.golden.txt cmd/issueops/contract.go cmd/issueops/testdata/response_contracts.golden.json skills/issueops/SKILL.md
 git commit -m "feat(issueops): expose autoresearch benchmark gate" -m "Lore:
 - Intent: Make the IssueOps autoresearch keep/discard gate available from the CLI and skill workflow.
 - Why: Issue #9 needs agents to evaluate candidates from stored benchmark runs and declared edit surfaces.
@@ -682,7 +682,7 @@ git commit -m "feat(issueops): expose autoresearch benchmark gate" -m "Lore:
   - Add issueops benchmark gate CLI.
   - Document candidate files and gate criteria in the IssueOps skill.
   - Update usage and response contract artifacts when required.
-- Verify: go test ./cmd/harness -run 'IssueOpsBenchmarkGate|TestUsageGolden|TestResponseContractsGolden' -count=1; quick_validate.py skills/issueops
+- Verify: go test ./cmd/issueops -run 'IssueOpsBenchmarkGate|TestUsageGolden|TestResponseContractsGolden' -count=1; quick_validate.py skills/issueops
 - Risk: Low; command is additive and deterministic."
 ```
 
@@ -698,7 +698,7 @@ git commit -m "feat(issueops): expose autoresearch benchmark gate" -m "Lore:
 Run from the worktree:
 
 ```bash
-agent-harness issueops link-plan --id io-b1ed844aea3e --plan-path docs/superpowers/plans/2026-06-02-issueops-autoresearch-quality-loop.md --json
+issueops link-plan --id io-b1ed844aea3e --plan-path docs/superpowers/plans/2026-06-02-issueops-autoresearch-quality-loop.md --json
 ```
 
 Expected: JSON with `phase` at or beyond `implementation` and `plan_path` set.
@@ -709,11 +709,11 @@ Run:
 
 ```bash
 go test ./internal/core -run IssueOps -count=1
-go test ./cmd/harness -run IssueOps -count=1
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/issueops -run IssueOps -count=1
+go test ./cmd/issueops -run Golden -count=1
 go test ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
 ```
 
 Expected: all commands exit `0`; benchmark JSON has `ok: true`, `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`.
@@ -729,9 +729,9 @@ cat > "$tmp_candidate" <<'JSON'
   "id": "issueops-autoresearch-loop",
   "hypothesis": "The IssueOps skill and gate command improve candidate quality control.",
   "target_dimensions": ["issue_quality", "plan_quality"],
-  "edit_surface": ["skills/issueops/**", "internal/core/**", "cmd/harness/**", "internal/adapter/cli/**", "cmd/harness/testdata/**", "docs/superpowers/**"],
-  "baseline_command": "agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json",
-  "candidate_command": "agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json",
+  "edit_surface": ["skills/issueops/**", "internal/core/**", "cmd/issueops/**", "internal/adapter/cli/**", "cmd/issueops/testdata/**", "docs/superpowers/**"],
+  "baseline_command": "issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json",
+  "candidate_command": "issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json",
   "keep_criteria": "candidate passes and no benchmark or target dimension regression",
   "discard_criteria": "discard on critical failure, regression, or edit-surface violation"
 }
@@ -741,11 +741,11 @@ JSON
 Run two benchmark runs and gate them:
 
 ```bash
-baseline_json="$(./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json)"
-candidate_json="$(./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json)"
+baseline_json="$(./bin/issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json)"
+candidate_json="$(./bin/issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json)"
 baseline_id="$(printf '%s' "$baseline_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
 candidate_id="$(printf '%s' "$candidate_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
-./bin/agent-harness issueops benchmark gate --baseline "$baseline_id" --candidate "$candidate_id" --candidate-file "$tmp_candidate" --changed-path skills/issueops/SKILL.md --changed-path internal/core/issueops_benchmark.go --json
+./bin/issueops benchmark gate --baseline "$baseline_id" --candidate "$candidate_id" --candidate-file "$tmp_candidate" --changed-path skills/issueops/SKILL.md --changed-path internal/core/issueops_benchmark.go --json
 rm -f "$tmp_candidate"
 ```
 
@@ -756,7 +756,7 @@ Expected: gate JSON has `ok: true` and `keep_candidate: true`.
 Run:
 
 ```bash
-agent-harness issueops pr-readiness --id io-b1ed844aea3e --json
+issueops pr-readiness --id io-b1ed844aea3e --json
 ```
 
 Expected: no missing `issue_url` or `plan_path`. If PR readiness reports other missing fields, record them and complete the required step before PR drafting.

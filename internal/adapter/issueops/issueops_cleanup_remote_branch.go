@@ -1,19 +1,19 @@
 package issueops
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	issueopscontract "issueops/internal/contract/issueops"
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
-	"agent-harness/internal/domain/issueopsremote"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
+	"issueops/internal/domain/issueopsremote"
+	"issueops/internal/port"
 )
 
 // CleanupRemoteBranchDeps는 외부 표면 주입점이다.
@@ -67,7 +67,7 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	}
 	// 평가 순서 ②: 원격 브랜치가 이미 없으면 fingerprint stale 검사 이전에
 	// 즉시 멱등 성공이다. 성공한 삭제 뒤의 재실행이 stale로 막히면 멱등성과
-	// TOCTOU 방어가 서로를 무효화한다(brooks B1).
+	// TOCTOU 방어가 서로를 무효화한다(design-review B1).
 	if !result.RemoteBranchPresent {
 		result.AlreadyAbsent = true
 		return result, nil
@@ -79,7 +79,7 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	result.Fingerprint = fingerprint
 	if !req.Apply {
 		result.NextCommand = fmt.Sprintf(
-			"agent-harness issueops cleanup remote-branch --id %s --apply --confirm --fingerprint %s%s --json",
+			"issueops cleanup remote-branch --id %s --apply --confirm --fingerprint %s%s --json",
 			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy))
 		return result, nil
 	}
@@ -94,14 +94,14 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	// 파괴 이전에 보존 payload를 스냅샷한다(finish C2-F1 선례).
 	completionSnapshot := gatherCompletionSection(record)
 	// fully-qualified ref는 동명 태그를 배제하고, force-with-lease는 preview→push
-	// 사이에 남은 TOCTOU를 서버측에서 원자적으로 봉쇄한다(brooks H7).
+	// 사이에 남은 TOCTOU를 서버측에서 원자적으로 봉쇄한다(design-review H7).
 	ref := "refs/heads/" + inventory.Branch
 	if code, out := deleteRemoteBranchRef(
 		func(args ...string) (int, string) { return deps.Git(ctx, record.Repo, args...) },
 		inventory.Branch, inventory.RemoteOID); code != 0 {
 		result.OK = false
 		result.FailedStep = "remote_branch_delete"
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup remote-branch --id %s --preview --json", record.ID)
+		result.NextCommand = fmt.Sprintf("issueops cleanup remote-branch --id %s --preview --json", record.ID)
 		return result, fmt.Errorf("git push origin --delete %s failed (remote unchanged; re-run preview then apply): %s",
 			ref, strings.TrimSpace(out))
 	}
@@ -138,7 +138,7 @@ func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecor
 		}
 	}
 	// ① branch_recorded / ② branch_name_revalidated — 삭제 직전 재검증은
-	// 수동 편집된 레코드가 임의 ref를 지우는 경로를 막는다(brooks M11).
+	// 수동 편집된 레코드가 임의 ref를 지우는 경로를 막는다(design-review M11).
 	if inventory.Branch == "" {
 		missing = append(missing, "branch_recorded")
 	} else if err := validateIssueOpsIssueBranch(inventory.Branch); err != nil {
@@ -150,7 +150,7 @@ func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecor
 		missing = append(missing, "branch_not_base")
 	}
 	result.Branch = inventory.Branch
-	// ④ phase_done — cleanup 명령군 순서 강제(brooks H5).
+	// ④ phase_done — cleanup 명령군 순서 강제(design-review H5).
 	if record.Phase != IssueOpsPhaseDone {
 		missing = append(missing, "phase_done")
 	}
@@ -196,7 +196,7 @@ func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecor
 	//
 	// ancestry를 OID CAS의 **대체**로 쓰지 않는다. squash 머지에서는 원본 커밋이
 	// base의 조상이 아니므로 대체하면 squash된 브랜치를 영구히 못 지운다 — 원래
-	// 주석의 brooks B3 기각이 지키려던 것이 그것이다. 추가 경로일 때만 성립한다.
+	// 주석의 design-review B3 기각이 지키려던 것이 그것이다. 추가 경로일 때만 성립한다.
 	if result.RemoteBranchPresent {
 		switch {
 		case result.ArtifactHeadOID != "" && strings.EqualFold(result.ArtifactHeadOID, inventory.RemoteOID):
@@ -262,13 +262,13 @@ func cleanupRemoteBranchArtifactGates(ctx context.Context, record issueops.Issue
 		result.ArtifactHeadBranch = strings.TrimSpace(head.HeadRefName)
 		result.ArtifactHeadOID = strings.TrimSpace(head.HeadRefOID)
 		// ⑨ artifact_head_branch_match — 다른 브랜치의 PR을 근거로 이 브랜치를
-		// 지우는 경로를 막는다(brooks B4).
+		// 지우는 경로를 막는다(design-review B4).
 		if result.ArtifactHeadBranch == "" || result.ArtifactHeadBranch != inventory.Branch {
 			missing = append(missing, "artifact_head_branch_match")
 		}
 	}
 	// ⑪ remote_identity_match — origin은 sync-base 선례로 고정하되, 그 origin이
-	// artifact와 다른 프로젝트를 가리키면 거짓 성공이 된다(brooks H6).
+	// artifact와 다른 프로젝트를 가리키면 거짓 성공이 된다(design-review H6).
 	if err := cleanupRemoteBranchIdentityMatch(ctx, record, deps); err != nil {
 		missing = append(missing, "remote_identity_match")
 		result.RemoteIdentityError = err.Error()

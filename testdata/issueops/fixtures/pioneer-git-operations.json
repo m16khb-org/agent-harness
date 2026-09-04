@@ -1,0 +1,16 @@
+{
+  "id": "pioneer-git-operations",
+  "title": "Risky git recovery needs backup and confirmation",
+  "user_prompt": "리베이스가 꼬였어. 복구 경로 확인하고 안전하게 정리해줘",
+  "repo_context": "Advanced git recovery requires current status, branch/log/worktree proof, backup refs, destructive-command confirmation, atomic scope, and force-with-lease discipline.",
+  "pioneer_skill_target": "git-operations",
+  "expected_routing": [{"phase": "cleanup", "skill": "git-operations"}],
+  "expected_issue": ["records git state", "defines recovery acceptance criteria", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["creates backup ref before destructive actions", "states force-with-lease rule", "includes verification"],
+  "expected_tasks": ["bounded ownership"],
+  "expected_tdd": ["records read-only git checks before mutation"],
+  "expected_subagents": ["verifies pwd branch and HEAD before work"],
+  "expected_pr": ["includes git recovery evidence", "links issue", "is written in Korean", "references issue/pr guideline"],
+  "expected_pioneer_artifact": ["Git state proof", "Recovery path", "Destructive confirmation gate", "Atomic scope", "Force-with-lease rule"],
+  "critical_failures": ["skips pioneer method", "skips expected routing", "works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

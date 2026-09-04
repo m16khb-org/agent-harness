@@ -7,7 +7,7 @@ IssueOps coordinates exactly one agent working one cycle. Two real workflows exc
 1. **Hierarchical delegation (S1).** One umbrella issue with N provider-native child tasks. The main agent runs IssueOps in the umbrella issue's worktree; each child task should run as a *sub-agent* in its *own* isolated worktree, with its own IssueOps discipline, PRing back into the parent work branch. Today children exist only as flat remote links (`IssueOpsIssueLink{Type:"child"}`, `internal/core/issueops/model/types.go:19-28`) — there is no local cycle-to-cycle hierarchy, no per-child state, and no parent gate that says "all delegated work is verified and merged".
 2. **Worker-pool refactoring (S2).** For a large mechanical refactor, the main agent selects candidate work items, then keeps a bounded pool of sub-agent workers busy — dispatching items as slots free up, keeping load below the pool size — while the main agent validates each result and integrates it. Today the closest primitive is `internal/core/worker`, which is a no-shell lifecycle record store with no queue semantics (no claim, no lease, no retry: `worker/worker.go`, "worker MVP records lifecycle state only").
 
-Cross-cutting gaps found by direct audit (`.agent-harness/ISSUEOPS_AUDIT.md`, reconciled 2026-07-01):
+Cross-cutting gaps found by direct audit (`.issueops/ISSUEOPS_AUDIT.md`, reconciled 2026-07-01):
 
 - **Session binding is one-per-repo** (`internal/core/issueops/session/session.go:1-12`: "Each repo may have at most one active binding"). With a parent + N child cycles concurrently active in the same repo, N+1 sessions cannot each resume their own cycle through the binding.
 - `issueops resume` resolves only via the per-repo binding or branch heuristics (`package.go:487-545`); a sub-agent cannot resume a specific cycle by ID.
@@ -16,7 +16,7 @@ Cross-cutting gaps found by direct audit (`.agent-harness/ISSUEOPS_AUDIT.md`, re
 
 ## Goal
 
-Add a **delegation graph** (parent/child IssueOps cycles) to agent-harness as durable, fail-closed, host-neutral coordination state — integrated with the existing phase machine, phase ledger, hooks, and skills — so that the main agent can orchestrate sub-agents across worktrees while the harness guarantees:
+Add a **delegation graph** (parent/child IssueOps cycles) to issueops as durable, fail-closed, host-neutral coordination state — integrated with the existing phase machine, phase ledger, hooks, and skills — so that the main agent can orchestrate sub-agents across worktrees while the harness guarantees:
 
 - no lost updates or double-claims under concurrent multi-session access (verified with `-race` and adversarial concurrency tests),
 - fail-closed parent completion (a parent cannot pass `pr` readiness while children are incomplete or unvalidated),
@@ -25,7 +25,7 @@ Add a **delegation graph** (parent/child IssueOps cycles) to agent-harness as du
 
 ## Non-Goals
 
-- **The harness never spawns, supervises, or kills agent processes.** Verified: no `claude -p`/agent invocation exists anywhere in the codebase today (only a bounded read-only `codex exec` review helper in `cmd/harness/apidoc/api_doc_review_runner.go:24`). Sub-agents are spawned by the *main agent* through host-native mechanisms (Claude Code Agent tool/agent teams, Codex, GJC). The harness provides state, gates, and guidance only. This preserves the ARCHITECTURE.md worker principle ("local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다") and keeps host adapters thin.
+- **The harness never spawns, supervises, or kills agent processes.** Verified: no `claude -p`/agent invocation exists anywhere in the codebase today (only a bounded read-only `codex exec` review helper in `cmd/issueops/apidoc/api_doc_review_runner.go:24`). Sub-agents are spawned by the *main agent* through host-native mechanisms (Claude Code Agent tool/agent teams, Codex, GJC). The harness provides state, gates, and guidance only. This preserves the ARCHITECTURE.md worker principle ("local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다") and keeps host adapters thin.
 - Hooks do not perform workflow work. They observe and relay deterministic facts (children/pool summaries) and keep the existing narrow blocks; they never create cycles, claim tasks, or record heartbeats.
 - No changes to the 9-phase list (`model/phase.go:5-15`) and no phase-machine fork for children. Children traverse the *same* machine; delegation is expressed as auto-recorded, parent-referencing artifacts, not as a second state machine.
 - No provider work-item automation beyond what exists (`cleanup close-children`, `remote create-child` stay as-is).
@@ -41,7 +41,7 @@ Add a **delegation graph** (parent/child IssueOps cycles) to agent-harness as du
 - Phase ledger: additive completion index with entry-vs-completion discipline and stale marking on regress (`issueops_phase_ledger.go`; design: `docs/superpowers/specs/2026-06-29-issueops-phase-ledger-design.md`).
 - Execution decision gate already validates sub-agent plans against the 12 SUB_AGENT_PATTERNS slugs (`IssueOpsSubAgentPlan{Pattern,Benefit,Tradeoffs,NetPositiveRationale}`, `model/types.go:187-206`); the relevant slugs here are `task-fan-out-coordination`, `isolated-worktree-work`, `background-long-running-work`.
 - Worker MVP: `WorkerJob` one-file-per-job store with per-job flock and stuck-PID detection but no claim/lease/queue loop (`internal/core/worker/`).
-- Hook surface: `agent-harness hook <event>`; PreToolUse worktree guard resolves expected worktree from env/flag only in hookcli (deliberate, to avoid blocking unrelated same-repo work), lifecycle MCP guard falls back env → branch-matched session binding → active cycles; UserPromptSubmit injects `activeWorktreeReminderValue` (`internal/core/hookprompt/worktree_reminder.go:8-29`); Stop relays next-action facts.
+- Hook surface: `issueops hook <event>`; PreToolUse worktree guard resolves expected worktree from env/flag only in hookcli (deliberate, to avoid blocking unrelated same-repo work), lifecycle MCP guard falls back env → branch-matched session binding → active cycles; UserPromptSubmit injects `activeWorktreeReminderValue` (`internal/core/hookprompt/worktree_reminder.go:8-29`); Stop relays next-action facts.
 
 ## Design Overview
 
@@ -58,7 +58,7 @@ Three additive state features, one binding extension, hook/skill surfacing, and 
 ### Actor model
 
 - **Main agent (parent session):** owns candidate selection, delegation decisions (recorded via the existing execution-decision gate), validation/acceptance of results, integration (merge), and all safety judgments. Spawns sub-agents host-natively.
-- **Sub-agent (child/worker session):** receives a *delegation prompt* (rendered by the harness — cycle/task id, worktree path, `export HARNESS_EXPECTED_WORKTREE=...` line, owner-command contract), works only inside its worktree, records evidence through the same CLI/MCP surface, and reports by state (child cycle phase / task submit), not by side channel.
+- **Sub-agent (child/worker session):** receives a *delegation prompt* (rendered by the harness — cycle/task id, worktree path, `export ISSUEOPS_EXPECTED_WORKTREE=...` line, owner-command contract), works only inside its worktree, records evidence through the same CLI/MCP surface, and reports by state (child cycle phase / task submit), not by side channel.
 - **Harness:** durable state, fail-closed gates, lease bookkeeping, deterministic hook reminders.
 
 ## D1: Delegation Graph (S1)
@@ -178,12 +178,12 @@ Design (backward compatible):
 
 - Keep the legacy per-repo binding file as the **primary** binding (main agent's cycle).
 - Add per-cycle **scoped bindings**: `issueops-session-<repoHash>-<cycleID>.json` (cycleID is already filesystem-safe `io-[0-9a-f]{12}`). Written by `LinkIssueOpsWorktree` for delegated children (a cycle with `Delegation != nil` writes a scoped binding INSTEAD of overwriting the primary) and by explicit `issueops bind --id <cycle> --json`. Removed cycle-guarded on done/force paths (same compare-and-delete discipline, under the same per-repo session flock — one flock for all binding files of a repo keeps bind/unbind linearized and avoids a lock-file-per-cycle sprawl).
-- `issueops resume` gains `--id <cycle>`: resolves that cycle directly, returns the same `IssueOpsResumeResult` (+ `export HARNESS_EXPECTED_WORKTREE=` guidance), and with `--bind` writes the scoped (child) or primary (non-delegated) binding.
-- Guard resolution order (lifecycle MCP guard only; hookcli PreToolUse stays env/flag-only by design): env → **branch-matched scoped binding** → branch-matched primary binding → active cycles. Each sub-agent session runs with its own `HARNESS_EXPECTED_WORKTREE` export (per-process env, no cross-talk), so the strong guard works per-worker today; scoped bindings restore context after compaction/restart.
+- `issueops resume` gains `--id <cycle>`: resolves that cycle directly, returns the same `IssueOpsResumeResult` (+ `export ISSUEOPS_EXPECTED_WORKTREE=` guidance), and with `--bind` writes the scoped (child) or primary (non-delegated) binding.
+- Guard resolution order (lifecycle MCP guard only; hookcli PreToolUse stays env/flag-only by design): env → **branch-matched scoped binding** → branch-matched primary binding → active cycles. Each sub-agent session runs with its own `ISSUEOPS_EXPECTED_WORKTREE` export (per-process env, no cross-talk), so the strong guard works per-worker today; scoped bindings restore context after compaction/restart.
 
 ## D6: Upstream Independence (standalone operation)
 
-User decision (2026-07-07): agent-harness must operate fully standalone — no upstream library/service MCPs are used by harness features, none are set up during install/update, and every harness code path that depends on an upstream tool or external service is removed. This REVERSES the documented "바퀴를 재발명하지 않는다 / companion tool" policy in `.agent-harness/ARCHITECTURE.md` and the AGENTS.md invariants, so it must be recorded as an ADR with the rejected alternative (keeping opt-in upstream wiring) and rationale (independence, reproducibility, no external keys/network on core paths).
+User decision (2026-07-07): issueops must operate fully standalone — no upstream library/service MCPs are used by harness features, none are set up during install/update, and every harness code path that depends on an upstream tool or external service is removed. This REVERSES the documented "바퀴를 재발명하지 않는다 / companion tool" policy in `.issueops/ARCHITECTURE.md` and the AGENTS.md invariants, so it must be recorded as an ADR with the rejected alternative (keeping opt-in upstream wiring) and rationale (independence, reproducibility, no external keys/network on core paths).
 
 Verified dependency inventory (all to be removed):
 
@@ -191,9 +191,9 @@ Verified dependency inventory (all to be removed):
 |---|-----------|----------|-------------|
 | U1 | `implement` entry gate hard-requires CodeGraph (`codegraph_ready` when `!prep.CodeGraphChecked \|\| !prep.CodeGraphReady`) | `internal/core/issueops/issueops_readiness.go:193-195` | drop `codegraph_ready` from the gate; keep `WorktreeTools.CodeGraph*` fields as OPTIONAL informational evidence (JSON compat preserved); `prepare-tools` skips CodeGraph silently when absent |
 | U2 | External LLM service calls: Z.AI Coding Plan HTTP API (`api.z.ai`, `$Z_AI_API_KEY`, glm-5-turbo) | `internal/core/externalllm/print.go:15-21`; consumers: `draftwiki` suggest/queue-process, `issueops/remote` judge (remote score), `issueops/benchmark` judges + self-consistency, `lintgate`, `qualitycatalog`, `external_llm_usage` | delete `internal/core/externalllm` and the Z.AI client entirely; every consumer moves to the **host-agent judgement contract**: the harness RENDERS the judge/suggest prompt (+ JSON schema) and ACCEPTS the result as a file/JSON input recorded into state (the existing judge-file input path is the template), consistent with this design's actor model — the harness never performs or purchases intelligence itself |
-| U3 | draft-wiki promote writes into the upstream `m16khb/llm-wiki` hub (config/registry resolution) | `internal/core/draftwiki/llmpromote/config.go` | promote exports approved drafts to a repo-local export directory (`.agent-harness/draft-wiki/exported/`); users move them anywhere themselves; `llmpromote` removed |
-| U4 | Install/update wire upstream tools (llm-wiki, CodeGraph, claude-mem, LazyCodex, Ponytail); `agent-harness update` defaults `--with-upstream-tools=true` | `scripts/install-native.sh:381-484`, `cmd/harness/updatecli/update_bootstrap.go:23-54` | delete `install_upstream_tools` and all wiring; update never touches upstream tools; the flags remain for ONE release as deprecated no-ops that print a warning (script/CLI compat), then are removed |
-| U5 | `api-doc review` spawns the `codex` CLI | `cmd/harness/apidoc/api_doc_review_runner.go:24` | `api-doc review` renders the review prompt + output schema and accepts the host agent's result via a `--result <file>` input recorded as the review evidence; no process spawn |
+| U3 | draft-wiki promote writes into the upstream `m16khb/llm-wiki` hub (config/registry resolution) | `internal/core/draftwiki/llmpromote/config.go` | promote exports approved drafts to a repo-local export directory (`.issueops/draft-wiki/exported/`); users move them anywhere themselves; `llmpromote` removed |
+| U4 | Install/update wire upstream tools (llm-wiki, CodeGraph, claude-mem, LazyCodex, Ponytail); `issueops update` defaults `--with-upstream-tools=true` | `scripts/install-native.sh:381-484`, `cmd/issueops/updatecli/update_bootstrap.go:23-54` | delete `install_upstream_tools` and all wiring; update never touches upstream tools; the flags remain for ONE release as deprecated no-ops that print a warning (script/CLI compat), then are removed |
+| U5 | `api-doc review` spawns the `codex` CLI | `cmd/issueops/apidoc/api_doc_review_runner.go:24` | `api-doc review` renders the review prompt + output schema and accepts the host agent's result via a `--result <file>` input recorded as the review evidence; no process spawn |
 
 Rules:
 
@@ -206,18 +206,18 @@ Interaction with D1: the delegated child's `worktree_tools` gate (spec above) no
 
 ## D4: Hooks (observe/relay only)
 
-- **UserPromptSubmit** — extend the existing `[agent-harness]` dynamic hints (pattern: `activeWorktreeReminderValue`): when the resolved repo has a bound cycle with children, add `children: 2/5 done, 1 unvalidated — issueops child status --parent <id>`. Deterministic reads are bounded to the parent record and child refs, with at most N=16 children displayed.
+- **UserPromptSubmit** — extend the existing `[issueops]` dynamic hints (pattern: `activeWorktreeReminderValue`): when the resolved repo has a bound cycle with children, add `children: 2/5 done, 1 unvalidated — issueops child status --parent <id>`. Deterministic reads are bounded to the parent record and child refs, with at most N=16 children displayed.
 - **Stop** — the next-action relay gains deterministic child facts: if the bound cycle has `child_incomplete`/`child_unvalidated` missing keys, the relay names them (it does not judge). This prevents "declared done while children run" without making the hook a workflow actor.
-- **PreToolUse** — unchanged. The per-process `HARNESS_EXPECTED_WORKTREE` env guard already gives each sub-agent session its own strong worktree fence; scoped bindings (D2) only improve post-compaction fallback in the lifecycle MCP guard chain.
+- **PreToolUse** — unchanged. The per-process `ISSUEOPS_EXPECTED_WORKTREE` env guard already gives each sub-agent session its own strong worktree fence; scoped bindings (D2) only improve post-compaction fallback in the lifecycle MCP guard chain.
 
 ## D5: Skills and docs
 
 - `skills/issueops/SKILL.md`: new **Delegated Child Cycles** section — owner-command map additions (`children_complete` → `issueops child status/accept`), delegation preconditions, and the sub-agent prompt contract. Contract strings pinned by extending `issueops_skill_contract_test.go`.
 - New reference `skills/issueops/references/orchestration.md`: the delegation prompt template (child: cycle id, worktree, export line, phase contract, "stop and report on scope drift"), validation rubric for `accept`, and the child walkthrough.
-- `.agent-harness/SUB_AGENT_PATTERNS.md`: map D1→patterns #2/#7 with the recorded-execution-decision requirement.
-- `.agent-harness/AGENT_WORKFLOW.md`: resume contract additions (`issueops resume --id`, scoped bindings).
-- `.agent-harness/ADR.md`: record the decision (harness-as-coordinator, host-spawns-agents; delegated-artifact profile instead of a phase-machine fork; lease-TTL pool instead of a process-supervising executor) and rejected alternatives (harness-side process spawning — violates worker preconditions; per-child reduced phase enum — forks the machine; single shared pool file — lock contention and lost updates).
-- Golden/contract surfaces: `cmd/harness/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, `cmd/harness/contractgolden`, usage goldens.
+- `.issueops/SUB_AGENT_PATTERNS.md`: map D1→patterns #2/#7 with the recorded-execution-decision requirement.
+- `.issueops/AGENT_WORKFLOW.md`: resume contract additions (`issueops resume --id`, scoped bindings).
+- `.issueops/ADR.md`: record the decision (harness-as-coordinator, host-spawns-agents; delegated-artifact profile instead of a phase-machine fork; lease-TTL pool instead of a process-supervising executor) and rejected alternatives (harness-side process spawning — violates worker preconditions; per-child reduced phase enum — forks the machine; single shared pool file — lock contention and lost updates).
+- Golden/contract surfaces: `cmd/issueops/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, `cmd/issueops/contractgolden`, usage goldens.
 
 ## Concurrency Model (explicit contract)
 
@@ -257,10 +257,10 @@ Verification commands:
 ```bash
 go test ./internal/core/issueops/... -count=1
 go test -race ./internal/core/issueops/... -count=1
-go test ./cmd/harness/... -count=1
-go test ./cmd/harness/... -run Golden -count=1
+go test ./cmd/issueops/... -count=1
+go test ./cmd/issueops/... -run Golden -count=1
 go test ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Dogfood scenarios (documented in the plan; run before declaring done):
@@ -278,4 +278,4 @@ Z_AI_API_KEY= go test ./... -count=1        # green without any upstream tool in
 
 ## Rollout
 
-Additive state first, no destructive migration. Recommended order: **U1 (CodeGraph gate removal) first** — it simplifies every worktree_tools fixture the delegation tests touch — then D1+D2 (hierarchical delegation), then D3 (pool), with the remaining D6 removals (U2-U5) as an independent parallel track. S1 is fully useful alone and exercises the binding/gate machinery D3 reuses. After tests pass: `agent-harness update --path-mode=skip --json`, then verify `daemon status --json`, `codex mcp get agent_harness`, `claude mcp list`, run B1/B2, and run the D6 independence verification block above.
+Additive state first, no destructive migration. Recommended order: **U1 (CodeGraph gate removal) first** — it simplifies every worktree_tools fixture the delegation tests touch — then D1+D2 (hierarchical delegation), then D3 (pool), with the remaining D6 removals (U2-U5) as an independent parallel track. S1 is fully useful alone and exercises the binding/gate machinery D3 reuses. After tests pass: `issueops update --path-mode=skip --json`, then verify `daemon status --json`, `codex mcp get issueops`, `claude mcp list`, run B1/B2, and run the D6 independence verification block above.

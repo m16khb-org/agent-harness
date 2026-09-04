@@ -1,20 +1,20 @@
 package issueopspreparation
 
 import (
-	remote "agent-harness/internal/domain/issueopsremote"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	remote "issueops/internal/domain/issueopsremote"
 	"path/filepath"
 	"strings"
 
-	preparationapp "agent-harness/internal/application/issueopspreparation"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	preparationdomain "agent-harness/internal/domain/issueopspreparation"
-	"agent-harness/internal/port"
+	preparationapp "issueops/internal/application/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	preparationdomain "issueops/internal/domain/issueopspreparation"
+	"issueops/internal/port"
 )
 
 const (
@@ -478,7 +478,7 @@ func ensureRootUnclaimed(store port.RecordInventoryStore, selfID, root string) e
 				continue
 			}
 			return fmt.Errorf(
-				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: agent-harness issueops cleanup finish --id %s --preview --json",
+				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: issueops cleanup finish --id %s --preview --json",
 				target, row.ID, strings.TrimSpace(record.Branch), row.ID,
 			)
 		}
@@ -518,5 +518,5 @@ func currentClaimTokenPath(record leasecontract.Record) string {
 		return ""
 	}
 	key := fmt.Sprintf("%x", sha256.Sum256([]byte(record.ID)))[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
 }

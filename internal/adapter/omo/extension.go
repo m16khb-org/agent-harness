@@ -17,14 +17,14 @@ async function injectProjectDocs(pi, subcommand, ctx) {
       { cwd: ctx.cwd },
     )
     if (result.code !== 0) {
-      ctx.ui.notify("agent-harness lifecycle hook failed", "warning")
+      ctx.ui.notify("issueops lifecycle hook failed", "warning")
       return
     }
     const payload = JSON.parse(result.stdout)
     if (!payload.should_inject || !payload.compact) return
     pi.sendMessage(
       {
-        customType: "agent-harness:project-docs",
+        customType: "issueops:project-docs",
         content: payload.compact,
         display: false,
       },
@@ -32,7 +32,7 @@ async function injectProjectDocs(pi, subcommand, ctx) {
     )
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    ctx.ui.notify("agent-harness lifecycle hook failed: " + detail, "warning")
+    ctx.ui.notify("issueops lifecycle hook failed: " + detail, "warning")
   }
 }
 

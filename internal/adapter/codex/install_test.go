@@ -1,9 +1,9 @@
 package codex
 
 import (
-	install "agent-harness/internal/adapter/install"
 	"encoding/json"
 	"fmt"
+	install "issueops/internal/adapter/install"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +20,7 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -36,7 +36,7 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(config), "[mcp_servers.agent_harness]") || !strings.Contains(string(config), req.BinPath) {
+	if !strings.Contains(string(config), "[mcp_servers.issueops]") || !strings.Contains(string(config), req.BinPath) {
 		t.Fatalf("codex config missing harness block:\n%s", string(config))
 	}
 	hooks, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json"))
@@ -69,7 +69,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -95,21 +95,21 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 
 func TestMergeHookConfigPreservesCoResidentHookPositions(t *testing.T) {
 	agentHarness := map[string]any{"hooks": []any{map[string]any{
-		"type": "command", "command": "'/old/bin/agent-harness' hook pre-tool-use --host codex", "timeout": float64(5),
+		"type": "command", "command": "'/old/bin/issueops' hook pre-tool-use --host codex", "timeout": float64(5),
 	}}}
 	orca := map[string]any{"hooks": []any{map[string]any{
 		"type": "command", "command": "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh", "timeout": float64(10),
 	}}}
 	config := map[string]any{"hooks": map[string]any{"PreToolUse": []any{agentHarness, orca}}}
 
-	merged := mergeHookConfig(config, "/new/bin/agent-harness")
+	merged := mergeHookConfig(config, "/new/bin/issueops")
 	groups := merged["hooks"].(map[string]any)["PreToolUse"].([]any)
 	if len(groups) != 1 {
 		t.Fatalf("PreToolUse groups = %d, want only the third-party group: %#v", len(groups), groups)
 	}
 	command := groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
 	if command != "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh" {
-		t.Fatalf("legacy agent-harness group must be removed while third-party group is preserved: %q", command)
+		t.Fatalf("legacy issueops group must be removed while third-party group is preserved: %q", command)
 	}
 	for _, event := range []string{"SessionStart"} {
 		if len(merged["hooks"].(map[string]any)[event].([]any)) != 1 {
@@ -131,16 +131,16 @@ func TestMergeHookConfigReplacesManagedContextGroupsInPlace(t *testing.T) {
 	}
 	for name, groups := range map[string][]any{
 		"managed before third party": {
-			managed("'/old/bin/agent-harness' hook session-start --host codex"),
+			managed("'/old/bin/issueops' hook session-start --host codex"),
 			thirdParty("orca observe"),
 		},
 		"managed after third party": {
 			thirdParty("codegraph observe"),
-			managed("'/old/bin/agent-harness' hook session-start --host codex"),
+			managed("'/old/bin/issueops' hook session-start --host codex"),
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			merged := mergeHookConfig(map[string]any{"hooks": map[string]any{"SessionStart": groups}}, "/new/bin/agent-harness")
+			merged := mergeHookConfig(map[string]any{"hooks": map[string]any{"SessionStart": groups}}, "/new/bin/issueops")
 			got := merged["hooks"].(map[string]any)["SessionStart"].([]any)
 			if len(got) != 2 {
 				t.Fatalf("SessionStart groups = %d, want 2: %#v", len(got), got)
@@ -154,7 +154,7 @@ func TestMergeHookConfigReplacesManagedContextGroupsInPlace(t *testing.T) {
 					}
 				}
 			}
-			if count := strings.Count(fmt.Sprint(got), "'/new/bin/agent-harness' hook session-start --host codex"); count != 1 {
+			if count := strings.Count(fmt.Sprint(got), "'/new/bin/issueops' hook session-start --host codex"); count != 1 {
 				t.Fatalf("canonical managed group count = %d, want 1: %#v", count, got)
 			}
 		})
@@ -165,7 +165,7 @@ func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	hooksPath := filepath.Join(home, ".codex", "hooks.json")
 	writeFile(t, hooksPath, `{"hooks":{"PostToolUse":[{"matcher":"Write|Edit|Bash","hooks":[]}],"PreToolUse":[{"matcher":"Read","hooks":[{"type":"command","command":"echo preserved","timeout":1}]}]}}`)
@@ -207,7 +207,7 @@ func TestCodexInstallerRejectsMalformedHookConfigWithoutWriting(t *testing.T) {
 			writeAdapterTestSkill(t, root, "alpha")
 			path := filepath.Join(home, ".codex", "hooks.json")
 			writeFile(t, path, content)
-			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 			req.SkillNames = []string{"alpha"}
 
 			result, err := NewInstaller().Install(req)
@@ -232,8 +232,8 @@ func TestCodexInstallerReportsStaleHookTarget(t *testing.T) {
 			home := t.TempDir()
 			writeAdapterTestSkill(t, root, "alpha")
 			hooksPath := filepath.Join(home, ".codex", "hooks.json")
-			writeFile(t, hooksPath, `{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host codex"}]}]}}`)
-			expected := filepath.Join(root, "bin", "agent-harness")
+			writeFile(t, hooksPath, `{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/issueops' hook pre-tool-use --host codex"}]}]}}`)
+			expected := filepath.Join(root, "bin", "issueops")
 			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
 			req.SkillNames = []string{"alpha"}
 			req.DryRun = dryRun
@@ -242,7 +242,7 @@ func TestCodexInstallerReportsStaleHookTarget(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := "codex native hook target is stale: observed=/source.worktrees/completed/bin/agent-harness expected=" + expected + "; reinstall hooks and restart the codex session"
+			want := "codex native hook target is stale: observed=/source.worktrees/completed/bin/issueops expected=" + expected + "; reinstall hooks and restart the codex session"
 			if countMessage(result.Messages, want) != 1 {
 				t.Fatalf("messages = %#v, want exactly one %q", result.Messages, want)
 			}

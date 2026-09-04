@@ -1,20 +1,20 @@
 ---
 name: project-docs-update
-description: "Evidence-bound incremental refresh of existing .agent-harness project documents during ongoing work through the project_docs MCP contract: route, read with SHA-256, then append cautions or ADRs via project_docs_append, or revise one document at a time via project_docs_revise. Use when a completed change, solved failure, new command, or durable decision should be reflected in project docs. For initial creation use project-docs-bootstrap; for structural modularization use project-docs-optimize."
+description: "Evidence-bound incremental refresh of existing .issueops project documents during ongoing work through the project_docs MCP contract: route, read with SHA-256, then append cautions or ADRs via project_docs_append, or revise one document at a time via project_docs_revise. Use when a completed change, solved failure, new command, or durable decision should be reflected in project docs. For initial creation use project-docs-bootstrap; for structural modularization use project-docs-optimize."
 ---
 
 # Project Docs Update
 
 ## Goal
 
-Keep existing `.agent-harness` documents current while work happens, without
+Keep existing `.issueops` documents current while work happens, without
 losing user consensus and without restructuring. Knowledge lands as
 append-only records by default; full-document replacement is the exception.
 
 ## Lifecycle Position
 
 `project-docs-bootstrap` (create) → **this skill** (incremental refresh) →
-`project-docs-optimize` (restructure). If `.agent-harness` documents are
+`project-docs-optimize` (restructure). If `.issueops` documents are
 missing, route to `project-docs-bootstrap` first. If documents are oversized
 or ownership is duplicated, route to `project-docs-optimize`; do not
 restructure here.
@@ -33,7 +33,7 @@ requires the doc path to be in the change set, so an unedited file cannot pass.
 Route the current task first to avoid injecting every doc into context:
 
 ```bash
-agent-harness project route-docs --repo . --task "<task kind>" --json
+issueops project route-docs --repo . --task "<task kind>" --json
 ```
 
 | Work outcome | Action |
@@ -74,7 +74,7 @@ One document per update. Never rewrite multiple documents in one pass.
    (user instruction, files, commands), `confirm=true` — or
    `project_docs_append(kind=caution|adr)` for append-only knowledge.
 
-CLI fallback: `agent-harness project append --kind caution|adr` covers
+CLI fallback: `issueops project append --kind caution|adr` covers
 records. There is no CLI for full-document revision; when MCP is unavailable,
 edit the file directly with the same evidence discipline and state that MCP
 was bypassed in the report.

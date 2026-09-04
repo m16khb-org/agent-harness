@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-const omoMCPCatalogSHA256Env = "HARNESS_MCP_CATALOG_SHA256"
+const omoMCPCatalogSHA256Env = "ISSUEOPS_MCP_CATALOG_SHA256"
 
 func writeOmoUserMCP(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: "omo_user_mcp_config"}
@@ -26,12 +26,11 @@ func writeOmoUserMCP(path string, req port.NativeInstallRequest) (port.InstallFi
 		servers = map[string]any{}
 		config["mcpServers"] = servers
 	}
-	delete(servers, "agent-harness")
 	server, err := omoUserMCPServer(req)
 	if err != nil {
 		return file, err
 	}
-	servers["agent_harness"] = server
+	servers["issueops"] = server
 	return WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
 }
 
@@ -49,13 +48,13 @@ func omoUserMCPServer(req port.NativeInstallRequest) (map[string]any, error) {
 }
 
 func omoProjectMCPConfig() (map[string]any, error) {
-	server, err := omoMCPServer("./bin/agent-harness", ".")
+	server, err := omoMCPServer("./bin/issueops", ".")
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
 		"mcpServers": map[string]any{
-			"agent_harness_project": server,
+			"issueops_project": server,
 		},
 	}, nil
 }
@@ -75,7 +74,7 @@ func omoMCPServer(command, root string) (map[string]any, error) {
 		"command": command,
 		"args":    []string{"mcp"},
 		"env": map[string]any{
-			"HARNESS_ROOT":         root,
+			"ISSUEOPS_ROOT":        root,
 			omoMCPCatalogSHA256Env: catalogSHA256,
 		},
 	}, nil

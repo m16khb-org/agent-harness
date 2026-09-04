@@ -1,7 +1,7 @@
 package policy
 
-import policydomain "agent-harness/internal/domain/policy"
-import policycontract "agent-harness/internal/contract/policy"
+import policydomain "issueops/internal/domain/policy"
+import policycontract "issueops/internal/contract/policy"
 
 func CommandPolicySummary() map[string]any {
 	return map[string]any{

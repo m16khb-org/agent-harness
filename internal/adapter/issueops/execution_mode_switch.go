@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // switchModeInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -51,7 +51,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 	}
 	if record.Execution == nil {
 		return ExecutionSwitchModeResult{OK: false, ID: req.ID}, fmt.Errorf(
-			"IssueOps execution is not prepared; run `agent-harness issueops execution prepare --id %s --mode %s` instead", record.ID, requested)
+			"IssueOps execution is not prepared; run `issueops execution prepare --id %s --mode %s` instead", record.ID, requested)
 	}
 
 	result := ExecutionSwitchModeResult{
@@ -72,7 +72,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 	result.Fingerprint = fingerprint
 	if !req.Apply {
 		result.NextCommand = fmt.Sprintf(
-			"agent-harness issueops execution switch-mode --id %s --mode %s --apply --confirm --fingerprint %s --json",
+			"issueops execution switch-mode --id %s --mode %s --apply --confirm --fingerprint %s --json",
 			record.ID, requested, fingerprint)
 		return result, nil
 	}

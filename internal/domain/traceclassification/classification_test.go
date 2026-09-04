@@ -52,9 +52,9 @@ func TestDefaultVerificationCommand(t *testing.T) {
 		step     string
 		contains string
 	}{
-		{"contract golden", "go test ./cmd/harness -run Golden"},
+		{"contract golden", "go test ./cmd/issueops -run Golden"},
 		{"policy guard", "go test ./internal/core"},
-		{"build fix", "go build -o bin/agent-harness"},
+		{"build fix", "go build -o bin/issueops"},
 		{"unknown", "go test ./... -count=1"},
 	}
 	for _, tt := range tests {

@@ -1,0 +1,88 @@
+{
+  "lifecycle_id": "io-dc336927dc60",
+  "issue": "https://github.com/m16khb-org/issueops/issues/125",
+  "branch": "125-sealed-issue-edit-guard",
+  "mode": "direct",
+  "generation": 1,
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "criterion": "훅이 이슈 편집 명령의 대상 식별자를 번호와 URL 두 형태로 추출한다",
+      "evidence": "TestIssueEditTargetFromCommand 6개 케이스 통과(번호, URL, glab update, 생성 제외, pr edit 제외, 미해석 제외)",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-02",
+      "criterion": "편집 대상이 sealed owner context를 보유한 활성 orca 사이클의 연결 이슈면 PreToolUse가 차단한다",
+      "evidence": "TestPreToolUseBlocksEditingASealedIssueBody와 TestPreToolUseBlocksSealedIssueEditByNumber 통과",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-03",
+      "criterion": "차단 메시지가 봉인 lifecycle ID와 재봉인 명령을 안내한다",
+      "evidence": "차단 이유에 lifecycle ID와 reseed 플래그가 포함됨을 같은 테스트에서 검증",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-04",
+      "criterion": "봉인과 무관한 이슈, 봉인 없는 사이클, 종료된 사이클의 이슈 편집은 차단하지 않는다",
+      "evidence": "TestPreToolUseAllowsIssueEditsThatDoNotTouchSealedContext 4개 하위 케이스와 TestPreToolUseAllowsSealedIssueEditAfterTheCycleIsReleased 통과",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-05",
+      "criterion": "식별자를 해석할 수 없는 편집 명령은 통과시킨다",
+      "evidence": "파싱 테스트의 미해석 케이스와 가드 테스트의 edit target is not resolvable 케이스 통과",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-06",
+      "criterion": "각 결함이 RED 테스트로 선행 실증된 뒤 GREEN으로 전환된다",
+      "evidence": "파싱 RED는 조회 함수 미존재 컴파일 실패, 가드 RED는 봉인 packet 경로 조회 함수 미존재 컴파일 실패로 확인한 뒤 GREEN 전환",
+      "result": "PASS"
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test internal/core/remoteartifact",
+      "result": "ok"
+    },
+    {
+      "command": "go test internal/core/lifecycle",
+      "result": "ok"
+    },
+    {
+      "command": "go test 전체 패키지",
+      "result": "ok"
+    },
+    {
+      "command": "go test cmd/issueops/contractgolden Golden",
+      "result": "ok"
+    },
+    {
+      "command": "issueops pr-readiness --strict",
+      "result": "ready true"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "51b9d9a",
+      "subject": "chore(issueops): record the 125 sealed issue edit guard plan"
+    },
+    {
+      "sha": "6573552",
+      "subject": "feat(remoteartifact): expose the edit target of issue edit commands"
+    },
+    {
+      "sha": "212ac33",
+      "subject": "feat(lifecycle): block edits to an issue sealed into an owner context"
+    }
+  ],
+  "ai_slop_clean": "diff 359 삽입 0 삭제 전수 점검. 계획대로 파싱 계층과 가드를 독립 커밋으로 분리했고 파싱 계층에 상태 의존을 넣지 않았다. 봉인 경로는 core 조회 함수를 써서 규칙 복제를 피했다",
+  "deviations": [
+    "design-review 격리 서브에이전트를 띄우지 못했다: 이 세션은 sub-agent dispatch가 정책으로 금지되어 devil's advocate 검토를 메인 에이전트가 직접 수행했다. 반론 중 봉인 전 단계 사이클에서 편집이 막히는 문제를 수용해 packet 실존을 차단 조건에 명시적으로 포함했다.",
+    "실환경 도그푸드 불가: 활성 orca 사이클이 0건이어서 단위 테스트로만 검증했다. 다음 orca 사이클이 첫 실환경 검증 기회다."
+  ],
+  "blockers": "none",
+  "draft_pr": "https://github.com/m16khb-org/issueops/pull/126"
+}

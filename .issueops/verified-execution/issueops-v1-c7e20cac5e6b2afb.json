@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "io-6e932f2e6c54",
+  "generation": 4,
+  "worktree": "/Users/sample/workspace/issueops.worktrees/197-issueops-lease-claim-vertical",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "tests": ["TestClaimDomainContract", "TestClaimServiceOrder"],
+      "command": "go test ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/contract/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-02",
+      "tests": ["TestClaimTokenContract", "TestClaimContextPreflight", "TestClaimContextPreflightRejectsSealedArtifactDrift", "TestSQLiteClaimRejectsUnpreparedExecution", "TestClaimInboundContract"],
+      "command": "go test ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-03",
+      "tests": ["TestSQLiteClaimTransaction"],
+      "command": "go test -race ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-04",
+      "tests": ["TestExecuteExecutionClaimUsesInjectedHandler", "TestIssueOpsAppClaimWiring", "TestIssueOpsClaimProviderNameUsesBranchPrepareAuthority"],
+      "command": "go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopsapp -count=1; go test ./cmd/issueops/mcpcli -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-05",
+      "tests": ["TestExecutionLeaseClaimDifferential"],
+      "command": "go test ./internal/core/issueops -count=1; go test ./internal/architecture -count=1",
+      "result": "PASS"
+    }
+  ],
+  "golden_fixtures": {
+    "direct-v1": "8e732ee8cedb8b21f905657813389983e94a9be54416e50d77351fed5462cab2",
+    "orca-v1": "72ba895d17634f3a07d872202bbc6620bcf355b2fd1e92eb2b0127c28b401bcf",
+    "error-contract": "1d998cdaecdb99ce87794d92ccd2afbde0613abbfbb5dd6200b66fdbe771e81c"
+  },
+  "verification": [
+    {"command": "go test ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/contract/issueopslease -count=1", "result": "PASS"},
+    {"command": "go test ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -count=1", "result": "PASS"},
+    {"command": "go test ./internal/core/issueops -count=1", "result": "PASS"},
+    {"command": "go test ./internal/architecture -count=1", "result": "PASS"},
+    {"command": "go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopsapp -count=1", "result": "PASS"},
+    {"command": "go test ./cmd/issueops/mcpcli -count=1", "result": "PASS"},
+    {"command": "go test -race ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease -count=1", "result": "PASS"},
+    {"command": "go vet ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease", "result": "PASS"},
+    {"command": "go build -o bin/issueops ./cmd/issueops", "result": "PASS"},
+    {"command": "git diff --check", "result": "PASS"}
+  ],
+  "runtime_smoke": {
+    "command": "bin/issueops execution claim --id io-6e932f2e6c54 --generation 4 ... --json",
+    "result": "PASS: same-holder retry returned active generation 4 without a token value in output"
+  },
+  "omissions": [
+    "전체 go test ./... 및 전체 race는 issue contract에 따라 로컬에서 실행하지 않고 Draft PR CI에서 확인한다."
+  ]
+}

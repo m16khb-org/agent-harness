@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Quality Metrics"
+  short_description: "Measure code quality before and after changes"
+  default_prompt: "Use $code-quality-metrics to measure code quality before and after this change with reproducible scope and metrics."

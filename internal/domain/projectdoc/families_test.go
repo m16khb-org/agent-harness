@@ -33,7 +33,7 @@ func TestDocFamilyLookupAndPaths(t *testing.T) {
 	if f.OverviewRel() != "adr/overview.md" {
 		t.Fatalf("overview rel wrong: %q", f.OverviewRel())
 	}
-	if !strings.HasSuffix(ManifestRelPath(), ".agent-harness/documentation/manifest.json") {
+	if !strings.HasSuffix(ManifestRelPath(), ".issueops/documentation/manifest.json") {
 		t.Fatalf("manifest path wrong: %q", ManifestRelPath())
 	}
 }
@@ -90,14 +90,14 @@ func TestManifestJSONMatchesCheckerSchema(t *testing.T) {
 	if len(manifest.Families) != len(DocFamilies()) {
 		t.Fatalf("family count wrong: %d", len(manifest.Families))
 	}
-	if !strings.HasPrefix(manifest.Families[0].Root, ".agent-harness/ADR.md") {
+	if !strings.HasPrefix(manifest.Families[0].Root, ".issueops/ADR.md") {
 		t.Fatalf("family root path wrong: %q", manifest.Families[0].Root)
 	}
 }
 
 func TestPrefixedAndStringHelpers(t *testing.T) {
 	prefixed := PrefixedProjectDocNames()
-	if len(prefixed) == 0 || !strings.HasPrefix(prefixed[0], ".agent-harness/") {
+	if len(prefixed) == 0 || !strings.HasPrefix(prefixed[0], ".issueops/") {
 		t.Fatalf("prefixed names wrong: %v", prefixed)
 	}
 	if got := NonEmptyStrings([]string{" a ", "", "b"}); len(got) != 2 || got[0] != "a" {

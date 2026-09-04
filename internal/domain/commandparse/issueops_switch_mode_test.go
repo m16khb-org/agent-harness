@@ -6,7 +6,7 @@ import "testing"
 // ParseExactIssueOpsCommand의 두 단어 목록과 IssueOpsCommandSpec까지 필요했다.
 // 새 서브커맨드는 같은 함정에 걸리므로 세 지점을 함께 고정한다(이슈 #167).
 func TestSwitchModeParsesAsATwoWordCommand(t *testing.T) {
-	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution switch-mode --id io-1 --mode orca --json")
+	command, ok := ParseExactIssueOpsCommand("issueops execution switch-mode --id io-1 --mode orca --json")
 	if !ok {
 		t.Fatal("switch-mode가 파싱되지 않으면 가드가 그것을 unclassified로 막는다")
 	}
@@ -37,7 +37,7 @@ func TestSwitchModeHasACommandSpec(t *testing.T) {
 
 func TestSwitchModeApplyFlagsSurviveExactParsing(t *testing.T) {
 	command, ok := ParseExactIssueOpsCommand(
-		"agent-harness issueops execution switch-mode --id io-1 --mode orca --apply --confirm --fingerprint deadbeef --host claude --session-id s1 --cwd /w --json")
+		"issueops execution switch-mode --id io-1 --mode orca --apply --confirm --fingerprint deadbeef --host claude --session-id s1 --cwd /w --json")
 	if !ok {
 		t.Fatal("apply 형태가 파싱되지 않으면 전환의 3단 확인을 쓸 수 없다")
 	}

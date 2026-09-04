@@ -1,8 +1,8 @@
 package guard
 
 import (
-	guardcontract "agent-harness/internal/contract/guard"
 	"fmt"
+	guardcontract "issueops/internal/contract/guard"
 	"testing"
 )
 

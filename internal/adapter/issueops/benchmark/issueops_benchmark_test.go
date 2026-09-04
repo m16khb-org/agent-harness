@@ -1,7 +1,7 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,7 +53,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresKoreanIssueAndPR(t *testing.T) {
 	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "korean", CriticalFailures: []string{"issue or pr/mr not written in Korean"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.IssueDraft = "## Problem\n\n## Current Evidence\n\n## Acceptance Criteria\n\n## Non-goals\n\n## Verification\n\n## Feedback Log\n"
-	artifact.PRDraft = "Intent\nChanges\nVerification\nRisk\nIssue: https://example.com/acme/agent-harness/issues/1\n"
+	artifact.PRDraft = "Intent\nChanges\nVerification\nRisk\nIssue: https://example.com/acme/issueops/issues/1\n"
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
 	if score.Passed {

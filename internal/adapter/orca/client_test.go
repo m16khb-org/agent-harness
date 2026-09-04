@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestClientProjectsWorkerDoneThroughDedicatedSafeArgvMethod(t *testing.T) {
@@ -456,13 +456,13 @@ func TestClientRejectsMalformedOrOversizedEnvelope(t *testing.T) {
 
 func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --parent-worktree path:/repo.worktrees/15-umbrella --setup skip --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"worktree-1","instanceId":"instance-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/16-demo","comment":"agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1","baseRef":"refs/remotes/origin/16-demo","linkedIssue":16,"parentWorktreeId":"repo-1::/repo.worktrees/15-umbrella","lineage":{"capture":{"source":"explicit-cli-flag","confidence":"explicit"}}}},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --parent-worktree path:/repo.worktrees/15-umbrella --setup skip --comment issueops:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"worktree-1","instanceId":"instance-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/16-demo","comment":"issueops:cycle=io-demo;attempt=1;epoch=epoch-1","baseRef":"refs/remotes/origin/16-demo","linkedIssue":16,"parentWorktreeId":"repo-1::/repo.worktrees/15-umbrella","lineage":{"capture":{"source":"explicit-cli-flag","confidence":"explicit"}}}},"_meta":{"runtimeId":"runtime-1"}}`)}
 	client := NewClient(runner)
 	result, err := client.CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
 		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo",
 		ParentWorktree: "/repo.worktrees/15-umbrella",
 		Issue:          16,
-		Comment:        "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+		Comment:        "issueops:cycle=io-demo;attempt=1;epoch=epoch-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -472,7 +472,7 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 		result.LineageSource != "explicit-cli-flag" || result.LineageConfidence != "explicit" {
 		t.Fatalf("created worktree = %#v", result)
 	}
-	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--parent-worktree", "path:/repo.worktrees/15-umbrella", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
+	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--parent-worktree", "path:/repo.worktrees/15-umbrella", "--setup", "skip", "--comment", "issueops:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
 		t.Fatalf("argv = %#v, want %#v", runner.calls, want)
 	}
@@ -602,10 +602,10 @@ func TestClientRejectsGitLabNumericSuffixWithoutExactSealedRemoteBranch(t *testi
 
 func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
 	runner := newFakeRunner(t)
-	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
+	command := "orca worktree set --worktree id:worktree-1 --comment issueops:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
 	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
 	got, err := NewClient(runner).AdoptWorktree(context.Background(), port.OrcaAdoptWorktreeRequest{
-		WorktreeID: "worktree-1", Provider: "github", Issue: 16, Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+		WorktreeID: "worktree-1", Provider: "github", Issue: 16, Comment: "issueops:cycle=io-demo;attempt=1;epoch=epoch-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -677,7 +677,7 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if terminal.RuntimeID != "runtime-1" || terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.TabID != "tab-live" || terminal.LeafID != "leaf-live" || terminal.Title != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
+	if terminal.RuntimeID != "runtime-1" || terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.TabID != "tab-live" || terminal.LeafID != "leaf-live" || terminal.Title != "issueops=io-demo ownership=epoch-1 attempt=1" {
 		t.Fatalf("refreshed terminal = %#v", terminal)
 	}
 }
@@ -710,10 +710,10 @@ func TestClientDecodesRuntimeRolloverStableTerminalAndWorktreeIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(terminals) != 1 || terminals[0].RuntimeID != "runtime-2" || terminals[0].TabID != "tab-stable" || terminals[0].LeafID != "leaf-stable" || terminals[0].StableTabTitle != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" || terminals[0].Title == terminals[0].StableTabTitle {
+	if len(terminals) != 1 || terminals[0].RuntimeID != "runtime-2" || terminals[0].TabID != "tab-stable" || terminals[0].LeafID != "leaf-stable" || terminals[0].StableTabTitle != "issueops=io-demo ownership=epoch-1 attempt=1" || terminals[0].Title == terminals[0].StableTabTitle {
 		t.Fatalf("runtime rollover terminal = %#v", terminals)
 	}
-	if len(worktrees) != 1 || worktrees[0].RuntimeID != "runtime-2" || worktrees[0].InstanceID != "instance-2" || worktrees[0].Comment != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
+	if len(worktrees) != 1 || worktrees[0].RuntimeID != "runtime-2" || worktrees[0].InstanceID != "instance-2" || worktrees[0].Comment != "issueops=io-demo ownership=epoch-1 attempt=1" {
 		t.Fatalf("runtime rollover worktree = %#v", worktrees)
 	}
 }
@@ -1130,12 +1130,12 @@ func TestClientAvailableUsesPathLookupOnly(t *testing.T) {
 
 func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --run run_issueops_1 --json"] = fixtureOutput(t, "task_create.json")
-	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
+	runner.responses["orca orchestration task-create --spec spec --task-title issueops marker --display-name 16-demo --run run_issueops_1 --json"] = fixtureOutput(t, "task_create.json")
+	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "issueops marker", DisplayName: "16-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != "task-1" || got.Title != "agent-harness marker" || got.DisplayName != "16-demo" || got.Status != "ready" {
+	if got.ID != "task-1" || got.Title != "issueops marker" || got.DisplayName != "16-demo" || got.Status != "ready" {
 		t.Fatalf("official task projection = %#v", got)
 	}
 }
@@ -1147,7 +1147,7 @@ func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != "task-1" || got[0].Title != "agent-harness marker" || got[0].Status != "ready" {
+	if len(got) != 1 || got[0].ID != "task-1" || got[0].Title != "issueops marker" || got[0].Status != "ready" {
 		t.Fatalf("task list projection = %#v", got)
 	}
 }

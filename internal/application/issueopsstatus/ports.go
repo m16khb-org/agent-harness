@@ -3,7 +3,7 @@ package issueopsstatus
 import (
 	"context"
 
-	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+	issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 )
 
 type Repository interface {

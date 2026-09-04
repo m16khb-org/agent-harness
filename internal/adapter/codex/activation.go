@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvidence, error) {
@@ -17,10 +17,9 @@ func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvi
 	}
 	text := string(config)
 	expectedBlock := codexGlobalBlock(req)
-	if strings.Count(text, "[mcp_servers.agent_harness]") != 1 || strings.Count(text, "[mcp_servers.agent_harness.env]") != 1 ||
-		strings.Contains(text, "[mcp_servers.agent-harness]") || strings.Contains(text, "[mcp_servers.agent-harness.env]") ||
+	if strings.Count(text, "[mcp_servers.issueops]") != 1 || strings.Count(text, "[mcp_servers.issueops.env]") != 1 ||
 		!strings.HasSuffix(text, expectedBlock) {
-		return nil, fmt.Errorf("Codex MCP readback does not contain exactly one canonical agent_harness server")
+		return nil, fmt.Errorf("Codex MCP readback does not contain exactly one canonical issueops server")
 	}
 	mcpDigest, err := SemanticSHA256(map[string]any{
 		"host": "codex", "surface": "mcp", "block": expectedBlock,

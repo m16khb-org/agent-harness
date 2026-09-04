@@ -7,9 +7,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/adapter/provider/providerutil"
-	bodysync "agent-harness/internal/domain/issueopsbodysync"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/providerutil"
+	bodysync "issueops/internal/domain/issueopsbodysync"
+	"issueops/internal/port"
 )
 
 // ghArtifactCommand maps a sync kind onto the gh noun that addresses it. The

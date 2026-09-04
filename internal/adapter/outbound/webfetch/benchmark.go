@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
 )
 
 func DeterministicFixtures() []webfetchcontract.BenchmarkFixture {
@@ -115,8 +115,8 @@ func runLiveBenchmark(ctx context.Context, req webfetchcontract.BenchmarkRequest
 		LiveParityReport:    webfetchcontract.LiveParityReport{Warnings: []string{}},
 	}
 	if !req.LiveOptIn {
-		result.LiveParityStatus = "live mode requires HARNESS_WEBFETCH_LIVE=1"
-		return result, fmt.Errorf("live benchmark requires HARNESS_WEBFETCH_LIVE=1")
+		result.LiveParityStatus = "live mode requires ISSUEOPS_WEBFETCH_LIVE=1"
+		return result, fmt.Errorf("live benchmark requires ISSUEOPS_WEBFETCH_LIVE=1")
 	}
 	if len(req.Fixtures) == 0 {
 		result.LiveParityStatus = "live mode requires URL fixtures"

@@ -1,7 +1,7 @@
 // IssueOps CLI가 읽는 구현 검토 DTO다.
 package issueops
 
-// IssueOpsImplementationReviewRequest는 구현 diff에 대한 brooks 리뷰 기록이다.
+// IssueOpsImplementationReviewRequest는 구현 diff에 대한 design-review 리뷰 기록이다.
 type IssueOpsImplementationReviewRequest struct {
 	Verdict        string
 	Findings       []string

@@ -1,0 +1,715 @@
+package executioncmd
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"issueops/cmd/issueops/issueopscli/remotecmd"
+	executionissue "issueops/internal/contract/executionissue"
+	"os"
+	"path/filepath"
+	"strings"
+
+	model "issueops/internal/contract/issueops"
+	"issueops/internal/port"
+	basesyncport "issueops/internal/port/issueopsbasesync"
+	provenanceport "issueops/internal/port/issueopsprovenance"
+)
+
+type Deps struct {
+	StateRoot              func() string
+	Prepare                model.ExecutionPrepareHandler
+	Orca                   port.ExecutionOrcaProvisioner
+	OrcaOwner              port.ExecutionOrcaOwnerInspector
+	BaseSync               basesyncport.Inspector
+	ReadIssue              executionissue.ExecutionIssueSnapshotReadFunc
+	Claim                  model.ExecutionClaimHandler
+	Release                model.ExecutionReleaseHandler
+	Reseed                 model.ExecutionReseedHandler
+	Resume                 model.ExecutionResumeHandler
+	Reconcile              port.ExecutionReconcileHandler
+	Complete               model.ExecutionCompleteHandler
+	Publication            remotecmd.PublicationHandlers
+	PrintJSON              func(any) error
+	PrintError             func(error) error
+	syncBase               func(context.Context, string, model.ExecutionSyncBaseRequest, model.ExecutionSyncBaseDeps) (model.ExecutionSyncBaseResult, error)
+	Provenance             provenanceport.Observer
+	nativeActorObservation *nativeActorObservation
+}
+
+func (deps Deps) actionDeps() port.ExecutionActionDependencies {
+	actionDeps := port.ExecutionActionDependencies{
+		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, BaseSync: deps.BaseSync, ReadIssue: deps.ReadIssue,
+		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
+		RemoteReconcile: deps.Publication.Reconcile,
+	}
+	if actionDeps.OrcaOwner == nil {
+		inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector)
+		if ok {
+			actionDeps.OrcaOwner = inspector
+		}
+	}
+	return actionDeps
+}
+
+func execute(req model.ExecutionActionRequest, deps Deps) (any, error) {
+	if deps.StateRoot == nil {
+		return nil, fmt.Errorf("IssueOps state root is unavailable")
+	}
+	return execDeps.ExecuteExecution(context.Background(), deps.StateRoot(), req, deps.actionDeps())
+}
+
+const Usage = `Usage:
+  issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude|omo [--owner-model MODEL] [--owner-effort EFFORT] [--direct-reason REASON] [--expected-readiness-fingerprint SHA256] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  issueops execution status --id ID [--json]
+  issueops execution whoami [--json]
+  issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] [ACTOR_FLAGS] [--json]
+  issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
+  issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] [--issue-snapshot-file PATH] [ACTOR_FLAGS] [--confirm] [--json]
+  issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
+  issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
+  issueops execution complete --id ID --generation N --final-head SHA --verification-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
+  issueops execution sync-base --id ID --completion-generation N (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
+  issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
+
+ACTOR_FLAGS: --host codex|claude|omo --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
+
+func Run(args []string, deps Deps) error {
+	if len(args) == 0 || isHelp(args[0]) {
+		fmt.Println(Usage)
+		return nil
+	}
+	switch args[0] {
+	case "prepare":
+		return runPrepare(args[1:], deps)
+	case "status":
+		return runStatus(args[1:], deps)
+	case "whoami":
+		return runWhoami(args[1:], deps)
+	case "claim":
+		return runClaim(args[1:], deps)
+	case "release":
+		return runRelease(args[1:], deps)
+	case "replace":
+		return runReplace(args[1:], deps)
+	case "resume":
+		return runResume(args[1:], deps)
+	case "reconcile":
+		return runReconcile(args[1:], deps)
+	case "complete":
+		return runComplete(args[1:], deps)
+	case "sync-base":
+		return runSyncBase(args[1:], deps)
+	case "switch-mode":
+		return runSwitchMode(args[1:], deps)
+	default:
+		return fmt.Errorf("unknown issueops execution subcommand %q", args[0])
+	}
+}
+
+type actorFlags struct {
+	host, sessionID, agentID, startedAt, executable, cwd *string
+	pid                                                  *int
+}
+
+func addActorFlags(fs *flag.FlagSet) actorFlags {
+	return actorFlags{
+		host:       fs.String("host", "", "native host: codex, claude, or omo"),
+		sessionID:  fs.String("session-id", "", "native session id"),
+		agentID:    fs.String("agent-id", "", "optional native agent id"),
+		pid:        fs.Int("session-pid", 0, "native session process id"),
+		startedAt:  fs.String("session-started-at", "", "native session process start identity"),
+		executable: fs.String("session-executable", "", "native session executable identity"),
+		cwd:        fs.String("cwd", "", "source or canonical worktree cwd"),
+	}
+}
+
+func (flags actorFlags) actor() model.NativeActor {
+	ancestry, _ := execDeps.ObserveNativeProcessAncestry(os.Getpid())
+	return model.NativeActor{
+		Host: strings.TrimSpace(*flags.host), SessionID: strings.TrimSpace(*flags.sessionID), AgentID: strings.TrimSpace(*flags.agentID),
+		SessionProcess:  &model.NativeProcessReceipt{PID: *flags.pid, StartedAt: strings.TrimSpace(*flags.startedAt), Executable: strings.TrimSpace(*flags.executable)},
+		ProcessAncestry: ancestry,
+	}
+}
+
+type nativeActorObservation struct {
+	Getenv          func(string) string
+	Getwd           func() (string, error)
+	PID             func() int
+	ObserveAncestry func(int) ([]model.NativeProcessReceipt, error)
+}
+
+func defaultNativeActorObservation() nativeActorObservation {
+	return nativeActorObservation{
+		Getenv: os.Getenv, Getwd: os.Getwd, PID: os.Getpid,
+		ObserveAncestry: execDeps.ObserveNativeProcessAncestry,
+	}
+}
+
+func visitedFlagNames(fs *flag.FlagSet) map[string]bool {
+	visited := map[string]bool{}
+	fs.Visit(func(flag *flag.Flag) { visited[flag.Name] = true })
+	return visited
+}
+
+func resolveNativeActor(operation string, flags actorFlags, visited map[string]bool, observation nativeActorObservation) (model.NativeActor, string, error) {
+	required := []string{"host", "session-id", "session-pid", "session-started-at", "session-executable", "cwd"}
+	anyExplicit := visited["agent-id"]
+	for _, name := range required {
+		anyExplicit = anyExplicit || visited[name]
+	}
+	if anyExplicit {
+		for _, name := range required {
+			if !visited[name] {
+				return model.NativeActor{}, "", fmt.Errorf("execution %s requires all ACTOR_FLAGS or none", operation)
+			}
+		}
+		return flags.actor(), strings.TrimSpace(*flags.cwd), nil
+	}
+	if observation.Getenv == nil || observation.Getwd == nil || observation.PID == nil || observation.ObserveAncestry == nil {
+		return model.NativeActor{}, "", fmt.Errorf("execution %s native actor observation is unavailable", operation)
+	}
+	identity, err := nativeSessionIdentityFromEnv(observation.Getenv)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	pid := observation.PID()
+	ancestry, err := observation.ObserveAncestry(pid)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	ancestry, err = reusableNativeProcessAncestry(identity.Host, pid, ancestry)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	cwd, err := observation.Getwd()
+	if err != nil {
+		return model.NativeActor{}, "", fmt.Errorf("observe execution %s cwd: %w", operation, err)
+	}
+	cwd = filepath.Clean(strings.TrimSpace(cwd))
+	if !filepath.IsAbs(cwd) {
+		return model.NativeActor{}, "", fmt.Errorf("execution %s cwd must be absolute", operation)
+	}
+	process := ancestry[0]
+	return model.NativeActor{
+		Host: identity.Host, SessionID: identity.SessionID,
+		SessionProcess: &process, ProcessAncestry: ancestry,
+	}, cwd, nil
+}
+
+func runPrepare(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution prepare", flag.ContinueOnError)
+	id, mode := fs.String("id", "", "IssueOps id"), fs.String("mode", "auto", "auto, direct, orca")
+	ownerHost, ownerModel := fs.String("owner-host", "", "owner host"), fs.String("owner-model", "", "owner model")
+	ownerEffort := fs.String("owner-effort", "", "owner effort")
+	directReason := fs.String("direct-reason", "", "required reason for explicit direct mode")
+	expectedReadinessFingerprint := fs.String("expected-readiness-fingerprint", "", "preview readiness fingerprint required by confirm")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
+	actor := addActorFlags(fs)
+	confirm, jsonOut := fs.Bool("confirm", false, "confirm mutations"), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
+		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort,
+		IssueSnapshotFile: *issueSnapshotFile,
+		DirectReason:      *directReason, ExpectedReadinessFingerprint: *expectedReadinessFingerprint, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runStatus(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution status", flag.ContinueOnError)
+	id, jsonOut := fs.String("id", "", "IssueOps id"), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	result, err := execute(model.ExecutionActionRequest{Action: model.ExecutionActionStatus, ID: *id}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+// ExecutionWhoamiResult는 호출 프로세스의 native host/session과 다음 명령에서도
+// 재사용 가능한 ancestry receipt를 노출한다. owner가 claim identity를 shell
+// 확장 없이 리터럴 값으로 채우기 위한 read-only 표면이다(이슈 #90 발견 3 —
+// 확장이 섞인 claim은 exact 파싱이 fail-closed로 거부하므로, 관측 가능한 대체
+// 경로가 없으면 부트스트랩이 교착한다).
+type ExecutionWhoamiResult struct {
+	OK               bool                         `json:"ok"`
+	Host             string                       `json:"host"`
+	SessionID        string                       `json:"session_id"`
+	SessionIDSource  string                       `json:"session_id_source"`
+	Ancestry         []model.NativeProcessReceipt `json:"ancestry"`
+	ClaimActorFlags  []string                     `json:"claim_actor_flags"`
+	RecordActorFlags string                       `json:"record_actor_flags"`
+}
+
+type nativeSessionIdentity struct {
+	Host      string
+	SessionID string
+	Source    string
+}
+
+// ResolveNativeSessionIdentity는 현재 세션의 native host와 session id를
+// 환경변수에서 읽는다. 같은 규칙을 다른 표면이 복제하지 않도록 이 한 곳을
+// 노출한다.
+func ResolveNativeSessionIdentity(getenv func(string) string) (host, sessionID, source string, err error) {
+	identity, err := nativeSessionIdentityFromEnv(getenv)
+	if err != nil {
+		return "", "", "", err
+	}
+	return identity.Host, identity.SessionID, identity.Source, nil
+}
+
+func nativeSessionIdentityFromEnv(getenv func(string) string) (nativeSessionIdentity, error) {
+	identity := nativeSessionIdentity{}
+	for _, candidate := range []nativeSessionIdentity{
+		{Host: "codex", SessionID: getenv("CODEX_THREAD_ID"), Source: "CODEX_THREAD_ID"},
+		{Host: "claude", SessionID: getenv("CLAUDE_CODE_SESSION_ID"), Source: "CLAUDE_CODE_SESSION_ID"},
+		{Host: "omo", SessionID: getenv("PI_SESSION_ID"), Source: "PI_SESSION_ID"},
+	} {
+		if candidate.SessionID == "" {
+			continue
+		}
+		if identity.Host != "" {
+			return nativeSessionIdentity{}, fmt.Errorf("native host session identity is ambiguous")
+		}
+		identity = candidate
+	}
+	if identity.Host == "" {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is unavailable")
+	}
+	if identity.SessionID != strings.TrimSpace(identity.SessionID) ||
+		strings.ContainsAny(identity.SessionID, "\r\n\x00") {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is not a literal single-line value")
+	}
+	return identity, nil
+}
+
+func shellQuoteClaimValue(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}
+
+func reusableNativeProcessAncestry(host string, currentPID int, ancestry []model.NativeProcessReceipt) ([]model.NativeProcessReceipt, error) {
+	for index, receipt := range ancestry {
+		if receipt.PID == currentPID || !nativeHostProcessExecutable(host, receipt.Executable) {
+			continue
+		}
+		return append([]model.NativeProcessReceipt(nil), ancestry[index:]...), nil
+	}
+	return nil, fmt.Errorf("reusable %s host process ancestry is unavailable", host)
+}
+
+func nativeHostProcessExecutable(host, executable string) bool {
+	normalized := strings.ToLower(filepath.ToSlash(strings.TrimSpace(executable)))
+	base := strings.TrimSuffix(filepath.Base(normalized), ".exe")
+	switch host {
+	case "codex":
+		return base == "codex"
+	case "claude":
+		return base == "claude" || strings.Contains(normalized, "/claude/versions/")
+	case "omo":
+		// Omo 5.x detaches its RPC host from the `omo` launcher. The
+		// persistent host that owns the session is consequently named
+		// `senpi`, so its live receipt is the reusable Omo identity.
+		return base == "omo" || base == "senpi"
+	default:
+		return false
+	}
+}
+
+func executionWhoamiResult(
+	identity nativeSessionIdentity,
+	currentPID int,
+	ancestry []model.NativeProcessReceipt,
+	cwd string,
+) (ExecutionWhoamiResult, error) {
+	ancestry, err := reusableNativeProcessAncestry(identity.Host, currentPID, ancestry)
+	if err != nil {
+		return ExecutionWhoamiResult{}, err
+	}
+	result := ExecutionWhoamiResult{
+		OK: true, Host: identity.Host, SessionID: identity.SessionID,
+		SessionIDSource: identity.Source, Ancestry: ancestry,
+	}
+	// record 계열 하위명령은 host/session-id/cwd만 받는다(RECORD_ACTOR_FLAGS).
+	// claim용 receipt 플래그를 record 명령에 넘기면 정의되지 않은 플래그로
+	// 거부되므로, whoami는 두 명령군의 플래그를 각각 내놓아 한 번의 복붙으로
+	// 라이프사이클 전체를 진행할 수 있게 한다.
+	result.RecordActorFlags = fmt.Sprintf(
+		"--host %s --session-id %s --cwd %s",
+		identity.Host, shellQuoteClaimValue(identity.SessionID), shellQuoteClaimValue(cwd))
+	for _, receipt := range ancestry {
+		// claim/release/complete 등 실행 리스 전환은 ACTOR_FLAGS "all or none"
+		// 규칙을 검사한다. whoami 벡터에서 --cwd를 빼면 복붙한 명령이 그 규칙에
+		// 걸려 바로 거부되므로, claim 벡터도 전체 ACTOR_FLAGS를 담아야 한다.
+		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
+			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s --cwd %s",
+			identity.Host, shellQuoteClaimValue(identity.SessionID), receipt.PID,
+			shellQuoteClaimValue(receipt.StartedAt), shellQuoteClaimValue(receipt.Executable),
+			shellQuoteClaimValue(cwd)))
+	}
+	return result, nil
+}
+
+func runWhoami(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution whoami", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	identity, err := nativeSessionIdentityFromEnv(os.Getenv)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	ancestry, err := execDeps.ObserveNativeProcessAncestry(os.Getpid())
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return output(nil, *jsonOut, fmt.Errorf("resolve record actor cwd: %w", err), deps)
+	}
+	result, err := executionWhoamiResult(identity, os.Getpid(), ancestry, cwd)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	return output(result, *jsonOut, nil, deps)
+}
+
+func runClaim(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution claim", flag.ContinueOnError)
+	id, generation := fs.String("id", "", "IssueOps id"), fs.Uint64("generation", 0, "lease generation")
+	claimTokenFile, claimCurrentToken := fs.String("claim-token-file", "", "one-time claim token file"), fs.Bool("claim-current-token", false, "resolve the current generation token internally")
+	actor := addActorFlags(fs)
+	issueDigest := fs.String("issue-body-sha256", "", "sealed remote issue body SHA-256")
+	packetDigest := fs.String("context-packet-sha256", "", "sealed owner context packet SHA-256")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	if (*claimTokenFile == "") == !*claimCurrentToken {
+		return fmt.Errorf("exactly one of --claim-current-token or --claim-token-file is required")
+	}
+	observation := defaultNativeActorObservation()
+	if deps.nativeActorObservation != nil {
+		observation = *deps.nativeActorObservation
+	}
+	resolvedActor, resolvedCWD, err := resolveNativeActor("claim", actor, visitedFlagNames(fs), observation)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionClaim, ID: *id, Generation: *generation,
+		Actor: resolvedActor, CWD: resolvedCWD, TokenFile: *claimTokenFile, ClaimCurrentToken: *claimCurrentToken,
+		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
+		IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runRelease(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution release", flag.ContinueOnError)
+	id, generation := fs.String("id", "", "IssueOps id"), fs.Uint64("generation", 0, "lease generation")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionRelease, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runReplace(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution replace", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
+	completionGeneration := fs.Uint64("completion-generation", 0, "current completion generation")
+	inventory := fs.String("inventory-fingerprint", "", "preview inventory fingerprint")
+	quiescence := fs.String("quiescence-fingerprint", "", "finalize-preview fingerprint")
+	reason := fs.String("reason", "", "replacement reason")
+	preview, revoke := fs.Bool("preview", false, "preview replacement"), fs.Bool("revoke", false, "revoke current generation")
+	finalizePreview, finalize := fs.Bool("finalize-preview", false, "preview finalization"), fs.Bool("finalize", false, "finalize replacement")
+	reseed, confirm := fs.Bool("reseed", false, "reseed a holderless lease"), fs.Bool("confirm", false, "confirm mutation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	actions := map[string]bool{
+		model.ExecutionReplacePreview: *preview, model.ExecutionReplaceRevoke: *revoke,
+		model.ExecutionReplaceFinalizePreview: *finalizePreview, model.ExecutionReplaceFinalize: *finalize,
+		model.ExecutionReplaceReseed: *reseed,
+	}
+	action := ""
+	for candidate, selected := range actions {
+		if selected {
+			if action != "" {
+				return output(nil, *jsonOut, fmt.Errorf("execution replace requires exactly one action"), deps)
+			}
+			action = candidate
+		}
+	}
+	if action == "" {
+		return output(nil, *jsonOut, fmt.Errorf("execution replace requires exactly one action"), deps)
+	}
+	observation := defaultNativeActorObservation()
+	if deps.nativeActorObservation != nil {
+		observation = *deps.nativeActorObservation
+	}
+	resolvedActor, resolvedCWD, err := resolveNativeActor("replace", actor, visitedFlagNames(fs), observation)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
+		CompletionGeneration: *completionGeneration,
+		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
+		Actor: resolvedActor, CWD: resolvedCWD, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runResume(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution resume", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
+	actor := addActorFlags(fs)
+	confirm := fs.Bool("confirm", false, "confirm owner resume")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	observation := defaultNativeActorObservation()
+	if deps.nativeActorObservation != nil {
+		observation = *deps.nativeActorObservation
+	}
+	resolvedActor, resolvedCWD, err := resolveNativeActor("resume", actor, visitedFlagNames(fs), observation)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
+		Actor: resolvedActor, CWD: resolvedCWD, Confirm: *confirm,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runReconcile(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution reconcile", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	preview, confirm := fs.Bool("preview", false, "preview reconciliation"), fs.Bool("confirm", false, "confirm reconciliation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
+		Actor: actor.actor(), CWD: *actor.cwd, IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+type repeatedString []string
+
+func (values *repeatedString) String() string { return strings.Join(*values, ",") }
+func (values *repeatedString) Set(value string) error {
+	*values = append(*values, value)
+	return nil
+}
+
+func runComplete(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution complete", flag.ContinueOnError)
+	id, generation := fs.String("id", "", "IssueOps id"), fs.Uint64("generation", 0, "lease generation")
+	finalHead, report := fs.String("final-head", "", "final Git HEAD"), fs.String("verification-report", "", "verification report path")
+	remoteURL := fs.String("remote-artifact-url", "", "draft PR or MR URL")
+	verification := repeatedString{}
+	fs.Var(&verification, "verification", "verification evidence (repeatable)")
+	actor := addActorFlags(fs)
+	confirm, jsonOut := fs.Bool("confirm", false, "confirm completion and release"), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionComplete, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
+		FinalHead: *finalHead, VerificationReportPath: *report, Verification: verification,
+		RemoteArtifactURL: *remoteURL, Confirm: *confirm,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+// runSyncBase는 completion 이후 base 재동기화를 실행한다. ExecuteExecution을
+// 거치지 않고 core를 직접 호출하는 것이 계약이다 — sync-base는 CLI 전용
+// 표면이고 MCP action 카탈로그·mcp golden은 변경하지 않는다(설계 v2 F15).
+func runSyncBase(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution sync-base", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	completionGeneration := fs.Uint64("completion-generation", 0, "current completion generation")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	preview := fs.Bool("preview", false, "observe base divergence and issue a fingerprint")
+	apply := fs.Bool("apply", false, "merge the fetched base into the work branch and push")
+	finalize := fs.Bool("finalize", false, "commit and push a resolved merge")
+	abort := fs.Bool("abort", false, "withdraw the in-progress merge")
+	confirm := fs.Bool("confirm", false, "confirm the apply mutation")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	modes := map[string]bool{
+		model.ExecutionSyncBasePreview:  *preview,
+		model.ExecutionSyncBaseApply:    *apply,
+		model.ExecutionSyncBaseFinalize: *finalize,
+		model.ExecutionSyncBaseAbort:    *abort,
+	}
+	mode := ""
+	for candidate, selected := range modes {
+		if selected {
+			if mode != "" {
+				return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
+			}
+			mode = candidate
+		}
+	}
+	if mode == "" {
+		return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
+	}
+	if mode != model.ExecutionSyncBasePreview {
+		processCWD, err := os.Getwd()
+		if err != nil {
+			return output(nil, *jsonOut, fmt.Errorf("observe execution sync-base process working directory: %w", err), deps)
+		}
+		if !sameExistingExecutionPath(processCWD, *actor.cwd) {
+			return output(nil, *jsonOut, fmt.Errorf("execution sync-base process working directory must match --cwd before mutation"), deps)
+		}
+	}
+	if deps.StateRoot == nil {
+		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
+	}
+	syncBase := deps.syncBase
+	if syncBase == nil {
+		syncBase = execDeps.SyncExecutionBase
+	}
+	result, err := syncBase(context.Background(), deps.StateRoot(), model.ExecutionSyncBaseRequest{
+		ID: *id, Mode: mode, CompletionGeneration: *completionGeneration,
+		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
+	}, model.ExecutionSyncBaseDeps{})
+	return output(result, *jsonOut, err, deps)
+}
+
+func sameExistingExecutionPath(left, right string) bool {
+	left = strings.TrimSpace(left)
+	right = strings.TrimSpace(right)
+	if left == "" || right == "" {
+		return false
+	}
+	leftAbs, leftErr := filepath.Abs(left)
+	rightAbs, rightErr := filepath.Abs(right)
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	leftResolved, leftErr := filepath.EvalSymlinks(leftAbs)
+	rightResolved, rightErr := filepath.EvalSymlinks(rightAbs)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftResolved) == filepath.Clean(rightResolved)
+}
+
+// runSwitchMode는 준비된 실행의 모드를 바꾼다. sync-base와 같은 이유로
+// ExecuteExecution을 거치지 않고 core를 직접 호출한다 — 이 표면은 lease writer가
+// 없을 때만 동작하므로 lease 권위 경로와 계약이 다르다(이슈 #167).
+func runSwitchMode(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution switch-mode", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	mode := fs.String("mode", "", "target mode: direct or orca")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest preview")
+	apply := fs.Bool("apply", false, "remove the canonical workspace and clear the execution record")
+	confirm := fs.Bool("confirm", false, "confirm the apply mutation")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	if deps.StateRoot == nil {
+		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
+	}
+	result, err := execDeps.SwitchExecutionMode(context.Background(), deps.StateRoot(), model.ExecutionSwitchModeRequest{
+		ID: *id, Mode: *mode, CWD: *actor.cwd, Apply: *apply, Confirm: *confirm,
+		Fingerprint: *fingerprint, Actor: actor.actor(),
+	}, model.ExecutionSwitchModeDependencies{})
+	return output(result, *jsonOut, err, deps)
+}
+
+func output(value any, jsonOut bool, err error, deps Deps) error {
+	if err == nil {
+		value, err = bindExecutionNextCommand(value, deps.Provenance)
+	} else {
+		err = bindExecutionErrorNextCommand(err, deps.Provenance)
+	}
+	if err != nil {
+		if jsonOut && deps.PrintError != nil {
+			_ = deps.PrintError(err)
+		}
+		return err
+	}
+	if jsonOut && deps.PrintJSON != nil {
+		return deps.PrintJSON(value)
+	}
+	printText(value)
+	return nil
+}
+
+func printText(value any) {
+	switch result := value.(type) {
+	case model.ExecutionPrepareResult:
+		fmt.Printf("%s %s %s generation=%d\n", result.ID, result.ResolvedMode, result.Workspace.Root, executionGeneration(result.Execution))
+	case model.ExecutionResult:
+		fmt.Printf("%s %s generation=%d\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation)
+	case model.ExecutionReplaceResult:
+		fmt.Printf("%s %s generation=%d next=%s\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation, result.NextCommand)
+	case model.ExecutionReconcileResult:
+		fmt.Printf("%s %s pending=%t\n", result.ID, result.Code, result.Pending != nil)
+	case model.ExecutionSyncBaseResult:
+		fmt.Printf("%s %s merged=%t pushed=%t conflicts=%d next=%s\n",
+			result.ID, result.Mode, result.Merged, result.Pushed, len(result.ConflictFiles), result.NextCommand)
+	default:
+		fmt.Printf("%v\n", value)
+	}
+}
+
+func executionGeneration(execution *model.Execution) uint64 {
+	if execution == nil {
+		return 0
+	}
+	return execution.Lease.Generation
+}
+
+func parse(fs *flag.FlagSet, args []string) (bool, error) {
+	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
+}
+
+func isHelp(value string) bool { return value == "help" || value == "-h" || value == "--help" }

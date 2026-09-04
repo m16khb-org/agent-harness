@@ -3,8 +3,8 @@ package issueopsinventory
 import (
 	"context"
 
-	issueopsapplication "agent-harness/internal/application/issueopsinventory"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsapplication "issueops/internal/application/issueopsinventory"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 func NewListHandler(service *issueopsapplication.Service) func(

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	application "agent-harness/internal/application/issueopspublication"
-	contract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/port"
+	application "issueops/internal/application/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
+	"issueops/internal/port"
 )
 
 type ProviderCreateFunc func(context.Context, string, contract.ProviderCreateRequest) (contract.ProviderCreateResult, error)

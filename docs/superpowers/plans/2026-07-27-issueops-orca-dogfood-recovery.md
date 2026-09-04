@@ -63,7 +63,7 @@ SQLite-backed IssueOps state.
 **Files:**
 - Modify: `internal/core/lifecycle/lifecycle_execution_guard.go`
 - Test: `internal/core/lifecycle/lifecycle_owner_control_plane_guard_test.go`
-- Verify: `cmd/harness/hookcli` tests
+- Verify: `cmd/issueops/hookcli` tests
 
 - [x] Add table-driven RED cases for a literal GitHub issue body read and
   Orca `send`/`ask`/`check` commands from the canonical worker.
@@ -77,8 +77,8 @@ SQLite-backed IssueOps state.
 ### Task 5: Align remote-score documentation
 
 **Files:**
-- Modify: `cmd/harness/issueopscli/remotecmd/remote.go`
-- Test: `cmd/harness/issueopscli/issueops_remote_score_cli_test.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote.go`
+- Test: `cmd/issueops/issueopscli/issueops_remote_score_cli_test.go`
 - Modify: `skills/issueops/SKILL.md`
 - Modify: `skills/issueops/references/remote-issue.md`
 - Modify: `skills/issueops/references/cleanup-state.md`
@@ -109,17 +109,17 @@ SQLite-backed IssueOps state.
 - [x] Run `go test ./... -count=1`.
 - [x] Run `go test -race ./... -count=1`.
 - [x] Run response-contract golden tests.
-- [x] Build `bin/agent-harness`.
+- [x] Build `bin/issueops`.
 - [x] Verify the source `main` dirty files are untouched.
 - [x] Create atomic commits with Conventional Commit subject and Lore body.
 - [x] Push `117-hexagonal-architecture-migration`.
 
 ### Task 8: Activate and prove installed surfaces
 
-- [x] Run `ah update` from the parent canonical worktree.
+- [x] Run `io update` from the parent canonical worktree.
 - [x] Restart the daemon through the supported CLI.
 - [x] Verify daemon status and installed CLI version/behavior.
-- [x] Verify `codex mcp get agent_harness` and `claude mcp list`.
+- [x] Verify `codex mcp get issueops` and `claude mcp list`.
 - [x] Start a fresh MCP process and exercise the corrected status/prepare
   surface.
 

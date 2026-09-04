@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Follow [the approved design](../specs/2026-07-13-kubectl-live-approval-design.md).
-- Store runtime state only under `$HARNESS_STATE_DIR/projects/<repo-id>/`, never in the target repo.
+- Store runtime state only under `$ISSUEOPS_STATE_DIR/projects/<repo-id>/`, never in the target repo.
 - Never persist or echo the raw command, kube context, namespace, workload, environment, or secrets in approval state.
 - Bind grants to host, session ID, canonical repo root, cwd, tool, and exact trimmed command.
 - Pending and granted records expire after exactly 10 minutes.
@@ -31,9 +31,9 @@
 - Modify `internal/core/lifecycle/lifecycle_state.go`: apply one-shot evaluation only to Codex kubectl live-access asks.
 - Create `internal/core/lifecycle/lifecycle_live_approval_test.go`: lifecycle integration.
 - Modify `internal/core/hookprompt/hook_prompt.go`: process exact approval prompts before normal routing.
-- Modify `cmd/harness/hookcli/hook_user_prompt.go`: forward resolved host and session ID.
+- Modify `cmd/issueops/hookcli/hook_user_prompt.go`: forward resolved host and session ID.
 - Modify hook CLI tests: prove first-block/approve/one-allow/re-block and Claude preservation.
-- Update `.agent-harness/CAUTIONS.md`, `CONVENTIONS.md`, `TESTING.md`, and `OPERATIONS.md`.
+- Update `.issueops/CAUTIONS.md`, `CONVENTIONS.md`, `TESTING.md`, and `OPERATIONS.md`.
 
 ---
 
@@ -206,7 +206,7 @@ Run `git diff -- internal/core/lifecycle/liveapproval`. Do not commit.
 - Modify: `internal/core/lifecycle/dependencies.go`
 - Modify: `internal/core/lifecycle/lifecycle_state.go`
 - Create: `internal/core/lifecycle/lifecycle_live_approval_test.go`
-- Modify: `cmd/harness/hookcli/hook_pre_tool_gitops_staged_test.go`
+- Modify: `cmd/issueops/hookcli/hook_pre_tool_gitops_staged_test.go`
 
 **Interfaces:**
 
@@ -219,7 +219,7 @@ The existing `BuildLifecyclePreToolUseDecision` signature and result schema rema
 
 - [ ] **Step 1: Write failing lifecycle integration tests**
 
-With `HARNESS_STATE_DIR=t.TempDir()`, a temp repo, `Host:"codex"`, and a session ID, assert the first live-access decision contains `승인 AH-`, approval makes the next exact request allow once, and the following request asks again.
+With `ISSUEOPS_STATE_DIR=t.TempDir()`, a temp repo, `Host:"codex"`, and a session ID, assert the first live-access decision contains `승인 AH-`, approval makes the next exact request allow once, and the following request asks again.
 
 Add preservation cases: Claude returns `ask` without state; missing session blocks without token; mutation remains GitOps-blocked; read-only/dry-run remains allow without state initialization.
 
@@ -254,14 +254,14 @@ Add `session_id`, expect a token-bearing block, and assert a repeated pre-approv
 - [ ] **Step 7: Run CLI PreToolUse tests**
 
 ```bash
-go test ./cmd/harness/hookcli -run 'KubectlLiveAccess' -count=1
+go test ./cmd/issueops/hookcli -run 'KubectlLiveAccess' -count=1
 ```
 
 Expected: PASS after integration.
 
 - [ ] **Step 8: Review the task diff**
 
-Run `git diff -- internal/core/lifecycle cmd/harness/hookcli/hook_pre_tool_gitops_staged_test.go`. Do not commit.
+Run `git diff -- internal/core/lifecycle cmd/issueops/hookcli/hook_pre_tool_gitops_staged_test.go`. Do not commit.
 
 ---
 
@@ -270,9 +270,9 @@ Run `git diff -- internal/core/lifecycle cmd/harness/hookcli/hook_pre_tool_gitop
 **Files:**
 - Modify: `internal/core/hookprompt/hook_prompt.go`
 - Modify: `internal/core/hookprompt/hook_prompt_test.go`
-- Modify: `cmd/harness/hookcli/hook_user_prompt.go`
-- Modify: `cmd/harness/hookcli/hook_prompt_session_test.go`
-- Modify: `cmd/harness/hookcli/hook_pre_tool_gitops_staged_test.go`
+- Modify: `cmd/issueops/hookcli/hook_user_prompt.go`
+- Modify: `cmd/issueops/hookcli/hook_prompt_session_test.go`
+- Modify: `cmd/issueops/hookcli/hook_pre_tool_gitops_staged_test.go`
 
 **Interfaces:**
 
@@ -333,7 +333,7 @@ Also assert another session or command cannot consume the grant.
 - [ ] **Step 6: Run and observe RED**
 
 ```bash
-go test ./cmd/harness/hookcli -run 'TestRunHookCodexKubectlLiveApprovalFlow' -count=1
+go test ./cmd/issueops/hookcli -run 'TestRunHookCodexKubectlLiveApprovalFlow' -count=1
 ```
 
 Expected: FAIL because UserPromptSubmit does not forward host/session.
@@ -345,7 +345,7 @@ Resolve payload host and `--host` consistently with PreToolUse, default to Codex
 - [ ] **Step 8: Run CLI hook tests**
 
 ```bash
-go test ./cmd/harness/hookcli -run 'KubectlLiveApproval|KubectlLiveAccess|HookUserPrompt' -count=1
+go test ./cmd/issueops/hookcli -run 'KubectlLiveApproval|KubectlLiveAccess|HookUserPrompt' -count=1
 ```
 
 Expected: PASS.
@@ -353,24 +353,24 @@ Expected: PASS.
 - [ ] **Step 9: Run combined hook regression**
 
 ```bash
-go test ./internal/core/lifecycle/... ./internal/core/hookprompt ./internal/core/commandguard ./internal/adapter/hook ./cmd/harness/hookcli -count=1
+go test ./internal/core/lifecycle/... ./internal/core/hookprompt ./internal/core/commandguard ./internal/adapter/hook ./cmd/issueops/hookcli -count=1
 ```
 
 Expected: PASS.
 
 - [ ] **Step 10: Review the task diff**
 
-Run `git diff -- internal/core/hookprompt cmd/harness/hookcli`. Do not commit.
+Run `git diff -- internal/core/hookprompt cmd/issueops/hookcli`. Do not commit.
 
 ---
 
 ### Task 4: Document and verify the final contract
 
 **Files:**
-- Modify: `.agent-harness/CAUTIONS.md`
-- Modify: `.agent-harness/CONVENTIONS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Modify: `.agent-harness/OPERATIONS.md`
+- Modify: `.issueops/CAUTIONS.md`
+- Modify: `.issueops/CONVENTIONS.md`
+- Modify: `.issueops/TESTING.md`
+- Modify: `.issueops/OPERATIONS.md`
 - Existing: `docs/superpowers/specs/2026-07-13-kubectl-live-approval-design.md`
 - Existing: `docs/superpowers/plans/2026-07-13-kubectl-live-approval.md`
 
@@ -382,8 +382,8 @@ Record: Codex first-block/token/one-allow flow; Claude native ask; project-scope
 
 ```bash
 git diff --check
-rg -n "one-shot|AH-|10분|native.*ask|raw command" .agent-harness docs/superpowers
-go test ./internal/core/lifecycle/... ./internal/core/hookprompt ./internal/core/commandguard ./internal/adapter/hook ./cmd/harness/hookcli -count=1
+rg -n "one-shot|AH-|10분|native.*ask|raw command" .issueops docs/superpowers
+go test ./internal/core/lifecycle/... ./internal/core/hookprompt ./internal/core/commandguard ./internal/adapter/hook ./cmd/issueops/hookcli -count=1
 ```
 
 Expected: no whitespace errors, contract phrases present, tests PASS.
@@ -400,10 +400,10 @@ Expected: both exit 0 with no failures or race reports.
 - [ ] **Step 4: Build and smoke with isolated state**
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 tmp_state="$(mktemp -d)"
 payload='{"cwd":"'"$PWD"'","session_id":"approval-smoke","tool_name":"Bash","tool_input":{"command":"kubectl exec -n stg deploy/rest-api-gateway -- getent hosts grpc-user"}}'
-printf '%s\n' "$payload" | HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness hook pre-tool-use --host codex --enforce-gitops-kubectl
+printf '%s\n' "$payload" | ISSUEOPS_STATE_DIR="$tmp_state" ./bin/issueops hook pre-tool-use --host codex --enforce-gitops-kubectl
 ```
 
 Expected: token-bearing block. Extract the token, submit an exact UserPromptSubmit approval with the same session, verify the next PreToolUse emits `{}`, and verify the following call blocks with a new token. Remove `$tmp_state` afterward.
@@ -420,7 +420,7 @@ Inspect the isolated state directory before removal and verify the raw smoke com
 
 - [ ] **Step 6: Leave verified changes uncommitted**
 
-Report exact verification results. If the user later requests a commit, use `atomic-commit-push`, stage exact files, and follow `.agent-harness/COMMIT_POLICY.md`.
+Report exact verification results. If the user later requests a commit, use `atomic-commit-push`, stage exact files, and follow `.issueops/COMMIT_POLICY.md`.
 
 ---
 

@@ -12,7 +12,7 @@ IssueOps는 이슈, 브랜치, 계획, 실행 lease, 검증 증거, PR/MR을 dur
 ## 먼저 실행
 
 ```bash
-agent-harness issueops next --json
+issueops next --json
 ```
 
 이 명령은 읽기 전용이다. record와 로컬 관측만 쓰고 fetch도 provider 호출도 하지
@@ -41,14 +41,14 @@ agent-harness issueops next --json
 
 | 단계 | 스킬 | 함께 쓰는 스킬 |
 |---|---|---|
-| 1 이슈 확정·생성 | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) | `von-neumann`(인터뷰), `berners-lee`(외부 조사) |
+| 1 이슈 확정·생성 | [`issueops-create-issue`](../issueops-create-issue/SKILL.md) | `implementation-planning`(인터뷰), `web-research`(외부 조사) |
 | 2 브랜치 준비 | [`issueops-prepare`](../issueops-prepare/SKILL.md) | — |
-| 3 문서 확인·계획·검토·인계 | [`issueops-plan`](../issueops-plan/SKILL.md) | `von-neumann`, `brooks`, `codd`, `dijkstra`, `karpathy` |
-| 4 구현 | [`issueops-implement`](../issueops-implement/SKILL.md) | `hopper`, `turing`, `shannon` |
-| 5 AI slop 정리 | [`issueops-clean`](../issueops-clean/SKILL.md) | `shannon`, `turing` |
+| 3 문서 확인·계획·검토·인계 | [`issueops-plan`](../issueops-plan/SKILL.md) | `implementation-planning`, `design-review`, `database-design`, `algorithm-optimization`, `prompt-engineering` |
+| 4 구현 | [`issueops-implement`](../issueops-implement/SKILL.md) | `debugging`, `verified-execution`, `code-quality-metrics` |
+| 5 AI slop 정리 | [`issueops-clean`](../issueops-clean/SKILL.md) | `code-quality-metrics`, `verified-execution` |
 | 6 프로젝트 문서 반영 | [`issueops-docs`](../issueops-docs/SKILL.md) | `project-docs-update` |
-| 7 검증 | [`issueops-verify`](../issueops-verify/SKILL.md) | `codd`, `turing` |
-| 8 커밋·푸시 | [`atomic-commit-push`](../atomic-commit-push/SKILL.md) | `torvalds`(history 수술) |
+| 7 검증 | [`issueops-verify`](../issueops-verify/SKILL.md) | `database-design`, `verified-execution` |
+| 8 커밋·푸시 | [`atomic-commit-push`](../atomic-commit-push/SKILL.md) | `git-operations`(history 수술) |
 | 9 PR/MR 발행·완료 | [`issueops-create-pr`](../issueops-create-pr/SKILL.md), [`issueops-complete`](../issueops-complete/SKILL.md) | — |
 | 10 머지 후 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) | — |
 | 탈출(어느 단계든) | [`issueops-abandon`](../issueops-abandon/SKILL.md) | — |
@@ -75,11 +75,11 @@ Issue 단계에서 PR/MR 스킬을, PR/MR 단계에서 Issue 스킬을 함께 �
 
 단계 스킬은 이 절을 링크하고 복사하지 않는다.
 
-**(a) 단계 판별.** 모든 단계 스킬은 `agent-harness issueops next --json`으로 시작하고
+**(a) 단계 판별.** 모든 단계 스킬은 `issueops next --json`으로 시작하고
 `stage.key`가 자기 단계인지 확인한다. 아니면 표가 지목하는 스킬로 안내한다. `blocked.*`
 면 중단한다. phase를 추정하지 않는다.
 
-**(b) actor 플래그.** `agent-harness issueops execution whoami --json`이 돌려주는
+**(b) actor 플래그.** `issueops execution whoami --json`이 돌려주는
 `record_actor_flags`와 `claim_actor_flags`를 그대로 쓴다. 손으로 조립하지 않는다.
 
 **(c) lease fencing.** durable mutation(phase 전이, record 기록, artifact stage) 전마다
@@ -134,7 +134,7 @@ linkage 단계이고 `cleanup`은 `done` 뒤의 후처리다. `done`은
 - 하나의 generation-fenced native holder
 - 하나의 linked Issue와 검증된 PR/MR
 
-`agent-harness issueops ... --json`과 MCP `issueops_execution`이 durable
+`issueops ... --json`과 MCP `issueops_execution`이 durable
 state를 소유한다. hook은 SessionStart에서 project-doc context만 제공한다.
 Issue 생성, 파일 수정, 테스트, 대기, branch/worktree 준비, PR/MR publication,
 reply, merge, cleanup을 hook에 맡기지 않는다.
@@ -171,7 +171,7 @@ reply, merge, cleanup을 hook에 맡기지 않는다.
 - behavior change는 focused failing test에서 시작해
   `RED→GREEN→SURFACE→CLEAN` 순서로 검증한다.
 - 작업은 canonical worktree에서만 한다. source checkout에 구현하지 않는다.
-- API/DTO/OpenAPI 변경은 `.agent-harness/OPEN_API_SPEC.md` gate를 적용한다.
+- API/DTO/OpenAPI 변경은 `.issueops/OPEN_API_SPEC.md` gate를 적용한다.
 - live runtime, review reply, completion hygiene가 요청 범위라면 테스트 통과만으로
   완료를 선언하지 않는다.
 - ai-slop-clean은 실제 diff가 생긴 뒤 실행하고, cleanup 후 관련 검증을 다시
@@ -182,7 +182,7 @@ reply, merge, cleanup을 hook에 맡기지 않는다.
   근거와 함께 `no-change`로 기록한다.
 - 변경 집합에 마이그레이션·엔티티·SQL 스키마 파일이 있으면 실제 데이터베이스에서
   인덱스 현황과 대상 테이블 row 수를 관찰해 관찰값과 출처를 기록한다.
-- Git staging/push는 `atomic-commit-push`, 고급 history 작업은 `torvalds`가
+- Git staging/push는 `atomic-commit-push`, 고급 history 작업은 `git-operations`가
   소유한다. 사용자 지시 없이 commit하거나 push하지 않는다.
 - destructive cleanup은 exact target과 fingerprint를 preview한 뒤 별도 사용자
   승인을 받는다.

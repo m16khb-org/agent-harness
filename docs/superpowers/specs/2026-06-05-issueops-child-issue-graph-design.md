@@ -27,7 +27,7 @@ Core adds `IssueOpsIssueLink` with these JSON fields:
 CLI adds:
 
 ```bash
-agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$URL" --title "task title" --json
+issueops link-child --id "$ISSUEOPS_ID" --child-url "$URL" --title "task title" --json
 ```
 
 MCP adds `issueops_link_child` with the same meaning and response DTO as the CLI JSON output.

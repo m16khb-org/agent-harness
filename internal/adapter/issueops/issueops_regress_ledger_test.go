@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // A cycle can reach plan/compatibility-review with an EMPTY PhaseLedger: the

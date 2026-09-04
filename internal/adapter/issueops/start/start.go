@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 type Store struct {

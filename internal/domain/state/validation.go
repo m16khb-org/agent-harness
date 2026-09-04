@@ -1,6 +1,6 @@
 package state
 
-import statecontract "agent-harness/internal/contract/state"
+import statecontract "issueops/internal/contract/state"
 
 func ValidateRecord(expectedKey string, record statecontract.RecordEnvelope) error {
 	if record.SchemaVersion != statecontract.SchemaVersion || record.Key != expectedKey || record.Bytes != len([]byte(record.Content)) {

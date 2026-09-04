@@ -1,13 +1,13 @@
 package worker
 
 import (
-	workercontract "agent-harness/internal/contract/worker"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	workercontract "issueops/internal/contract/worker"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -122,16 +122,16 @@ func writeWorkerJob(job workercontract.WorkerJob) error {
 }
 
 func workerDir() (string, error) {
-	if dir := os.Getenv("HARNESS_WORKER_DIR"); dir != "" {
+	if dir := os.Getenv("ISSUEOPS_WORKER_DIR"); dir != "" {
 		return filepath.Abs(dir)
 	}
-	dir := os.Getenv("HARNESS_STATE_DIR")
+	dir := os.Getenv("ISSUEOPS_STATE_DIR")
 	if dir == "" {
 		home, err := os.UserHomeDir()
 		if err != nil || home == "" {
 			return "", fmt.Errorf("resolve home for worker dir: %w", err)
 		}
-		dir = filepath.Join(home, ".local", "state", "agent-harness")
+		dir = filepath.Join(home, ".local", "state", "issueops")
 	}
 	return filepath.Join(dir, "worker"), nil
 }

@@ -2,20 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**목표:** Gemini Code Assist가 `agent-harness` PR을 리뷰할 때 저장소의 핵심 위험과 운영 규칙을 반영하도록 `.gemini/` 설정과 스타일 가이드를 추가한다.
+**목표:** Gemini Code Assist가 `issueops` PR을 리뷰할 때 저장소의 핵심 위험과 운영 규칙을 반영하도록 `.gemini/` 설정과 스타일 가이드를 추가한다.
 
 **아키텍처:** GitHub App 설치나 CI 자동화는 외부 연결 절차로 남기고, 저장소에는 Gemini가 읽는 정적 설정만 추가한다. 설정은 `.gemini/config.yaml`, 리뷰 기준은 `.gemini/styleguide.md`에 둔다.
 
 **기술 스택:** Gemini Code Assist repository configuration, YAML, Markdown.
 
-**IssueOps Context:** Issue `https://github.com/example/agent-harness/issues/5`; branch `chore/5-configure-gemini-code-assist-review`; expected sibling worktree `../agent-harness.worktrees/chore-5-configure-gemini-code-assist-review`.
+**IssueOps Context:** Issue `https://github.com/example/issueops/issues/5`; branch `chore/5-configure-gemini-code-assist-review`; expected sibling worktree `../issueops.worktrees/chore-5-configure-gemini-code-assist-review`.
 
 ---
 
 ## 파일 구조
 
 - Create: `.gemini/config.yaml` - Gemini Code Assist PR 리뷰 설정과 ignore pattern.
-- Create: `.gemini/styleguide.md` - agent-harness 전용 리뷰 기준.
+- Create: `.gemini/styleguide.md` - issueops 전용 리뷰 기준.
 - Create: `plans/issue-5-gemini-code-assist-review.md` - IssueOps 내부 구현 계획. GitHub issue 본문에는 링크하지 않는다.
 
 ---
@@ -37,7 +37,7 @@ Expected: `yaml ok`
 
 ---
 
-### Task 2: agent-harness 리뷰 스타일 가이드 추가
+### Task 2: issueops 리뷰 스타일 가이드 추가
 
 **Files:**
 - Create: `.gemini/styleguide.md`

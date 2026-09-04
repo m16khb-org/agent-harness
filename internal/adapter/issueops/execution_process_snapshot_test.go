@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestInspectNativeProcessReceiptUsesCapturedSnapshot(t *testing.T) {

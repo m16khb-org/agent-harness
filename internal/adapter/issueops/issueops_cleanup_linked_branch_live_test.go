@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	issueopscontract "issueops/internal/contract/issueops"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 // TestCleanupLinkedBranchObservesTheLiveIssue는 #306의 dogfood 조건이다.
@@ -23,15 +23,15 @@ import (
 //
 // 기본은 skip이다. 실행:
 //
-//	HARNESS_GH_LIVE=1 go test ./internal/adapter/issueops -run LiveIssue -count=1 -v
+//	ISSUEOPS_GH_LIVE=1 go test ./internal/adapter/issueops -run LiveIssue -count=1 -v
 func TestCleanupLinkedBranchObservesTheLiveIssue(t *testing.T) {
-	if os.Getenv("HARNESS_GH_LIVE") != "1" {
-		t.Skip("실물 GitHub이 필요하다: HARNESS_GH_LIVE=1로 실행한다")
+	if os.Getenv("ISSUEOPS_GH_LIVE") != "1" {
+		t.Skip("실물 GitHub이 필요하다: ISSUEOPS_GH_LIVE=1로 실행한다")
 	}
 	if _, err := exec.LookPath("gh"); err != nil {
 		t.Skip("이 호스트에 gh CLI가 없다")
 	}
-	const issueURL = "https://github.com/m16khb/agent-harness/issues/304"
+	const issueURL = "https://github.com/m16khb/issueops/issues/304"
 
 	observation, err := ObserveGitHubLinkedBranches(LiveProviderCLI)(context.Background(), issueURL)
 	if err != nil {
@@ -65,7 +65,7 @@ func TestCleanupLinkedBranchLiveGraphQLRejectsABadSelector(t *testing.T) {
 		invoked = true
 		return "", nil
 	})
-	if _, err := observe(context.Background(), "https://github.com/m16khb/agent-harness/pull/304"); err == nil {
+	if _, err := observe(context.Background(), "https://github.com/m16khb/issueops/pull/304"); err == nil {
 		t.Fatal("이슈 경로가 아니면 거부해야 한다")
 	}
 	if invoked {

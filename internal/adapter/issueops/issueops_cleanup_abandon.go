@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/issueops/pathutil"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 // cleanupAbandonReasonLimit는 --reason 상한이다. 감사 문자열의 표현력 한계가
@@ -34,7 +34,7 @@ const cleanupAbandonReasonForbidden = "\"'`$\\|&;<>()*?~"
 // 때 쓴다. 레코드의 Failure.Code("external_operation_ambiguous")는 5가지 상이한
 // 애매성 경로에서 동일하게 기록되므로(execution_orca_intent.go:113-157) 레코드
 // 만으로는 "orca에 아무것도 없음"을 증명할 수 없다. 어댑터 부재는 통과가
-// 아니라 거부다(brooks 라운드 2 차단 1).
+// 아니라 거부다(design-review 라운드 2 차단 1).
 type CleanupAbandonDeps struct {
 	Git  func(dir string, args ...string) (int, string)
 	Orca port.ExecutionOrcaProvisioner
@@ -129,7 +129,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	snapshot := record
 	result.Record = &snapshot
 	if !req.Apply {
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q%s --apply --confirm --fingerprint %s --json",
+		result.NextCommand = fmt.Sprintf("issueops cleanup abandon --id %s --reason %q%s --apply --confirm --fingerprint %s --json",
 			record.ID, result.Reason, cleanupAbandonRemoteFlags(req), fingerprint)
 		return result, nil
 	}
@@ -225,7 +225,7 @@ func cleanupAbandonRemoteFlags(req CleanupAbandonRequest) string {
 }
 
 func cleanupAbandonPreviewCommand(id, reason string, req CleanupAbandonRequest) string {
-	return fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q%s --preview --json",
+	return fmt.Sprintf("issueops cleanup abandon --id %s --reason %q%s --preview --json",
 		id, reason, cleanupAbandonRemoteFlags(req))
 }
 
@@ -284,7 +284,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	// 판정 기준은 상태 이름이 아니라 writer의 유무다. validateWriteLease가
 	// claimable에 홀더 부재를 강제하므로(model/execution.go) claimable과
 	// released는 같은 성질이고, 거부해야 할 것은 살아 있는 writer를 가진
-	// active와 fenced holder를 여전히 보유한 revoking이다(brooks F5).
+	// active와 fenced holder를 여전히 보유한 revoking이다(design-review F5).
 	//
 	// claimable을 함께 거부하던 것은 안전한 기본값이었지만 정리 경로를 막았다.
 	// 운영자는 claim→release로 lease를 한 바퀴 돌려야 했고 그 두 단계는
@@ -299,7 +299,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	if record.RemoteArtifact != nil && !req.ArtifactUnmerged {
 		missing = append(missing, "remote_artifact_unmerged")
 	}
-	// ⑧ 자식 고아 방지(finish의 child_tasks_closed 대응물, brooks F6).
+	// ⑧ 자식 고아 방지(finish의 child_tasks_closed 대응물, design-review F6).
 	//
 	// 해소되지 않은 자식만 센다. 모두 끝난 자식까지 차단 사유로 세면 epic을
 	// 완주할수록 그 기록이 영구히 남는다 — 일을 끝낼수록 정리가 어려워지면
@@ -426,7 +426,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	}
 	// ⑨ orca 자원 잔여. 게이트 ⑥은 로컬 디렉터리만 보므로 orca 레지스트리에
 	// 남은 task를 놓친다. 살아 있는 터미널은 apply ①′가 실제로 닫을 수 있을 때만
-	// 통과한다(parnas #478 F4).
+	// 통과한다(pr-review #478 F4).
 	terminalsReachable := inventory.WorktreePresent && len(inventory.OrcaTerminals) > 0
 	if err := cleanupAbandonOrcaResourcesAbsent(ctx, record, deps, terminalsReachable); err != nil {
 		missing = append(missing, "orca_resources_absent")
@@ -585,7 +585,7 @@ func cleanupAbandonPendingRecovery(id string, cause error) string {
 	if strings.Contains(detail, "execution reconcile") && strings.Contains(detail, "worktree") {
 		return detail
 	}
-	return fmt.Sprintf("%s; run `agent-harness issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
+	return fmt.Sprintf("%s; run `issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
 		detail, id)
 }
 
@@ -621,7 +621,7 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.Issu
 		return nil
 	}
 	if deps.OrcaOwner == nil {
-		return fmt.Errorf("Orca owner inspector is not configured; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`")
+		return fmt.Errorf("Orca owner inspector is not configured; resolve this cycle with `issueops cleanup finish` or `issueops cleanup orphan`")
 	}
 	// Orca 런타임이 롤오버되면 봉인된 runtime ID로는 아무것도 조회할 수 없고,
 	// 어댑터는 bounded 권한 없이 바뀐 runtime의 인벤토리를 돌려주지 않는다. 그
@@ -639,14 +639,14 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.Issu
 		AllowRuntimeRollover: allowRuntimeRollover,
 	})
 	if err != nil {
-		return fmt.Errorf("Orca owner inventory is ambiguous; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`: %w", err)
+		return fmt.Errorf("Orca owner inventory is ambiguous; resolve this cycle with `issueops cleanup finish` or `issueops cleanup orphan`: %w", err)
 	}
 	// 터미널 잔여는 apply ①′가 닫을 수 있을 때(워크트리 존재·런타임이 그 워크트리의
 	// 터미널을 나열)만 거부 사유가 아니다. 워크트리가 없거나 터미널이 나열되지 않으면
-	// ①′는 아무것도 닫지 못하므로 살아 있는 터미널은 소유자 없는 자원이 된다(parnas
+	// ①′는 아무것도 닫지 못하므로 살아 있는 터미널은 소유자 없는 자원이 된다(pr-review
 	// #478 F4). task/dispatch 잔여는 항상 거부한다(#477).
 	if inventory.TaskLive || (inventory.TerminalLive && !terminalsReachable) {
-		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t terminal_reachable_by_stop=%t); abandon leaves them without an owner, so use `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`",
+		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t terminal_reachable_by_stop=%t); abandon leaves them without an owner, so use `issueops cleanup finish` or `issueops cleanup orphan`",
 			inventory.TaskStatus, inventory.DispatchStatus, inventory.TerminalLive, terminalsReachable)
 	}
 	return nil
@@ -667,7 +667,7 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record iss
 		// reconcile을 지시하는 것만으로는 부족했다. 실측에서 운영자는 reconcile을
 		// 완주한 뒤 무엇을 해야 하는지 알 수 없었다(#139) — 남은 절차를 함께
 		// 알려야 게이트 응답이 탈출 경로가 된다(#140).
-		return fmt.Errorf("pending external intent kind %q is not local-only; run `agent-harness issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
+		return fmt.Errorf("pending external intent kind %q is not local-only; run `issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
 			pending.Kind, record.ID)
 	}
 	if record.Execution.Mode != issueops.ExecutionModeOrca {
@@ -789,7 +789,7 @@ func cleanupAbandonIntentOperationIDs(record issueops.IssueOpsRecord) []string {
 // deleteAbandonedIssueOps는 abandon 전용 원자 삭제다. deleteIssueOps는
 // finish/prune의 계약이므로 건드리지 않고, external intent 행 삭제는 여기서만
 // 같은 sqlstore.Apply 배치에 넣는다 — 레코드만 지우고 intent 행이 남으면 그
-// 행은 어떤 lifecycle도 소유하지 않는 영구 고아가 된다(brooks 라운드 2 차단 2).
+// 행은 어떤 lifecycle도 소유하지 않는 영구 고아가 된다(design-review 라운드 2 차단 2).
 //
 // 소유자 가드는 lease 인덱스 규율(execution_state.go:150-159)을 준용한다:
 // 행이 없으면 성공(멱등 — normalizeOrcaRemoveWorktreeErr 계약 동형), 있는데

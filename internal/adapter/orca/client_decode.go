@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {

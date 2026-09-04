@@ -1,6 +1,6 @@
 [
   {
-    "objective": "review von-neumann, berners-lee, and karpathy skill contracts in the #19 isolated worktree",
+    "objective": "review implementation-planning, web-research, and prompt-engineering skill contracts in the #19 isolated worktree",
     "pattern": "isolated-worktree-work",
     "benefit": "parallel_speed",
     "tradeoffs": [
@@ -13,7 +13,7 @@
     "fallback": "the parent rejects the result and retries the same isolated cycle"
   },
   {
-    "objective": "review turing, hopper, and shannon skill contracts in the #20 isolated worktree",
+    "objective": "review verified-execution, debugging, and code-quality-metrics skill contracts in the #20 isolated worktree",
     "pattern": "isolated-worktree-work",
     "benefit": "parallel_speed",
     "tradeoffs": [
@@ -26,7 +26,7 @@
     "fallback": "the parent rejects the result and retries the same isolated cycle"
   },
   {
-    "objective": "review dijkstra, codd, torvalds, and issueops skill contracts in the #21 isolated worktree",
+    "objective": "review algorithm-optimization, database-design, git-operations, and issueops skill contracts in the #21 isolated worktree",
     "pattern": "isolated-worktree-work",
     "benefit": "parallel_speed",
     "tradeoffs": [

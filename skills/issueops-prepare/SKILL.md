@@ -16,7 +16,7 @@ description: Give an IssueOps cycle its branch identity. Resolve and pin the exa
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `prepare`일 때 이 스킬이다. `issue`면 [`issueops-create-issue`](../issueops-create-issue/SKILL.md)가,
@@ -51,7 +51,7 @@ BRANCH="<issue-number>-<kebab-slug>"
 git -C "$SOURCE_ROOT" fetch origin "$BASE_BRANCH"
 BASE_SHA=$(git -C "$SOURCE_ROOT" rev-parse "origin/$BASE_BRANCH")
 
-agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
+issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" \
   --base-sha "$BASE_SHA" $RECORD_ACTOR_FLAGS --json
 ```
@@ -78,11 +78,11 @@ glab api --method POST "projects/:id/repository/branches" \
 ```
 
 ```bash
-agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
+issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" \
   --base-sha "$BASE_SHA" --link-verified $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to plan $RECORD_ACTOR_FLAGS --json
+issueops phase --id "$ISSUEOPS_ID" --to plan $RECORD_ACTOR_FLAGS --json
 ```
 
 **GitHub + Orca 순서.** Orca가 준비된 환경의 GitHub 사이클은 원격 브랜치가 먼저 있으면
@@ -105,7 +105,7 @@ branch는 부모 사이클의 브랜치이고, base SHA는 부모 워크트리�
 
 ## 검증
 
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `branch_prepare`에
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `branch_prepare`에
   `provider`, `issue_url`, `branch`, `base_branch`, `base_sha`가 있고 `phase`가 `plan`이다.
 - provider 링크가 실제로 보인다. GitHub은 이슈의 `linkedBranches` GraphQL 조회에 브랜치가
   있고, GitLab은 `glab api "projects/:id/repository/branches/<branch>"`가 원격 브랜치를

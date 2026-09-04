@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
-	"agent-harness/internal/domain/secretdetection"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
+	"issueops/internal/domain/secretdetection"
 )
 
 func Build(

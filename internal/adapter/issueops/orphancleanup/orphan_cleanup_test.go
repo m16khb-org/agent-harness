@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	coreissueops "agent-harness/internal/adapter/issueops"
-	model "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/domain/operationalhealth"
+	coreissueops "issueops/internal/adapter/issueops"
+	model "issueops/internal/contract/issueops"
+	corehealth "issueops/internal/domain/operationalhealth"
 )
 
 func TestPreviewFailsClosedForUnsafeRecordlessTargets(t *testing.T) {
@@ -155,7 +155,7 @@ func TestPreviewFailsClosedForUnsafeRecordlessTargets(t *testing.T) {
 }
 
 func TestPreviewAndApplyRemoveOnlyConfirmedRecordlessLocalArtifacts(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	fixture := newOrphanCleanupGitFixture(t)
 	request := fixture.request()
 	collectCalls := 0

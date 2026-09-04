@@ -3,9 +3,9 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	issueopsstatusdomain "agent-harness/internal/domain/issueopsstatus"
-	"agent-harness/internal/domain/stringlist"
+	"issueops/internal/contract/issueops"
+	issueopsstatusdomain "issueops/internal/domain/issueopsstatus"
+	"issueops/internal/domain/stringlist"
 )
 
 func issueOpsReadinessFrom(record issueops.IssueOpsRecord, missing []string) issueops.IssueOpsReadiness {

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Codd"
-  short_description: "Design relational schemas and optimize database queries"
-  default_prompt: "Use $codd to review this database design or query plan and recommend measured schema, index, or SQL improvements."

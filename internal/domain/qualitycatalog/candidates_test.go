@@ -93,7 +93,7 @@ func TestVerifyWithGroundedRejectsSelfCritique(t *testing.T) {
 		{"response_contract golden"},
 		{"markdown fixture lint"},
 		{"temp HOME install smoke"},
-		{"harness self-verify --full --iterations=10 --target-score=95"},
+		{"issueops self-verify --full --iterations=10 --target-score=95"},
 	} {
 		if err := VerifyWithGrounded(ToolSignalKind, vw); err != nil {
 			t.Fatalf("real tool signal must pass: %v -> %v", vw, err)

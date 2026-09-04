@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 const nativeProcessProbeTimeout = 3 * time.Second

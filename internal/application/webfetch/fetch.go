@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
-	webfetchdomain "agent-harness/internal/domain/webfetch"
-	webfetchport "agent-harness/internal/port/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
+	webfetchdomain "issueops/internal/domain/webfetch"
+	webfetchport "issueops/internal/port/webfetch"
 )
 
 const maxRedirects = 8
@@ -69,7 +69,7 @@ func Fetch(ctx context.Context, request webfetchcontract.Request, dependencies D
 		visited[current] = true
 		response, requestErr := dependencies.HTTPClient.Do(ctx, webfetchport.HTTPRequest{
 			URL:    current,
-			Header: map[string]string{"User-Agent": "agent-harness-web-fetch/1.0"},
+			Header: map[string]string{"User-Agent": "issueops-web-fetch/1.0"},
 		})
 		if requestErr != nil {
 			result.Warnings = append(result.Warnings, requestErr.Error())

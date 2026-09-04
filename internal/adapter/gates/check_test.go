@@ -1,7 +1,7 @@
 package gates
 
 import (
-	gatescontract "agent-harness/internal/contract/gates"
+	gatescontract "issueops/internal/contract/gates"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -167,8 +167,8 @@ func TestCheckNetworkDeniedByDefault(t *testing.T) {
 func TestCheckDiscoversDefaultFiles(t *testing.T) {
 	dir := t.TempDir()
 	writeTestGateFile(t, dir, "GATES.md", "- [ ] G1: top\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, ".agent-harness/gates/b-leaf.md", "- [ ] G2: leaf b\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, ".agent-harness/gates/a-leaf.md", "- [ ] G3: leaf a\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/gates/b-leaf.md", "- [ ] G2: leaf b\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/gates/a-leaf.md", "- [ ] G3: leaf a\n  EVIDENCE: pending\n")
 	writeTestGateFile(t, dir, "gates/legacy.md", "- [ ] G4: legacy leaf\n  EVIDENCE: pending\n")
 	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, StatusOnly: true})
 	if err != nil {
@@ -177,8 +177,8 @@ func TestCheckDiscoversDefaultFiles(t *testing.T) {
 	if len(result.Files) != 4 {
 		t.Fatalf("discovered %d files, want 4 canonical and compatible ledgers: %+v", len(result.Files), result.Files)
 	}
-	if result.Files[1].File != filepath.Join(dir, ".agent-harness", "gates", "a-leaf.md") ||
-		result.Files[2].File != filepath.Join(dir, ".agent-harness", "gates", "b-leaf.md") ||
+	if result.Files[1].File != filepath.Join(dir, ".issueops", "gates", "a-leaf.md") ||
+		result.Files[2].File != filepath.Join(dir, ".issueops", "gates", "b-leaf.md") ||
 		result.Files[3].File != filepath.Join(dir, "gates", "legacy.md") {
 		t.Fatalf("canonical files must precede compatible files, each sorted by name: %+v", result.Files)
 	}
@@ -186,22 +186,22 @@ func TestCheckDiscoversDefaultFiles(t *testing.T) {
 
 func TestCheckDiscoversIssueFolderLedgers(t *testing.T) {
 	dir := t.TempDir()
-	writeTestGateFile(t, dir, ".agent-harness/issues/480/gates.md", "- [ ] G1: issue 480\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, ".agent-harness/issues/97/gates.md", "- [ ] G2: issue 97\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, ".agent-harness/issues/480/plan.md", "not a ledger\n")
-	writeTestGateFile(t, dir, ".agent-harness/issues/_unnumbered/gates.md", "- [ ] G3: unnumbered\n  EVIDENCE: pending\n")
-	writeTestGateFile(t, dir, ".agent-harness/gates/legacy.md", "- [ ] G4: legacy\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/issues/480/gates.md", "- [ ] G1: issue 480\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/issues/97/gates.md", "- [ ] G2: issue 97\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/issues/480/plan.md", "not a ledger\n")
+	writeTestGateFile(t, dir, ".issueops/issues/_unnumbered/gates.md", "- [ ] G3: unnumbered\n  EVIDENCE: pending\n")
+	writeTestGateFile(t, dir, ".issueops/gates/legacy.md", "- [ ] G4: legacy\n  EVIDENCE: pending\n")
 	writeTestGateFile(t, dir, "GATES.md", "- [ ] G5: top\n  EVIDENCE: pending\n")
 	result, err := Check(gatescontract.CheckRequest{WorkspaceRoot: dir, CWD: dir, StatusOnly: true})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
 	want := []string{
-		filepath.Join(dir, ".agent-harness", "issues", "97", "gates.md"),
-		filepath.Join(dir, ".agent-harness", "issues", "480", "gates.md"),
-		filepath.Join(dir, ".agent-harness", "issues", "_unnumbered", "gates.md"),
+		filepath.Join(dir, ".issueops", "issues", "97", "gates.md"),
+		filepath.Join(dir, ".issueops", "issues", "480", "gates.md"),
+		filepath.Join(dir, ".issueops", "issues", "_unnumbered", "gates.md"),
 		filepath.Join(dir, "GATES.md"),
-		filepath.Join(dir, ".agent-harness", "gates", "legacy.md"),
+		filepath.Join(dir, ".issueops", "gates", "legacy.md"),
 	}
 	if len(result.Files) != len(want) {
 		t.Fatalf("discovered %d files, want %d: %+v", len(result.Files), len(want), result.Files)

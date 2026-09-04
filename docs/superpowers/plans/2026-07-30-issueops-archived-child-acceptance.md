@@ -65,7 +65,7 @@ Run:
 
 ```bash
 go test ./internal/core/issueops -run 'TestAcceptIssueOpsChild(RequiresDonePhaseAndEvidence|AfterCleanupRequiresIndexedParentRef)' -count=1
-go test ./cmd/harness/issueopscli -run 'TestIssueOpsChild' -count=1
+go test ./cmd/issueops/issueopscli -run 'TestIssueOpsChild' -count=1
 ```
 
 Expected: 모두 PASS.
@@ -75,8 +75,8 @@ Expected: 모두 PASS.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
-agent-harness issueops child accept --parent io-06edaddc2980 --child io-5bdee93886b2 --evidence '검증된 병합 및 정리 증거' --json
+go build -o bin/issueops ./cmd/issueops
+issueops child accept --parent io-06edaddc2980 --child io-5bdee93886b2 --evidence '검증된 병합 및 정리 증거' --json
 ```
 
 Expected: `ok=true`, `validation_verdict=accepted`.

@@ -1,6 +1,6 @@
 ---
 name: gates-ledger
-description: Create, check, and report task gate ledgers with the agent-harness gates CLI. Turns acceptance criteria into G-numbered CHECK and EXPECT gates in .agent-harness/issues/<n>/gates.md or .agent-harness/gates/<scope>.md, fills EVIDENCE by running the checks through the command policy, and abandons gates honestly. Use when issueops-plan, issueops-implement, issueops-clean, issueops-verify, or turing needs a gate ledger, or when the user says "게이트 원장", "gates 만들어줘", "수용 기준 체크".
+description: Create, check, and report task gate ledgers with the issueops gates CLI. Turns acceptance criteria into G-numbered CHECK and EXPECT gates in .issueops/issues/<n>/gates.md or .issueops/gates/<scope>.md, fills EVIDENCE by running the checks through the command policy, and abandons gates honestly. Use when issueops-plan, issueops-implement, issueops-clean, issueops-verify, or verified-execution needs a gate ledger, or when the user says "게이트 원장", "gates 만들어줘", "수용 기준 체크".
 ---
 
 # Gates Ledger
@@ -16,8 +16,8 @@ description: Create, check, and report task gate ledgers with the agent-harness 
 
 ## 경로 규칙
 
-- provider 이슈 번호가 있으면 `<worktree>/.agent-harness/issues/<n>/gates.md`다.
-- 번호가 없으면 `.agent-harness/gates/<scope>.md`다.
+- provider 이슈 번호가 있으면 `<worktree>/.issueops/issues/<n>/gates.md`다.
+- 번호가 없으면 `.issueops/gates/<scope>.md`다.
 - 원장은 워크트리 **안**에 둔다. 밖에 두면 변경 집합에 들어가지 않아 커밋되지 않고,
   다음 세션이 그 원장을 찾지 못한다.
 - 같은 번호의 canonical 원장과 legacy 원장이 함께 있으면 pr 진입이
@@ -29,7 +29,7 @@ description: Create, check, and report task gate ledgers with the agent-harness 
 읽기 전용 명령과 그 출력에 들어 있어야 할 문자열을 함께 적는다.
 
 ```bash
-agent-harness gates init --file "$WORKTREE/.agent-harness/issues/$ISSUE/gates.md" --scope "$ISSUE" \
+issueops gates init --file "$WORKTREE/.issueops/issues/$ISSUE/gates.md" --scope "$ISSUE" \
   --gate "G1: <관찰 가능한 결과> | CHECK: <read-only 명령> | EXPECT: <출력에 포함될 문자열>" \
   --gate "G2: <결과> | CHECK: <명령> | EXPECT: <문자열>" --json
 ```
@@ -46,7 +46,7 @@ agent-harness gates init --file "$WORKTREE/.agent-harness/issues/$ISSUE/gates.md
 ## 검사
 
 ```bash
-agent-harness gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --write --json
+issueops gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --write --json
 ```
 
 - `--write`가 각 게이트의 EVIDENCE를 실제 출력으로 채운다. 이것이 원장을 채우는
@@ -59,8 +59,8 @@ agent-harness gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$
 ## 상태와 보고
 
 ```bash
-agent-harness gates status --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json
-agent-harness gates report --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE"
+issueops gates status --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json
+issueops gates report --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE"
 ```
 
 `--file`·`--cwd`·`--workspace-root`는 세 명령에서 같은 값을 쓴다. 다르면 다른 원장을
@@ -71,7 +71,7 @@ agent-harness gates report --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "
 실행할 수 없다고 판정한 게이트는 정직하게 닫는다.
 
 ```bash
-agent-harness gates abandon --gate G3 --reason "<왜 이 게이트를 실행할 수 없는가>" --file "$LEDGER" --json
+issueops gates abandon --gate G3 --reason "<왜 이 게이트를 실행할 수 없는가>" --file "$LEDGER" --json
 ```
 
 EXPECT를 느슨하게 고쳐 통과시키지 않는다. 그렇게 하면 원장은 통과하고 결과는
@@ -100,8 +100,8 @@ EXPECT를 느슨하게 고쳐 통과시키지 않는다. 그렇게 하면 원장
 
 ## 검증
 
-- `agent-harness gates status --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json`으로
+- `issueops gates status --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json`으로
   미충족 게이트가 0인지 확인한다.
-- `agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json`의 `missing`에
+- `issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json`의 `missing`에
   `gates_incomplete:`로 시작하는 키가 없는지 확인한다.
 - 원장 파일이 `git -C "$WORKTREE" status --porcelain`에 커밋 대상으로 보이는지 확인한다.

@@ -19,12 +19,12 @@ def load_api_doc_gate():
 
 
 class ApiDocGateTest(unittest.TestCase):
-    def test_finds_canonical_agent_harness_binary(self) -> None:
+    def test_finds_canonical_issueops_binary(self) -> None:
         module = load_api_doc_gate()
 
         found = Path(module.find_harness_binary())
 
-        self.assertEqual(found.name, "agent-harness")
+        self.assertEqual(found.name, "issueops")
         self.assertEqual(found.parent.name, "bin")
 
 

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func normalizeNativeActor(actor issueops.NativeActor) (issueops.NativeActor, error) {
@@ -74,7 +74,7 @@ func refuseSelfRevoke(lifecycleID string, lease issueops.WriteLease, requester i
 	return fmt.Errorf(
 		"revoke takes a lease away from an unresponsive holder, but this session is the live holder: "+
 			"revoking your own lease leaves no exit because finalize requires the old holder to be dead. "+
-			"Run `agent-harness issueops execution release --id %s --generation %d` instead",
+			"Run `issueops execution release --id %s --generation %d` instead",
 		strings.TrimSpace(lifecycleID), lease.Generation)
 }
 

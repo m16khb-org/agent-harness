@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestClaimServiceOrder(t *testing.T) {

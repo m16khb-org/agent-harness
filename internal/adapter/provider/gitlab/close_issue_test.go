@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestGitLabCloseIssuePreviewKeepsHostname(t *testing.T) {

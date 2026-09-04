@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // GitHub 쪽과 같은 계약이다: preview는 무엇을 할지 보여주는 것에 더해 자식의

@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // cleanupWorkspaceObservation은 finish/abandon preview가 워크트리 점유와 Orca
@@ -125,7 +125,7 @@ func cleanupOrcaGates(ctx context.Context, root string, bound bool, requester cl
 		}
 	case bound:
 		// Orca 바인딩 사이클은 런타임 없이 터미널을 죽이면 ②(orca 회수)가 확실히
-		// 실패하는 파괴적 부분 apply가 된다(brooks 2차 finding 11).
+		// 실패하는 파괴적 부분 apply가 된다(design-review 2차 finding 11).
 		missing = append(missing, "orca_runtime_ready")
 	}
 	return missing

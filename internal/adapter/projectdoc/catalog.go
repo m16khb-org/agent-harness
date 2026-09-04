@@ -1,8 +1,8 @@
 package projectdoc
 
 import (
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"io"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,7 +17,7 @@ const (
 )
 
 // projectdocdomain.ProjectDocCatalogEntry describes one project doc in the working repo's
-// .agent-harness directory: its repo-relative path and a fixed description of
+// .issueops directory: its repo-relative path and a fixed description of
 // what category of information it contains.
 //
 // The harness presents this catalog so the MAIN agent can decide which docs to
@@ -28,14 +28,14 @@ const (
 // canonical metadata (from the doc's frontmatter or the name-keyed table), not a
 // summary of the doc's current contents.
 
-// DiscoverProjectDocs returns the catalog of <repoRoot>/.agent-harness/*.md for
+// DiscoverProjectDocs returns the catalog of <repoRoot>/.issueops/*.md for
 // the repo currently being worked in. This is the TARGET repo's project docs,
 // not the harness's own documentation, and not nested directories. Each doc's
 // description comes from its meta frontmatter, falling back to the canonical
 // name-keyed metadata so known docs are described even before bootstrap writes
 // the frontmatter. The result is deterministic (sorted by path) so it can live
 // in an immutable context prefix. Returns nil when repoRoot is empty or has no
-// .agent-harness docs.
+// .issueops docs.
 func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEntry {
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
@@ -46,11 +46,11 @@ func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEn
 		return nil
 	}
 	defer root.Close()
-	docsInfo, err := root.Lstat(".agent-harness")
+	docsInfo, err := root.Lstat(".issueops")
 	if err != nil || !docsInfo.IsDir() || docsInfo.Mode()&os.ModeSymlink != 0 {
 		return nil
 	}
-	docsDir, err := root.Open(".agent-harness")
+	docsDir, err := root.Open(".issueops")
 	if err != nil {
 		return nil
 	}
@@ -68,7 +68,7 @@ func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEn
 		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		content, ok := readProjectDocCatalogFile(root, filepath.Join(".agent-harness", entry.Name()), projectDocCatalogMaxTotalBytes-totalBytes)
+		content, ok := readProjectDocCatalogFile(root, filepath.Join(".issueops", entry.Name()), projectDocCatalogMaxTotalBytes-totalBytes)
 		if !ok {
 			continue
 		}
@@ -80,7 +80,7 @@ func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEn
 			}
 		}
 		catalog = append(catalog, projectdocdomain.ProjectDocCatalogEntry{
-			RelPath:     filepath.ToSlash(filepath.Join(".agent-harness", entry.Name())),
+			RelPath:     filepath.ToSlash(filepath.Join(".issueops", entry.Name())),
 			Title:       firstMarkdownTitle(string(content)),
 			Description: description,
 		})
@@ -131,7 +131,7 @@ func FormatProjectDocCatalog(entries []projectdocdomain.ProjectDocCatalogEntry) 
 	}
 	items := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		name := strings.TrimPrefix(entry.RelPath, ".agent-harness/")
+		name := strings.TrimPrefix(entry.RelPath, ".issueops/")
 		meta := entry.Description
 		if meta == "" {
 			meta = entry.Title

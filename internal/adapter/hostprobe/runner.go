@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	toolconformancecontract "agent-harness/internal/contract/toolconformance"
-	"agent-harness/internal/domain/policy"
-	"agent-harness/internal/port"
+	toolconformancecontract "issueops/internal/contract/toolconformance"
+	"issueops/internal/domain/policy"
+	"issueops/internal/port"
 )
 
 const (
@@ -265,7 +265,7 @@ func observeClaudeProbeCalls(value any, calls map[string]bool) {
 		block, _ := rawBlock.(map[string]any)
 		name, _ := block["name"].(string)
 		id, _ := block["id"].(string)
-		if block["type"] == "tool_use" && id != "" && strings.Contains(name, "agent_harness_probe") {
+		if block["type"] == "tool_use" && id != "" && strings.Contains(name, "issueops_probe") {
 			calls[id] = true
 		}
 	}
@@ -329,7 +329,7 @@ func observedMCPResult(value any) (any, bool) {
 		item, _ := event["item"].(map[string]any)
 		server, _ := item["server"].(string)
 		status, _ := item["status"].(string)
-		if item["type"] != "mcp_tool_call" || !strings.Contains(server, "agent_harness_probe") || status != "completed" {
+		if item["type"] != "mcp_tool_call" || !strings.Contains(server, "issueops_probe") || status != "completed" {
 			return nil, false
 		}
 		result, exists := item["result"]
@@ -337,7 +337,7 @@ func observedMCPResult(value any) (any, bool) {
 	case "tool_result":
 		tool, _ := event["tool"].(map[string]any)
 		name, _ := tool["name"].(string)
-		if !strings.Contains(name, "agent_harness_probe") {
+		if !strings.Contains(name, "issueops_probe") {
 			return nil, false
 		}
 		result, exists := event["result"]
@@ -348,7 +348,7 @@ func observedMCPResult(value any) (any, bool) {
 }
 
 func observeRecordedHookEvents(deps Dependencies) (hostStreamObservation, error) {
-	observationPath := strings.TrimSpace(deps.Getenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE"))
+	observationPath := strings.TrimSpace(deps.Getenv("ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"))
 	if !filepath.IsAbs(observationPath) {
 		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
 	}
@@ -404,7 +404,7 @@ func mergeHookObservation(observation *hostStreamObservation, recorded hostStrea
 }
 
 func newEpisodeRoot(deps Dependencies, host string) (string, error) {
-	root, err := deps.TempDir("", "agent-harness-conformance-"+host+"-")
+	root, err := deps.TempDir("", "issueops-conformance-"+host+"-")
 	if err != nil {
 		return "", err
 	}
@@ -547,7 +547,7 @@ func applyHostStreamObservation(result *port.HostProbeResult, observation hostSt
 }
 
 func persistChildSmokeObservation(deps Dependencies, result port.HostProbeResult, mcpCallCount int) error {
-	path := strings.TrimSpace(deps.Getenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE"))
+	path := strings.TrimSpace(deps.Getenv("ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"))
 	if path == "" {
 		return nil
 	}

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/domain/policy"
 )
 
 // RecordIssueOpsImplementationReview는 verdict와 실질 내용(findings/evidence

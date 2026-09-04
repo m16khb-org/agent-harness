@@ -16,23 +16,23 @@ from pathlib import Path
 
 
 def find_harness_binary() -> str:
-    env_bin = os.environ.get("HARNESS_BIN")
+    env_bin = os.environ.get("ISSUEOPS_BIN")
     if env_bin:
         return env_bin
 
     script = Path(__file__).resolve()
     # skills/atomic-commit-push/scripts/api_doc_gate.py -> repo root
     repo_root = script.parents[3]
-    for name in ("agent-harness", "harness"):
+    for name in ("issueops", "issueops"):
         local_bin = repo_root / "bin" / name
         if local_bin.exists():
             return str(local_bin)
 
-    for name in ("agent-harness", "harness"):
+    for name in ("issueops", "issueops"):
         found = shutil.which(name)
         if found:
             return found
-    return "agent-harness"
+    return "issueops"
 
 
 def main(argv: list[str]) -> int:

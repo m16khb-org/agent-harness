@@ -1,7 +1,7 @@
 package state
 
 import (
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 type MaintenanceDependencies struct {

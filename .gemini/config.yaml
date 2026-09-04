@@ -16,7 +16,7 @@ ignore_patterns:
   - "coverage/**"
   - "tmp/**"
   - ".codegraph/**"
-  - ".harness/**"
+  - ".issueops-runtime/**"
   - ".cache/**"
   - ".codex/**"
   - "**/node_modules/**"

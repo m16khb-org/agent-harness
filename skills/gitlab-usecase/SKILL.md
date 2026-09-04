@@ -23,7 +23,7 @@ Use this skill before GitLab work starts. It is a guardrail for repeated mistake
 
 IssueOps execution이 GitLab issue 본문을 봉인해야 할 때는 다음 순서를 지킨다.
 
-1. canonical worktree가 있으면 먼저 선택 문서 `.agent-harness/VCS.md`를
+1. canonical worktree가 있으면 먼저 선택 문서 `.issueops/VCS.md`를
    `project_docs_read`로 읽는다. 문서가 없거나 해당 provider recipe가 없으면 현재
    host에 등록된 trusted tool을 탐색한다.
 2. GitLab MCP는 서버 이름이 아니라 semantic leaf `glab_api`와 실제 input schema로
@@ -44,16 +44,16 @@ IssueOps execution이 GitLab issue 본문을 봉인해야 할 때는 다음 순�
    mode `0600` private JSON file과 `--issue-snapshot-file`을 사용한다.
 6. 후보 부재뿐 아니라 auth/permission/transport/schema 호출 실패 뒤에도
    successful exact-identity MCP evidence를 얻지 못했을 때만 `issue_snapshot`을
-   생략한다. 그러면 agent-harness provider adapter가 일반 `glab api` CLI를
+   생략한다. 그러면 issueops provider adapter가 일반 `glab api` CLI를
    사용하고 결과에 `glab_cli`를 기록한다.
    이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다.
 7. 실제로 성공한 provider recipe는 canonical worktree에서 `project_docs_read`로
    최신 content/SHA를 다시 읽고 `project_docs_revise`의 SHA-CAS로
-   `.agent-harness/VCS.md`에 기록한다. tool leaf, 관찰한 schema, endpoint/필드,
+   `.issueops/VCS.md`에 기록한다. tool leaf, 관찰한 schema, endpoint/필드,
    CLI fallback만 남기고 secret과 개인 server namespace는 남기지 않는다.
    canonical worktree가 아직 없으면 생성 뒤로 기록을 미룬다. OpenWiki 자동 update를
    실행하지 않는다.
-8. `.agent-harness/VCS.md`는 provider-neutral하다. GitHub repo에서는 검증된
+8. `.issueops/VCS.md`는 provider-neutral하다. GitHub repo에서는 검증된
    `gh issue view <url> --json url,body,state`를 기록하거나 실제로 관찰한 MCP
    schema만 기록한다. 존재하지 않는 GitHub MCP 이름을 추측해서 만들지 않는다.
 
@@ -78,7 +78,7 @@ Some environments expose `glab` through profile-scoped MCP servers, where each s
 
 `has_tasks` is never child proof. Verified 2026-08-27 on 19.2.4-ee: a parent issue that held a real child Task still reported `has_tasks: false`, while its `task_completion_status` counted unrelated markdown checkboxes in the body. Prove children through the work-item hierarchy only.
 
-For IssueOps child tasks, use `agent-harness issueops remote create-child --confirm --json` when creating new children. It must create a GitLab `Task` work item, attach it with `workItemHierarchyAddChildrenItems`, verify hierarchy/labels/assignees, and record the child. Use `link-child` only for an already existing provider-native child that was verified separately.
+For IssueOps child tasks, use `issueops remote create-child --confirm --json` when creating new children. It must create a GitLab `Task` work item, attach it with `workItemHierarchyAddChildrenItems`, verify hierarchy/labels/assignees, and record the child. Use `link-child` only for an already existing provider-native child that was verified separately.
 
 Do not create child work by calling `glab api projects/:id/issues/:iid/links`, `glab issue link`, or `issueops link-related`. Those create or record linked items, not child items.
 
@@ -100,7 +100,7 @@ If a Task is already a linked item and must become a child item, remove the link
 
 ## Review And Cleanup Rules
 
-- Automated-reviewer threads (Kody/Kodus, CodeRabbit, Copilot, Gemini, `parnas`) are owned by the `review-agent-feedback` skill. Route there instead of hand-rolling the triage; this skill only fixes the GitLab-side rule that skill must satisfy: inspect the real discussion thread, reply in-thread with evidence, then re-fetch discussions and resolve every remaining `resolvable=true` and `resolved=false` note.
+- Automated-reviewer threads (Kody/Kodus, CodeRabbit, Copilot, Gemini, `pr-review`) are owned by the `review-agent-feedback` skill. Route there instead of hand-rolling the triage; this skill only fixes the GitLab-side rule that skill must satisfy: inspect the real discussion thread, reply in-thread with evidence, then re-fetch discussions and resolve every remaining `resolvable=true` and `resolved=false` note.
 - A merged MR does not prove the child Task is closed. Verify the Task state after merge and close it explicitly when needed.
 - Cleanup sequence: verify MR merged, verify remote/source branch state, verify child Task state, verify worktree cleanliness, then remove worktree/local branch.
 

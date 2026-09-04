@@ -5,24 +5,24 @@
 - Cycle: `io-ff473d80b45b`, attempt 2.
 - Branch: `21-review-engineering-workflow-pioneers`.
 - Attempt base: `21b1a748e0625cc566cd8c6b566604b307fef1cf`.
-- Owned skills: `dijkstra`, `codd`, `torvalds`, and `issueops`.
+- Owned skills: `algorithm-optimization`, `database-design`, `git-operations`, and `issueops`.
 - Criterion: `issue-21-owned-skills-reviewed` passes only when all four skills have recorded evidence, every required validator exits 0, the worker result is committed, and the worktree is clean.
 
 ## Review findings
 
-### dijkstra — no change
+### algorithm-optimization — no change
 
 - Gate 0 refuses optimization without a measured CPU hot path or meaningful input bound.
 - Steps 1 and 5 require baseline, scaling, noise control, and before/after evidence; the IssueOps integration records those results.
 - No stale command or missing cross-reference was found, so changing this file would be prose churn rather than a contract correction.
 
-### codd — corrected
+### database-design — corrected
 
 - The first-turn contract required `EXPLAIN ANALYZE` evidence but did not say that PostgreSQL executes the statement.
 - PostgreSQL's current `EXPLAIN` reference says `ANALYZE` actually executes the statement and that non-`SELECT` side effects occur normally. The correction limits live/unknown use to read-only statements and requires explicit disposable-environment or rollback planning for data-changing statements.
 - Evidence: <https://www.postgresql.org/docs/current/sql-explain.html>.
 
-### torvalds — corrected
+### git-operations — corrected
 
 - The identity claimed every Git object uses SHA-1, but current Git supports repository object formats `sha1` and `sha256`.
 - Reflog text promised at least 90 days of recovery. Git's documented defaults are 90 days for reachable entries and 30 days for entries unreachable from the current tip, with configurable expiration.
@@ -30,7 +30,7 @@
 
 ### issueops — corrected
 
-- The in-worktree CLI registry in `cmd/harness/issueopscli/issueops.go` confirms the documented phase, review, feedback, remote, benchmark, cleanup, heartbeat, and handoff command families.
+- The in-worktree CLI registry in `cmd/issueops/issueopscli/issueops.go` confirms the documented phase, review, feedback, remote, benchmark, cleanup, heartbeat, and handoff command families.
 - Every reference named by the skill exists, including the nine IssueOps phase references, both Torvalds protocol references, the Berners-Lee report template, `PROMPT.md`, and the sub-agent policy/tradeoff documents.
 - The lifecycle authority in `internal/core/lifecycle/lifecycle_handoff_authority.go` permits a claimed worker to commit locally but owns direct `orca` controllers on the coordinator side. A direct worker Orca heartbeat was blocked during this review; the sealed `issueops heartbeat` succeeded. The skill now states this boundary and automatic finish projection explicitly.
 - The phase-assist section enumerates 11 skills while its introduction said 9; the count now matches the table.
@@ -58,9 +58,9 @@ The pre-receipt ordered run completed on 2026-07-17 with these direct-command re
 | Command | Exit | Output |
 | --- | ---: | --- |
 | `git diff --check` | 0 | no output |
-| `python3 scripts/validate-skill.py skills/codd` | 0 | `Skill is valid!` |
-| `python3 scripts/validate-skill.py skills/dijkstra` | 0 | `Skill is valid!` |
+| `python3 scripts/validate-skill.py skills/database-design` | 0 | `Skill is valid!` |
+| `python3 scripts/validate-skill.py skills/algorithm-optimization` | 0 | `Skill is valid!` |
 | `python3 scripts/validate-skill.py skills/issueops` | 0 | `Skill is valid!` |
-| `python3 scripts/validate-skill.py skills/torvalds` | 0 | `Skill is valid!` |
+| `python3 scripts/validate-skill.py skills/git-operations` | 0 | `Skill is valid!` |
 
 Because this receipt edit follows that run, the worker must rerun the entire ordered sequence before committing. The post-edit run and the post-commit clean-status observation are submitted as the authoritative handoff verification receipts; no partial run is reused.

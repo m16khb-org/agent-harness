@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/adapter/lifecycle/fingerprint"
+	"issueops/internal/adapter/lifecycle/fingerprint"
 )
 
 func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, error) {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	contract "agent-harness/internal/contract/issueopspublication"
-	domain "agent-harness/internal/domain/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
+	domain "issueops/internal/domain/issueopspublication"
 )
 
 type CreateService struct {

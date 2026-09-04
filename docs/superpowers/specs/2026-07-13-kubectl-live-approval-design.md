@@ -34,7 +34,7 @@ Host-neutral approval 상태 머신을 소유한다.
 
 Clock과 token generator는 테스트에서 주입할 수 있어야 한다. Production 기본값은 `time.Now`와 `crypto/rand`를 사용한다.
 
-### `cmd/harness/hookcli`
+### `cmd/issueops/hookcli`
 
 Host event와 core approval 상태 머신을 연결한다.
 
@@ -49,7 +49,7 @@ Host-specific JSON schema 선택은 계속 `internal/adapter/hook`이 소유한�
 Runtime state는 target repo가 아니라 기존 lifecycle project namespace 아래에 둔다.
 
 ```text
-$HARNESS_STATE_DIR/projects/<repo-id>/kubectl-live-approval-<session-hash>.json
+$ISSUEOPS_STATE_DIR/projects/<repo-id>/kubectl-live-approval-<session-hash>.json
 ```
 
 파일명에는 raw session ID를 쓰지 않고 SHA-256 session hash를 사용한다. 파일 권한은 `0600`, parent directory는 `0700`이다. Session별 keyed lock을 잡은 상태에서 read-modify-write 또는 remove를 수행한다.
@@ -147,10 +147,10 @@ Token 비교는 대소문자를 구분한다. 부가 문장, 여러 token, token
 ### Verification commands
 
 ```bash
-go test ./internal/core/lifecycle/... ./cmd/harness/hookcli ./internal/adapter/hook -count=1
+go test ./internal/core/lifecycle/... ./cmd/issueops/hookcli ./internal/adapter/hook -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 ## 범위 밖

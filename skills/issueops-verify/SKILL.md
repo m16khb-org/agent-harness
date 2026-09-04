@@ -17,7 +17,7 @@ description: Run the IssueOps verify stage on the sealed diff without touching a
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `verify`면 이 스킬이다. `clean`이나 `docs`면 봉인이나 문서 반영이
@@ -39,14 +39,14 @@ change fingerprint는 `git diff <base>..HEAD`와 `git status`가 가리키는 **
 
 ```bash
 # 원장은 다시 채우지 않고 읽기만 한다. EVIDENCE는 앞 단계가 채웠다.
-agent-harness gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json
+issueops gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --json
 
 # 저장소가 정한 검증 battery를 실행한다. 이 저장소는 AGENTS.md가 그 목록을 소유한다.
-agent-harness verify-work --json -- "$VERIFY_COMMAND"
+issueops verify-work --json -- "$VERIFY_COMMAND"
 ```
 
-- endpoint·DTO·OpenAPI가 바뀌었으면 `.agent-harness/OPEN_API_SPEC.md` 게이트를 적용하고
-  `agent-harness api-doc check --json`을 실행한다. 대상 저장소에
+- endpoint·DTO·OpenAPI가 바뀌었으면 `.issueops/OPEN_API_SPEC.md` 게이트를 적용하고
+  `issueops api-doc check --json`을 실행한다. 대상 저장소에
   `npm run swagger:check` 같은 wrapper가 있으면 그것을 먼저 실행한다.
 - `verify-work`는 실행한 명령과 결과를 evidence로 남긴다. 실행하지 않은 검증을 pass로
   적지 않는다.
@@ -58,7 +58,7 @@ agent-harness verify-work --json -- "$VERIFY_COMMAND"
 없으면 이 게이트는 뜨지 않는다.
 
 활성화되면 추정이 아니라 **실제 데이터베이스 관찰값**을 요구한다. 대상 테이블의 기존
-인덱스 현황과 row 수, 그리고 그 값을 어디서 봤는지다. 조회는 [`codd`](../codd/SKILL.md)
+인덱스 현황과 row 수, 그리고 그 값을 어디서 봤는지다. 조회는 [`database-design`](../database-design/SKILL.md)
 또는 DB MCP 서버로 한다.
 
 커넥션을 소모하는 대형 스캔을 던지지 않는다. `COUNT(*)` 전수 대신 카탈로그의 추정 row
@@ -66,7 +66,7 @@ agent-harness verify-work --json -- "$VERIFY_COMMAND"
 건다. 운영 DB에서 무거운 쿼리 하나가 커넥션 풀을 마르게 한다.
 
 ```bash
-agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID" \
+issueops schema-evidence record --id "$ISSUEOPS_ID" \
   --measurement "orders: 8.4M rows(reltuples), idx_orders_user_id 없음" \
   --source "mcp db-bc-prod execute_sql_bc_prod_market" \
   $RECORD_ACTOR_FLAGS --json
@@ -94,12 +94,12 @@ agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID" \
 구현된 diff가 계획 시점의 compatibility review와 다르면 durable 판정을 최신으로 맞춘다.
 
 ```bash
-agent-harness issueops compatibility review --id "$ISSUEOPS_ID" \
+issueops compatibility review --id "$ISSUEOPS_ID" \
   --backward-compatibility "<실제 diff 기준>" --side-effect "<실제 diff 기준>" \
   --rollback-plan "<실제 되돌리는 방법>" --verification "<이 단계에서 실행한 검증>" \
   --approved $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
+issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
 strict readiness의 `missing`이 `worktree_clean`, `upstream`, `upstream_fetch`,
@@ -110,7 +110,7 @@ strict readiness의 `missing`이 `worktree_clean`, `upstream`, `upstream_fetch`,
 ## 출구
 
 다음은 8단계 커밋·푸시다. [`atomic-commit-push`](../atomic-commit-push/SKILL.md)로
-plan.md, gates.md, turing report, 문서, 구현을 커밋·푸시하고, `next`가 렌더한
+plan.md, gates.md, verified-execution report, 문서, 구현을 커밋·푸시하고, `next`가 렌더한
 `phase --to pr`를 실행한다.
 
 ## 나쁜 예
@@ -128,9 +128,9 @@ plan.md, gates.md, turing report, 문서, 구현을 커밋·푸시하고, `next`
 
 ## 검증
 
-- `agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json`의 `missing`이
+- `issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json`의 `missing`이
   커밋·푸시로 해소되는 키만 남았다.
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `implementation_review`와
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `implementation_review`와
   `schema_evidence`(활성화된 경우)가 현재 fingerprint에 묶여 있다.
 - `git -C "$WORKTREE" status --porcelain`이 이 단계 시작 때와 같다. 달라졌으면 이 단계가
   파일을 바꾼 것이다.

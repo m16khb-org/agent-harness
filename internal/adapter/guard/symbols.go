@@ -1,15 +1,15 @@
 package guard
 
 import (
-	guardcontract "agent-harness/internal/contract/guard"
 	"encoding/json"
 	"fmt"
+	guardcontract "issueops/internal/contract/guard"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"agent-harness/internal/domain/guardpattern"
+	"issueops/internal/domain/guardpattern"
 )
 
 func guardExistingSymbols(root string, targetFiles []string) map[string][]string {

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Parnas"
-  short_description: "Evidence-verified MR/PR inspection for GitLab and GitHub"
-  default_prompt: "Use $parnas to inspect this merge request: build the context pack at the requested --level (default high), run the lenses, screen the candidates, and report at the level that actually ran. Only --level max runs the skeptics and may be called verified."

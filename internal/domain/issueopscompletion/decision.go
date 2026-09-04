@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
 )
 
 type Actor = completioncontract.Actor
@@ -87,7 +87,7 @@ func ApplyAt(snapshot Snapshot, command Command, resolvedReport string, complete
 	lease.ClaimTokenSHA256 = ""
 	lease.ReleasedAt = completionTimestamp
 	completion := &Completion{
-		Generation: command.Generation, FinalHead: strings.ToLower(strings.TrimSpace(command.FinalHead)), TuringReportPath: resolvedReport,
+		Generation: command.Generation, FinalHead: strings.ToLower(strings.TrimSpace(command.FinalHead)), VerificationReportPath: resolvedReport,
 		Verification: append([]string(nil), command.Verification...), RemoteArtifactURL: strings.TrimSpace(command.RemoteArtifactURL), CompletedAt: completionTimestamp,
 	}
 	ledger := cloneLedger(snapshot.Ledger)

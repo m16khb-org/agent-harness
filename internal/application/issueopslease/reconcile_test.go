@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 type reconcileRepositoryFake struct {

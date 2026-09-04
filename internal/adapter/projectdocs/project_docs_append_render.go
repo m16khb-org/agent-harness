@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"fmt"
+	projectdocscontract "issueops/internal/contract/projectdocs"
 	"strings"
 	"time"
 )

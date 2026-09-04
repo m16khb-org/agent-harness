@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 // StrictPRReadiness는 레코드 기반 strict readiness에 loop gate를 더한다.

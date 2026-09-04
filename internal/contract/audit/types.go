@@ -4,7 +4,7 @@
 // 알 필요가 없다.
 package audit
 
-import policycontract "agent-harness/internal/contract/policy"
+import policycontract "issueops/internal/contract/policy"
 
 // CommandAuditRecord는 policy 결정을 append-only로 남긴 redacted 기록이다.
 type CommandAuditRecord struct {

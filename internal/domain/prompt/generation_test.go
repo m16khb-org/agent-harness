@@ -1,10 +1,10 @@
 package prompt_test
 
 import (
-	"agent-harness/internal/adapter/commitsuggest"
-	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/lintdiagnose"
-	"agent-harness/internal/domain/prompt"
+	"issueops/internal/adapter/commitsuggest"
+	"issueops/internal/adapter/issueops"
+	"issueops/internal/adapter/lintdiagnose"
+	"issueops/internal/domain/prompt"
 	"os"
 	"path/filepath"
 	"strings"

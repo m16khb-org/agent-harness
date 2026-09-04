@@ -7,7 +7,7 @@ Orca 1.4.162는 orchestration task를 명시적인 Run namespace 안에서 관�
 지원하며, Run을 지정하지 않은 호출은 현재 coordinator terminal의 바인딩 또는
 legacy coordinator에 의존한다.
 
-현재 agent-harness Orca adapter는 Run 개념을 모델링하지 않는다. Probe는
+현재 issueops Orca adapter는 Run 개념을 모델링하지 않는다. Probe는
 `orca orchestration task-list --ready --json`을 호출하고, task 생성·조회·갱신과
 dispatch도 `--run` 없이 실행한다. Orca가 보존한 legacy coordinator의 원래
 process identity를 증명하지 못하면 이 호출은 `legacy_read_only`로 거부된다.
@@ -58,7 +58,7 @@ task/dispatch가 다시 legacy coordinator에 도달하는 부분 통합이 되�
 
 ## 비목표
 
-- Orca의 scheduler, worker placement 또는 Run 저장소를 agent-harness에 복제
+- Orca의 scheduler, worker placement 또는 Run 저장소를 issueops에 복제
 - 기존 recovered Run을 신규 lifecycle의 공유 namespace로 재사용
 - `run-use --takeover-legacy`로 사용자의 coordinator terminal 소유권 변경
 - owner worker terminal을 coordinator로 bind해 두 역할의 authority를 합침
@@ -324,7 +324,7 @@ prompt, claim token, 사용자 대화 원문은 오류나 inventory log에 넣�
 
 1. 관련 adapter/core/model/CLI/MCP 패키지 테스트를 작은 묶음으로 실행한다.
 2. `go build`로 바이너리를 만든다.
-3. `ah update` 후 daemon/MCP binary identity를 readback한다.
+3. `io update` 후 daemon/MCP binary identity를 readback한다.
 4. 실제 `#194` prepare preview가 mutation 없이 Orca mode로 resolve되는지
    확인한다.
 5. confirm에서 child worktree, Terra/xhigh terminal, lifecycle 전용 Run,

@@ -10,7 +10,7 @@
       "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "branch": "refs/heads/16-demo",
       "displayName": "16-demo",
-      "comment": "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+      "comment": "issueops:cycle=io-demo;attempt=1;epoch=epoch-1",
       "baseRef": "refs/remotes/origin/16-demo",
       "linkedIssue": 16,
       "linkedGitLabIssue": null

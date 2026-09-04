@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
+	provenanceport "issueops/internal/port/issueopsprovenance"
 )
 
 var _ provenanceport.Observer = (*executableObserver)(nil)
@@ -29,12 +29,12 @@ func TestExecutableObserverFailsWithoutSyntheticEvidence(t *testing.T) {
 
 func TestExecutableObserverCanonicalizesAndHashesExecutable(t *testing.T) {
 	dir := t.TempDir()
-	executable := filepath.Join(dir, "agent-harness-real")
+	executable := filepath.Join(dir, "issueops-real")
 	content := []byte("current binary fixture")
 	if err := os.WriteFile(executable, content, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	linked := filepath.Join(dir, "agent-harness")
+	linked := filepath.Join(dir, "issueops")
 	if err := os.Symlink(executable, linked); err != nil {
 		t.Fatal(err)
 	}

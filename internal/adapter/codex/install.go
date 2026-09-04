@@ -3,7 +3,7 @@ package codex
 import (
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type Installer struct{}
@@ -30,7 +30,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	plan.Messages(hookMessages)
 
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
-	plan.File(WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun))
+	plan.File(WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/issueops"), 0o644, req.DryRun))
 
 	if req.DryRun {
 		plan.Message("dry-run: planned Codex user skill links, MCP config, and lifecycle hooks without writing")

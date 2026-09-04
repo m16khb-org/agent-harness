@@ -2,7 +2,7 @@
 
 - 날짜: 2026-08-02
 - IssueOps: `io-c26802f00c2b`
-- 상위 이슈: [#228](https://github.com/m16khb/agent-harness/issues/228)
+- 상위 이슈: [#228](https://github.com/m16khb-org/issueops/issues/228)
 - 작업 브랜치: `228-clean-break-hexagonal-architecture`
 - 기준 SHA: `4b86dd46a454d241cdb348194754b1e1e452bc00`
 - 상태: 사용자 승인 완료, production 구현 전
@@ -78,7 +78,7 @@ production에는 `UnsupportedSchemaError`, `unsupported_schema`, `unsupported st
 ### 비목표
 
 - 새 사용자 기능 추가.
-- 외부 도구 기능을 agent-harness에 복제.
+- 외부 도구 기능을 issueops에 복제.
 - #226의 revoking/shared-PID 결함 동시 수정.
 - 구형 입력을 새 compatibility layer로 다시 지원.
 - absent record를 `invalid state`로 합치기.
@@ -97,8 +97,8 @@ production에는 `UnsupportedSchemaError`, `unsupported_schema`, `unsupported st
 | Port | `internal/port/<capability>` | capability가 실제 사용하는 최소 interface | mega filesystem/process repository |
 | Inbound adapter | `internal/adapter/inbound/<capability>` | CLI/MCP/worker request projection | domain 정책 복제 |
 | Outbound adapter | `internal/adapter/outbound/<capability>` | fs/git/process/SQL/network/provider 구현 | usecase 결정 |
-| Composition root | `cmd/harness/harnessapp` | concrete wiring과 lifecycle | domain/application 로직 |
-| CLI entry | `cmd/harness/<cli>` | flag, stdout/stderr, exit code | concrete adapter 조립과 정책 중복 |
+| Composition root | `cmd/issueops/issueopsapp` | concrete wiring과 lifecycle | domain/application 로직 |
+| CLI entry | `cmd/issueops/<cli>` | flag, stdout/stderr, exit code | concrete adapter 조립과 정책 중복 |
 
 새 abstraction은 실제 외부 기술 경계, 최소 두 사용처 또는 필요한 test double 중 하나가 있을 때만 만든다. 한 호출을 감싸는 facade는 공개 계약상 필요하지 않으면 삭제한다.
 
@@ -107,7 +107,7 @@ production에는 `UnsupportedSchemaError`, `unsupported_schema`, `unsupported st
 허용 방향은 다음과 같다.
 
 ```text
-cmd/harness/harnessapp
+cmd/issueops/issueopsapp
   -> inbound adapter
   -> application
   -> domain / contract / capability port
@@ -122,7 +122,7 @@ Fitness test는 다음을 baseline 없이 거부한다.
 - `internal/port/** -> internal/adapter/**|cmd/**`
 - `internal/adapter/** -> cmd/**`
 - composition root 밖 concrete outbound adapter wiring.
-- 모든 `agent-harness/internal/core` package와 import.
+- 모든 `issueops/internal/core` package와 import.
 
 최종 gate는 `test ! -d internal/core`도 실행한다.
 
@@ -138,7 +138,7 @@ Fitness test는 다음을 baseline 없이 거부한다.
 | #235 | tooling·project 38개 core package | domain/application/contract/port/outbound 소유 경계로 전량 이동 |
 | #236 | IssueOps·lifecycle·worker 35개 core package | 전량 이동, lock·atomicity·generation fence 유지 |
 | #237 | state·SQL·network 4개 core package | 전량 이동, invalid-state/not-found 경계 유지 |
-| #233 | cmd→adapter 18개 edge | `harnessapp` composition root로 이동 |
+| #233 | cmd→adapter 18개 edge | `issueopsapp` composition root로 이동 |
 | #234 | adapter coupling 20개 edge | capability별 최소 port로 역전 |
 | #229 | root facade와 unused | 모든 대체 소유 경계 이후 facade/unused 0 |
 | #238 | 최종 통합 | core 디렉터리·baseline·legacy 0과 전체 검증 |
@@ -222,10 +222,10 @@ Architecture test는 legacy baseline 없이 0 edge를 요구하고, `internal/co
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/agent-harness ./cmd/harness
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+go build -o bin/issueops ./cmd/issueops
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+./bin/issueops self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ```
 
 다단계 gate는 한 단계 실패 시 첫 단계부터 다시 실행한다. 서로 다른 run의 부분 통과를 합쳐 완료 증거로 사용하지 않는다.
@@ -263,7 +263,7 @@ go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 - SessionStart가 exact child binary의 project-doc/IssueOps context를 반환하는지 확인한다.
 - 하나의 allowlisted read-only tool을 호출해 PreToolUse가 exact host/session/cwd payload를 수신하고 allow projection을 반환하는지 확인한다.
 - exact child MCP server에 최소 한 번 tool call을 보내고 response schema를 확인한다.
-- `codex mcp get agent_harness` readback이 활성 child root/binary를 가리키는지 확인한다.
+- `codex mcp get issueops` readback이 활성 child root/binary를 가리키는지 확인한다.
 - output은 bounded JSONL로 수집하고 token, transcript, private reasoning, absolute home path를 저장하지 않는다.
 
 ### 8.4 Fresh Claude Code smoke
@@ -336,11 +336,11 @@ breaking release 이후 생성된 current-v1 state는 revert된 구버전 binary
 
 구현과 함께 다음 문서를 갱신한다.
 
-- `.agent-harness/ARCHITECTURE.md`: `internal/core` 중심 설명을 domain/application/contract/port/adapter 구조로 교체.
-- `.agent-harness/CONVENTIONS.md`: package map, dependency rules, facade 금지를 교체.
-- `.agent-harness/OPERATIONS.md`: legacy reset/migrate/alias/fallback 명령 제거와 child host smoke 운영 추가.
-- `.agent-harness/TESTING.md`: strict-core-zero, generic invalid-state, child live smoke gate 추가.
-- `.agent-harness/ADR.md`: 이번 사용자 결정이 과거 retained-facade/legacy-transport 결정을 supersede함을 append-only로 기록.
+- `.issueops/ARCHITECTURE.md`: `internal/core` 중심 설명을 domain/application/contract/port/adapter 구조로 교체.
+- `.issueops/CONVENTIONS.md`: package map, dependency rules, facade 금지를 교체.
+- `.issueops/OPERATIONS.md`: legacy reset/migrate/alias/fallback 명령 제거와 child host smoke 운영 추가.
+- `.issueops/TESTING.md`: strict-core-zero, generic invalid-state, child live smoke gate 추가.
+- `.issueops/ADR.md`: 이번 사용자 결정이 과거 retained-facade/legacy-transport 결정을 supersede함을 append-only로 기록.
 - release note: breaking surface와 no-migration 정책.
 - `AGENTS.md`: 필수 명령·planned map이 최종 구현과 달라지는 경우에만 갱신.
 

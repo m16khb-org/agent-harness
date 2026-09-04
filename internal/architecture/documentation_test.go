@@ -15,7 +15,7 @@ var staleCanonicalLayerPaths = []string{
 
 var canonicalArchitectureDocs = map[string][]string{
 	"README.md": {
-		"cmd/harness/",
+		"cmd/issueops/",
 		"internal/contract/",
 		"internal/domain/",
 		"internal/application/",
@@ -23,7 +23,7 @@ var canonicalArchitectureDocs = map[string][]string{
 		"internal/adapter/",
 	},
 	"AGENTS.md": {
-		"cmd/harness/",
+		"cmd/issueops/",
 		"internal/contract/",
 		"internal/domain/",
 		"internal/application/",
@@ -31,37 +31,37 @@ var canonicalArchitectureDocs = map[string][]string{
 		"internal/adapter/",
 	},
 	"README.en.md": {
-		"cmd/harness/",
+		"cmd/issueops/",
 		"internal/contract/",
 		"internal/domain/",
 		"internal/application/",
 		"internal/port/",
 		"internal/adapter/",
 	},
-	".agent-harness/ARCHITECTURE.md": {
+	".issueops/ARCHITECTURE.md": {
 		"architecture/hexagonal-core.md",
 		"internal/domain",
 		"internal/application",
 		"internal/port",
 		"internal/adapter",
 	},
-	".agent-harness/CONVENTIONS.md": {
+	".issueops/CONVENTIONS.md": {
 		"conventions/go-and-packages.md",
 		"internal/domain",
 		"internal/application",
 		"internal/port",
 		"internal/adapter",
 	},
-	".agent-harness/architecture/hexagonal-core.md": {
-		"cmd/harness",
+	".issueops/architecture/hexagonal-core.md": {
+		"cmd/issueops",
 		"internal/contract",
 		"internal/domain",
 		"internal/application",
 		"internal/port",
 		"internal/adapter",
 	},
-	".agent-harness/conventions/go-and-packages.md": {
-		"cmd/harness",
+	".issueops/conventions/go-and-packages.md": {
+		"cmd/issueops",
 		"internal/contract",
 		"internal/domain",
 		"internal/application",
@@ -74,7 +74,7 @@ var canonicalFirstPartyHostDocs = []string{
 	"README.md",
 	"README.en.md",
 	"AGENTS.md",
-	".agent-harness/architecture/hexagonal-core.md",
+	".issueops/architecture/hexagonal-core.md",
 	"skills/self-augment/SKILL.md",
 	"skills/self-augment/SELF_AUGMENTATION.md",
 }

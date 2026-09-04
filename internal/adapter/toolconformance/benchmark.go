@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	failurecausecontract "agent-harness/internal/contract/failurecause"
-	"agent-harness/internal/port"
+	failurecausecontract "issueops/internal/contract/failurecause"
+	"issueops/internal/port"
 )
 
 const contextPressureBytes = 32 << 10

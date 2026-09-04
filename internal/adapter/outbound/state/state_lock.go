@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func StateUpdate(key string, transform func(statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error)) (statecontract.StateResult, error) {

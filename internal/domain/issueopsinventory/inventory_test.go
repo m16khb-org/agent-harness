@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 // ProjectEntry는 list CLI가 렌더하는 전부다. 레코드의 실행/원격/정리 상태가

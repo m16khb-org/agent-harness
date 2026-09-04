@@ -4,9 +4,9 @@
 
 **Goal:** Add an IssueOps quality benchmark that scores issue-driven workflow artifacts with deterministic checks and an `Z.AI Coding Plan` JSON judge, then compares baseline and candidate runs.
 
-**Architecture:** Keep benchmark logic in focused core files under `internal/core`, expose it through `agent-harness issueops benchmark ...`, and reuse existing response contract/golden patterns. Fixtures are source-controlled JSON; benchmark results are compact harness state records.
+**Architecture:** Keep benchmark logic in focused core files under `internal/core`, expose it through `issueops benchmark ...`, and reuse existing response contract/golden patterns. Fixtures are source-controlled JSON; benchmark results are compact issueops state records.
 
-**Tech Stack:** Go core/CLI in `internal/core` and `cmd/harness`; JSON fixtures under `testdata/issueops/fixtures`; `Z.AI Coding Plan` via bounded `exec.CommandContext`; existing golden tests and state helpers.
+**Tech Stack:** Go core/CLI in `internal/core` and `cmd/issueops`; JSON fixtures under `testdata/issueops/fixtures`; `Z.AI Coding Plan` via bounded `exec.CommandContext`; existing golden tests and state helpers.
 
 ---
 
@@ -153,7 +153,7 @@ Create `testdata/issueops/fixtures/ambiguous-intent.json`:
   "id": "ambiguous-intent",
   "title": "Ambiguous user intent requires clarification",
   "user_prompt": "IssueOps를 더 좋게 만들어줘",
-  "repo_context": "agent-harness has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
+  "repo_context": "issueops has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
   "expected_issue": ["states ambiguity", "defines acceptance criteria", "lists non-goals", "includes verification", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["starts with measurement", "does not optimize prompts first", "uses testable tasks"],
   "expected_tasks": ["separates fixture schema", "separates deterministic scoring", "separates judge adapter"],
@@ -209,9 +209,9 @@ func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 		IssueDraft: "## Problem\n\n문제 요약\n\n## Current Evidence\n\n현재 근거\n\n## Acceptance Criteria\n\n완료 기준\n\n## Non-goals\n\n비목표\n\n## Verification\n\n검증\n\n## Feedback Log\n\n피드백 기록\n\nGuideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n",
 		Plan: "Run: go test ./... -count=1\n",
 		TDDPlan: "Write failing test before implementation.\n",
-		TaskBreakdown: "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.\n",
+		TaskBreakdown: "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/issueops/issueops.go.\n",
 		SubagentPrompts: "You are not alone in the codebase. Do not revert others. Own internal/core only.\n",
-		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n",
+		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/issueops/issues/1\nGuideline: skills/issueops-create-issue/SKILL.md; skills/issueops-create-pr/SKILL.md\n",
 		PhaseChoices: "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName: "feature/1-issueops-quality-benchmark",
 		WorktreePath: "/repo.worktrees/feature-1-issueops-quality-benchmark",
@@ -465,17 +465,17 @@ Expected: PASS.
 ### Task 5: CLI Surface
 
 **Files:**
-- Modify: `cmd/harness/issueops.go`
-- Create: `cmd/harness/issueops_benchmark_test.go`
+- Modify: `cmd/issueops/issueops.go`
+- Create: `cmd/issueops/issueops_benchmark_test.go`
 - Modify: `internal/adapter/cli/usage.go`
-- Modify: `cmd/harness/contract.go`
-- Modify: `cmd/harness/response_contract_golden_test.go`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Modify: `cmd/harness/testdata/response_contracts.golden.json`
+- Modify: `cmd/issueops/contract.go`
+- Modify: `cmd/issueops/response_contract_golden_test.go`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json`
 
 - [ ] **Step 1: Write failing CLI tests**
 
-Create `cmd/harness/issueops_benchmark_test.go`:
+Create `cmd/issueops/issueops_benchmark_test.go`:
 
 ```go
 package main
@@ -487,7 +487,7 @@ import (
 )
 
 func TestRunIssueOpsBenchmarkCLI(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "run", "--fixtures", filepath.Join("..", "..", "testdata", "issueops", "fixtures"), "--judge", "none", "--json"})
 	})
@@ -506,7 +506,7 @@ func TestRunIssueOpsBenchmarkCLI(t *testing.T) {
 Run:
 
 ```bash
-go test ./cmd/harness -run TestRunIssueOpsBenchmarkCLI -count=1
+go test ./cmd/issueops -run TestRunIssueOpsBenchmarkCLI -count=1
 ```
 
 Expected: FAIL with unknown `benchmark` subcommand.
@@ -518,8 +518,8 @@ Add `case "benchmark": return runIssueOpsBenchmark(args[1:])` in `runIssueOps`.
 Support:
 
 ```bash
-agent-harness issueops benchmark run --fixtures PATH --judge none|Z.AI --model Z.AI --json
-agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
+issueops benchmark run --fixtures PATH --judge none|Z.AI --model Z.AI --json
+issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
 Use `--judge none` for deterministic-only tests.
@@ -529,8 +529,8 @@ Use `--judge none` for deterministic-only tests.
 Add usage lines:
 
 ```text
-agent-harness issueops benchmark run --fixtures PATH [--judge none|Z.AI] [--model PATH] [--json]
-agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
+issueops benchmark run --fixtures PATH [--judge none|Z.AI] [--model PATH] [--json]
+issueops benchmark compare --baseline KEY --candidate KEY [--json]
 ```
 
 Add response contract field keys:
@@ -545,7 +545,7 @@ Add response contract field keys:
 Run:
 
 ```bash
-go test ./cmd/harness -run Golden -update -count=1
+go test ./cmd/issueops -run Golden -update -count=1
 ```
 
 Expected: PASS and intentional golden updates.
@@ -555,7 +555,7 @@ Expected: PASS and intentional golden updates.
 Run:
 
 ```bash
-go test ./cmd/harness -run 'IssueOpsBenchmark|Golden|Contract' -count=1
+go test ./cmd/issueops -run 'IssueOpsBenchmark|Golden|Contract' -count=1
 ```
 
 Expected: PASS.
@@ -580,7 +580,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: PASS.
@@ -590,7 +590,7 @@ Expected: PASS.
 Run:
 
 ```bash
-tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json && rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && ISSUEOPS_STATE_DIR="$tmp_state" ./bin/issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json && rm -rf "$tmp_state"
 ```
 
 Expected: JSON contains `"ok": true`, `"fixture_count": 2`, and benchmark scores.
@@ -611,13 +611,13 @@ Expected: no whitespace errors; only intended files changed.
 Run:
 
 ```bash
-git add -- internal/core/issueops_benchmark.go internal/core/issueops_benchmark_test.go internal/core/issueops_benchmark_judge.go internal/core/issueops_benchmark_judge_test.go cmd/harness/issueops.go cmd/harness/issueops_benchmark_test.go internal/adapter/cli/usage.go cmd/harness/contract.go cmd/harness/response_contract_golden_test.go cmd/harness/testdata/usage.golden.txt cmd/harness/testdata/response_contracts.golden.json testdata/issueops/fixtures/ambiguous-intent.json testdata/issueops/fixtures/worktree-gate.json docs/superpowers/plans/2026-06-02-issueops-quality-benchmark.md
+git add -- internal/core/issueops_benchmark.go internal/core/issueops_benchmark_test.go internal/core/issueops_benchmark_judge.go internal/core/issueops_benchmark_judge_test.go cmd/issueops/issueops.go cmd/issueops/issueops_benchmark_test.go internal/adapter/cli/usage.go cmd/issueops/contract.go cmd/issueops/response_contract_golden_test.go cmd/issueops/testdata/usage.golden.txt cmd/issueops/testdata/response_contracts.golden.json testdata/issueops/fixtures/ambiguous-intent.json testdata/issueops/fixtures/worktree-gate.json docs/superpowers/plans/2026-06-02-issueops-quality-benchmark.md
 git commit -m "feat(issueops): add quality benchmark scoring" -m "Lore:
 - Intent: Add deterministic and judge-backed IssueOps quality benchmark scoring.
 - Why: IssueOps improvements need measurable quality evidence before prompt or workflow optimization.
 - Changes:
   - Add benchmark fixtures, scoring, Z.AI judge adapter, CLI run/compare, and response contracts.
-- Verify: go test ./... -count=1; go build -o bin/agent-harness ./cmd/harness; issueops benchmark smoke; git diff --check
+- Verify: go test ./... -count=1; go build -o bin/issueops ./cmd/issueops; issueops benchmark smoke; git diff --check
 - Risk: Medium; new benchmark schema and CLI surface."
 ```
 

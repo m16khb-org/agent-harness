@@ -3,8 +3,8 @@ package issueopsinventory
 import (
 	"context"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 type Repository struct {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `agent-harness doctor` reject cross-system Git, IssueOps, Orca, and user-state residue through one deterministic operational-health model, then use a sealed external recovery bundle to remove every currently approved non-main/stale artifact while preserving the exact current operator terminal.
+**Goal:** Make `issueops doctor` reject cross-system Git, IssueOps, Orca, and user-state residue through one deterministic operational-health model, then use a sealed external recovery bundle to remove every currently approved non-main/stale artifact while preserving the exact current operator terminal.
 
 **Architecture:** Add one pure `internal/core/operationalhealth` classifier and one read-only adapter collector. The existing top-level `doctor` receives the normalized snapshot and invocation-scoped preserve sets, while IssueOps stale scan reuses the classifier's cycle-authority rule without broadening automatic release eligibility. The stability audit delegates operational judgment to the built `doctor`. The live cleanup remains an explicitly approved, one-time external runner stored in a `0700` recovery bundle; it is not a product command or MCP surface.
 
@@ -403,7 +403,7 @@ The collector returns a snapshot even on failure and appends bounded `InventoryP
 
 - [ ] **Step 2: Add RED integration cases**
 
-Use a real temporary Git repository, an isolated `HARNESS_STATE_DIR`, real IssueOps SQLite records/bindings, and a fake narrow Orca reader. Cover:
+Use a real temporary Git repository, an isolated `ISSUEOPS_STATE_DIR`, real IssueOps SQLite records/bindings, and a fake narrow Orca reader. Cover:
 
 - canonical source branch/HEAD/clean state;
 - `git worktree list --porcelain -z` parsing;
@@ -471,12 +471,12 @@ feat(doctor): collect operational inventory
 - Modify: `internal/core/doctor/doctor_test.go`
 - Modify: `internal/core/doctor/doctor.go`
 - Modify: `internal/core/utility_facade.go`
-- Modify: `cmd/harness/basiccli/dependencies.go`
-- Modify: `cmd/harness/basiccli/inspect_doctor_cli.go`
-- Modify: `cmd/harness/basiccli/inspect_doctor_cli_test.go`
-- Modify: `cmd/harness/basiccli/test_helpers_test.go`
-- Modify: `cmd/harness/harnessapp/cli_facade.go`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/basiccli/dependencies.go`
+- Modify: `cmd/issueops/basiccli/inspect_doctor_cli.go`
+- Modify: `cmd/issueops/basiccli/inspect_doctor_cli_test.go`
+- Modify: `cmd/issueops/basiccli/test_helpers_test.go`
+- Modify: `cmd/issueops/issueopsapp/cli_facade.go`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
 
 - [ ] **Step 1: Add doctor-core RED tests for projection and state-artifact de-duplication**
 
@@ -526,7 +526,7 @@ Parse:
 --preserve-terminal HANDLE
 ```
 
-Trim, reject empty entries, sort/deduplicate, and pass them only in `OperationalOptions`, with `Now` set once from `time.Now().UTC()` for the invocation. Add `CollectOperationalHealth func(context.Context, string) operationalhealth.Snapshot` to `basiccli.Deps`; configure the real adapter in `harnessapp` and deterministic fakes in CLI tests.
+Trim, reject empty entries, sort/deduplicate, and pass them only in `OperationalOptions`, with `Now` set once from `time.Now().UTC()` for the invocation. Add `CollectOperationalHealth func(context.Context, string) operationalhealth.Snapshot` to `basiccli.Deps`; configure the real adapter in `issueopsapp` and deterministic fakes in CLI tests.
 
 `status` remains an aggregator, not a second operational-health authority; do not add separate status semantics or flags. The top-level `doctor` is the only public command that always supplies the operational snapshot.
 
@@ -535,8 +535,8 @@ Trim, reject empty entries, sort/deduplicate, and pass them only in `Operational
 Test repeatable flags, blank rejection, collection-failure unknown, JSON/text code parity, no state writes, and help text. Run:
 
 ```bash
-go test ./cmd/harness/basiccli -run 'TestRunDoctor.*(Operational|Preserve|Inventory)' -count=1
-go test ./internal/core/doctor ./cmd/harness/basiccli -count=1
+go test ./cmd/issueops/basiccli -run 'TestRunDoctor.*(Operational|Preserve|Inventory)' -count=1
+go test ./internal/core/doctor ./cmd/issueops/basiccli -count=1
 ```
 
 Expected: PASS.
@@ -546,8 +546,8 @@ Expected: PASS.
 Run:
 
 ```bash
-go test ./cmd/harness/contractgolden -run Golden -update -count=1
-git diff -- cmd/harness/testdata/usage.golden.txt cmd/harness/testdata/mcp_tools.golden.json cmd/harness/testdata/response_contracts.golden.json
+go test ./cmd/issueops/contractgolden -run Golden -update -count=1
+git diff -- cmd/issueops/testdata/usage.golden.txt cmd/issueops/testdata/mcp_tools.golden.json cmd/issueops/testdata/response_contracts.golden.json
 ```
 
 Expected: doctor help gains the two flags; command list, MCP tool list, and response required-field schema do not gain a cleanup/reconcile surface.
@@ -621,11 +621,11 @@ fix(issueops): share dead-owner diagnosis
 - Modify: `skills/stability-audit/scripts/e2e_stability_audit.py`
 - Modify: `skills/stability-audit/scripts/test_e2e_stability_audit.py`
 - Modify: `skills/stability-audit/SKILL.md`
-- Modify: `.agent-harness/ARCHITECTURE.md`
-- Modify: `.agent-harness/ADR.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Modify: `.agent-harness/CAUTIONS.md`
+- Modify: `.issueops/ARCHITECTURE.md`
+- Modify: `.issueops/ADR.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/TESTING.md`
+- Modify: `.issueops/CAUTIONS.md`
 
 - [ ] **Step 1: Read `skills/stability-audit/SKILL.md` completely before editing**
 
@@ -640,11 +640,11 @@ def operational_doctor(report: dict[str, Any], preserve_terminal: str | None = N
     ...
 ```
 
-Assert it invokes `bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --json`. A singular explicit `--preserve-terminal` must match `^term_[A-Za-z0-9_-]+$`, be at most 256 bytes, override a stale inherited handle, and be forwarded unchanged. Absence alone retains the environment fallback; blank, invalid, overlong, or repeated explicit input must stop before build, doctor, or cleanup. It passes only when exit is zero and parsed `ok` and `healthy` are true. Failure details retain only bounded issue codes/summaries.
+Assert it invokes `bin/issueops doctor --repo /Users/m16khb/Workspace/issueops --json`. A singular explicit `--preserve-terminal` must match `^term_[A-Za-z0-9_-]+$`, be at most 256 bytes, override a stale inherited handle, and be forwarded unchanged. Absence alone retains the environment fallback; blank, invalid, overlong, or repeated explicit input must stop before build, doctor, or cleanup. It passes only when exit is zero and parsed `ok` and `healthy` are true. Failure details retain only bounded issue codes/summaries.
 
 The sealed runner's final stability-gate argv must include `--preserve-terminal` plus `manifest.current_terminal.handle`, while its live `env_overrides` must not contain `ORCA_TERMINAL_HANDLE`.
 
-Also assert the doctor call inherits the outer live harness environment, while ordinary/race Go regression subprocesses receive the exact audited source checkout as `HARNESS_ROOT` and their own temporary `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR`. Simulate a regression write and prove the outer IssueOps DB/session projection is byte-for-byte unchanged.
+Also assert the doctor call inherits the outer live harness environment, while ordinary/race Go regression subprocesses receive the exact audited source checkout as `ISSUEOPS_ROOT` and their own temporary `ISSUEOPS_STATE_DIR`, `ISSUEOPS_DAEMON_DIR`, and `ISSUEOPS_WORKER_DIR`. Simulate a regression write and prove the outer IssueOps DB/session projection is byte-for-byte unchanged.
 
 - [ ] **Step 3: Run Python tests and verify RED**
 
@@ -658,7 +658,7 @@ Expected: FAIL before the function exists.
 
 - [ ] **Step 4: Implement and call the doctor gate immediately after build**
 
-The stability script does not reimplement ownership or residue logic. Add one report step named `operational_doctor`; unknown/unhealthy fails the audit. Keep that step on the inherited live environment. For ordinary/race Go regression subprocesses, explicitly pin `HARNESS_ROOT` to the audited checkout and isolate the other three harness paths so the final gate cannot recreate the residue it just removed.
+The stability script does not reimplement ownership or residue logic. Add one report step named `operational_doctor`; unknown/unhealthy fails the audit. Keep that step on the inherited live environment. For ordinary/race Go regression subprocesses, explicitly pin `ISSUEOPS_ROOT` to the audited checkout and isolate the other three harness paths so the final gate cannot recreate the residue it just removed.
 
 - [ ] **Step 5: Update narrow docs**
 
@@ -697,7 +697,7 @@ test(operations): gate stability on doctor
 Run:
 
 ```bash
-gofmt -w internal/core/operationalhealth/*.go internal/adapter/operationalhealth/*.go internal/adapter/orca/client.go internal/adapter/orca/client_test.go internal/port/orca.go internal/core/doctor/doctor.go internal/core/doctor/doctor_test.go cmd/harness/basiccli/dependencies.go cmd/harness/basiccli/inspect_doctor_cli.go cmd/harness/basiccli/inspect_doctor_cli_test.go cmd/harness/basiccli/test_helpers_test.go cmd/harness/harnessapp/cli_facade.go internal/core/utility_facade.go internal/core/issueops/issueops_stale_scan.go internal/core/issueops/issueops_stale_scan_apply_test.go internal/core/issueops/issueops_stale_scan_operational_test.go
+gofmt -w internal/core/operationalhealth/*.go internal/adapter/operationalhealth/*.go internal/adapter/orca/client.go internal/adapter/orca/client_test.go internal/port/orca.go internal/core/doctor/doctor.go internal/core/doctor/doctor_test.go cmd/issueops/basiccli/dependencies.go cmd/issueops/basiccli/inspect_doctor_cli.go cmd/issueops/basiccli/inspect_doctor_cli_test.go cmd/issueops/basiccli/test_helpers_test.go cmd/issueops/issueopsapp/cli_facade.go internal/core/utility_facade.go internal/core/issueops/issueops_stale_scan.go internal/core/issueops/issueops_stale_scan_apply_test.go internal/core/issueops/issueops_stale_scan_operational_test.go
 go mod tidy
 git diff --check
 ```
@@ -712,10 +712,10 @@ Run:
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness api-doc static-check --json
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops api-doc static-check --json
 ```
 
 Expected: all PASS; the API-doc command reports pass or an explicit no-candidate skip. Do not run the newly gated live stability audit yet because the approved residue intentionally remains until Tasks 9–11.
@@ -727,7 +727,7 @@ Verify no new root command/MCP tool, no persistent preservation, no raw task/mes
 ```bash
 git status --short --branch
 git diff origin/main...HEAD --stat
-git diff origin/main...HEAD -- cmd/harness/testdata/mcp_tools.golden.json cmd/harness/testdata/response_contracts.golden.json
+git diff origin/main...HEAD -- cmd/issueops/testdata/mcp_tools.golden.json cmd/issueops/testdata/response_contracts.golden.json
 ```
 
 - [ ] **Step 4: Fix only demonstrated findings and repeat Step 2**
@@ -752,7 +752,7 @@ Expected: clean source and exact OID equality. If remote main advanced independe
 ### Task 9: Build, test, and seal the external recovery bundle
 
 **Files outside the repository:**
-- Create: `/Users/m16khb/.local/state/agent-harness-backups/<repo-fingerprint>/<UTC-timestamp>/reconcile.py`
+- Create: `/Users/m16khb/.local/state/issueops-backups/<repo-fingerprint>/<UTC-timestamp>/reconcile.py`
 - Create: same directory `test_reconcile.py`
 - Create through the runner: `manifest.json`, `manifest.sha256`, `journal.jsonl`, `git/`, `issueops/`, `state/`, `orca/`
 
@@ -774,7 +774,7 @@ printenv ORCA_PANE_KEY
 printenv ORCA_WORKTREE_ID
 orca terminal show --json
 orca terminal list --limit 512 --json
-orca worktree list --repo path:/Users/m16khb/Workspace/agent-harness --limit 512 --json
+orca worktree list --repo path:/Users/m16khb/Workspace/issueops --limit 512 --json
 orca terminal show --terminal "$ORCA_TERMINAL_HANDLE" --json
 ```
 
@@ -809,7 +809,7 @@ Expected: PASS before live observation.
 
 Copy only `reconcile.py` and `test_reconcile.py` into a temporary clean directory and run the copied test directly. It must pass without importing `simulate_copy.py` or any unsealed sibling. Repeat that two-file standalone test after creating the fresh final bundle and before collection.
 
-After the implementation commit is clean and equals `refs/remotes/origin/main`, run `simulate_copy.py`. It builds its own `0700` `-trimpath` executor, verifies SHA-256 plus VCS revision and `modified=false`, then exercises the exact binding deletion, every force-release CAS, and the approved test-session transaction against an online backup of the live SQLite database. It must never invoke the ignored repository `bin/agent-harness`.
+After the implementation commit is clean and equals `refs/remotes/origin/main`, run `simulate_copy.py`. It builds its own `0700` `-trimpath` executor, verifies SHA-256 plus VCS revision and `modified=false`, then exercises the exact binding deletion, every force-release CAS, and the approved test-session transaction against an online backup of the live SQLite database. It must never invoke the ignored repository `bin/issueops`.
 
 - [ ] **Step 4: Collect the live manifest and backups without deletion**
 
@@ -884,10 +884,10 @@ Invoke `orca orchestration reset --all --json` exactly once. Verify all-task `0`
 Delete only the manifest-pinned canonical-repository bindings with the exact SQLite transaction CAS. For each record, pass its sealed raw and canonical digests to the bundle-private clean-HEAD executor; the core re-reads both digests and proves zero repository bindings under the same state-root span lock before mutating:
 
 ```text
-BUNDLE_ROOT/bin/agent-harness issueops force-release --id EXACT_ID --reason operational-reconciliation-2026-07-19 --expected-raw-sha256 RAW_SHA256 --expected-canonical-sha256 CANONICAL_SHA256 --json
+BUNDLE_ROOT/bin/issueops force-release --id EXACT_ID --reason operational-reconciliation-2026-07-19 --expected-raw-sha256 RAW_SHA256 --expected-canonical-sha256 CANONICAL_SHA256 --json
 ```
 
-Pin `HARNESS_STATE_DIR`, `HARNESS_ROOT`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR` for every live executor call. Journal the locked before/after digests, binding counts, executor digest, `phase=done`, exact reason, timestamp, and expected cleanup/orphan stamps separately. New/drifted records or bindings stop the stage.
+Pin `ISSUEOPS_STATE_DIR`, `ISSUEOPS_ROOT`, `ISSUEOPS_DAEMON_DIR`, and `ISSUEOPS_WORKER_DIR` for every live executor call. Journal the locked before/after digests, binding counts, executor digest, `phase=done`, exact reason, timestamp, and expected cleanup/orphan stamps separately. New/drifted records or bindings stop the stage.
 
 Before and after every post-reset operation, recompute the journal-order phase projection. Sealed resources may be absent only after their own verified removal; all record IDs, session keys, other SQLite rows, local/remote refs and OIDs, and state artifact paths/hashes must otherwise remain exact. This fence runs before branch/ref/state mutation, so a newly created IssueOps owner cannot be discovered only after its branch was deleted.
 
@@ -930,14 +930,14 @@ git worktree list --porcelain
 git for-each-ref --format='%(refname) %(objectname)' refs/heads
 git ls-remote --heads origin
 orca status --json
-orca worktree list --repo path:/Users/m16khb/Workspace/agent-harness --limit 512 --json
+orca worktree list --repo path:/Users/m16khb/Workspace/issueops --limit 512 --json
 orca terminal list --limit 512 --json
 orca orchestration task-list --brief --json
 orca orchestration task-list --status dispatched --json
 orca orchestration gate-list --json
 orca orchestration inbox --limit 1 --json
-./bin/agent-harness issueops cleanup stale --repo /Users/m16khb/Workspace/agent-harness --prune-done 0s --json
-./bin/agent-harness state doctor --json
+./bin/issueops cleanup stale --repo /Users/m16khb/Workspace/issueops --prune-done 0s --json
+./bin/issueops state doctor --json
 ```
 
 Expected: one source/main Git and Orca worktree; only local/remote main; only exact current terminal; task/dispatched/gate/message all zero; all pinned records done, non-done zero, bindings zero; no unexpected state artifact.
@@ -947,7 +947,7 @@ Expected: one source/main Git and Orca worktree; only local/remote main; only ex
 Run:
 
 ```bash
-./bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --preserve-terminal EXACT_SEALED_CURRENT_TERMINAL_HANDLE --json
+./bin/issueops doctor --repo /Users/m16khb/Workspace/issueops --preserve-terminal EXACT_SEALED_CURRENT_TERMINAL_HANDLE --json
 ```
 
 Expected: `ok=true`, `healthy=true`, healthy `operational_state`, and no `operational_*` issue.
@@ -961,11 +961,11 @@ go mod tidy
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/issueops self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ```
 
 Expected: every exit `0`; both self-verifications are `ok=true`, score at least `95`, termination eligible.

@@ -14,7 +14,7 @@ description: Refresh the body of an issue or provider-native child this cycle al
 - 원격 쓰기 절차: [`issueops-remote-write`](../issueops-remote-write/SKILL.md)
 - provider 세부 규칙: [`remote-issue.md`](../issueops/references/remote-issue.md)
 
-시작 전 `agent-harness issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
+시작 전 `issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
 확인한다. 본문 동기화는 어느 단계에서든 할 수 있지만, `next`가 가리키는 단계의 일을
 미루는 대신 하는 것이 아니다.
 
@@ -51,7 +51,7 @@ flowchart LR
 
 ## 시작 게이트
 
-1. `ISSUEOPS_ID`와 `agent-harness issueops list --repo "$PWD" --json`으로 cycle을
+1. `ISSUEOPS_ID`와 `issueops list --repo "$PWD" --json`으로 cycle을
    찾는다. 찾은 record가 상태의 기준이다.
 2. record에 canonical `issue_url`이 있어야 한다. 없으면 이 스킬이 아니라
    `issueops-create-issue`가 할 일이다.
@@ -60,7 +60,7 @@ flowchart LR
 4. child를 대상으로 하려면 그 URL이 현재 parent의 provider-native child여야
    한다. 하네스가 hierarchy를 검증한 뒤에만 쓴다.
 5. 관리 블록(`issueops:completion`, `issueops:devils-advocate`,
-   `agent-harness:issue-create`)은 body-file에 넣지 않는다. 하네스가 원격에서
+   `issueops:issue-create`)은 body-file에 넣지 않는다. 하네스가 원격에서
    그대로 떼어내 다시 붙인다. 넣으면 명령이 거부한다.
 
 ## drift를 읽는 법
@@ -68,7 +68,7 @@ flowchart LR
 preview는 `--confirm` 없이 실행하며 provider를 변경하지 않는다.
 
 ```bash
-agent-harness issueops remote sync-issue \
+issueops remote sync-issue \
   --id "$ISSUEOPS_ID" --body-file "$BODY_FILE" --json
 ```
 
@@ -140,7 +140,7 @@ Issue와 PR/MR 본문을 만든 뒤 갱신할 경계가 없어 원격 텍스트�
 preview → 본문 재작성 → 같은 sha로 confirm 순서를 지킨다.
 
 ```bash
-agent-harness issueops remote sync-issue \
+issueops remote sync-issue \
   --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --body-file "$BODY_FILE" --json
 ```
@@ -148,7 +148,7 @@ agent-harness issueops remote sync-issue \
 preview가 돌려준 `expected_body_sha256`을 그대로 넘겨 확정한다.
 
 ```bash
-agent-harness issueops remote sync-issue \
+issueops remote sync-issue \
   --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --body-file "$BODY_FILE" \
   --expected-body-sha256 "$EXPECTED_BODY_SHA256" \
@@ -159,7 +159,7 @@ agent-harness issueops remote sync-issue \
 provider-native child는 `--url`로 지정한다. hierarchy 검증을 통과한 URL만 쓴다.
 
 ```bash
-agent-harness issueops remote sync-issue \
+issueops remote sync-issue \
   --id "$ISSUEOPS_ID" --url "$CHILD_URL" \
   --body-file "$CHILD_BODY_FILE" \
   --expected-body-sha256 "$EXPECTED_BODY_SHA256" \

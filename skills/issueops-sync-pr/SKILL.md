@@ -14,7 +14,7 @@ description: Refresh the body of a GitHub pull request or GitLab merge request t
 - 원격 쓰기 절차: [`issueops-remote-write`](../issueops-remote-write/SKILL.md)
 - provider 세부 규칙: [`remote-issue.md`](../issueops/references/remote-issue.md)
 
-시작 전 `agent-harness issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
+시작 전 `issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
 확인한다. 본문 동기화는 어느 단계에서든 할 수 있다.
 
 GitHub PR과 GitLab MR은 같은 계약을 쓴다. CLI의 canonical 동사는
@@ -52,7 +52,7 @@ draft를 올린 뒤에도 커밋은 쌓인다. 다음 중 하나가 사실이면
 ## drift를 읽는 법
 
 ```bash
-agent-harness issueops remote sync-pr \
+issueops remote sync-pr \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
   --body-file "$BODY_FILE" --json
 ```
@@ -116,7 +116,7 @@ confirm 전에는 dry-run이다. sha가 어긋나면 쓰지 않고 멈춘다.
 ## Canonical sync
 
 ```bash
-agent-harness issueops remote sync-pr \
+issueops remote sync-pr \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
   --provider "$PROVIDER" --body-file "$BODY_FILE" \
   --expected-body-sha256 "$EXPECTED_BODY_SHA256" \

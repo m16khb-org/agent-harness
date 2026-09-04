@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	webfetchport "agent-harness/internal/port/webfetch"
+	webfetchport "issueops/internal/port/webfetch"
 )
 
 func validateFetchURL(ctx context.Context, raw string, allowPrivate bool, resolver webfetchport.Resolver) (*url.URL, error) {

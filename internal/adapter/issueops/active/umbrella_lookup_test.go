@@ -3,7 +3,7 @@ package active
 import (
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func TestUmbrellaCycleForChildIssueFindsLinkingParent(t *testing.T) {

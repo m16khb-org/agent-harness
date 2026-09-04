@@ -3,8 +3,8 @@ package issueopsnext
 import (
 	"context"
 
-	issueopsnextapplication "agent-harness/internal/application/issueopsnext"
-	issueopsnextcontract "agent-harness/internal/contract/issueopsnext"
+	issueopsnextapplication "issueops/internal/application/issueopsnext"
+	issueopsnextcontract "issueops/internal/contract/issueopsnext"
 )
 
 func NewNextHandler(service *issueopsnextapplication.Service) func(

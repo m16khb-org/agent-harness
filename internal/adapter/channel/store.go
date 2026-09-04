@@ -7,13 +7,13 @@
 package channel
 
 import (
-	channelcontract "agent-harness/internal/contract/channel"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	channelcontract "issueops/internal/contract/channel"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -31,7 +31,7 @@ type StateDatabase interface {
 	Put(bucket, id string, data []byte) error
 }
 
-// harness state 접근과 저장소 열기는 composition root가 설치한다.
+// issueops state 접근과 저장소 열기는 composition root가 설치한다.
 var (
 	StateDir          func() string
 	OpenStateDatabase func(dir string) (StateDatabase, error)

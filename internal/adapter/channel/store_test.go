@@ -1,10 +1,10 @@
 package channel
 
 import (
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	statestore "agent-harness/internal/adapter/outbound/state"
-	channelcontract "agent-harness/internal/contract/channel"
 	"encoding/json"
+	"issueops/internal/adapter/outbound/sqlstore"
+	statestore "issueops/internal/adapter/outbound/state"
+	channelcontract "issueops/internal/contract/channel"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +20,7 @@ func init() {
 }
 
 func TestSendRecvRoundTripAcrossChannelIsolation(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if _, err := Send(channelcontract.SendRequest{Channel: "contract", From: "server", Body: "GET /users -> 200 {id,name}"}); err != nil {
 		t.Fatalf("send 1: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestSendRecvRoundTripAcrossChannelIsolation(t *testing.T) {
 }
 
 func TestRecvSinceIDReturnsOnlyNewMessages(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	first, _ := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "1"})
 	if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: "2"}); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestRecvSinceIDReturnsOnlyNewMessages(t *testing.T) {
 }
 
 func TestRecvLimitBoundsResult(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	for _, body := range []string{"1", "2", "3"} {
 		if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "a", Body: body}); err != nil {
 			t.Fatal(err)
@@ -90,7 +90,7 @@ func TestRecvLimitBoundsResult(t *testing.T) {
 }
 
 func TestRecvWaitReturnsImmediatelyWhenMessageExists(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if _, err := Send(channelcontract.SendRequest{Channel: "c", From: "server", Body: "ready"}); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestRecvWaitReturnsImmediatelyWhenMessageExists(t *testing.T) {
 }
 
 func TestRecvWaitTimesOutEmpty(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	now := time.Date(2026, 8, 30, 0, 0, 0, 0, time.UTC)
 	previousNow, previousWait := channelNow, channelWait
 	channelNow = func() time.Time { return now }
@@ -127,7 +127,7 @@ func TestRecvWaitTimesOutEmpty(t *testing.T) {
 }
 
 func TestRecvWaitBlocksUntilConcurrentSend(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	waitStarted := make(chan struct{}, 1)
 	resume := make(chan struct{})
 	previousWait := channelWait
@@ -204,7 +204,7 @@ func TestRecvWaitDoesNotRereadObservedRecords(t *testing.T) {
 }
 
 func TestSendValidation(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	cases := []struct {
 		name string
 		req  channelcontract.SendRequest
@@ -228,7 +228,7 @@ func jsonMarshal(v any) ([]byte, error) { return json.MarshalIndent(v, "", "  ")
 
 func TestMessageIDsSortChronologically(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	// 저장소에 직접 ID 순서를 강제하는 메시지를 써서 정렬 가정을 검증한다.
 	ids := []string{"msg-000000000000000a-01", "msg-000000000000000b-01", "msg-000000000000000c-01"}
 	db, err := OpenStateDatabase(StateRoot())
@@ -250,5 +250,5 @@ func TestMessageIDsSortChronologically(t *testing.T) {
 	if len(recv.Messages) != 3 || recv.Messages[0].ID != ids[0] || recv.Messages[2].ID != ids[2] {
 		t.Fatalf("chronological order broken: %+v", recv.Messages)
 	}
-	_ = os.Setenv("HARNESS_STATE_DIR", dir)
+	_ = os.Setenv("ISSUEOPS_STATE_DIR", dir)
 }

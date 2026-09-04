@@ -6,11 +6,11 @@ import (
 	"context"
 	"errors"
 
-	completionapp "agent-harness/internal/application/issueopscompletion"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	statecontract "agent-harness/internal/contract/state"
+	completionapp "issueops/internal/application/issueopscompletion"
+	issueopscontract "issueops/internal/contract/issueops"
+	completioncontract "issueops/internal/contract/issueopscompletion"
+	leasecontract "issueops/internal/contract/issueopslease"
+	statecontract "issueops/internal/contract/state"
 )
 
 type service interface {
@@ -29,7 +29,7 @@ func (h Handler) Handle(ctx context.Context, _ string, request issueopscontract.
 	}
 	result, err := h.service.Complete(ctx, completionapp.Request{
 		ID: request.ID, Generation: request.Generation, Actor: completionActor(request.Actor), Ancestry: completionAncestry(request.Actor),
-		CWD: request.CWD, FinalHead: request.FinalHead, TuringReportPath: request.TuringReportPath,
+		CWD: request.CWD, FinalHead: request.FinalHead, VerificationReportPath: request.VerificationReportPath,
 		Verification: append([]string(nil), request.Verification...), RemoteArtifactURL: request.RemoteArtifactURL, Confirm: request.Confirm,
 	})
 	if err != nil {
@@ -70,12 +70,12 @@ func coreExecution(execution leasecontract.Execution) issueopscontract.Execution
 		result.Pending = &issueopscontract.ExternalIntent{OperationID: execution.Pending.OperationID, Kind: execution.Pending.Kind, Marker: execution.Pending.Marker, StartedAt: execution.Pending.StartedAt}
 	}
 	if execution.Completion != nil {
-		result.Completion = &issueopscontract.ExecutionCompletion{Generation: execution.Completion.Generation, FinalHead: execution.Completion.FinalHead, TuringReportPath: execution.Completion.TuringReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
+		result.Completion = &issueopscontract.ExecutionCompletion{Generation: execution.Completion.Generation, FinalHead: execution.Completion.FinalHead, VerificationReportPath: execution.Completion.VerificationReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
 	}
 	for _, entry := range execution.CompletionHistory {
 		result.CompletionHistory = append(result.CompletionHistory, issueopscontract.ExecutionCompletionHistory{
 			Generation: entry.Generation,
-			Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, TuringReportPath: entry.Completion.TuringReportPath, Verification: append([]string(nil), entry.Completion.Verification...), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
+			Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, VerificationReportPath: entry.Completion.VerificationReportPath, Verification: append([]string(nil), entry.Completion.Verification...), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
 			Reason:     entry.Reason,
 			ReopenedAt: entry.ReopenedAt,
 		})

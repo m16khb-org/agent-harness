@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdocscontract "agent-harness/internal/contract/projectdocs"
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdocscontract "issueops/internal/contract/projectdocs"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -135,7 +135,7 @@ func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
 	root := t.TempDir()
 	created, err := ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot: root,
-		RelPath:  ".agent-harness/VCS.md",
+		RelPath:  ".issueops/VCS.md",
 		Content:  "# VCS\n\n## GitHub\n",
 		Summary:  "record verified provider recipe",
 		Confirm:  true,
@@ -143,7 +143,7 @@ func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
 	if err != nil || created.Action != "create" {
 		t.Fatalf("create optional VCS.md: result=%#v err=%v", created, err)
 	}
-	read, err := ReadProjectDoc(root, ".agent-harness/VCS.md")
+	read, err := ReadProjectDoc(root, ".issueops/VCS.md")
 	if err != nil || !read.Exists || !strings.Contains(read.Content, "## GitHub") {
 		t.Fatalf("read optional VCS.md: result=%#v err=%v", read, err)
 	}
@@ -156,10 +156,10 @@ func TestRouteProjectDocsIncludesOptionalVCSForRemoteWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		".agent-harness/VCS.md",
-		".agent-harness/COMMIT_POLICY.md",
-		".agent-harness/TESTING.md",
-		".agent-harness/CAUTIONS.md",
+		".issueops/VCS.md",
+		".issueops/COMMIT_POLICY.md",
+		".issueops/TESTING.md",
+		".issueops/CAUTIONS.md",
 	} {
 		if !routeContains(route.Docs, want) {
 			t.Fatalf("combined VCS/commit route missing %s: %+v", want, route.Docs)
@@ -332,7 +332,7 @@ func TestRouteProjectDocsIncludesDesignForStylingWork(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !routeContains(route.Docs, ".agent-harness/DESIGN.md") {
+		if !routeContains(route.Docs, ".issueops/DESIGN.md") {
 			t.Fatalf("styling task %q missing DESIGN.md route: %+v", task, route.Docs)
 		}
 	}

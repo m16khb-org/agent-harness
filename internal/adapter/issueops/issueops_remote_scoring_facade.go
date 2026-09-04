@@ -1,6 +1,6 @@
 package issueops
 
-import "agent-harness/internal/domain/issueopsremote"
+import "issueops/internal/domain/issueopsremote"
 
 type IssueOpsRemoteArtifact = remote.IssueOpsRemoteArtifact
 type IssueOpsRemoteIssueCandidate = remote.IssueOpsRemoteIssueCandidate

@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestStrictPRReadinessFlagsTargetBranchMismatch(t *testing.T) {

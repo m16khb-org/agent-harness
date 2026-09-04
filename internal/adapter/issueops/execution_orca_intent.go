@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 const (

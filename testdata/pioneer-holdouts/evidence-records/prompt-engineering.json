@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "prompt-engineering",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a00281",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "ab3de4728656d229430aa5e005f5a6b4fdd113a430c3e724493278f886ea48df",
+      "receipt_bytes": 4200
+    },
+    {
+      "task_id": "st_01a002cd",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "fa2b4c7ebe36064058065b5c96e921a1c57b9c547c8482c649bf56d05408071d",
+      "receipt_bytes": 6398
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "prompt-engineering/TASK.md",
+      "fixture_sha256": "867694e00330a13dca5d910d5290ec2aa63fbdc2ecf2af4384779ed351f6efc2",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "cot_boundary",
+        "tool_honesty"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "prompt-engineering/BOUNDARY.md",
+      "fixture_sha256": "7603dfd84c1fed34ca598954f25a5a3666b234c7dcf307d5ac871de704be8ae8",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "fictional_tool_correction",
+        "auditable_trace"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "prompt-engineering/OPERATIONAL.md",
+      "fixture_sha256": "145f015971393d1004b47bad2919afe8e6f2727cd61e648202b8fd0446ef6160",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "conflict_free_prompt",
+        "adversarial_rubric"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "structural_evaluation_available_live_model_not_required"
+    }
+  ]
+}

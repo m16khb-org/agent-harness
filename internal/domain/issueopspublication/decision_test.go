@@ -3,7 +3,7 @@ package issueopspublication
 import (
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 func TestDecideReconcile(t *testing.T) {

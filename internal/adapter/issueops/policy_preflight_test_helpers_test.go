@@ -1,9 +1,9 @@
 package issueops
 
 import (
-	cleanupstatusppdeps "agent-harness/internal/adapter/issueops/cleanupstatus"
-	implementationppdeps "agent-harness/internal/adapter/issueops/implementation"
-	preflightadapter "agent-harness/internal/adapter/preflight"
+	cleanupstatusppdeps "issueops/internal/adapter/issueops/cleanupstatus"
+	implementationppdeps "issueops/internal/adapter/issueops/implementation"
+	preflightadapter "issueops/internal/adapter/preflight"
 )
 
 // production wiring과 같은 실행기를 설치한다. 이 package가 실제로 의존하는

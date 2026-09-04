@@ -1,6 +1,6 @@
 package benchmark
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 // 벤치마크 DTO는 계약이 소유한다. 어댑터는 같은 이름으로 재노출만 한다.
 type (

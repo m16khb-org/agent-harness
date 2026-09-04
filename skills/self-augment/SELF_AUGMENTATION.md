@@ -16,12 +16,12 @@ Verify that the harness produces consistent results across Codex, Claude Code, a
 ### CLI/MCP surface
 
 ```bash
-./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --collect-all-steps --progress=jsonl --json
-./bin/agent-harness self-verify candidates --json
-./bin/agent-harness self-verify history --prefix self-verify --json
-./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --collect-all-steps --progress=jsonl --json
+./bin/issueops self-verify candidates --json
+./bin/issueops self-verify history --prefix self-verify --json
+./bin/issueops self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/issueops self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
 
 Legacy `self_augment_history`, `compare`, and `promote` calls remain compatibility aliases only. New docs and automation should use `self_verify_*` names.
@@ -38,7 +38,7 @@ The single evidence pass includes at least these checks:
 6. Native integration smoke checks.
 7. Candidate export: verify `self-verify candidates` exports next candidates and open/satisfied status.
 8. Step budget baseline: verify label-level p95 budget comparison and regression promotion.
-9. Install dry-run smoke: verify temp HOME/CODEX_HOME/HARNESS_ROOT dry-run reports planned writes/links without writing files.
+9. Install dry-run smoke: verify temp HOME/CODEX_HOME/ISSUEOPS_ROOT dry-run reports planned writes/links without writing files.
 10. Command policy and path-fuzz checks.
 11. Parallel temp isolation.
 12. Duplicate MCP warning detection.
@@ -81,9 +81,9 @@ Repeating tests or producing only an analysis report is not self-augmentation.
 ### Surface
 
 ```bash
-./bin/agent-harness self-augment --json
-./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json
-./bin/agent-harness self-augment lesson --lesson "..." --next-action "..." --json
+./bin/issueops self-augment --json
+./bin/issueops self-augment --save-state --state-key self-augment-latest --json
+./bin/issueops self-augment lesson --lesson "..." --next-action "..." --json
 ```
 
 Skill contract: use `$self-augment` when the user asks for autonomous improvement, repo enhancement, next valuable improvement, or 95-point improvement loops.
@@ -127,5 +127,5 @@ Candidate generation must use at least two formulas from `GENIUS_THINK.md`. Pref
 - The self-augmentation loop may create real improvement diffs, but should keep them small and reversible.
 - Any new CLI/MCP/native capability must add evidence labels to self-verification tests or QA steps.
 - Never lower the 95-point gate. Skipped verification does not count as a passing score.
-- Capture reusable failures with `self-augment lesson` or the appropriate `.agent-harness` document.
-- Close a reproduced tool-contract failure by promoting a redacted behavioral fixture and correcting the shared validator/schema-generation process, not by hand-fixing one host output. Follow `.agent-harness/TESTING.md`.
+- Capture reusable failures with `self-augment lesson` or the appropriate `.issueops` document.
+- Close a reproduced tool-contract failure by promoting a redacted behavioral fixture and correcting the shared validator/schema-generation process, not by hand-fixing one host output. Follow `.issueops/TESTING.md`.

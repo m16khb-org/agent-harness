@@ -1,8 +1,8 @@
 package issueopsartifact
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsleasecontract "agent-harness/internal/contract/issueopslease"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsleasecontract "issueops/internal/contract/issueopslease"
 )
 
 type Record = issueopscontract.IssueOpsRecord
@@ -27,6 +27,6 @@ func (err *RecoveryError) IssueOpsErrorFields() map[string]any {
 	return map[string]any{
 		"code":            "artifact_stage_requires_reseed",
 		"required_action": "execution replace --reseed",
-		"next_command":    "agent-harness issueops execution status --id " + err.ID + " --json",
+		"next_command":    "issueops execution status --id " + err.ID + " --json",
 	}
 }

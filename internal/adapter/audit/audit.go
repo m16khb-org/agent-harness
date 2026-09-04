@@ -1,14 +1,14 @@
 package audit
 
 import (
-	auditcontract "agent-harness/internal/contract/audit"
 	"encoding/json"
 	"fmt"
+	auditcontract "issueops/internal/contract/audit"
 	"os"
 	"path/filepath"
 	"time"
 
-	policydomain "agent-harness/internal/contract/policy"
+	policydomain "issueops/internal/contract/policy"
 )
 
 // AuditCommandPolicy는 명령 요청을 평가해 redacted policy 결정을 JSONL audit
@@ -46,16 +46,16 @@ func AuditCommandPolicy(req policydomain.CommandPolicyRequest) (auditcontract.Co
 }
 
 func commandAuditLogPath() (string, error) {
-	if path := os.Getenv("HARNESS_AUDIT_LOG"); path != "" {
+	if path := os.Getenv("ISSUEOPS_AUDIT_LOG"); path != "" {
 		return filepath.Abs(path)
 	}
-	dir := os.Getenv("HARNESS_STATE_DIR")
+	dir := os.Getenv("ISSUEOPS_STATE_DIR")
 	if dir == "" {
 		base, err := os.UserHomeDir()
 		if err != nil || base == "" {
 			return "", fmt.Errorf("resolve home for audit log: %w", err)
 		}
-		dir = filepath.Join(base, ".local", "state", "agent-harness")
+		dir = filepath.Join(base, ".local", "state", "issueops")
 	}
 	return filepath.Join(dir, "audit", "command-policy.jsonl"), nil
 }

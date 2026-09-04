@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type frozenRunInventoryReader struct{}

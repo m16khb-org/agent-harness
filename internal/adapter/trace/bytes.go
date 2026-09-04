@@ -1,8 +1,8 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"encoding/json"
+	tracecontract "issueops/internal/contract/trace"
 	"strings"
 )
 

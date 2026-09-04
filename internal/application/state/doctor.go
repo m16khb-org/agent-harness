@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/domain/statepath"
+	statecontract "issueops/internal/contract/state"
+	"issueops/internal/domain/statepath"
 )
 
 const storeMaintainSentinel = ".last-store-maintain"
@@ -104,7 +104,7 @@ func harnessOwnedStateDirectory(name string) bool {
 }
 
 func harnessOwnedStateFile(name string) bool {
-	for _, base := range []string{"harness.db", "harness.lock.db"} {
+	for _, base := range []string{"issueops.db", "issueops.lock.db"} {
 		if name == base || strings.HasPrefix(name, base+"-") {
 			return true
 		}

@@ -1,9 +1,9 @@
 package doctor
 
 import (
-	fingerprintt4d "agent-harness/internal/adapter/lifecycle/fingerprint"
-	projectbootstrapt4d "agent-harness/internal/adapter/projectbootstrap"
-	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
+	fingerprintt4d "issueops/internal/adapter/lifecycle/fingerprint"
+	projectbootstrapt4d "issueops/internal/adapter/projectbootstrap"
+	projectdocsadapter "issueops/internal/adapter/projectdocs"
 )
 
 // production wiring과 같은 구현을 설치한다.

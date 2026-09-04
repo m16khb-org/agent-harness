@@ -93,7 +93,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		}
 		return deps.Complete(ctx, stateRoot, ExecutionCompleteRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,
-			FinalHead: req.FinalHead, TuringReportPath: req.TuringReportPath,
+			FinalHead: req.FinalHead, VerificationReportPath: req.VerificationReportPath,
 			Verification: req.Verification, RemoteArtifactURL: req.RemoteArtifactURL, Confirm: req.Confirm,
 		})
 	default:

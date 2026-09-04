@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Work only in `/Users/sample/workspace/agent-harness` on the current `main`.
+- Work only in `/Users/sample/workspace/issueops` on the current `main`.
 - Preserve existing user changes.
 - Do not commit, push, publish, mutate user configuration, or edit durable IssueOps state.
 - Do not add an unsafe execution reset or abandonment command.
@@ -42,8 +42,8 @@
 ### Task 2: Remote PR native ancestry
 
 **Files:**
-- Modify: `cmd/harness/issueopscli/remotecmd/remote.go`
-- Test: `cmd/harness/issueopscli/remotecmd/remote_test.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote.go`
+- Test: `cmd/issueops/issueopscli/remotecmd/remote_test.go`
 
 **Interfaces:**
 - Consumes: native actor CLI flags and current process ancestry.
@@ -52,7 +52,7 @@
 - [x] Add failing tests asserting the current process receipt is present in
   `ProcessAncestry`, dry-run skips observation, and confirmed PR creation
   propagates observation failure before provider mutation.
-- [x] Run `go test ./cmd/harness/issueopscli/remotecmd -run NativeActor -count=1`
+- [x] Run `go test ./cmd/issueops/issueopscli/remotecmd -run NativeActor -count=1`
   and confirm failure because PR creation has no shared ancestry helper.
 - [x] Introduce the smallest injectable observation helper, use it in both
   `verify-artifact` and confirmed `runRemoteCreatePR`, and propagate errors.
@@ -109,9 +109,9 @@
 
 - [x] Run `gofmt` on changed Go files.
 - [x] Run `git diff --check`.
-- [x] Run `go test ./internal/adapter/orca ./cmd/harness/issueopscli/remotecmd ./internal/adapter ./internal/core/lifecycle -count=1`.
+- [x] Run `go test ./internal/adapter/orca ./cmd/issueops/issueopscli/remotecmd ./internal/adapter ./internal/core/lifecycle -count=1`.
 - [x] Run `go test ./... -count=1`.
 - [x] Run `go test -race ./... -count=1`.
-- [x] Run `go build -o bin/agent-harness ./cmd/harness`.
+- [x] Run `go build -o bin/issueops ./cmd/issueops`.
 - [x] Inspect `git status --short` and `git diff --stat`; report local changes
   without committing or pushing.

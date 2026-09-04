@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/issueopsremote"
-	"agent-harness/internal/port"
+	model "issueops/internal/contract/issueops"
+	"issueops/internal/domain/issueopsremote"
+	"issueops/internal/port"
 )
 
 const (

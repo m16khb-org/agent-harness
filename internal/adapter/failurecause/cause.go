@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/domain/policy"
 
-	failurecausecontract "agent-harness/internal/contract/failurecause"
+	failurecausecontract "issueops/internal/contract/failurecause"
 )
 
 func Classify(failed bool, items []failurecausecontract.Evidence) failurecausecontract.Result {

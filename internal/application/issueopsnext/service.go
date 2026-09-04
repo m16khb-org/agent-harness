@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
-	issueopsnextcontract "agent-harness/internal/contract/issueopsnext"
-	issueopsnextdomain "agent-harness/internal/domain/issueopsnext"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
+	issueopsnextcontract "issueops/internal/contract/issueopsnext"
+	issueopsnextdomain "issueops/internal/domain/issueopsnext"
 )
 
 type Service struct {
@@ -70,7 +70,7 @@ func (service *Service) Next(ctx context.Context, stateRoot, cwd, id string) (is
 	if len(candidates) > 0 {
 		result.Stage = issueopsnextcontract.Stage{Key: issueopsnextcontract.StageAmbiguous}
 		result.Candidates = candidates
-		result.NextCommand = "agent-harness issueops list --repo " + placeholder(sourceRoot, "<source_root>") + " --json"
+		result.NextCommand = "issueops list --repo " + placeholder(sourceRoot, "<source_root>") + " --json"
 		result.NextCommandKind = commandKind(result.NextCommand)
 		return result, nil
 	}
@@ -81,14 +81,14 @@ func (service *Service) Next(ctx context.Context, stateRoot, cwd, id string) (is
 	result.Selected = entryOf(*selected)
 	if selected.Invalid {
 		result.Stage = issueopsnextcontract.Stage{Key: issueopsnextcontract.StageInvalid}
-		result.NextCommand = "agent-harness issueops status --id " + selected.ID + " --json"
+		result.NextCommand = "issueops status --id " + selected.ID + " --json"
 		result.NextCommandKind = commandKind(result.NextCommand)
 		return result, nil
 	}
 	record, err := ports.ReadRecord(stateRoot, selected.ID)
 	if err != nil {
 		result.Stage = issueopsnextcontract.Stage{Key: issueopsnextcontract.StageInvalid}
-		result.NextCommand = "agent-harness issueops status --id " + selected.ID + " --json"
+		result.NextCommand = "issueops status --id " + selected.ID + " --json"
 		result.NextCommandKind = commandKind(result.NextCommand)
 		result.Warnings = append(result.Warnings, "record is unreadable: "+err.Error())
 		return result, nil

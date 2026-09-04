@@ -10,8 +10,8 @@ import (
 
 	"context"
 
-	"agent-harness/internal/adapter/issueops/delegation"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/delegation"
+	"issueops/internal/contract/issueops"
 )
 
 func StartIssueOpsChild(stateRoot string, req issueops.IssueOpsChildStartRequest) (issueops.IssueOpsChildStartResult, error) {
@@ -65,7 +65,7 @@ func startIssueOpsChild(stateRoot string, req issueops.IssueOpsChildStartRequest
 		ParentID:  parent.ID,
 		Child:     child,
 		ParentRef: ref,
-		Guidance:  "base_branch=" + parent.Branch + "; create an isolated worktree for " + child.Branch + " and export HARNESS_EXPECTED_WORKTREE after linking it",
+		Guidance:  "base_branch=" + parent.Branch + "; create an isolated worktree for " + child.Branch + " and export ISSUEOPS_EXPECTED_WORKTREE after linking it",
 	}
 	if req.ChildIssueURL != "" {
 		var linkErr error

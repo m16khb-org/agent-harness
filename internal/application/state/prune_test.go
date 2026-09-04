@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestSelectPrunePreservesPrefixAgeAndCountRules(t *testing.T) {

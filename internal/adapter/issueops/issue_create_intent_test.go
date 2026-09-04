@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestIssueCreateIntentPersistsBeforeMutationAndBlocksConcurrentBegin(t *testing.T) {

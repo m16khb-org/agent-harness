@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	"agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/issueops/pathutil"
+	"issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
+	"issueops/internal/port"
 )
 
 // CleanupFinishDeps는 파괴 단계의 외부 표면 주입점이다. Git은 (dir, args...)를
@@ -44,7 +44,7 @@ type CleanupFinishDeps struct {
 // 담지 않는다 — 틀린 안내는 안내가 없는 것보다 나쁘다(이슈 #154).
 func cleanupFinishRemedyCommand(id string, missing []string) string {
 	if slices.Contains(missing, "completion_reflected") {
-		return fmt.Sprintf("agent-harness issueops remote reflect-completion --id %s --confirm --json", id)
+		return fmt.Sprintf("issueops remote reflect-completion --id %s --confirm --json", id)
 	}
 	return ""
 }
@@ -126,7 +126,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	result.Fingerprint = fingerprint
 	if !req.Apply {
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --apply --confirm --fingerprint %s%s%s --json",
+		result.NextCommand = fmt.Sprintf("issueops cleanup finish --id %s --apply --confirm --fingerprint %s%s%s --json",
 			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy),
 			keepRemoteBranchFlag(req.KeepRemoteBranch))
 		return result, nil
@@ -148,7 +148,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 		result.OK = false
 		result.FailedStep = step
 		recordCleanupFinishFailure(stateRoot, record.ID, step, stepErr)
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --preview --json", record.ID)
+		result.NextCommand = fmt.Sprintf("issueops cleanup finish --id %s --preview --json", record.ID)
 		return result, fmt.Errorf("cleanup finish step %s failed (record preserved; re-run preview then apply): %w", step, stepErr)
 	}
 	// ①′ 워크트리 점유 프로세스·Orca 터미널 종료. 재관측으로 점유 0을 증명하지
@@ -354,7 +354,7 @@ func cleanupFinishGates(ctx context.Context, record issueops.IssueOpsRecord, req
 			inventory.BranchOID = strings.TrimSpace(out)
 			result.BranchPresent = true
 		}
-		// remote_branch_absent(brooks H8): finish는 레코드를 지우므로, 원격
+		// remote_branch_absent(design-review H8): finish는 레코드를 지우므로, 원격
 		// 브랜치가 남은 채로 통과하면 typed 삭제 경로(cleanup remote-branch)가
 		// 그 브랜치에 영원히 닿지 못한다. 관측만 하고 원격은 건드리지 않으며,
 		// 관측 불가는 fail-closed다. 이 관측은 fingerprint 입력이 아니다.

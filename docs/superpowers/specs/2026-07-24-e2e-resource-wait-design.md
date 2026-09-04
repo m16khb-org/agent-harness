@@ -11,7 +11,7 @@ condition into a slow, flaky, or misleading test failure.
 
 The harness currently starts its own verification commands with timeouts, but
 does not provide a reusable machine-resource admission gate before an external
-E2E command. `agent-harness doctor` already diagnoses degraded pipe capacity and
+E2E command. `issueops doctor` already diagnoses degraded pipe capacity and
 MCP file-descriptor pressure, but transient machine load is not an operational
 health failure and must not change the meaning of `doctor`.
 
@@ -20,7 +20,7 @@ health failure and must not change the meaning of `doctor`.
 Add a read-only, bounded CLI gate:
 
 ```bash
-agent-harness resource wait \
+issueops resource wait \
   --workspace-root "$PWD" \
   --profile e2e \
   --timeout 10m \
@@ -37,7 +37,7 @@ Callers remain responsible for running the test immediately after a successful
 gate:
 
 ```bash
-agent-harness resource wait --workspace-root "$PWD" --profile e2e --timeout 10m --json &&
+issueops resource wait --workspace-root "$PWD" --profile e2e --timeout 10m --json &&
   npm run test:e2e
 ```
 
@@ -70,7 +70,7 @@ is not run by hooks, `doctor`, the daemon, or the worker.
 ### Command
 
 ```text
-agent-harness resource wait
+issueops resource wait
   [--workspace-root PATH]
   [--profile e2e]
   [--timeout DURATION]
@@ -282,12 +282,12 @@ The proposed implementation surface is:
 - `internal/core/resourcewait`: profile, pure evaluator, wait state machine,
   blockers, typed non-admission errors, shared pipe probe
 - `internal/adapter/systemresource`: Darwin/Linux collection and parsers
-- `cmd/harness/resourcecli`: flags, signal-aware context, progress, human/JSON
+- `cmd/issueops/resourcecli`: flags, signal-aware context, progress, human/JSON
   output
-- `cmd/harness/harnessapp`: dependency wiring, root command registration, exit
+- `cmd/issueops/issueopsapp`: dependency wiring, root command registration, exit
   mapping
 - `internal/adapter/cli`: top-level command catalog and usage
-- `cmd/harness/contractcli`: required `resource_wait` response fields
+- `cmd/issueops/contractcli`: required `resource_wait` response fields
 
 The adapter depends on the port contract. The core evaluator receives samples
 and does not parse OS text. Tests inject sampler, clock, and sleeper
@@ -379,12 +379,12 @@ ambient CPU, memory, swap, and disk pressure.
 Implementation verification will include:
 
 ```bash
-go test ./internal/core/resourcewait ./internal/adapter/systemresource ./cmd/harness/resourcecli ./cmd/harness/harnessapp ./cmd/harness/contractcli -count=1
+go test ./internal/core/resourcewait ./internal/adapter/systemresource ./cmd/issueops/resourcecli ./cmd/issueops/issueopsapp ./cmd/issueops/contractcli -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
-./bin/agent-harness contract check --json
+go build -o bin/issueops ./cmd/issueops
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -count=1
+./bin/issueops contract check --json
 ```
 
 A live `resource wait` smoke is observational: either a structurally valid

@@ -204,9 +204,9 @@ feat(issueops): add ownership attempt ledger
 - Modify: `internal/core/issueops/issueops_schema_version_test.go`
 - Create: `internal/core/issueops/issueops_schema_v9_migration.go`
 - Create: `internal/core/issueops/issueops_schema_v9_migration_test.go`
-- Modify: `cmd/harness/issueopscli/issueops.go`
-- Modify: `cmd/harness/issueopscli/issueops_cli_support.go`
-- Create: `cmd/harness/issueopscli/issueops_migrate_v9_cli_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops.go`
+- Modify: `cmd/issueops/issueopscli/issueops_cli_support.go`
+- Create: `cmd/issueops/issueopscli/issueops_migrate_v9_cli_test.go`
 
 **Interfaces:**
 - Produces `ClassifyIssueOpsV8Migration(raw)` and `MigrateIssueOpsV8Record(record)`.
@@ -219,7 +219,7 @@ Add fixtures for no handoff, active owner, completed owner, `#68`-shape cancelle
 - [ ] **Step 2: Verify RED**
 
 ```bash
-go test ./internal/core/issueops ./cmd/harness/issueopscli -run 'SchemaV9Migration|MigrateV9|FutureSchema' -count=1
+go test ./internal/core/issueops ./cmd/issueops/issueopscli -run 'SchemaV9Migration|MigrateV9|FutureSchema' -count=1
 ```
 
 Expected: FAIL because migration classification and CLI do not exist.
@@ -269,8 +269,8 @@ feat(issueops): migrate ownership records to schema v9
 - Modify: `internal/core/lifecycle/lifecycle_handoff_scope.go`
 - Modify: `internal/core/lifecycle/lifecycle_ownership_cleanup_stop.go`
 - Modify: `internal/core/lifecycle/lifecycle_stop_worker_done_suppression.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops.go`
-- Modify: `cmd/harness/issueopscli/remotecmd/remote.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote.go`
 - Modify: `internal/core/issueops/active/active_test.go`
 - Modify: `internal/core/issueops/stalescan/stalescan_test.go`
 - Modify: `internal/core/issueops/issueops_force_release_cas_test.go`
@@ -283,8 +283,8 @@ feat(issueops): migrate ownership records to schema v9
 - Modify: `internal/core/lifecycle/lifecycle_handoff_ownership_authority_test.go`
 - Modify: `internal/core/lifecycle/lifecycle_handoff_resource_target_test.go`
 - Create: `internal/core/lifecycle/lifecycle_ownership_ledger_stop_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_issueops_helpers_test.go`
-- Modify: `cmd/harness/issueopscli/remotecmd/remote_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_issueops_helpers_test.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote_test.go`
 
 **Interfaces:**
 - All mutation authority resolves through `CurrentOwnershipAttempt`.
@@ -298,7 +298,7 @@ Prove paused cycles release ordinary source-cycle fencing but keep historical wo
 - [ ] **Step 2: Verify RED**
 
 ```bash
-go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/operationalhealth ./cmd/harness/issueopscli/remotecmd ./cmd/harness/mcpcli -run 'CycleState|OwnershipLedger|Paused|ForceRelease|HistoricalAttempt' -count=1
+go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/operationalhealth ./cmd/issueops/issueopscli/remotecmd ./cmd/issueops/mcpcli -run 'CycleState|OwnershipLedger|Paused|ForceRelease|HistoricalAttempt' -count=1
 ```
 
 - [ ] **Step 3: Replace direct authority reads**
@@ -331,7 +331,7 @@ refactor(issueops): separate cycle and owner authority
 **Interfaces:**
 - Produces `PreviewIssueOpsWIPSeal`, `CreateIssueOpsWIPSeal`, and `VerifyIssueOpsWIPSeal`.
 - Exposes the existing guard secret-path predicate for reuse; do not create a second regex or looser restart-only rule.
-- Uses `refs/agent-harness/issueops/<cycle-id>/attempts/<N>/wip` and an operation-scoped temporary index outside the repository worktree.
+- Uses `refs/issueops/issueops/<cycle-id>/attempts/<N>/wip` and an operation-scoped temporary index outside the repository worktree.
 
 - [ ] **Step 1: Write Git fixture RED tests**
 
@@ -416,11 +416,11 @@ feat(issueops): restart released handoff owners
 ### Task 6: Expose Exact CLI, MCP, and Hook Authority
 
 **Files:**
-- Modify: `cmd/harness/issueopscli/issueops_handoff_cli.go`
-- Modify: `cmd/harness/issueopscli/issueops_handoff_cli_test.go`
-- Modify: `cmd/harness/issueopscli/dependencies.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_handlers.go`
-- Create: `cmd/harness/mcpcli/mcp_issueops_owner_restart_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops_handoff_cli.go`
+- Modify: `cmd/issueops/issueopscli/issueops_handoff_cli_test.go`
+- Modify: `cmd/issueops/issueopscli/dependencies.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_handlers.go`
+- Create: `cmd/issueops/mcpcli/mcp_issueops_owner_restart_test.go`
 - Modify: `internal/adapter/mcp/issueops_lifecycle_catalog.go`
 - Modify: `internal/adapter/mcp/issueops_catalog_test.go`
 - Modify: `internal/core/commandparse/issueops.go`
@@ -447,7 +447,7 @@ CLI and MCP call the same facade/core operation and adapter seams. Do not add a 
 - [ ] **Step 4: Verify**
 
 ```bash
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./internal/adapter/mcp ./internal/core/commandparse ./internal/core/lifecycle -run 'RestartOwner|SchemaV9|Ownership' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./internal/adapter/mcp ./internal/core/commandparse ./internal/core/lifecycle -run 'RestartOwner|SchemaV9|Ownership' -count=1
 ```
 
 - [ ] **Step 5: Commit**
@@ -463,19 +463,19 @@ feat(issueops): expose bounded owner restart
 ### Task 7: Align Documentation, Goldens, and Operator Recovery
 
 **Files:**
-- Modify: `.agent-harness/ADR.md`
-- Modify: `.agent-harness/ARCHITECTURE.md`
-- Modify: `.agent-harness/AGENT_WORKFLOW.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Modify: `.agent-harness/CAUTIONS.md`
+- Modify: `.issueops/ADR.md`
+- Modify: `.issueops/ARCHITECTURE.md`
+- Modify: `.issueops/AGENT_WORKFLOW.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/TESTING.md`
+- Modify: `.issueops/CAUTIONS.md`
 - Modify: `skills/issueops/SKILL.md`
 - Modify: `skills/issueops/references/orca-handoff.md`
 - Modify: `skills/issueops/references/cleanup-state.md`
 - Modify: `skills/issueops/references/worktree-context.md`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Modify: `cmd/harness/testdata/mcp_tools.golden.json`
-- Modify: `cmd/harness/testdata/response_contracts.golden.json`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/testdata/mcp_tools.golden.json`
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json`
 
 - [ ] **Step 1: Document one state machine**
 
@@ -488,7 +488,7 @@ Record that a choice label cannot replace the original goal or omit actor/locati
 - [ ] **Step 3: Refresh only owning goldens**
 
 ```bash
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -update -count=1
 ```
 
 Inspect every golden diff; schema version changes outside IssueOps responses are a failure.
@@ -550,7 +550,7 @@ git diff --check
 - [ ] **Step 2: Run focused cross-layer verification**
 
 ```bash
-go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/operationalhealth ./internal/adapter/mcp ./cmd/harness/issueopscli ./cmd/harness/mcpcli -count=1
+go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/operationalhealth ./internal/adapter/mcp ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli -count=1
 ```
 
 - [ ] **Step 3: Run all-or-nothing project verification**
@@ -559,9 +559,9 @@ go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapte
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o /tmp/agent-harness-owner-restart ./cmd/harness
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o /tmp/issueops-owner-restart ./cmd/issueops
 python3 scripts/validate-skill.py skills/issueops
 ```
 

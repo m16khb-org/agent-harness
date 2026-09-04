@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "git-operations",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a00283",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "158e8cdb24f281d8ee38721f457e3e383f8d1b759d3e398cf267251d4d0c4ed7",
+      "receipt_bytes": 1871
+    },
+    {
+      "task_id": "st_01a002cf",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "9064d9f77dd1d6941199eff686085b876bd55c522a8b831a1524fc72fb38465b",
+      "receipt_bytes": 4878
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "git-operations/TASK.md",
+      "fixture_sha256": "2f80246eb5072befaf2145009bdac6772dece8c701a19d897318448f0f5e8e34",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "loss_surface_inventory",
+        "backup_and_stash_receipts"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "git-operations/BOUNDARY.md",
+      "fixture_sha256": "8dd5ad8cc1e4941b04c2c0d09652511ef2b3a73f70eed7e5c2f7deb6f6d14c16",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "hard_reset_recovery",
+        "byte_identity_restored"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "git-operations/OPERATIONAL.md",
+      "fixture_sha256": "83fe75104b8b2c74bb512d2d893525fe0943fe6e984611c1a74347be48552007",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "atomic_rebase",
+        "force_with_lease_rejection"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

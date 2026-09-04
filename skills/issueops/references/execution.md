@@ -49,9 +49,9 @@ Run 도입 전 binding의 빈 `run_id`는 읽을 수 있다. 이 경우 task 소
 
 ## GitLab Issue Snapshot
 
-GitLab-linked cycle도 Orca를 사용할 수 있다. agent-harness가 요구하는 것은 특정
+GitLab-linked cycle도 Orca를 사용할 수 있다. issueops가 요구하는 것은 특정
 MCP server나 wrapper가 아니라 linked issue와 identity가 같은 bounded snapshot이다.
-host agent는 먼저 선택 문서 `.agent-harness/VCS.md`를 읽고, 현재 등록 도구 중 실제
+host agent는 먼저 선택 문서 `.issueops/VCS.md`를 읽고, 현재 등록 도구 중 실제
 schema가 호환되는 semantic leaf `glab_api`를 찾는다. server namespace와 개인
 wrapper 이름은 capability identity가 아니며 packet이나 record에 저장하지 않는다.
 
@@ -86,7 +86,7 @@ provider adapter가 일반 `glab api` CLI로 같은 필드를 읽고 성공 결�
 `issue_snapshot_source=glab_mcp`로 확인한다.
 
 성공한 provider read가 재사용 가능한 새 recipe라면 canonical worktree에서
-`project_docs_read`로 `.agent-harness/VCS.md`의 최신 SHA/content를 읽고,
+`project_docs_read`로 `.issueops/VCS.md`의 최신 SHA/content를 읽고,
 `project_docs_revise` SHA-CAS로 tool leaf, 관찰한 schema, endpoint/필드, CLI
 fallback만 기록한다. secret, token, 개인 경로, server namespace는 기록하지
 않는다. 이 기록은 OpenWiki 자동 update를 실행하지 않는다.
@@ -107,7 +107,7 @@ Run the preview first, inspect the selected mode, branch, base SHA, worktree,
 owner model, and `next_command`, then execute that exact returned command:
 
 ```bash
-agent-harness issueops execution prepare \
+issueops execution prepare \
   --id "$ISSUEOPS_ID" \
   --mode auto \
   --owner-host "$OWNER_HOST" \
@@ -134,7 +134,7 @@ Omo native sessions use `PI_SESSION_ID` and a live Omo runtime receipt.
 In Omo 5.x RPC mode, the `omo` launcher detaches its persistent host and the
 observed host process is named `senpi`; that `senpi` receipt is the runtime
 equivalent of the launcher receipt and is accepted only for `--host omo`.
-`agent-harness issueops execution whoami --json` resolves the runtime receipt
+`issueops execution whoami --json` resolves the runtime receipt
 from the local ancestry automatically. It never falls back to the session ID
 alone.
 `--owner-host` accepts `codex|claude|omo`, so Orca can own and display any of
@@ -185,7 +185,7 @@ so stale references and wrong-root changes are observable.
 Status is the read-only orientation command for either mode:
 
 ```bash
-agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
+issueops execution status --id "$ISSUEOPS_ID" --json
 ```
 
 A direct holder does not claim again after normal preparation. Holderless
@@ -199,7 +199,7 @@ SHA-256 values, then runs the exact current-generation claim command rendered by
 preparation/status:
 
 ```bash
-agent-harness issueops execution claim \
+issueops execution claim \
   --id "$ISSUEOPS_ID" \
   --generation "$GENERATION" \
   --claim-current-token \
@@ -219,7 +219,7 @@ the owner read-only.
 The active holder may voluntarily release its exact generation:
 
 ```bash
-agent-harness issueops execution release \
+issueops execution release \
   --id "$ISSUEOPS_ID" --generation "$GENERATION" $ACTOR_FLAGS --json
 ```
 
@@ -249,7 +249,7 @@ For Orca, `replace --finalize|--reseed` returns resume, not claim, as its next
 command. Execute that exact status projection without adding flags:
 
 ```bash
-agent-harness issueops execution resume \
+issueops execution resume \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" --confirm
 ```
 
@@ -283,7 +283,7 @@ For direct mode, the same replacement result returns the exact token-backed
 claim command instead:
 
 ```bash
-agent-harness issueops execution claim \
+issueops execution claim \
   --id "$ISSUEOPS_ID" --generation "$GENERATION" \
   --claim-current-token \
   $ACTOR_FLAGS --json
@@ -317,8 +317,8 @@ state but the result is ambiguous, inspect and then confirm the exact
 reconciliation:
 
 ```bash
-agent-harness issueops execution reconcile --id "$ISSUEOPS_ID" --preview $ACTOR_FLAGS --json
-agent-harness issueops execution reconcile --id "$ISSUEOPS_ID" --confirm $ACTOR_FLAGS --json
+issueops execution reconcile --id "$ISSUEOPS_ID" --preview $ACTOR_FLAGS --json
+issueops execution reconcile --id "$ISSUEOPS_ID" --confirm $ACTOR_FLAGS --json
 ```
 
 Do not retry the external create operation before reconciliation reports one
@@ -331,7 +331,7 @@ expected generation, exact head/base branches, native actor, canonical cwd,
 labels, and assignee, and uses preview then `--confirm`:
 
 ```bash
-agent-harness issueops remote create-pr \
+issueops remote create-pr \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
   --title "$TITLE" --head "$BRANCH" --base "$BASE_BRANCH" \
   --body "$BODY" --label "$LABEL" --assignee "$ASSIGNEE" \
@@ -339,14 +339,14 @@ agent-harness issueops remote create-pr \
 ```
 
 Completion is allowed only from phase `pr`, with the verified durable remote
-artifact at the exact URL, a full final Git SHA, a Turing report, and repeatable
+artifact at the exact URL, a full final Git SHA, a verification report, and repeatable
 verification evidence:
 
 ```bash
-agent-harness issueops execution complete \
+issueops execution complete \
   --id "$ISSUEOPS_ID" --generation "$GENERATION" \
   --final-head "$FINAL_HEAD" \
-  --turing-report "$TURING_REPORT" \
+  --verification-report "$VERIFICATION_REPORT" \
   --remote-artifact-url "$PR_URL" \
   --verification "$VERIFICATION" \
   $ACTOR_FLAGS --confirm --json
@@ -355,7 +355,7 @@ agent-harness issueops execution complete \
 Successful completion records the receipt, moves the lifecycle to `done`, and
 releases the lease atomically. It does not merge the PR/MR or delete the
 worktree or branch. The owner returns the exact 14-field report defined in
-`.agent-harness/karpathy/prompts/issueops-v1-owner-execution-v1.md`.
+`.issueops/prompt-engineering/prompts/issueops-v1-owner-execution-v1.md`.
 
 GitHub의 `branch_prepare.link_verified`가 false이면 sealed owner packet이
 `gh issue develop --list <issue> --repo <owner/repo>` exact reader와 branch
@@ -380,7 +380,7 @@ legacy recipient와 capability recipient 중 정확히 하나만 admit하며 둘
 | claude | `claude-sonnet-5` / `high` | `claude-opus-5` / `high` |
 
 planner 값은 owner 프롬프트의 `{REVIEWER_MODEL}`/`{REVIEWER_EFFORT}`로
-렌더되어, 하위 세션이 구현 diff의 brooks 적대 리뷰 서브에이전트를 planner급
+렌더되어, 하위 세션이 구현 diff의 design-review 적대 리뷰 서브에이전트를 planner급
 모델로 띄우는 실행 계약이 된다.
 
 Claude Code의 자동 실행 경로는 `Opus 5 → Sonnet 5`다. Fable 5는 자동
@@ -390,23 +390,23 @@ Claude Code의 자동 실행 경로는 `Opus 5 → Sonnet 5`다. Fable 5는 자�
 ## Artifact Staging And Sealing
 
 메인(planner) 세션은 prepare **이전에** 승인된 child plan을 source checkout 밖의
-coordinator 임시 파일에 쓰고 계획/스펙/turing loop를 스테이징한다. Delegation의
+coordinator 임시 파일에 쓰고 계획/스펙/verified-execution loop를 스테이징한다. Delegation의
 `parent_plan_path`는 child plan readiness 입력이 아니다:
 
 ```bash
-agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file plan.md --json
-agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name spec --file spec.md --json
-agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --file turing-loop.md --json
+issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file plan.md --json
+issueops artifact stage --id "$ISSUEOPS_ID" --name spec --file spec.md --json
+issueops artifact stage --id "$ISSUEOPS_ID" --name verified-execution-loop --file verified-execution-loop.md --json
 ```
 
-- 이름은 `plan|spec|turing-loop` 고정, 파일당 1MiB 상한, secret 패턴은 거부된다(스크럽 없음).
+- 이름은 `plan|spec|verified-execution-loop` 고정, 파일당 1MiB 상한, secret 패턴은 거부된다(스크럽 없음).
 - Orca prepare preflight는 non-empty staged `plan`을 remote issue read와 모든 외부
   mutation 전에 요구한다. 이미 `plan_path`가 있으면 canonical child worktree 안의
   regular file이어야 하고 staged bytes와 SHA-256이 정확히 같아야 한다.
 - After the worktree receipt, prepare materializes each artifact as a `0600` file under
   `execution.workspace.artifact_dir`. For an issue-linked cycle, the canonical path is
-  `<worktree>/.agent-harness/issues/<provider-issue-number>/artifact/<name>.md`; only a
-  legacy record with an empty `artifact_dir` uses `<worktree>/.agent-harness/artifact/`.
+  `<worktree>/.issueops/issues/<provider-issue-number>/artifact/<name>.md`; only a
+  legacy record with an empty `artifact_dir` uses `<worktree>/.issueops/artifact/`.
   For a fresh Orca plan, prepare records that path as durable `plan_path` in the same
   CAS and seals the same SHA-256 in `artifact_manifest.plan` before creating the
   terminal/Run/task/dispatch. The temporary source may be deleted after successful
@@ -450,7 +450,7 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
 두 기록 모두 변경 집합 fingerprint를 봉인하므로 문서 수정이 기록보다 먼저다.
 
 ```bash
-agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID"   --verdict updated --doc ".agent-harness/CAUTIONS.md" --evidence "..."   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
+issueops project-docs-review record --id "$ISSUEOPS_ID"   --verdict updated --doc ".issueops/CAUTIONS.md" --evidence "..."   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
 ```
 
 - 게이트: `project_docs_review`. verdict는 `updated|no-change`, evidence는 항상
@@ -460,7 +460,7 @@ agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID"   --verdic
   create-pr·strict readiness가 거부한다.
 
 ```bash
-agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID"   --measurement "orders: 8.4M rows(reltuples), idx_orders_user_id 없음"   --source "mcp db-bc-prod execute_sql_bc_prod_market"   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
+issueops schema-evidence record --id "$ISSUEOPS_ID"   --measurement "orders: 8.4M rows(reltuples), idx_orders_user_id 없음"   --source "mcp db-bc-prod execute_sql_bc_prod_market"   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
 ```
 
 - 게이트: `schema_evidence`. 변경 집합에 마이그레이션·엔티티·`.sql`·
@@ -472,10 +472,10 @@ agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID"   --measuremen
 ## Implementation Review Gate (all execution modes)
 
 사이클의 구현 세션은 publication 전에 planner급 모델 fresh 서브에이전트로
-구현 diff의 brooks 적대 리뷰를 수행하고 결과를 기록해야 한다:
+구현 diff의 design-review 적대 리뷰를 수행하고 결과를 기록해야 한다:
 
 ```bash
-agent-harness issueops implementation-review record --id "$ISSUEOPS_ID"   --verdict pass --finding "..." --evidence "..."   --reviewer-host codex --reviewer-model gpt-5.6-sol   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
+issueops implementation-review record --id "$ISSUEOPS_ID"   --verdict pass --finding "..." --evidence "..."   --reviewer-host codex --reviewer-model gpt-5.6-sol   --host codex --session-id "$SESSION" --cwd "$WORKTREE" --json
 ```
 
 - 게이트: `verdict==pass` + findings/evidence 실질 내용. 기록은 implement phase
@@ -491,12 +491,12 @@ agent-harness issueops implementation-review record --id "$ISSUEOPS_ID"   --verd
 휴먼이 PR/MR을 머지한 뒤, 순서가 계약이다(모두 원격 readback 기반 fail-closed):
 
 ```bash
-agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
-agent-harness issueops remote reflect-completion --id "$ISSUEOPS_ID" --confirm --json   # 보존 먼저
-agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" --confirm --json
-agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" --preview --json
-agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" --apply --confirm --fingerprint "$FP" --json
+issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
+issueops remote reflect-completion --id "$ISSUEOPS_ID" --confirm --json   # 보존 먼저
+issueops remote close-issue --id "$ISSUEOPS_ID" --confirm --json
+issueops cleanup finish --id "$ISSUEOPS_ID" --preview --json
+issueops cleanup finish --id "$ISSUEOPS_ID" --apply --confirm --fingerprint "$FP" --json
 ```
 
 - `reflect-completion`이 최종 head·PR URL·검증 요약·artifact 본문(plan/spec 접힌
@@ -512,7 +512,7 @@ agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" --apply --confirm --fi
   요청자 터미널이 그 워크트리에 매여 있으면 거부한다(#477). abandon도 같은 단계를
   워크트리 제거 앞에 둔다.
 - 원격 브랜치는 건드리지 않는다. 다중 사이클 조망과 정리 후보 발견은
-  `agent-harness issueops list --repo "$PWD" --json`을 사용한다.
+  `issueops list --repo "$PWD" --json`을 사용한다.
 
 ## Parallel Independence
 

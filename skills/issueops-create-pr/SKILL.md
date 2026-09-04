@@ -57,7 +57,7 @@ flowchart LR
 ## 시작 게이트
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `pr.create`면 이 스킬이다. 8단계 커밋·푸시가 끝나 있어야 한다 — 아직이면
@@ -108,7 +108,7 @@ body 초안을 만든 다음, `remote create-pr`을 실행하기 전에 `fluent-
 Issue와 PR/MR publication 책임을 전용 스킬로 분리해 첫 읽기 비용을 낮춘다.
 
 ## 이슈
-Closes https://github.com/acme/agent-harness/issues/123
+Closes https://github.com/acme/issueops/issues/123
 
 ## 변경 유형
 - [x] refactor
@@ -121,7 +121,7 @@ Closes https://github.com/acme/agent-harness/issues/123
 ## 검증
 | 명령 | 결과 |
 |---|---|
-| `go test ./internal/domain/artifacttemplate ./cmd/harness/issueopscli/remotecmd -count=1` | pass |
+| `go test ./internal/domain/artifacttemplate ./cmd/issueops/issueopscli/remotecmd -count=1` | pass |
 | `python3 scripts/verify-skill-shell.py skills/issueops-create-pr` | pass |
 
 ## 리뷰어 초점
@@ -171,7 +171,7 @@ body file을 먼저 작성하고, 다음 명령은 preview로 실행한다. `--c
 경로는 provider mutation을 하지 않는다.
 
 ```bash
-agent-harness issueops remote create-pr \
+issueops remote create-pr \
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
   --provider "$PROVIDER" --title "[refactor] IssueOps publication 경계를 분리한다" \
   --head "$HEAD_BRANCH" --base "$BASE_BRANCH" \
@@ -187,7 +187,7 @@ preview와 같은 명령에만 `--confirm`을 추가한다. 성공 후
 Issue linkage, labels, assignee, body를 확인한다.
 
 ```bash
-agent-harness issueops remote verify-artifact \
+issueops remote verify-artifact \
   --id "$ISSUEOPS_ID" --provider "$PROVIDER" --kind "$ARTIFACT_KIND" \
   --url "$PR_OR_MR_URL" --target-branch "$BASE_BRANCH" \
   --label enhancement --assignee "$ASSIGNEE" --json

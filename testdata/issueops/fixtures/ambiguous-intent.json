@@ -2,7 +2,7 @@
   "id": "ambiguous-intent",
   "title": "Ambiguous user intent requires clarification",
   "user_prompt": "IssueOps를 더 좋게 만들어줘",
-  "repo_context": "agent-harness has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
+  "repo_context": "issueops has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
   "expected_issue": ["states ambiguity", "defines acceptance criteria", "lists non-goals", "includes verification", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["starts with measurement", "does not optimize prompts first", "uses testable tasks"],
   "expected_tasks": ["separates fixture schema", "separates deterministic scoring", "separates judge adapter"],

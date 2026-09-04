@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // ExecutionReconcileIntentState는 새 reconcile vertical이 기존 durable CAS

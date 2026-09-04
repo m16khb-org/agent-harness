@@ -1,8 +1,8 @@
 package doctor
 
 import (
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	lifecyclecontract "issueops/internal/contract/lifecycle"
+	projectdoc "issueops/internal/domain/projectdoc"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

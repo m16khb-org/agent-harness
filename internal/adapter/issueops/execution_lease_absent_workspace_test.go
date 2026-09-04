@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	issueops "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	issueops "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestWriteFingerprintFileRejectsChangedUntrackedFile(t *testing.T) {
@@ -63,7 +63,7 @@ func TestWorkspaceSnapshotStreamsLargeUntrackedFiles(t *testing.T) {
 	root := t.TempDir()
 	for _, args := range [][]string{
 		{"init", "-b", "main"},
-		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "--allow-empty", "-m", "init"},
+		{"-c", "user.name=issueops", "-c", "user.email=issueops@example.invalid", "commit", "--allow-empty", "-m", "init"},
 	} {
 		if code, _, stderr := GitCmd(root, args...); code != 0 {
 			t.Fatalf("git %v: %s", args, stderr)
@@ -110,7 +110,7 @@ func TestWorkspaceSnapshotAllowsSuccessfulGitDiffWarnings(t *testing.T) {
 		{"config", "filter.warning.clean", "sh -c 'cat; printf warning-from-clean-filter >&2'"},
 		{"config", "filter.warning.smudge", "cat"},
 		{"add", ".gitattributes", "tracked.txt"},
-		{"-c", "user.name=agent-harness", "-c", "user.email=agent-harness@example.invalid", "commit", "-m", "init"},
+		{"-c", "user.name=issueops", "-c", "user.email=issueops@example.invalid", "commit", "-m", "init"},
 	} {
 		if code, _, stderr := GitCmd(root, args...); code != 0 {
 			t.Fatalf("git %v: %s", args, stderr)
@@ -215,7 +215,7 @@ func TestWorkspaceSnapshotAbsenceIsBoundToTheExactPath(t *testing.T) {
 // 그 지점에서 다시 막다른 길이 된다.
 func TestReplacementResidueCleanupSkipsAnAbsentWorkspace(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "reclaimed-worktree")
-	if err := removeReplacementRuntimeFile(absent, filepath.Join(absent, ".agent-harness", "lease-3.token")); err != nil {
+	if err := removeReplacementRuntimeFile(absent, filepath.Join(absent, ".issueops", "lease-3.token")); err != nil {
 		t.Fatalf("없는 worktree에는 지울 잔여물도 없다: %v", err)
 	}
 	if _, err := os.Stat(absent); !os.IsNotExist(err) {
@@ -227,7 +227,7 @@ func TestReplacementResidueCleanupSkipsAnAbsentWorkspace(t *testing.T) {
 // 건너뛰지 않음을 고정한다.
 func TestReplacementResidueCleanupStillRemovesRealFiles(t *testing.T) {
 	root := t.TempDir()
-	target := filepath.Join(root, ".agent-harness", "lease-3.token")
+	target := filepath.Join(root, ".issueops", "lease-3.token")
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		t.Fatal(err)
 	}

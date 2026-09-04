@@ -1,8 +1,8 @@
 package docs
 
 import (
-	docscontract "agent-harness/internal/contract/docs"
 	"io/fs"
+	docscontract "issueops/internal/contract/docs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-const draftWikiDir = ".agent-harness/draft-wiki"
-const evidenceDir = ".agent-harness/evidence"
+const draftWikiDir = ".issueops/draft-wiki"
+const evidenceDir = ".issueops/evidence"
 
 func ListDocs(root string) []string {
 	var candidates []string
-	for _, p := range []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".agent-harness", "skills/self-verify", "skills/self-augment"} {
+	for _, p := range []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".issueops", "skills/self-verify", "skills/self-augment"} {
 		full := filepath.Join(root, p)
 		info, err := os.Stat(full)
 		if err != nil {
@@ -40,7 +40,7 @@ func ListDocs(root string) []string {
 
 // hermeticTrackedDocs keeps only git-TRACKED candidates so the docs index — and
 // the response-contract golden that snapshots it — is hermetic: untracked files
-// (e.g. research artifacts written into .agent-harness/research during a
+// (e.g. research artifacts written into .issueops/research during a
 // session) must not drift the index. It compares ROOT-RELATIVE paths and never
 // reconstructs absolute paths, so a symlinked root (macOS /var -> /private/var,
 // where git resolves the symlink but filepath.WalkDir does not) cannot cause a
@@ -92,7 +92,7 @@ func gitTrackedRelPaths(root string) (map[string]bool, bool) {
 	return set, true
 }
 
-// isExcludedDoc reports whether path is under a .agent-harness subtree that must not
+// isExcludedDoc reports whether path is under a .issueops subtree that must not
 // appear in the docs index: draft-wiki (in-progress drafts) or evidence (gitignored,
 // working-tree-dependent runtime artifacts). Including evidence would make the docs
 // index — and the response-contract golden that snapshots it — non-hermetic.
@@ -133,11 +133,11 @@ func DocsIndex(root, version string) docscontract.DocsIndexResult {
 	}
 	sort.Slice(docs, func(i, j int) bool { return docs[i].RelPath < docs[j].RelPath })
 	return docscontract.DocsIndexResult{
-		OK:          true,
-		Version:     version,
-		HarnessRoot: root,
-		Docs:        docs,
-		GeneratedAt: time.Now().Format(time.RFC3339),
+		OK:           true,
+		Version:      version,
+		IssueOpsRoot: root,
+		Docs:         docs,
+		GeneratedAt:  time.Now().Format(time.RFC3339),
 	}
 }
 

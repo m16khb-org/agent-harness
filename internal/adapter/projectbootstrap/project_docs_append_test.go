@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/projectdocs"
-	projectdocscontract "agent-harness/internal/contract/projectdocs"
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	"issueops/internal/adapter/projectdocs"
+	projectdocscontract "issueops/internal/contract/projectdocs"
+	projectdoc "issueops/internal/domain/projectdoc"
 )
 
 func TestAppendProjectDocsEntryWritesCautionsAndADR(t *testing.T) {
@@ -26,7 +26,7 @@ func TestAppendProjectDocsEntryWritesCautionsAndADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !caution.OK || caution.RecordKind != "caution" || !strings.HasPrefix(caution.RelPath, ".agent-harness/cautions/2") || !strings.HasSuffix(caution.RelPath, "-mcp-route-over-read-fixed.md") || caution.BytesAppended == 0 {
+	if !caution.OK || caution.RecordKind != "caution" || !strings.HasPrefix(caution.RelPath, ".issueops/cautions/2") || !strings.HasSuffix(caution.RelPath, "-mcp-route-over-read-fixed.md") || caution.BytesAppended == 0 {
 		t.Fatalf("unexpected caution result: %+v", caution)
 	}
 	cautionRecord := mustRead(t, filepath.Join(root, filepath.FromSlash(caution.RelPath)))
@@ -50,7 +50,7 @@ func TestAppendProjectDocsEntryWritesCautionsAndADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !adr.OK || adr.RecordKind != "adr" || !strings.HasPrefix(adr.RelPath, ".agent-harness/adr/2") || !strings.HasSuffix(adr.RelPath, "-use-task-routed-project-docs.md") || adr.BytesAppended == 0 {
+	if !adr.OK || adr.RecordKind != "adr" || !strings.HasPrefix(adr.RelPath, ".issueops/adr/2") || !strings.HasSuffix(adr.RelPath, "-use-task-routed-project-docs.md") || adr.BytesAppended == 0 {
 		t.Fatalf("unexpected adr result: %+v", adr)
 	}
 	adrRecord := mustRead(t, filepath.Join(root, filepath.FromSlash(adr.RelPath)))
@@ -69,12 +69,12 @@ func TestAppendProjectDocsEntryWritesCautionsAndADR(t *testing.T) {
 }
 
 func TestReadAndReviseProjectDocRequireSHAConsensus(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	read, err := projectdocs.ReadProjectDoc(root, ".agent-harness/TESTING.md")
+	read, err := projectdocs.ReadProjectDoc(root, ".issueops/TESTING.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestReadAndReviseProjectDocRequireSHAConsensus(t *testing.T) {
 	}
 	written, err := projectdocs.ReviseProjectDoc(projectdocscontract.ProjectDocsReviseRequest{
 		RepoRoot:       root,
-		RelPath:        ".agent-harness/TESTING.md",
+		RelPath:        ".issueops/TESTING.md",
 		Content:        content,
 		ExpectedSHA256: read.SHA256,
 		Summary:        "record repo-specific testing evidence",
@@ -129,7 +129,7 @@ func TestReadAndReviseProjectDocRequireSHAConsensus(t *testing.T) {
 }
 
 func TestAppendWritesRecordFileAndPreservesRootIndex(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/modular\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
@@ -149,7 +149,7 @@ func TestAppendWritesRecordFileAndPreservesRootIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(res.RelPath, ".agent-harness/adr/2") || !strings.HasSuffix(res.RelPath, "-folder-first-project-docs.md") {
+	if !strings.HasPrefix(res.RelPath, ".issueops/adr/2") || !strings.HasSuffix(res.RelPath, "-folder-first-project-docs.md") {
 		t.Fatalf("modular append did not route to a dated record file: %+v", res)
 	}
 	record := mustRead(t, filepath.Join(root, filepath.FromSlash(res.RelPath)))
@@ -179,7 +179,7 @@ func TestAppendWritesRecordFileAndPreservesRootIndex(t *testing.T) {
 }
 
 func TestRouteAttachesFamilyOverviewInModularRepo(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/routed\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
@@ -193,7 +193,7 @@ func TestRouteAttachesFamilyOverviewInModularRepo(t *testing.T) {
 	for _, doc := range route.Docs {
 		found[doc.RelPath] = true
 	}
-	if !found[".agent-harness/TESTING.md"] || !found[".agent-harness/testing/overview.md"] {
+	if !found[".issueops/TESTING.md"] || !found[".issueops/testing/overview.md"] {
 		t.Fatalf("route did not attach the family overview module: %#v", route.Docs)
 	}
 }

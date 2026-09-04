@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 const (
-	childStartProcessHelperEnv         = "HARNESS_ISSUEOPS_CHILD_START_HELPER"
-	childStartProcessStateRootEnv      = "HARNESS_ISSUEOPS_CHILD_START_STATE_ROOT"
-	childStartProcessParentIDEnv       = "HARNESS_ISSUEOPS_CHILD_START_PARENT_ID"
-	childStartProcessParentWorktreeEnv = "HARNESS_ISSUEOPS_CHILD_START_PARENT_WORKTREE"
-	childStartProcessBranchEnv         = "HARNESS_ISSUEOPS_CHILD_START_BRANCH"
-	childStartProcessTitleEnv          = "HARNESS_ISSUEOPS_CHILD_START_TITLE"
-	childStartProcessReadyDirEnv       = "HARNESS_ISSUEOPS_CHILD_START_READY_DIR"
-	childStartProcessGateEnv           = "HARNESS_ISSUEOPS_CHILD_START_GATE"
+	childStartProcessHelperEnv         = "ISSUEOPS_ISSUEOPS_CHILD_START_HELPER"
+	childStartProcessStateRootEnv      = "ISSUEOPS_ISSUEOPS_CHILD_START_STATE_ROOT"
+	childStartProcessParentIDEnv       = "ISSUEOPS_ISSUEOPS_CHILD_START_PARENT_ID"
+	childStartProcessParentWorktreeEnv = "ISSUEOPS_ISSUEOPS_CHILD_START_PARENT_WORKTREE"
+	childStartProcessBranchEnv         = "ISSUEOPS_ISSUEOPS_CHILD_START_BRANCH"
+	childStartProcessTitleEnv          = "ISSUEOPS_ISSUEOPS_CHILD_START_TITLE"
+	childStartProcessReadyDirEnv       = "ISSUEOPS_ISSUEOPS_CHILD_START_READY_DIR"
+	childStartProcessGateEnv           = "ISSUEOPS_ISSUEOPS_CHILD_START_GATE"
 )
 
 func TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses(t *testing.T) {

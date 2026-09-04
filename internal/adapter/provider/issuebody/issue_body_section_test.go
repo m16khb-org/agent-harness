@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestMergeManagedSectionIdempotent(t *testing.T) {
@@ -97,7 +97,7 @@ func TestRenderCompletionSectionContainsSevenBlocks(t *testing.T) {
 	}
 }
 
-// AC-04: 한도 초과 시 plan → spec → turing 우선순위로 절단하고 절단 문구를 남긴다.
+// AC-04: 한도 초과 시 plan → spec → verified-execution 우선순위로 절단하고 절단 문구를 남긴다.
 func TestRenderCompletionSectionTruncatesByPriority(t *testing.T) {
 	c := completionFixture()
 	c.PlanBody = strings.Repeat("p", 4000)

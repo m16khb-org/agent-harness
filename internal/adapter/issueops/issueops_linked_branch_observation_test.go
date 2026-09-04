@@ -18,7 +18,7 @@ func TestObserveGitHubLinkedBranchesReadsANullRefAsAnOrphanShape(t *testing.T) {
 			{"id":"LB_live","ref":{"name":"304-branch","target":{"oid":"abc123"}}}]}}}}}`, nil
 	})
 
-	observation, err := observe(context.Background(), "https://github.com/m16khb/agent-harness/issues/304")
+	observation, err := observe(context.Background(), "https://github.com/m16khb/issueops/issues/304")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestObserveGitHubLinkedBranchesReadsANullRefAsAnOrphanShape(t *testing.T) {
 	}
 	// 좌표를 문자열 보간이 아니라 별도 필드로 넘기는지 고정한다.
 	joined := strings.Join(seen, " ")
-	for _, needle := range []string{"owner=m16khb", "repo=agent-harness", "number=304"} {
+	for _, needle := range []string{"owner=m16khb", "repo=issueops", "number=304"} {
 		if !strings.Contains(joined, needle) {
 			t.Fatalf("질의가 %q를 인자로 실어야 한다: %s", needle, joined)
 		}
@@ -44,17 +44,17 @@ func TestObserveGitHubLinkedBranchesReadsANullRefAsAnOrphanShape(t *testing.T) {
 // 않음을 고정한다. 잘못된 좌표는 남의 이슈를 읽거나 지우는 경로가 된다.
 func TestGitHubIssueSelectorRefusesAnythingButAnIssuePath(t *testing.T) {
 	for _, url := range []string{
-		"", "https://github.com/m16khb/agent-harness",
-		"https://github.com/m16khb/agent-harness/pull/304",
-		"https://github.com/m16khb/agent-harness/issues/not-a-number",
-		"https://github.com/m16khb/agent-harness/issues/",
+		"", "https://github.com/m16khb/issueops",
+		"https://github.com/m16khb/issueops/pull/304",
+		"https://github.com/m16khb/issueops/issues/not-a-number",
+		"https://github.com/m16khb/issueops/issues/",
 	} {
 		if _, _, _, err := githubIssueSelector(url); err == nil {
 			t.Fatalf("이슈 경로가 아닌 %q를 받아들이면 안 된다", url)
 		}
 	}
-	owner, repo, number, err := githubIssueSelector("https://github.com/m16khb/agent-harness/issues/304/")
-	if err != nil || owner != "m16khb" || repo != "agent-harness" || number != "304" {
+	owner, repo, number, err := githubIssueSelector("https://github.com/m16khb/issueops/issues/304/")
+	if err != nil || owner != "m16khb" || repo != "issueops" || number != "304" {
 		t.Fatalf("%s/%s#%s err=%v", owner, repo, number, err)
 	}
 }
@@ -67,7 +67,7 @@ func TestDeleteGitHubLinkedBranchTakesOnlyANodeID(t *testing.T) {
 		argv = append([]string{name}, args...)
 		return "{}", nil
 	})
-	if err := del(context.Background(), "https://github.com/m16khb/agent-harness/issues/304", "LB_orphan"); err != nil {
+	if err := del(context.Background(), "https://github.com/m16khb/issueops/issues/304", "LB_orphan"); err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(argv, " ")
@@ -78,7 +78,7 @@ func TestDeleteGitHubLinkedBranchTakesOnlyANodeID(t *testing.T) {
 		t.Fatalf("삭제 호출에 브랜치 이름이 실리면 안 된다: %s", joined)
 	}
 
-	if err := del(context.Background(), "https://github.com/m16khb/agent-harness/issues/304", "  "); err == nil {
+	if err := del(context.Background(), "https://github.com/m16khb/issueops/issues/304", "  "); err == nil {
 		t.Fatal("빈 노드 id는 거부해야 한다")
 	}
 }

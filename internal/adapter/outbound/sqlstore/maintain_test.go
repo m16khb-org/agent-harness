@@ -21,7 +21,7 @@ func TestMaintainTruncatesWAL(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	walPath := filepath.Join(dir, "harness.db-wal")
+	walPath := filepath.Join(dir, "issueops.db-wal")
 	before, err := os.Stat(walPath)
 	if err != nil {
 		t.Fatalf("wal must exist after writes: %v", err)
@@ -68,8 +68,8 @@ func TestMaintainRestoresPrivateSidecarPermissions(t *testing.T) {
 	if err := d.Put("perm", "k", []byte("v")); err != nil {
 		t.Fatal(err)
 	}
-	wal := filepath.Join(dir, "harness.db-wal")
-	shm := filepath.Join(dir, "harness.db-shm")
+	wal := filepath.Join(dir, "issueops.db-wal")
+	shm := filepath.Join(dir, "issueops.db-shm")
 	for _, p := range []string{wal, shm} {
 		if err := os.Chmod(p, 0o644); err != nil {
 			t.Fatalf("chmod %s: %v", p, err)

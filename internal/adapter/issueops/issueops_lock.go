@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/outbound/sqlstore"
 )
 
 type cleanupAbandonLockKey struct{}

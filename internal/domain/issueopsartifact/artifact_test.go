@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"strings"
 
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
 
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestCanStageOnlyRecoveryPlanAfterExecutionPrepare(t *testing.T) {
@@ -43,14 +43,14 @@ func TestValidateContentRejectsSecretLikeValue(t *testing.T) {
 }
 
 func TestNormalizeNameAcceptsOnlyCatalogNames(t *testing.T) {
-	for _, name := range []string{"plan", "spec", "turing-loop", "  plan  "} {
+	for _, name := range []string{"plan", "spec", "verified-execution-loop", "  plan  "} {
 		got, err := NormalizeName(name)
 		if err != nil || got != strings.TrimSpace(name) {
 			t.Fatalf("NormalizeName(%q) = %q, %v", name, got, err)
 		}
 	}
-	for _, bad := range []string{"", "diagram", "PLAN", "turing"} {
-		if _, err := NormalizeName(bad); err == nil || !strings.Contains(err.Error(), "plan|spec|turing-loop") {
+	for _, bad := range []string{"", "diagram", "PLAN", "verified-execution"} {
+		if _, err := NormalizeName(bad); err == nil || !strings.Contains(err.Error(), "plan|spec|verified-execution-loop") {
 			t.Fatalf("NormalizeName(%q) must fail with the catalog message: %v", bad, err)
 		}
 	}

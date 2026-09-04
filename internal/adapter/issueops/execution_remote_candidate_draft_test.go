@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // GitLab은 draft 상태를 제목 접두사로 표현하고 목록 API도 접두사를 포함해 반환한다.

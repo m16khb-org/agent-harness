@@ -47,7 +47,7 @@ Make structured `Z.AI Coding Plan` usage reliable when the provider has no nativ
 
 ```bash
 go test ./internal/core -run 'ExternalLLM|IssueOps.*LLM|IssueOpsRemote' -count=1
-go test ./cmd/harness -run 'SelfVerifyLLM|Golden' -count=1
+go test ./cmd/issueops -run 'SelfVerifyLLM|Golden' -count=1
 go test ./... -count=1
 git diff --check
 ```
@@ -55,5 +55,5 @@ git diff --check
 ## IssueOps Notes
 
 - Remote issue: `#21`
-- Expected worktree: `../agent-harness.worktrees/fix-21-external-llm-schema-contract`
+- Expected worktree: `../issueops.worktrees/fix-21-external-llm-schema-contract`
 - Source checkout must remain clean on `main`.

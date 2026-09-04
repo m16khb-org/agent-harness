@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
 )
 
 type Code string

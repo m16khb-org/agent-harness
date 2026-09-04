@@ -1,7 +1,7 @@
 package guard
 
 import (
-	guardcontract "agent-harness/internal/contract/guard"
+	guardcontract "issueops/internal/contract/guard"
 	"os"
 	"path/filepath"
 	"testing"

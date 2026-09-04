@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // JoinErrors collapses a slice of errors into a single semicolon-joined error,

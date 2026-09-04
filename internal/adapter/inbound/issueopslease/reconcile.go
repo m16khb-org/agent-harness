@@ -1,11 +1,11 @@
 package issueopslease
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
 	"context"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
 )
 
 type ReconcileHandler struct{ service *leaseapp.ReconcileService }

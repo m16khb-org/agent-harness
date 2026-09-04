@@ -1,7 +1,7 @@
 package gates
 
 import (
-	policycontract "agent-harness/internal/contract/policy"
+	policycontract "issueops/internal/contract/policy"
 )
 
 // 명령 정책 평가·실행은 composition root가 설치한다. 이 package는 크로스

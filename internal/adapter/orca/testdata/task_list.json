@@ -5,7 +5,7 @@
     "tasks": [
       {
         "id": "task-1",
-        "task_title": "agent-harness marker",
+        "task_title": "issueops marker",
         "display_name": "16-demo",
         "status": "ready"
       }

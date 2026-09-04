@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestReleaseKeepsLegacyNativeActorValidationErrorsPublic(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // TestPrepareAdoptsBranchOntoBranchlessRecord는 이슈를 먼저 만드는 흐름이

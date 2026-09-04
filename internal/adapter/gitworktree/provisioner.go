@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type Provisioner struct{}
@@ -164,7 +164,7 @@ func probeDirectoryReadWrite(base string) error {
 		return err
 	}
 	_ = entries
-	file, err := os.CreateTemp(base, ".agent-harness-access-*")
+	file, err := os.CreateTemp(base, ".issueops-access-*")
 	if err != nil {
 		return err
 	}

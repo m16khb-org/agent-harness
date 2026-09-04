@@ -331,7 +331,7 @@ Commit exact Task 2 paths with subject `feat(liveapproval): retain scoped readon
 **Files:**
 - Modify: `internal/core/lifecycle/lifecycle_state.go`
 - Modify: `internal/core/lifecycle/lifecycle_live_approval_test.go`
-- Modify: `cmd/harness/hookcli/hook_pre_tool_gitops_staged_test.go`
+- Modify: `cmd/issueops/hookcli/hook_pre_tool_gitops_staged_test.go`
 
 **Interfaces:**
 - Consumes: `commandguard.EvaluateGitOpsKubectl`, `commandguard.KubectlLiveAccess*`, `liveapproval.Evaluate`, and `liveapproval.EvaluateReadOnlyExec`.
@@ -343,7 +343,7 @@ Replace the old exec one-shot lifecycle test with a reusable scope test:
 
 ```go
 func TestCodexKubectlReadOnlyExecApprovalAllowsSameScopeRepeatedly(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	firstReq := HookToolUseLifecycleRequest{
 		Repo: repo, CWD: repo, Host: "codex", SessionID: "session-1", Tool: "Bash",
@@ -419,16 +419,16 @@ In `hook_pre_tool_gitops_staged_test.go`:
 - change the host-conflict fixture to port-forward so it still tests one-shot approval;
 - retain the Claude interactive shell native ask assertion unchanged.
 
-Run `go test ./cmd/harness/hookcli -run 'TestRunHook.*Kubectl' -count=1` after assertion changes to observe RED, then after lifecycle wiring to obtain PASS.
+Run `go test ./cmd/issueops/hookcli -run 'TestRunHook.*Kubectl' -count=1` after assertion changes to observe RED, then after lifecycle wiring to obtain PASS.
 
 - [ ] **Step 5: Verify host contracts and commit Task 3**
 
 Run:
 
 ```bash
-go test ./cmd/harness/hookcli ./internal/adapter/hook -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/hookcli ./internal/adapter/hook -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 ```
 
 Expected: PASS with no golden update because schemas/tool lists are unchanged.
@@ -440,8 +440,8 @@ Commit exact Task 3 paths with subject `feat(hooks): reuse approved readonly exe
 ### Task 4: Align Operations Documentation and Run the Full Gate
 
 **Files:**
-- Modify: `.agent-harness/CAUTIONS.md`
-- Modify: `.agent-harness/OPERATIONS.md`
+- Modify: `.issueops/CAUTIONS.md`
+- Modify: `.issueops/OPERATIONS.md`
 
 **Interfaces:**
 - Consumes: completed behavior and evidence from Tasks 1-3.
@@ -473,9 +473,9 @@ Explain first-token approval, same-scope reuse while the 30-minute idle TTL rema
 - [ ] **Step 3: Format and run focused verification**
 
 ```bash
-gofmt -w internal/core/commandparse/tokens.go internal/core/commandparse/tokens_test.go internal/core/commandguard/lifecycle_command_kubectl.go internal/core/commandguard/kubectl_readonly_exec.go internal/core/commandguard/kubectl_readonly_exec_test.go internal/core/lifecycle/liveapproval/live_approval.go internal/core/lifecycle/liveapproval/live_approval_test.go internal/core/lifecycle/liveapproval/readonly_exec.go internal/core/lifecycle/liveapproval/readonly_exec_test.go internal/core/lifecycle/lifecycle_state.go internal/core/lifecycle/lifecycle_live_approval_test.go cmd/harness/hookcli/hook_pre_tool_gitops_staged_test.go
-go test ./internal/core/commandparse ./internal/core/commandguard ./internal/core/lifecycle/... ./cmd/harness/hookcli ./internal/adapter/hook -count=1
-go test -race ./internal/core/lifecycle/liveapproval ./internal/core/lifecycle ./cmd/harness/hookcli -count=1
+gofmt -w internal/core/commandparse/tokens.go internal/core/commandparse/tokens_test.go internal/core/commandguard/lifecycle_command_kubectl.go internal/core/commandguard/kubectl_readonly_exec.go internal/core/commandguard/kubectl_readonly_exec_test.go internal/core/lifecycle/liveapproval/live_approval.go internal/core/lifecycle/liveapproval/live_approval_test.go internal/core/lifecycle/liveapproval/readonly_exec.go internal/core/lifecycle/liveapproval/readonly_exec_test.go internal/core/lifecycle/lifecycle_state.go internal/core/lifecycle/lifecycle_live_approval_test.go cmd/issueops/hookcli/hook_pre_tool_gitops_staged_test.go
+go test ./internal/core/commandparse ./internal/core/commandguard ./internal/core/lifecycle/... ./cmd/issueops/hookcli ./internal/adapter/hook -count=1
+go test -race ./internal/core/lifecycle/liveapproval ./internal/core/lifecycle ./cmd/issueops/hookcli -count=1
 ```
 
 Expected: all PASS.
@@ -486,19 +486,19 @@ Expected: all PASS.
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/agent-harness ./cmd/harness
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 python3 skills/atomic-commit-push/scripts/api_doc_gate.py .
 ```
 
-Expected: all Go commands PASS and the API gate reports no API documentation candidates. Building `bin/agent-harness` must not leave a tracked diff.
+Expected: all Go commands PASS and the API gate reports no API documentation candidates. Building `bin/issueops` must not leave a tracked diff.
 
 - [ ] **Step 5: Run security/scope scans**
 
 ```bash
-rg -n 'kubectl-readonly-exec|ReadOnlyExecGrantTTL|KubectlLiveAccessUnsafeExec' internal cmd .agent-harness
-rg -n '다음 동일 명령 한 번|exec.*one-shot|kubectl exec.*10-minute grant' .agent-harness cmd internal
+rg -n 'kubectl-readonly-exec|ReadOnlyExecGrantTTL|KubectlLiveAccessUnsafeExec' internal cmd .issueops
+rg -n '다음 동일 명령 한 번|exec.*one-shot|kubectl exec.*10-minute grant' .issueops cmd internal
 git diff --check
 git status --short
 ```
@@ -507,7 +507,7 @@ Expected: new identifiers occur only in intended commandguard/lifecycle/docs pat
 
 - [ ] **Step 6: Commit Task 4 and verify clean history**
 
-Commit `.agent-harness/CAUTIONS.md` and `.agent-harness/OPERATIONS.md` with subject `docs(kubectl): document scoped exec approval`. Lore lists focused/full/race/vet/build/golden/API evidence and states no push occurred.
+Commit `.issueops/CAUTIONS.md` and `.issueops/OPERATIONS.md` with subject `docs(kubectl): document scoped exec approval`. Lore lists focused/full/race/vet/build/golden/API evidence and states no push occurred.
 
 Then run:
 

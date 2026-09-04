@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/adapter/provider/providerutil"
-	"agent-harness/internal/domain/remoteparse"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/providerutil"
+	"issueops/internal/domain/remoteparse"
+	"issueops/internal/port"
 )
 
 // Provider adapts GitLab via the `glab` CLI.

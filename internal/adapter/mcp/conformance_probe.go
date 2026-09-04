@@ -1,21 +1,21 @@
 package mcp
 
 import (
-	mcpcontract "agent-harness/internal/contract/mcp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	mcpcontract "issueops/internal/contract/mcp"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	toolconformancecontract "agent-harness/internal/contract/toolconformance"
-	"agent-harness/internal/domain/policy"
-	toolconformancedomain "agent-harness/internal/domain/toolconformance"
+	toolconformancecontract "issueops/internal/contract/toolconformance"
+	"issueops/internal/domain/policy"
+	toolconformancedomain "issueops/internal/domain/toolconformance"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -58,7 +58,7 @@ func NewConformanceProbeServer(config mcpcontract.ConformanceProbeConfig) (*mcp.
 	if err != nil {
 		return nil, err
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "agent_harness_probe", Version: "1"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "issueops_probe", Version: "1"}, nil)
 	server.AddTool(&mcp.Tool{Name: config.ProbeTool, InputSchema: config.Schema}, probe.handle)
 	return server, nil
 }

@@ -1,14 +1,14 @@
 ---
 name: rebase-onto-parent
-description: Detect whether the current branch's parent branch has advanced, then rebase onto it safely using evidence-based parent resolution, a verified backup ref, range-diff proof that no commit was lost, and a confirmed --force-with-lease push. Use when the user asks to rebase onto the parent branch, catch up with the base branch, refresh a stacked branch, or says "부모 브랜치 rebase", "베이스 브랜치 최신화", "브랜치 최신으로 맞춰줘", "rebase onto parent", "catch up with base", "sync with base branch". Torvalds sub-skill; an issueops-owned branch routes to `agent-harness issueops execution sync-base` instead of rebasing.
+description: Detect whether the current branch's parent branch has advanced, then rebase onto it safely using evidence-based parent resolution, a verified backup ref, range-diff proof that no commit was lost, and a confirmed --force-with-lease push. Use when the user asks to rebase onto the parent branch, catch up with the base branch, refresh a stacked branch, or says "부모 브랜치 rebase", "베이스 브랜치 최신화", "브랜치 최신으로 맞춰줘", "rebase onto parent", "catch up with base", "sync with base branch". Git Operations sub-skill; an issueops-owned branch routes to `issueops execution sync-base` instead of rebasing.
 ---
 
 # Rebase Onto Parent
 
-> **Torvalds sub-skill.** Git has no notion of a parent branch, so this skill
+> **Git Operations sub-skill.** Git has no notion of a parent branch, so this skill
 > resolves one from recorded evidence, proves the parent actually advanced, and
 > rebases with a verified recovery path. Interactive rebase, bisect, and reflog
-> archaeology belong to the parent **`torvalds`** skill. Ordinary commit and push
+> archaeology belong to the parent **`git-operations`** skill. Ordinary commit and push
 > belong to **`atomic-commit-push`**.
 
 **User's request:** $ARGUMENTS
@@ -27,8 +27,8 @@ rebases a branch owned by an active issueops cycle.
 ## Routing gate (run first)
 
 1. **IssueOps-owned branch?** Check `ISSUEOPS_ID` in the environment and run
-   `agent-harness issueops list --repo "$PWD" --json`. If a cycle owns this
-   branch, stop and route to `agent-harness issueops execution sync-base`. That
+   `issueops list --repo "$PWD" --json`. If a cycle owns this
+   branch, stop and route to `issueops execution sync-base`. That
    surface is merge-based and bound to the execution lease generation; rewriting
    history here invalidates the lease and the recorded PR head.
 2. **Protected branch?** Refuse to rebase `main`, `master`, `develop`, or
@@ -224,7 +224,7 @@ branch is being replayed (`git rev-parse --short REBASE_HEAD`). Then offer three
 options and wait:
 
 1. the user resolves, then `git add <path>` and `git rebase --continue`;
-2. hand the file to **`torvalds`** for its conflict-resolution protocol;
+2. hand the file to **`git-operations`** for its conflict-resolution protocol;
 3. abort and return to the pre-rebase state.
 
 <!-- skill-shell: destructive recovery="abort returns the branch to the pre-rebase tip; confirm afterwards against the backup ref recorded in step 3" -->

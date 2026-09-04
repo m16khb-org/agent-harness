@@ -9,7 +9,7 @@ description: Turn a branch-prepared IssueOps cycle into an implementable contrac
 하지 않는다. 이 단계가 끝나면 워크트리와 구현 세션이 생긴다.
 
 - 전체 흐름과 단계 판별: [`issueops`](../issueops/SKILL.md)
-- 계획 작성: [`von-neumann`](../von-neumann/SKILL.md)
+- 계획 작성: [`implementation-planning`](../implementation-planning/SKILL.md)
 - 적대 리뷰: [`issueops-review`](../issueops-review/SKILL.md)
 - 게이트 원장: [`gates-ledger`](../gates-ledger/SKILL.md)
 - 프로젝트 문서 갱신 절차: [`project-docs-update`](../project-docs-update/SKILL.md)
@@ -18,7 +18,7 @@ description: Turn a branch-prepared IssueOps cycle into an implementable contrac
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `plan.write`, `plan.design`, `plan.review`, `plan.handoff` 중 하나면 이
@@ -44,7 +44,7 @@ source checkout 안에 계획을 만들면 그 파일이 커밋 대상이 되고
 ```bash
 # MCP: project_docs_route에 이슈 제목과 구현 범위를 넣어 읽을 문서를 고른다.
 # route를 쓸 수 없으면 required-doc 목록을 쓴다.
-agent-harness docs --json
+issueops docs --json
 # MCP: project_docs_read로 각 문서의 현재 내용과 SHA를 읽는다.
 ```
 
@@ -61,7 +61,7 @@ agent-harness docs --json
 
 ## 계획 작성과 스테이징
 
-[`von-neumann`](../von-neumann/SKILL.md)을 호출해 계획을 쓴다. 저장 위치는
+[`implementation-planning`](../implementation-planning/SKILL.md)을 호출해 계획을 쓴다. 저장 위치는
 `$(mktemp -d)/plan.md`처럼 source checkout 밖이다.
 
 계획에는 다음 네 절이 반드시 있다.
@@ -70,18 +70,18 @@ agent-harness docs --json
 |---|---|
 | `## 적용되는 결정과 주의사항` | 위 문서 확인의 결과 |
 | `## 재사용하는 기존 구현` | plan-prep의 코드베이스 조사에서 찾은 심볼·패키지·테스트 헬퍼와 재사용 방식. 새로 만드는 것이 있으면 기존 것으로 왜 안 되는지 |
-| `## 성능 영향` | hot path 여부, 복잡도 변화, 측정 계획. 알고리즘 선택이 걸리면 [`dijkstra`](../dijkstra/SKILL.md) |
+| `## 성능 영향` | hot path 여부, 복잡도 변화, 측정 계획. 알고리즘 선택이 걸리면 [`algorithm-optimization`](../algorithm-optimization/SKILL.md) |
 | `## 하위 호환성과 side effect` | CLI JSON·MCP schema·golden·record schema·provider body 계약, 기존 데이터, 롤백 경로 |
 
 이 네 절은 형식이 아니라 판단이다. "재사용할 것이 없다"는 결론도 근거와 함께 적으면
 유효하고, 근거 없이 비워 두면 리뷰가 그것을 공격한다.
 
 ```bash
-agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file "$TMP_PLAN" --json
+issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file "$TMP_PLAN" --json
 ```
 
 `artifact stage`는 actor 플래그를 받지 않는다. `--id`, `--name`, `--file`, `--json`뿐이다.
-잘못 올렸으면 `agent-harness issueops artifact unstage --id "$ISSUEOPS_ID" --name plan --json`으로
+잘못 올렸으면 `issueops artifact unstage --id "$ISSUEOPS_ID" --name plan --json`으로
 내린다.
 
 `link-plan`은 여기서 하지 않는다. 워크트리가 없어 `plan_in_worktree`를 만족할 수 없다.
@@ -97,12 +97,12 @@ prepare가 스테이징한 계획을 워크트리 안에 materialize하고, 4단
 ## 설계 검토
 
 ```bash
-agent-harness issueops design review --id "$ISSUEOPS_ID" \
+issueops design review --id "$ISSUEOPS_ID" \
   --problem-summary "<문제>" --proposed-design "<설계>" --refactor-plan "<리팩터 계획>" \
   --alternative "<기각한 대안과 이유>" --risk "<위 문서 확인에서 온 제약>" \
   --verification "설계 검토로 대안과 위험을 확인했다" --approved $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops record-routing --id "$ISSUEOPS_ID" --phase plan --skill von-neumann \
+issueops record-routing --id "$ISSUEOPS_ID" --phase plan --skill implementation-planning \
   $RECORD_ACTOR_FLAGS --json
 ```
 
@@ -121,7 +121,7 @@ agent-harness issueops record-routing --id "$ISSUEOPS_ID" --phase plan --skill v
 - **stop 판정**: 이 단계가 되돌린다.
 
 ```bash
-agent-harness issueops regress --id "$ISSUEOPS_ID" --reason "<리뷰 결론>" $RECORD_ACTOR_FLAGS --json
+issueops regress --id "$ISSUEOPS_ID" --reason "<리뷰 결론>" $RECORD_ACTOR_FLAGS --json
 ```
 
 `regress`는 사이클을 grill로 되돌린다. 다시 조사하고 이슈 본문을 갱신한 뒤
@@ -132,8 +132,8 @@ agent-harness issueops regress --id "$ISSUEOPS_ID" --reason "<리뷰 결론>" $R
 ## 인계
 
 ```bash
-agent-harness issueops execution whoami --json   # ACTOR_FLAGS 원문
-agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto \
+issueops execution whoami --json   # ACTOR_FLAGS 원문
+issueops execution prepare --id "$ISSUEOPS_ID" --mode auto \
   --owner-host "$HOST" $ACTOR_FLAGS --json        # preview
 # 출력의 next_command(--expected-readiness-fingerprint 포함)를 그대로 실행한다.
 ```
@@ -181,9 +181,9 @@ preview를 다시 한다. `--mode direct`를 강제해 우회하지 않는다.
 
 ## 검증
 
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `design_review.approved`가
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `design_review.approved`가
   true이고 `devils_advocate_review.verdict`가 `pass`이며 그 digest가 현재 계획과 같다.
-- `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `plan.handoff`
+- `issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `plan.handoff`
   이거나, 인계 뒤라면 `claim`(Orca) 또는 `implement.enter`(direct)다.
 - `git -C "$SOURCE_ROOT" status --short`에 계획 파일이 없다.
 - 인계 뒤 `execution prepare` 결과의 `workspace.root`가 실제로 존재하고 그 브랜치가

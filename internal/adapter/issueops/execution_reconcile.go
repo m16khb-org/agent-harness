@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func ReconcileExecution(stateRoot string, req ExecutionReconcileRequest) (ExecutionReconcileResult, error) {

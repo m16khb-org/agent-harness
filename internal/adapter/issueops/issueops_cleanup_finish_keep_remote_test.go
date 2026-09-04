@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func keepRemoteRequest(id string, apply bool, fingerprint string) CleanupFinishRequest {

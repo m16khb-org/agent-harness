@@ -1,14 +1,14 @@
 package worker
 
 import (
-	workercontract "agent-harness/internal/contract/worker"
 	"context"
 	"fmt"
+	workercontract "issueops/internal/contract/worker"
 	"os"
 	"strings"
 	"time"
 
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/domain/policy"
 )
 
 func EnqueueWorkerJob(kind, payload string) (workercontract.WorkerJob, error) {

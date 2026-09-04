@@ -1,13 +1,13 @@
 package worker
 
 import (
-	workercontract "agent-harness/internal/contract/worker"
 	"context"
 	"fmt"
+	workercontract "issueops/internal/contract/worker"
 	"os"
 	"time"
 
-	policydomain "agent-harness/internal/contract/policy"
+	policydomain "issueops/internal/contract/policy"
 )
 
 func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRequest) (workercontract.WorkerJob, error) {

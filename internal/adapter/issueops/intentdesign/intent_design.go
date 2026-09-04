@@ -1,15 +1,15 @@
 package intentdesign
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"errors"
 	"fmt"
+	issueopscontract "issueops/internal/contract/issueops"
 	"strings"
 	"time"
 	"unicode"
 
-	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/policy"
+	model "issueops/internal/contract/issueops"
+	"issueops/internal/domain/policy"
 )
 
 type Store struct {

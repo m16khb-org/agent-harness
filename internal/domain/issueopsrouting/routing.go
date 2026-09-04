@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
+	issueopsroutingcontract "issueops/internal/contract/issueopsrouting"
 )
 
 const MaxTraceEntries = 500

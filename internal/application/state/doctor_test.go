@@ -4,7 +4,7 @@ import "testing"
 
 func TestDoctorOwnsEntryAndCurrentRecordClassification(t *testing.T) {
 	result := Doctor("/state", []DoctorEntry{
-		{Name: "harness.db", Path: "/state/harness.db"},
+		{Name: "issueops.db", Path: "/state/issueops.db"},
 		{Name: "foreign", Path: "/state/foreign", IsDir: true},
 	}, []DoctorRow{
 		{Key: "good", Path: "/state/good.json", Data: []byte(`{"schema_version":1,"key":"good","content":"ok","updated_at":"2026-08-04T00:00:00Z","bytes":2}`)},

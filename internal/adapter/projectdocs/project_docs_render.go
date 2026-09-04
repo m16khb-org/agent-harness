@@ -1,7 +1,7 @@
 package projectdocs
 
 import (
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +38,7 @@ func RenderProjectDocs(root string, signals projectdoc.ProjectSignals) map[strin
 }
 
 func renderArchitecture(signals projectdoc.ProjectSignals) string {
-	return "# Architecture\n\n## Purpose\n\nThis is an architecture draft generated from project files by agent-harness. Mark weak inferences with Confidence; current code and command output are authoritative.\n\n## Detected structure\n\n" + bulletListWithFallback(signals.Files, "Not enough project signal files were detected.") + "\n## Guidance\n\n- Before large design changes, inspect current entrypoints, package/module boundaries, and data flow.\n- Add new abstractions only after existing patterns and test boundaries are confirmed.\n- Name the architecture style actually observed (layered, hexagonal/ports-and-adapters, onion, clean architecture, modular monolith, microservices) and back it with the owning files.\n"
+	return "# Architecture\n\n## Purpose\n\nThis is an architecture draft generated from project files by issueops. Mark weak inferences with Confidence; current code and command output are authoritative.\n\n## Detected structure\n\n" + bulletListWithFallback(signals.Files, "Not enough project signal files were detected.") + "\n## Guidance\n\n- Before large design changes, inspect current entrypoints, package/module boundaries, and data flow.\n- Add new abstractions only after existing patterns and test boundaries are confirmed.\n- Name the architecture style actually observed (layered, hexagonal/ports-and-adapters, onion, clean architecture, modular monolith, microservices) and back it with the owning files.\n"
 }
 
 func renderCautions(signals projectdoc.ProjectSignals) string {
@@ -72,7 +72,7 @@ This project-specific constitution should be read at session start. Follow the g
 
 1. Latest explicit user/system instructions
 2. Current repo AGENTS.md or a nearer nested AGENTS.md
-3. .agent-harness/*.md
+3. .issueops/*.md
 4. Current files and command output
 
 ## Principles

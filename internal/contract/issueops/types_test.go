@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestRecordUsesStablePhaseAndCurrentTypedSidecars(t *testing.T) {

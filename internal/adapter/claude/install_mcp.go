@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func writeClaudeUserMCP(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
@@ -23,8 +23,7 @@ func writeClaudeUserMCP(path string, req port.NativeInstallRequest) (port.Instal
 		mcpServers = map[string]any{}
 		config["mcpServers"] = mcpServers
 	}
-	delete(mcpServers, "agent-harness")
-	mcpServers["agent_harness"] = claudeUserMCPServer(req)
+	mcpServers["issueops"] = claudeUserMCPServer(req)
 	return WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
 }
 
@@ -34,7 +33,7 @@ func claudeUserMCPServer(req port.NativeInstallRequest) map[string]any {
 		"command": req.BinPath,
 		"args":    []string{"mcp"},
 		"env": map[string]any{
-			"HARNESS_ROOT": req.Root,
+			"ISSUEOPS_ROOT": req.Root,
 		},
 	}
 }

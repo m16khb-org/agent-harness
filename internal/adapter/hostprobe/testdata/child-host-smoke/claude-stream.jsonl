@@ -1,4 +1,4 @@
 {"type":"system","subtype":"hook_response","hook_event":"SessionStart"}
 {"type":"system","subtype":"hook_response","hook_event":"PreToolUse"}
-{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_probe","name":"mcp__agent_harness_probe__harness_probe_empty_object","input":{}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_probe","name":"mcp__issueops_probe__harness_probe_empty_object","input":{}}]}}
 {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_probe","content":"captured"}]},"tool_use_result":{"content":"captured"}}

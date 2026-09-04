@@ -1,8 +1,8 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
+	tracecontract "issueops/internal/contract/trace"
 	"strings"
 )
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "IO Update"
+  short_description: "Refresh the installed IssueOps binary and integrations"
+  default_prompt: "Use $io-update to preview and run io update from the installed IssueOps checkout, preserve the selected flags, and verify Codex, Claude, Omo, and daemon readback without fetching source."

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Parent issue: `https://github.com/m16khb/agent-harness/issues/221`
+- Parent issue: `https://github.com/m16khb-org/issueops/issues/221`
 - Parent lifecycle: `io-1a6a8e362e51`
 - Sealed source base: `a8303efad9e093dcd6e43b0ab2a1a9622ebade9b`
 - 모든 원격 artifact는 한국어, `enhancement`·`documentation` labels, `m16khb` assignee를 포함한다.
@@ -27,7 +27,7 @@
 **Files:**
 - Create: `docs/superpowers/specs/2026-08-02-issueops-parallel-worktree-dogfood-design.md`
 - Create: `docs/superpowers/plans/2026-08-02-issueops-parallel-worktree-dogfood.md`
-- Create: `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
+- Create: `.issueops/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
 
 **Interfaces:**
 - Consumes: parent issue #221, lifecycle `io-1a6a8e362e51`, linked branch `221-issueops-parallel-worktree-dogfood`.
@@ -38,9 +38,9 @@
 Run:
 
 ```bash
-./bin/agent-harness issueops artifact stage --id io-1a6a8e362e51 --name spec --file /tmp/agent-harness-parallel-dogfood.Xl2o2e/spec.md --json
-./bin/agent-harness issueops artifact stage --id io-1a6a8e362e51 --name plan --file /tmp/agent-harness-parallel-dogfood.Xl2o2e/plan.md --json
-./bin/agent-harness issueops artifact stage --id io-1a6a8e362e51 --name turing-loop --file /tmp/agent-harness-parallel-dogfood.Xl2o2e/turing-loop.md --json
+./bin/issueops artifact stage --id io-1a6a8e362e51 --name spec --file /tmp/issueops-parallel-dogfood.Xl2o2e/spec.md --json
+./bin/issueops artifact stage --id io-1a6a8e362e51 --name plan --file /tmp/issueops-parallel-dogfood.Xl2o2e/plan.md --json
+./bin/issueops artifact stage --id io-1a6a8e362e51 --name verified-execution-loop --file /tmp/issueops-parallel-dogfood.Xl2o2e/verified-execution-loop.md --json
 ```
 
 Expected: 세 artifact가 SHA-256 manifest와 함께 성공한다.
@@ -58,7 +58,7 @@ Expected: branch `221-issueops-parallel-worktree-dogfood`, generation 1, sibling
 Run:
 
 ```bash
-git add -- docs/superpowers/specs/2026-08-02-issueops-parallel-worktree-dogfood-design.md docs/superpowers/plans/2026-08-02-issueops-parallel-worktree-dogfood.md .agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md
+git add -- docs/superpowers/specs/2026-08-02-issueops-parallel-worktree-dogfood-design.md docs/superpowers/plans/2026-08-02-issueops-parallel-worktree-dogfood.md .issueops/operations/2026-08-02-issueops-parallel-worktree-dogfood.md
 git diff --cached --check
 git commit
 ```
@@ -73,12 +73,12 @@ Run exact actor flags from the active parent holder. Expected: parent readiness�
 
 첫 child confirm에서 #222가 실제 생성된 뒤 local child link가 active lease actor 부재로 실패했다. 아래 parent-only 파일만 수정한다.
 
-- `cmd/harness/issueopscli/remotecmd/remote.go`
-- `cmd/harness/issueopscli/remotecmd/remote_test.go`
+- `cmd/issueops/issueopscli/remotecmd/remote.go`
+- `cmd/issueops/issueopscli/remotecmd/remote_test.go`
 - `internal/core/issueops/issueops_actor.go`
 - `internal/core/issueops_facade.go`
 - `internal/adapter/cli/issueops_catalog.go`
-- `cmd/harness/testdata/usage.golden.txt`
+- `cmd/issueops/testdata/usage.golden.txt`
 
 active holder confirm 성공과 wrong actor가 provider 호출 전에 실패하는 두 테스트를 먼저 RED로 확인한다. create-child에 holder/canonical cwd flags를 추가하고, provider 호출 전 actor validation과 provider 성공 후 actor-bound link를 적용한다. focused/package/full 검증 뒤 별도 atomic fix commit을 push한다. #222는 readback/reconcile하며 중복 생성하지 않고, fix commit의 exact HEAD를 두 child sealed base로 다시 고정한다.
 
@@ -103,7 +103,7 @@ Expected: provider-native parent hierarchy, selected labels/assignee, Wave 1/선
 
 **Files:**
 - Create: `internal/core/issueops/issueops_delegation_start_process_test.go`
-- Create: `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
+- Create: `.issueops/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
 - Do not modify: every other tracked path.
 
 **Interfaces:**
@@ -159,7 +159,7 @@ Expected: production diff 출력 없음, repeated PASS.
 
 **Files:**
 - Create: `internal/core/issueops/issueops_delegation_accept_process_test.go`
-- Create: `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
+- Create: `.issueops/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
 - Do not modify: every other tracked path.
 
 **Interfaces:**
@@ -214,7 +214,7 @@ Expected: production diff 출력 없음, repeated PASS.
 ### Task 4: Parent review, accept, integration, quality gate
 
 **Files:**
-- Modify: `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
+- Modify: `.issueops/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
 - Integrate: 두 child test files.
 
 **Interfaces:**
@@ -243,7 +243,7 @@ go test ./internal/core/issueops -run '^(TestStartIssueOpsChildConcurrentSibling
 go test ./internal/core/issueops -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 한 단계라도 실패하거나 이후 edit가 생기면 첫 단계부터 다시 실행한다.
@@ -255,7 +255,7 @@ Test-only code diff에는 SNR, entropy, redundancy, overhead를 동일 scope로 
 ### Task 5: PR publication, merge, and cleanup
 
 **Files:**
-- Modify before PR only: `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
+- Modify before PR only: `.issueops/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
 
 **Interfaces:**
 - Consumes: clean parent worktree, generation, final HEAD, committed report, selected labels/assignee.

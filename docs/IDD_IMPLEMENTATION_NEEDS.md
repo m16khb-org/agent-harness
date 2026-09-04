@@ -4,7 +4,7 @@
 
 Issue-Driven Development, or IDD, treats issues as the source of truth above SDD, TDD, plans, branches, worktrees, review, and PR/MR drafting. The goal is not just to create tickets. The goal is to preserve the decision structure of collaborative work so a teammate can inspect an issue and its related issues to understand the rationale behind a branch, worktree, plan, implementation, feedback loop, and PR/MR.
 
-This document records what the current `agent-harness` codebase already supports and what still needs to be added to implement IDD as a first-class methodology.
+This document records what the current `issueops` codebase already supports and what still needs to be added to implement IDD as a first-class methodology.
 
 > **Status (updated after the IDD implementation commit `f5bdd28`).** Most of the
 > capabilities originally listed as missing are now shipped: typed issue-graph
@@ -21,13 +21,13 @@ The investigation used current repository evidence:
 
 - `skills/issueops/SKILL.md` defines the current agent-facing workflow.
 - `internal/core/issueops/` (state, readiness, phase, feedback, linking, active, benchmark) defines durable IssueOps state. Types live in `internal/core/issueops/model/types.go`.
-- `cmd/harness/issueopscli/` defines the CLI surface; `cmd/harness/mcpcli/` defines MCP tool handlers.
-- `cmd/harness/harnessapp/root_command_facade.go` routes `issueops` via `runIssueOps`.
-- Tests are scattered: `cmd/harness/issueopscli/issueops_test.go`, `cmd/harness/mcpcli/issueops/issueops_test.go`, `internal/core/issueops/issueops_test.go`, and lifecycle/readiness/phase test files.
+- `cmd/issueops/issueopscli/` defines the CLI surface; `cmd/issueops/mcpcli/` defines MCP tool handlers.
+- `cmd/issueops/issueopsapp/root_command_facade.go` routes `issueops` via `runIssueOps`.
+- Tests are scattered: `cmd/issueops/issueopscli/issueops_test.go`, `cmd/issueops/mcpcli/issueops/issueops_test.go`, `internal/core/issueops/issueops_test.go`, and lifecycle/readiness/phase test files.
 - `internal/core/issueops/benchmark/` and `testdata/issueops/fixtures` cover benchmarked issue, worktree, TDD, subagent, cleanup, and PR/MR quality dimensions.
 - `internal/core/lifecycle/lifecycle_worktree_guard.go` is the PreToolUse hook guard that enforces worktree isolation for mutating tool calls.
 - A fresh `/tmp` build of the current source successfully ran `issueops start` and `issueops benchmark run --judge none`.
-- The checked `bin/agent-harness` binary is older than the current source for this command surface: its usage output omitted `issueops`, while the freshly built binary accepted it.
+- The checked `bin/issueops` binary is older than the current source for this command surface: its usage output omitted `issueops`, while the freshly built binary accepted it.
 
 ## IDD Contract
 
@@ -47,10 +47,10 @@ IDD should make these records durable and inspectable:
 | --- | --- | --- |
 | Advisory workflow | Present. The `issueops` skill describes problem intake, issue contract, planning, TDD/subagent implementation, feedback, and PR/MR drafting. | `skills/issueops/SKILL.md` |
 | Durable cycle state | Present and expanded. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, provider branch preparation, feedback items, timestamps, **typed issue-graph links (`IssueLinks`), and decision records (`Decisions`)**. | `internal/core/issueops/model/types.go`, `internal/core/issueops/issueops_state.go` |
-| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `link-related`, `decision`, `branch prepare`, `worktree prepare/verify/cleanup-readiness`, `feedback add`, `pr-readiness`, `force-release`, and benchmark commands. | `cmd/harness/issueopscli/issueops.go`, `internal/adapter/cli/usage.go` |
-| MCP tools | Mostly present. Shipped tools include start/status, child/issue/plan/worktree linking, `issueops_link_related`, `issueops_force_release`, and provider branch preparation. Still pending: an MCP `issueops_decision` tool (decision records currently CLI-only). | `cmd/harness/mcpcli/mcp_tool_issueops.go`, `internal/adapter/mcp/issueops_lifecycle_catalog.go` |
+| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `link-related`, `decision`, `branch prepare`, `worktree prepare/verify/cleanup-readiness`, `feedback add`, `pr-readiness`, `force-release`, and benchmark commands. | `cmd/issueops/issueopscli/issueops.go`, `internal/adapter/cli/usage.go` |
+| MCP tools | Mostly present. Shipped tools include start/status, child/issue/plan/worktree linking, `issueops_link_related`, `issueops_force_release`, and provider branch preparation. Still pending: an MCP `issueops_decision` tool (decision records currently CLI-only). | `cmd/issueops/mcpcli/mcp_tool_issueops.go`, `internal/adapter/mcp/issueops_lifecycle_catalog.go` |
 | Readiness check | Present. Basic readiness (`IssueOpsPRReadiness`) checks 12 items: intent, design review, branch, branch_prepare, branch_link_verified, issue_url, worktree_path, plan_path, plan_exists, plan_in_worktree, ai_slop_clean, contract_feedback_issue_update — and now surfaces IDD warnings for missing decision records (`no_decision_records`) and a missing issue graph (`no_issue_graph_links`). Strict readiness (`IssueOpsStrictPRReadiness`) adds 14 more: repo, repo_git, branch_match, worktree_clean, upstream, upstream_fetch, upstream_synced, worktree_exists, plus fingerprint drift checks. Still pending: cleanup status as a first-class readiness field (cleanup is tracked separately via `cleanup`/`worktree cleanup-readiness`). | `internal/core/issueops/issueops_pr_readiness.go`, `internal/core/issueops/issueops_pr_readiness_strict.go` |
-| Worktree orchestration | Present as executable commands. `issueops worktree prepare/prepare-tools/verify/cleanup-readiness` derive, verify, and report cleanup readiness for the worktree contract. Branch preparation records the required provider-linked branch order before local worktree creation. The PreToolUse guard now enforces isolation at **cycle granularity** (see item 7). | `cmd/harness/issueopscli/worktreecmd/worktree.go`, `internal/core/lifecycle/lifecycle_worktree_guard.go` |
+| Worktree orchestration | Present as executable commands. `issueops worktree prepare/prepare-tools/verify/cleanup-readiness` derive, verify, and report cleanup readiness for the worktree contract. Branch preparation records the required provider-linked branch order before local worktree creation. The PreToolUse guard now enforces isolation at **cycle granularity** (see item 7). | `cmd/issueops/issueopscli/worktreecmd/worktree.go`, `internal/core/lifecycle/lifecycle_worktree_guard.go` |
 | Quality benchmark | Present. Deterministic scoring (19 dimensions) covers branch/worktree gate quality, isolation, cleanup, TDD, subagent orchestration, PR/MR quality, pioneer-skill contribution, and skill routing fidelity. | `internal/core/issueops/benchmark/issueops_benchmark.go`, `internal/core/issueops/benchmark/issueops_benchmark_score.go` |
 | Provider writes | Present as opt-in adapters. GitHub (`gh`) and GitLab (`glab`) adapters can create issues and PRs/MRs, every mutating call gated by `Confirm` (dry-run preview otherwise); core stays provider-neutral. Still pending: provider-side attachment of remote hierarchy/linked items. | `internal/adapter/provider/github/provider.go`, `internal/adapter/provider/gitlab/provider.go`, `internal/port/provider.go` |
 
@@ -84,7 +84,7 @@ Remaining:
 
 ### 3. Branch and worktree orchestration
 
-**Status: ✅ Delivered.** All four worktree subcommands ship in `cmd/harness/issueopscli/worktreecmd/worktree.go`.
+**Status: ✅ Delivered.** All four worktree subcommands ship in `cmd/issueops/issueopscli/worktreecmd/worktree.go`.
 
 Delivered:
 
@@ -113,7 +113,7 @@ Remaining:
 
 ### 5. Provider boundary
 
-IDD should integrate with GitHub/GitLab without turning agent-harness into a full provider client too early.
+IDD should integrate with GitHub/GitLab without turning issueops into a full provider client too early.
 
 **Status: ✅ Delivered (initial adapters).** Optional GitHub/GitLab write adapters now exist, gated by explicit confirmation; core stays provider-neutral.
 
@@ -129,13 +129,13 @@ Remaining:
 
 ### 6. Binary drift check
 
-The current checked `bin/agent-harness` can drift from source. During this investigation, the checked binary usage omitted `issueops`, while a fresh source build exposed it.
+The current checked `bin/issueops` can drift from source. During this investigation, the checked binary usage omitted `issueops`, while a fresh source build exposed it.
 
 **Status: ✅ Delivered (doctor check).** `doctor` now flags stale binaries; README guidance and self-verify coverage remain optional follow-ups.
 
 Delivered:
 
-- `doctor.checkBinaryDrift` (`internal/core/doctor/checks.go`) compares `bin/agent-harness` mtime against the latest source change and raises a `binary_drift` warning with a `go build -o bin/agent-harness ./cmd/harness` fix.
+- `doctor.checkBinaryDrift` (`internal/core/doctor/checks.go`) compares `bin/issueops` mtime against the latest source change and raises a `binary_drift` warning with a `go build -o bin/issueops ./cmd/issueops` fix.
 
 Remaining (optional):
 
@@ -218,10 +218,10 @@ The deadlock's structural cause: `done` phase requires `remote_artifact` verific
 ## Verification Commands Used During Investigation
 
 ```bash
-go build -o /tmp/agent-harness-idd-check ./cmd/harness
-/tmp/agent-harness-idd-check issueops start --repo "$PWD" --branch "idd-readme-smoke" --json
-/tmp/agent-harness-idd-check issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-./bin/agent-harness issueops start --repo "$PWD" --branch "idd-readme-smoke" --json
+go build -o /tmp/issueops-idd-check ./cmd/issueops
+/tmp/issueops-idd-check issueops start --repo "$PWD" --branch "idd-readme-smoke" --json
+/tmp/issueops-idd-check issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+./bin/issueops start --repo "$PWD" --branch "idd-readme-smoke" --json
 ```
 
 Observed result: the fresh build succeeded for `issueops start` and deterministic benchmark scoring, while the checked binary printed usage and exited for `issueops`, proving binary/source drift for this command surface.

@@ -17,8 +17,8 @@ import (
 	"syscall"
 	"time"
 
-	"agent-harness/internal/port"
-	activationport "agent-harness/internal/port/nativeactivation"
+	"issueops/internal/port"
+	activationport "issueops/internal/port/nativeactivation"
 )
 
 const (
@@ -56,7 +56,7 @@ type physicalFileIdentity struct {
 type pendingRecord struct {
 	SchemaVersion int            `json:"schema_version"`
 	StateRoot     string         `json:"state_root"`
-	HarnessRoot   string         `json:"harness_root"`
+	IssueOpsRoot  string         `json:"issueops_root"`
 	TargetBinary  string         `json:"target_binary"`
 	Candidate     binaryIdentity `json:"candidate"`
 	TransitionID  string         `json:"transition_id"`
@@ -66,7 +66,7 @@ type pendingRecord struct {
 type receiptRecord struct {
 	SchemaVersion int                       `json:"schema_version"`
 	StateRoot     string                    `json:"state_root"`
-	HarnessRoot   string                    `json:"harness_root"`
+	IssueOpsRoot  string                    `json:"issueops_root"`
 	TargetBinary  string                    `json:"target_binary"`
 	Binary        binaryIdentity            `json:"binary"`
 	CatalogSHA256 string                    `json:"catalog_sha256"`
@@ -82,7 +82,7 @@ func NewBackend(open StoreOpen) Backend {
 }
 
 func (backend Backend) Begin(ctx context.Context, request activationport.BeginRequest) (activationport.Result, error) {
-	if err := validatePaths(request.StateRoot, request.HarnessRoot, request.TargetBinary); err != nil {
+	if err := validatePaths(request.StateRoot, request.IssueOpsRoot, request.TargetBinary); err != nil {
 		return activationport.Result{}, err
 	}
 	candidate, err := backend.activeBinary()
@@ -90,7 +90,7 @@ func (backend Backend) Begin(ctx context.Context, request activationport.BeginRe
 		return activationport.Result{}, fmt.Errorf("inspect native activation candidate: %w", err)
 	}
 	if filepath.Dir(candidate.Executable) != filepath.Dir(request.TargetBinary) ||
-		(candidate.Executable != request.TargetBinary && !strings.HasPrefix(filepath.Base(candidate.Executable), ".agent-harness.activate-")) {
+		(candidate.Executable != request.TargetBinary && !strings.HasPrefix(filepath.Base(candidate.Executable), ".issueops.activate-")) {
 		return activationport.Result{}, fmt.Errorf("native activation candidate must be the canonical target or a same-directory staged binary")
 	}
 	if backend.now == nil {
@@ -105,7 +105,7 @@ func (backend Backend) Begin(ctx context.Context, request activationport.BeginRe
 		return activationport.Result{}, fmt.Errorf("generate native activation transition ID")
 	}
 	record := pendingRecord{
-		SchemaVersion: schemaVersion, StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot,
+		SchemaVersion: schemaVersion, StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot,
 		TargetBinary: request.TargetBinary, Candidate: candidate, TransitionID: transitionID, StartedAt: startedAt,
 	}
 	data, err := json.Marshal(record)
@@ -125,13 +125,13 @@ func (backend Backend) Begin(ctx context.Context, request activationport.BeginRe
 		return activationport.Result{}, err
 	}
 	return activationport.Result{
-		StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary,
+		StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary,
 		BinarySHA256: candidate.SHA256, TransitionID: transitionID, Pending: true, UpdatedAt: startedAt,
 	}, nil
 }
 
 func (backend Backend) Seal(ctx context.Context, request activationport.SealRequest) (activationport.Result, error) {
-	if err := validatePaths(request.StateRoot, request.HarnessRoot, request.TargetBinary); err != nil {
+	if err := validatePaths(request.StateRoot, request.IssueOpsRoot, request.TargetBinary); err != nil {
 		return activationport.Result{}, err
 	}
 	if !validTransitionID(request.TransitionID) {
@@ -178,7 +178,7 @@ func (backend Backend) Seal(ctx context.Context, request activationport.SealRequ
 		}
 		sealedAt := backend.now().UTC().Format(time.RFC3339Nano)
 		receipt := receiptRecord{
-			SchemaVersion: schemaVersion, StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot,
+			SchemaVersion: schemaVersion, StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot,
 			TargetBinary: request.TargetBinary, Binary: active, CatalogSHA256: request.CatalogSHA256,
 			Evidence: append([]activationport.Evidence(nil), request.Evidence...), TransitionID: request.TransitionID, SealedAt: sealedAt,
 		}
@@ -201,7 +201,7 @@ func (backend Backend) Seal(ctx context.Context, request activationport.SealRequ
 }
 
 func (backend Backend) Abort(ctx context.Context, request activationport.AbortRequest) (activationport.Result, error) {
-	if err := validatePaths(request.StateRoot, request.HarnessRoot, request.TargetBinary); err != nil {
+	if err := validatePaths(request.StateRoot, request.IssueOpsRoot, request.TargetBinary); err != nil {
 		return activationport.Result{}, err
 	}
 	if !validTransitionID(request.TransitionID) {
@@ -232,7 +232,7 @@ func (backend Backend) Abort(ctx context.Context, request activationport.AbortRe
 			return err
 		}
 		result = activationport.Result{
-			StateRoot: pending.StateRoot, HarnessRoot: pending.HarnessRoot, TargetBinary: pending.TargetBinary,
+			StateRoot: pending.StateRoot, IssueOpsRoot: pending.IssueOpsRoot, TargetBinary: pending.TargetBinary,
 			BinarySHA256: pending.Candidate.SHA256, TransitionID: pending.TransitionID, Aborted: true, UpdatedAt: pending.StartedAt,
 		}
 		return nil
@@ -256,17 +256,17 @@ func backendStore(stateRoot string, open StoreOpen) (port.TransactionalRecordSto
 	return store, nil
 }
 
-func validatePaths(stateRoot, harnessRoot, targetBinary string) error {
-	for _, path := range []string{stateRoot, harnessRoot, targetBinary} {
+func validatePaths(stateRoot, issueOpsRoot, targetBinary string) error {
+	for _, path := range []string{stateRoot, issueOpsRoot, targetBinary} {
 		if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 			return fmt.Errorf("native activation paths must be absolute and canonical")
 		}
 	}
-	info, err := os.Lstat(harnessRoot)
+	info, err := os.Lstat(issueOpsRoot)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("native activation harness root must be a physical directory")
 	}
-	if targetBinary != filepath.Join(harnessRoot, "bin", "agent-harness") {
+	if targetBinary != filepath.Join(issueOpsRoot, "bin", "issueops") {
 		return fmt.Errorf("native activation target must be the canonical harness binary")
 	}
 	if info, err := os.Lstat(targetBinary); err == nil && info.Mode()&os.ModeSymlink != 0 {
@@ -376,19 +376,19 @@ func decodeExact[T any](data []byte) (T, error) {
 
 func samePending(record pendingRecord, request activationport.SealRequest, active binaryIdentity) bool {
 	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
-		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
+		record.IssueOpsRoot == request.IssueOpsRoot && record.TargetBinary == request.TargetBinary &&
 		record.TransitionID == request.TransitionID && sameBinaryContent(record.Candidate, active) && record.StartedAt != ""
 }
 
 func sameAbortPending(record pendingRecord, request activationport.AbortRequest, active binaryIdentity) bool {
 	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
-		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
+		record.IssueOpsRoot == request.IssueOpsRoot && record.TargetBinary == request.TargetBinary &&
 		record.TransitionID == request.TransitionID && sameBinaryContent(record.Candidate, active) && record.StartedAt != ""
 }
 
 func sameReceipt(record receiptRecord, request activationport.SealRequest, active binaryIdentity) bool {
 	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
-		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
+		record.IssueOpsRoot == request.IssueOpsRoot && record.TargetBinary == request.TargetBinary &&
 		record.Binary == active && record.CatalogSHA256 == request.CatalogSHA256 &&
 		record.TransitionID == request.TransitionID && slices.Equal(record.Evidence, request.Evidence) && record.SealedAt != ""
 }
@@ -400,7 +400,7 @@ func sameBinaryContent(left, right binaryIdentity) bool {
 
 func sealedResult(record receiptRecord) activationport.Result {
 	return activationport.Result{
-		StateRoot: record.StateRoot, HarnessRoot: record.HarnessRoot, TargetBinary: record.TargetBinary,
+		StateRoot: record.StateRoot, IssueOpsRoot: record.IssueOpsRoot, TargetBinary: record.TargetBinary,
 		BinarySHA256: record.Binary.SHA256, TransitionID: record.TransitionID, Sealed: true, UpdatedAt: record.SealedAt,
 	}
 }

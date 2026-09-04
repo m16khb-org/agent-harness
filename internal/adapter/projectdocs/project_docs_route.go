@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdocscontract "agent-harness/internal/contract/projectdocs"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	projectdocscontract "issueops/internal/contract/projectdocs"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +46,7 @@ func RouteProjectDocs(repoRoot, task string) (projectdocscontract.ProjectDocsRou
 		missingProjectDocs = false
 	}
 	if missingProjectDocs {
-		warnings = append(warnings, "project docs are missing; run agent-harness project bootstrap to create AGENTS.md routing, .agent-harness docs, and repo metadata")
+		warnings = append(warnings, "project docs are missing; run issueops project bootstrap to create AGENTS.md routing, .issueops docs, and repo metadata")
 	}
 	return projectdocscontract.ProjectDocsRouteResult{
 		OK:          true,

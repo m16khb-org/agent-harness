@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 type DirectWorkspaceAdapter struct {

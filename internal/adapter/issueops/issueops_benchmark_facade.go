@@ -1,8 +1,8 @@
 package issueops
 
 import (
-	"agent-harness/internal/adapter/issueops/benchmark"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/benchmark"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 type IssueOpsBenchmarkFixture = issueopscontract.IssueOpsBenchmarkFixture

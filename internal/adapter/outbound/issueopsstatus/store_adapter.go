@@ -3,8 +3,8 @@ package issueopsstatus
 import (
 	"context"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 )
 
 type Repository struct {

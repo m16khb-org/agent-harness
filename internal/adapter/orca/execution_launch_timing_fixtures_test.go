@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 const (
-	executionLaunchMarker     = "agent-harness issueops-v1 lifecycle=io-timing operation=op-timing"
+	executionLaunchMarker     = "issueops-v1 lifecycle=io-timing operation=op-timing"
 	executionLaunchWorktreeID = "wt-timing"
 	executionLaunchRuntimeID  = "runtime-timing"
 )

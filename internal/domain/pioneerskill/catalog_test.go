@@ -7,18 +7,18 @@ import (
 
 func TestCanonicalNamesAndMissingAreDeterministic(t *testing.T) {
 	want := []string{
-		"berners-lee",
-		"boehm",
-		"brooks",
-		"codd",
-		"dijkstra",
-		"engelbart",
-		"hopper",
-		"karpathy",
-		"shannon",
-		"torvalds",
-		"turing",
-		"von-neumann",
+		"web-research",
+		"requirements-analysis",
+		"design-review",
+		"database-design",
+		"algorithm-optimization",
+		"meeting-notes",
+		"debugging",
+		"prompt-engineering",
+		"code-quality-metrics",
+		"git-operations",
+		"verified-execution",
+		"implementation-planning",
 	}
 	names := Names()
 	if !slices.Equal(names, want) {
@@ -28,18 +28,18 @@ func TestCanonicalNamesAndMissingAreDeterministic(t *testing.T) {
 	if Names()[0] != want[0] {
 		t.Fatal("Names returned mutable catalog storage")
 	}
-	missing := Missing([]string{"turing", "boehm", "turing", "unknown"})
+	missing := Missing([]string{"verified-execution", "requirements-analysis", "verified-execution", "unknown"})
 	wantMissing := []string{
-		"berners-lee",
-		"brooks",
-		"codd",
-		"dijkstra",
-		"engelbart",
-		"hopper",
-		"karpathy",
-		"shannon",
-		"torvalds",
-		"von-neumann",
+		"web-research",
+		"design-review",
+		"database-design",
+		"algorithm-optimization",
+		"meeting-notes",
+		"debugging",
+		"prompt-engineering",
+		"code-quality-metrics",
+		"git-operations",
+		"implementation-planning",
 	}
 	if !slices.Equal(missing, wantMissing) {
 		t.Fatalf("Missing()=%v want=%v", missing, wantMissing)

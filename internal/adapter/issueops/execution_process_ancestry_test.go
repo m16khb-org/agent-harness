@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestNativeProcessAncestryFromSnapshotWalksExactParentChain(t *testing.T) {
 	snapshot, err := parseNativeProcessSnapshot(`
-100 50 Tue Jul 22 09:10:11 2026 /usr/local/bin/agent-harness
+100 50 Tue Jul 22 09:10:11 2026 /usr/local/bin/issueops
 50 1 Tue Jul 22 09:00:00 2026 /Applications/Codex.app/Contents/MacOS/Codex
 1 0 Tue Jul 22 08:00:00 2026 /sbin/launchd
 `)
@@ -23,7 +23,7 @@ func TestNativeProcessAncestryFromSnapshotWalksExactParentChain(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("ancestry length = %d, want 3: %+v", len(got), got)
 	}
-	if got[0].PID != 100 || got[0].Executable != "/usr/local/bin/agent-harness" || got[0].StartedAt == "" {
+	if got[0].PID != 100 || got[0].Executable != "/usr/local/bin/issueops" || got[0].StartedAt == "" {
 		t.Fatalf("child receipt = %+v", got[0])
 	}
 	if got[1].PID != 50 || got[1].Executable != "/Applications/Codex.app/Contents/MacOS/Codex" {
@@ -37,7 +37,7 @@ func TestNativeProcessAncestryFromSnapshotWalksExactParentChain(t *testing.T) {
 func TestQuiescenceProcessOwnershipReusesOneSnapshot(t *testing.T) {
 	snapshot, err := parseNativeProcessSnapshot(`
 200 100 Tue Jul 22 09:11:00 2026 /usr/bin/child
-100 50 Tue Jul 22 09:10:11 2026 /usr/local/bin/agent-harness
+100 50 Tue Jul 22 09:10:11 2026 /usr/local/bin/issueops
 50 1 Tue Jul 22 09:00:00 2026 /Applications/Codex.app/Contents/MacOS/Codex
 300 1 Tue Jul 22 09:12:00 2026 /usr/bin/external
 1 0 Tue Jul 22 08:00:00 2026 /sbin/launchd

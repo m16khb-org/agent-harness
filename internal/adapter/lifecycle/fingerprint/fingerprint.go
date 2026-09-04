@@ -1,9 +1,9 @@
 package fingerprint
 
 import (
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"crypto/sha256"
 	"encoding/hex"
+	lifecyclecontract "issueops/internal/contract/lifecycle"
 	"os"
 	"path/filepath"
 	"strings"

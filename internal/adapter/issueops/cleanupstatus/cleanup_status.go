@@ -4,10 +4,10 @@ import (
 	"os"
 	"strings"
 
-	model "agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
-	"agent-harness/internal/domain/issueopsremote"
-	"agent-harness/internal/domain/stringlist"
+	model "issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
+	"issueops/internal/domain/issueopsremote"
+	"issueops/internal/domain/stringlist"
 )
 
 type Store struct {

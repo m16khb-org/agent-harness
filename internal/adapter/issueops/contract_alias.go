@@ -1,8 +1,8 @@
 package issueops
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // 실행 API의 요청·결과·핸들러는 계약이다. 어댑터는 같은 이름으로 재노출만 한다.

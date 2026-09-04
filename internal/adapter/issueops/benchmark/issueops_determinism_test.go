@@ -1,7 +1,7 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 	"reflect"
 	"testing"
 )
@@ -27,13 +27,13 @@ func TestScorerDeterminismOrderedOutputsStable(t *testing.T) {
 	// slices and prove little).
 	fixture := issueopscontract.IssueOpsBenchmarkFixture{
 		ID:                 "determinism",
-		PioneerSkillTarget: "codd",
-		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}},
+		PioneerSkillTarget: "database-design",
+		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "database-design"}},
 		CriticalFailures:   []string{"skips domain contract evidence", "skips live evidence matrix"},
 	}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.PioneerSkillEvidence = coddKeywordEvidence
-	artifact.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}
+	artifact.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "database-design"}}
 	artifact.DomainContractEvidence = ""
 	artifact.LiveEvidenceMatrix = ""
 	artifact.PhaseChoices = ""

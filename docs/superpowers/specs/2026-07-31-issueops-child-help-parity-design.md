@@ -8,7 +8,7 @@ record mutation을 수행하려면 `--host`, `--session-id`, 선택적 `--agent-
 전달할 수 있다.
 
 반면 child 전용 help는
-`cmd/harness/issueopscli/issueops_cli_support.go`의 별도 상수 문자열이다. 이 문자열은
+`cmd/issueops/issueopscli/issueops_cli_support.go`의 별도 상수 문자열이다. 이 문자열은
 각 명령 줄의 `RECORD_ACTOR_FLAGS`와 그 축약 정의를 빠뜨린다. canonical catalog와 parser는
 올바르지만, 사용자가 가장 가까운 `issueops child --help` 표면에서 계약을 발견할 수 없다.
 
@@ -34,7 +34,7 @@ child 전용 부분 문자열 중복이다.
 
 ### 1. child help는 catalog 줄의 투영이다
 
-`cmd/harness/issueopscli`에 child 명령 경로 여섯 개만 담은 key 집합을 둔다.
+`cmd/issueops/issueopscli`에 child 명령 경로 여섯 개만 담은 key 집합을 둔다.
 
 ```text
 child start
@@ -50,7 +50,7 @@ child drop
 하면 usage 문장과 플래그 표기는 catalog 한 곳에만 존재한다. `link-child`는 key가
 `link-child`이므로 선택되지 않는다.
 
-이 projection은 `cmd/harness/issueopscli` 내부 함수로 유지한다. 다른 소비자가 없으므로
+이 projection은 `cmd/issueops/issueopscli` 내부 함수로 유지한다. 다른 소비자가 없으므로
 `internal/adapter/cli`에 새 공개 abstraction을 추가하지 않는다.
 
 ### 2. actor 범례도 공용 원본을 쓴다
@@ -94,10 +94,10 @@ canonical usage catalog
 ### 회귀 검증
 
 ```bash
-go test ./cmd/harness/issueopscli/... ./internal/adapter/cli/... -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness issueops child --help
+go test ./cmd/issueops/issueopscli/... ./internal/adapter/cli/... -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops child --help
 ```
 
 로컬 전체 테스트와 전체 race는 실행하지 않는다. 범위를 벗어난 package 회귀는 원격 CI로

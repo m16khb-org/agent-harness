@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
 )
 
 func TestEvidenceCallbacksAndFailClosedDependencies(t *testing.T) {

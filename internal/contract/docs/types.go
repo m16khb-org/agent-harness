@@ -5,11 +5,11 @@
 package docs
 
 type DocsIndexResult struct {
-	OK          bool           `json:"ok"`
-	Version     string         `json:"version"`
-	HarnessRoot string         `json:"harness_root"`
-	Docs        []DocIndexInfo `json:"docs"`
-	GeneratedAt string         `json:"generated_at"`
+	OK           bool           `json:"ok"`
+	Version      string         `json:"version"`
+	IssueOpsRoot string         `json:"issueops_root"`
+	Docs         []DocIndexInfo `json:"docs"`
+	GeneratedAt  string         `json:"generated_at"`
 }
 
 type DocIndexInfo struct {

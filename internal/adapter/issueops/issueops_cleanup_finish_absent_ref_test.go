@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	"issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 // absentRefFinishGit는 worktree 제거가 local branch ref를 함께 없애는 실제
@@ -197,7 +197,7 @@ func TestCleanupFinishAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
 	if result.SupersededBy != req.SupersededBy {
 		t.Fatalf("무엇을 근거로 통과했는지 결과에 남아야 한다: %+v", result)
 	}
-	wantNext := "agent-harness issueops cleanup finish --id " + record.ID +
+	wantNext := "issueops cleanup finish --id " + record.ID +
 		" --apply --confirm --fingerprint " + result.Fingerprint +
 		" --superseded-by '" + req.SupersededBy + "' --json"
 	if result.NextCommand != wantNext {

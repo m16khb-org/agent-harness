@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-const diagnosisMarker = "agent-harness issueops-v1 lifecycle=io-1 operation=op-1 provider=github issue=319"
+const diagnosisMarker = "issueops-v1 lifecycle=io-1 operation=op-1 provider=github issue=319"
 
 func diagnosisPrepared() port.ExecutionOrcaWorkspaceReceipt {
 	return port.ExecutionOrcaWorkspaceReceipt{RuntimeID: "runtime-1", WorktreeID: "worktree-1"}
@@ -38,7 +38,7 @@ func TestTerminalIdentityMismatchNamesTheFailingAxis(t *testing.T) {
 		{"연결 안 됨", func(term *port.OrcaTerminal) { term.Connected = false }, "connected"},
 		{"쓰기 불가", func(term *port.OrcaTerminal) { term.Writable = false }, "writable"},
 		{"stable 제목이 다른 lifecycle", func(term *port.OrcaTerminal) {
-			term.StableTabTitle, term.Title = "agent-harness issueops-v1 lifecycle=io-other", "claude"
+			term.StableTabTitle, term.Title = "issueops-v1 lifecycle=io-other", "claude"
 		}, "tab title"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestTerminalIdentityMismatchNamesTheFailingAxis(t *testing.T) {
 // 타이밍 문제를 처음부터 다시 조사해야 한다.
 func TestTerminalTitleMismatchReportsBothObservedTitles(t *testing.T) {
 	terminal := diagnosisTerminal()
-	terminal.StableTabTitle = "agent-harness issueops-v1 lifecycle=io-other"
+	terminal.StableTabTitle = "issueops-v1 lifecycle=io-other"
 	terminal.Title = "claude working"
 
 	err := validateExecutionIntentTerminal(terminal, diagnosisPrepared(), diagnosisMarker)

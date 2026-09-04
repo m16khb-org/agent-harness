@@ -6,7 +6,7 @@
 
 **Architecture:** All coordination state lives in host-neutral Go core (`internal/core/issueops`); CLI and MCP are thin adapters over the same core functions. The harness never spawns agent processes — the main agent spawns sub-agents host-natively; the harness provides durable state, fail-closed gates, and deterministic hook reminders. Single-entity locking only (no nested locks), persistent-inode flocks, read-repair for the parent→child index.
 
-**Tech Stack:** Go standard library + existing `unix.Flock` lock helpers, existing state store (`internal/core/state`), existing CLI dispatch (`cmd/harness/issueopscli`), existing MCP registry (`cmd/harness/mcpcli`), golden contract fixtures.
+**Tech Stack:** Go standard library + existing `unix.Flock` lock helpers, existing state store (`internal/core/state`), existing CLI dispatch (`cmd/issueops/issueopscli`), existing MCP registry (`cmd/issueops/mcpcli`), golden contract fixtures.
 
 ## Global Constraints
 
@@ -14,12 +14,12 @@
 - For this plan's non-ownership orchestration fields, the July 6 baseline used additive `omitempty` under IssueOps schema v1. Issue #16 supersedes that root-version decision with schema v5 for `execution_handoff`, stable terminal identity, sealed completion authority, and publish/cleanup authority.
 - **Never hold two entity locks at once** (cycle/cycle) **and never call a `with*Lock`-wrapped function from inside another lock callback — including the SAME entity's lock** (a second exclusive flock on the same lock file via a new fd self-deadlocks in-process). Multi-entity ops are sequential single-locked steps + read-repair.
 - **No new upstream dependencies anywhere** (D6): no feature may require CodeGraph, llm-wiki, claude-mem, an external LLM API, or a spawned agent CLI. External intelligence is always a render-prompt → record-result contract performed by the host agent.
-- Lock files are persistent inodes — never delete between lock/unlock (see `.agent-harness/ISSUEOPS_AUDIT.md` "Lock File Deletion Breaks Mutual Exclusion").
+- Lock files are persistent inodes — never delete between lock/unlock (see `.issueops/ISSUEOPS_AUDIT.md` "Lock File Deletion Breaks Mutual Exclusion").
 - Every new readiness missing key maps to exactly one owner command surfaced in status output.
 - Hooks observe/relay only; no workflow work, no heartbeats, no state mutation from hooks.
 - Timestamps RFC3339Nano UTC; freeform text redacted with the existing secret-redaction path before persisting.
-- Commits follow `.agent-harness/COMMIT_POLICY.md` (Conventional Commit subject + Lore body). One commit per task below; run the task's tests before each commit.
-- After any contract-surface change, update `cmd/harness/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, usage goldens, and `cmd/harness/contractgolden` fixtures in the same task.
+- Commits follow `.issueops/COMMIT_POLICY.md` (Conventional Commit subject + Lore body). One commit per task below; run the task's tests before each commit.
+- After any contract-surface change, update `cmd/issueops/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, usage goldens, and `cmd/issueops/contractgolden` fixtures in the same task.
 
 ---
 
@@ -103,32 +103,32 @@
 ### Task 5: Delegation CLI
 
 **Files:**
-- Modify: `cmd/harness/issueopscli/issueops_subcommands.go` (dispatch), `internal/adapter/cli/usage.go`
-- Test: `cmd/harness/issueopscli/issueops_delegation_cli_test.go` (new)
+- Modify: `cmd/issueops/issueopscli/issueops_subcommands.go` (dispatch), `internal/adapter/cli/usage.go`
+- Test: `cmd/issueops/issueopscli/issueops_delegation_cli_test.go` (new)
 
 **Interfaces:**
-- Produces: `issueops child start --parent --branch --title --scope --acceptance (repeatable) [--child-issue-url] --json`, `issueops child status --parent [--repair] --json`, `issueops child list --parent --json`, `issueops child accept --parent --child --evidence (repeatable) --json`, `issueops child reject --parent --child --reason --json`, `issueops child drop --parent --child --reason --json`. `child start` output includes the delegation prompt guidance block (recommended base branch = parent branch, worktree naming, `export HARNESS_EXPECTED_WORKTREE=` placeholder, owner-command contract) rendered from core, not composed in the CLI.
+- Produces: `issueops child start --parent --branch --title --scope --acceptance (repeatable) [--child-issue-url] --json`, `issueops child status --parent [--repair] --json`, `issueops child list --parent --json`, `issueops child accept --parent --child --evidence (repeatable) --json`, `issueops child reject --parent --child --reason --json`, `issueops child drop --parent --child --reason --json`. `child start` output includes the delegation prompt guidance block (recommended base branch = parent branch, worktree naming, `export ISSUEOPS_EXPECTED_WORKTREE=` placeholder, owner-command contract) rendered from core, not composed in the CLI.
 
 - [ ] **Step 1:** Write failing lifecycle test `TestRunIssueOpsChildLifecycle`: start parent → drive to ready-implement state via existing helpers → `child start` → `child status` shows the child → `child accept` after forcing the child through to done in-test → JSON asserted at each step; plus flag-validation failures (missing `--parent`, short `--reason`). Add the CLI-path gate test `TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren`: drive the REAL `issueops phase --to pr --json` dispatch on a parent with an unfinished child → refusal names `child_incomplete:<id>`; accept the child → the same CLI call succeeds (fail-closed pinned through the command surface a real agent uses, not core-only).
-- [ ] **Step 2:** Run `go test ./cmd/harness/issueopscli -run TestRunIssueOpsChildLifecycle -count=1` — FAIL (unknown subcommand).
+- [ ] **Step 2:** Run `go test ./cmd/issueops/issueopscli -run TestRunIssueOpsChildLifecycle -count=1` — FAIL (unknown subcommand).
 - [ ] **Step 3:** Implement dispatch + usage text.
-- [ ] **Step 4:** Re-run — PASS; run `go test ./cmd/harness/... -run Golden -count=1` and update usage/contract goldens in this task.
+- [ ] **Step 4:** Re-run — PASS; run `go test ./cmd/issueops/... -run Golden -count=1` and update usage/contract goldens in this task.
 - [ ] **Step 5:** Commit `feat(issueops): child cycle CLI surface`.
 
 ### Task 6: Delegation MCP tools
 
 **Files:**
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops.go`, `cmd/harness/mcpcli/mcp_tool_issueops_handlers.go`
-- Test: `cmd/harness/mcpcli/mcp_issueops_delegation_test.go` (new)
-- Update: `cmd/harness/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, `cmd/harness/contractgolden`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops.go`, `cmd/issueops/mcpcli/mcp_tool_issueops_handlers.go`
+- Test: `cmd/issueops/mcpcli/mcp_issueops_delegation_test.go` (new)
+- Update: `cmd/issueops/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, `cmd/issueops/contractgolden`
 
 **Interfaces:**
 - Produces: MCP tools `issueops_child_start`, `issueops_child_status`, `issueops_child_accept`, `issueops_child_reject`, `issueops_child_drop` — same JSON shapes as CLI (`MCP tool schema와 CLI JSON 출력은 호스트별로 다르게 만들지 않는다`).
 
 - [ ] **Step 1:** Write failing MCP test `TestMCPIssueOpsChildLifecycle` mirroring Task 5's flow through tool calls.
-- [ ] **Step 2:** Run `go test ./cmd/harness/mcpcli -run TestMCPIssueOpsChildLifecycle -count=1` — FAIL.
+- [ ] **Step 2:** Run `go test ./cmd/issueops/mcpcli -run TestMCPIssueOpsChildLifecycle -count=1` — FAIL.
 - [ ] **Step 3:** Register tools (descriptions state purpose/when-to-use/writes/args/result per MCP tool design guidance) + handlers calling the Task 2/3 core functions.
-- [ ] **Step 4:** Re-run + `go test ./cmd/harness/... -run Golden -count=1` (update goldens) — PASS.
+- [ ] **Step 4:** Re-run + `go test ./cmd/issueops/... -run Golden -count=1` (update goldens) — PASS.
 - [ ] **Step 5:** Commit `feat(mcp): issueops child delegation tools`.
 
 ### Task 7: Scoped session bindings
@@ -149,29 +149,29 @@
 ### Task 8: resume --id, bind --id, heartbeat --id + guard chain
 
 **Files:**
-- Modify: `internal/core/issueops/package.go` (`IssueOpsResume` id-path), `internal/core/lifecycle/lifecycle_worktree_guard.go` + `lifecycle_worktree_mcp.go` (scoped-binding fallback), `cmd/harness/issueopscli/issueops_subcommands.go` (flags + `issueops heartbeat --id` exposing `RecordIssueOpsHeartbeat`), MCP handler for `issueops_resume` (new `id` arg) + new `issueops_heartbeat` tool
-- Test: extend `cmd/harness/issueopscli` lifecycle tests + `internal/core/lifecycle` guard tests
+- Modify: `internal/core/issueops/package.go` (`IssueOpsResume` id-path), `internal/core/lifecycle/lifecycle_worktree_guard.go` + `lifecycle_worktree_mcp.go` (scoped-binding fallback), `cmd/issueops/issueopscli/issueops_subcommands.go` (flags + `issueops heartbeat --id` exposing `RecordIssueOpsHeartbeat`), MCP handler for `issueops_resume` (new `id` arg) + new `issueops_heartbeat` tool
+- Test: extend `cmd/issueops/issueopscli` lifecycle tests + `internal/core/lifecycle` guard tests
 
 **Interfaces:**
-- Produces: `issueops resume --id <cycle> [--bind] --json` (returns existing `IssueOpsResumeResult` + `HARNESS_EXPECTED_WORKTREE` guidance for that cycle; `--bind` writes scoped for delegated cycles, primary otherwise); `issueops heartbeat --id --json`; lifecycle MCP guard resolution order env → branch-matched scoped binding → primary binding → active cycles (hookcli PreToolUse stays env/flag-only — do NOT change `resolveExpectedWorktree`).
+- Produces: `issueops resume --id <cycle> [--bind] --json` (returns existing `IssueOpsResumeResult` + `ISSUEOPS_EXPECTED_WORKTREE` guidance for that cycle; `--bind` writes scoped for delegated cycles, primary otherwise); `issueops heartbeat --id --json`; lifecycle MCP guard resolution order env → branch-matched scoped binding → primary binding → active cycles (hookcli PreToolUse stays env/flag-only — do NOT change `resolveExpectedWorktree`).
 
 - [ ] **Step 1:** Write failing tests: `TestIssueOpsResumeByID` (bound + unbound; delegated child resume returns child worktree guidance), `TestIssueOpsHeartbeatCLIUpdatesLastHeartbeat`, `TestLifecycleGuardPrefersScopedBindingOnBranchMatch` (env unset, session on child branch → child worktree expected; on parent branch → parent worktree), `TestLifecycleGuardEnvBeatsScopedBinding` (env set to a DIFFERENT worktree than the scoped binding resolves → env wins; precedence order pinned), `TestForceReleasedChildStillIncompleteThenResumable` (force-release a child mid-`implement` → parent gate still reports `child_incomplete:<id>` → `issueops resume --id <child> --bind` restores context and the child can be driven to `done` → accept clears the gate).
 - [ ] **Step 2:** Run targeted tests — FAIL.
 - [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Re-run + `go test ./internal/core/lifecycle ./internal/core/issueops/... ./cmd/harness/issueopscli -count=1` — PASS. Update MCP/usage goldens (resume arg, heartbeat tool).
+- [ ] **Step 4:** Re-run + `go test ./internal/core/lifecycle ./internal/core/issueops/... ./cmd/issueops/issueopscli -count=1` — PASS. Update MCP/usage goldens (resume arg, heartbeat tool).
 - [ ] **Step 5:** Commit `feat(issueops): resume/bind/heartbeat by cycle id with scoped guard fallback`.
 
 ### Task 13: hook surfacing (UserPromptSubmit hint + Stop relay)
 
 **Files:**
-- Modify: `internal/core/hookprompt/worktree_reminder.go`-adjacent (new `orchestration_reminder.go`), `internal/core/hookprompt/render.go`, `internal/core/hookprompt/catalog.go`, Stop relay composition in `cmd/harness/hookcli/hook_stop.go` path (core-side fact provider)
+- Modify: `internal/core/hookprompt/worktree_reminder.go`-adjacent (new `orchestration_reminder.go`), `internal/core/hookprompt/render.go`, `internal/core/hookprompt/catalog.go`, Stop relay composition in `cmd/issueops/hookcli/hook_stop.go` path (core-side fact provider)
 - Test: `internal/core/hookprompt/orchestration_reminder_test.go`, extend hook stop tests
 
 **Interfaces:**
 - Produces: `orchestrationReminderValue(repo) string` — one line for children (`children: <done>/<total> done, <n> unvalidated - issueops child status --parent <id>`), emitted only when the repo has a bound cycle with children; child display capped at 16. Stop relay includes the deterministic missing keys `child_incomplete`/`child_unvalidated` when present on the bound cycle.
 
 - [ ] **Step 1:** Write failing tests: reminder renders for a fixture repo with children; absent otherwise; stop relay names the keys.
-- [ ] **Step 2:** Run `go test ./internal/core/hookprompt ./cmd/harness/hookcli -count=1` — FAIL.
+- [ ] **Step 2:** Run `go test ./internal/core/hookprompt ./cmd/issueops/hookcli -count=1` — FAIL.
 - [ ] **Step 3:** Implement (read-only; no workflow work).
 - [ ] **Step 4:** Re-run — PASS.
 - [ ] **Step 5:** Commit `feat(hookprompt): orchestration reminders and stop relay facts`.
@@ -192,20 +192,20 @@
 ### Task 15: project docs + ADR + CAUTIONS
 
 **Files:**
-- Modify: `.agent-harness/ARCHITECTURE.md` (state model + actor model), `.agent-harness/AGENT_WORKFLOW.md` (resume/heartbeat child-cycle contract), `.agent-harness/SUB_AGENT_PATTERNS.md` (D1→#2/#7 application notes), `.agent-harness/ADR.md` (decision + rejected alternatives per spec), `.agent-harness/CAUTIONS.md` (single-entity lock invariant INCLUDING same-entity `with*Lock` re-entry self-deadlock and mixed-binary additive-field caution)
+- Modify: `.issueops/ARCHITECTURE.md` (state model + actor model), `.issueops/AGENT_WORKFLOW.md` (resume/heartbeat child-cycle contract), `.issueops/SUB_AGENT_PATTERNS.md` (D1→#2/#7 application notes), `.issueops/ADR.md` (decision + rejected alternatives per spec), `.issueops/CAUTIONS.md` (single-entity lock invariant INCLUDING same-entity `with*Lock` re-entry self-deadlock and mixed-binary additive-field caution)
 
 - [ ] **Step 1:** Update each doc per the spec's D5 list (use MCP `project_docs_read`/`project_docs_revise`/`project_docs_append` flow per AGENT_WORKFLOW).
-- [ ] **Step 2:** Run `go test ./internal/core/issueops -run TestIssueOpsSkill -count=1` and `./bin/agent-harness docs --json` sanity — PASS/exit 0.
-- [ ] **Step 3:** Commit `docs(agent-harness): orchestration architecture, workflow, ADR, cautions`.
+- [ ] **Step 2:** Run `go test ./internal/core/issueops -run TestIssueOpsSkill -count=1` and `./bin/issueops docs --json` sanity — PASS/exit 0.
+- [ ] **Step 3:** Commit `docs(issueops): orchestration architecture, workflow, ADR, cautions`.
 
 ### Task 17 (Upstream Independence U1 — recommended FIRST, before Task 2): remove the CodeGraph hard gate
 
 **Files:**
-- Modify: `internal/core/issueops/issueops_readiness.go` (drop `codegraph_ready` from `issueOpsWorktreeToolsMissing`, `issueops_readiness.go:193-195`), `cmd/harness/issueopscli/worktreetools` (prepare-tools skips CodeGraph silently when the CLI/`.codegraph/` is absent; fields stay informational)
-- Test: extend `internal/core/issueops/issueops_readiness_test.go`, `cmd/harness/issueopscli/issueops_worktree_tools_test.go`
+- Modify: `internal/core/issueops/issueops_readiness.go` (drop `codegraph_ready` from `issueOpsWorktreeToolsMissing`, `issueops_readiness.go:193-195`), `cmd/issueops/issueopscli/worktreetools` (prepare-tools skips CodeGraph silently when the CLI/`.codegraph/` is absent; fields stay informational)
+- Test: extend `internal/core/issueops/issueops_readiness_test.go`, `cmd/issueops/issueopscli/issueops_worktree_tools_test.go`
 
 - [ ] **Step 1 (RED):** `TestImplementGateDoesNotRequireCodeGraph` — a record with `WorktreeTools{CodeGraphChecked:false, CodeGraphReady:false}` but deps ready + worktree match has NO `codegraph_ready` missing key and `AdvanceIssueOpsPhase` to implement succeeds (with all other artifacts present); `TestPrepareToolsWithoutCodeGraphSucceeds` — prepare-tools on a machine without codegraph reports `OK=true`.
-- [ ] **Step 2:** Run both — FAIL. **Step 3:** Implement. **Step 4:** Re-run + `go test ./internal/core/issueops/... ./cmd/harness/issueopscli -count=1` — PASS (fix fixtures that asserted `codegraph_ready`). Update skill/docs mentions of CodeGraph readiness (skills/issueops references, `.agent-harness/ARCHITECTURE.md` implement gate description).
+- [ ] **Step 2:** Run both — FAIL. **Step 3:** Implement. **Step 4:** Re-run + `go test ./internal/core/issueops/... ./cmd/issueops/issueopscli -count=1` — PASS (fix fixtures that asserted `codegraph_ready`). Update skill/docs mentions of CodeGraph readiness (skills/issueops references, `.issueops/ARCHITECTURE.md` implement gate description).
 - [ ] **Step 5:** Commit `feat(issueops): make CodeGraph optional evidence, not an implement gate`.
 
 ### Task 18 (U2): remove the Z.AI external LLM client; host-agent judgement contract
@@ -223,7 +223,7 @@
 
 **Files:**
 - Delete: `internal/core/draftwiki/llmpromote/`
-- Modify: `internal/core/draftwiki/draft_wiki_promote.go` (promote moves approved drafts to `.agent-harness/draft-wiki/exported/` with a log append; no hub/registry resolution)
+- Modify: `internal/core/draftwiki/draft_wiki_promote.go` (promote moves approved drafts to `.issueops/draft-wiki/exported/` with a log append; no hub/registry resolution)
 - Test: `internal/core/draftwiki/draft_wiki_promote_test.go` (rewrite)
 
 - [ ] **Step 1 (RED):** `TestPromoteExportsApprovedDraftLocally` (+ refusal for unapproved). **Step 2-4:** implement → green. **Step 5:** Commit `feat(draftwiki): local export promote, drop llm-wiki hub dependency`.
@@ -231,25 +231,25 @@
 ### Task 20 (U4): remove upstream tool wiring from install/update
 
 **Files:**
-- Modify: `scripts/install-native.sh` (delete `install_upstream_tools` and its invocation, `:381-484`; `--with-upstream-tools`/`--skip-upstream-tools`/`HARNESS_INSTALL_UPSTREAM_TOOLS` become deprecated no-ops printing a warning), `cmd/harness/updatecli/update_bootstrap.go:23-54` (drop the `--with-upstream-tools` default-true wiring; same deprecated no-op treatment)
-- Test: `cmd/harness/updatecli/update_bootstrap_test.go` + `update_bootstrap_edges_test.go` (update: no upstream args ever passed; deprecated flags warn and no-op)
+- Modify: `scripts/install-native.sh` (delete `install_upstream_tools` and its invocation, `:381-484`; `--with-upstream-tools`/`--skip-upstream-tools`/`ISSUEOPS_INSTALL_UPSTREAM_TOOLS` become deprecated no-ops printing a warning), `cmd/issueops/updatecli/update_bootstrap.go:23-54` (drop the `--with-upstream-tools` default-true wiring; same deprecated no-op treatment)
+- Test: `cmd/issueops/updatecli/update_bootstrap_test.go` + `update_bootstrap_edges_test.go` (update: no upstream args ever passed; deprecated flags warn and no-op)
 
 - [ ] **Step 1 (RED):** `TestUpdateNeverPassesUpstreamFlags`, `TestDeprecatedUpstreamFlagsWarnAndNoop`; shell check `bash -n scripts/install-native.sh`. **Step 2-4:** implement → green; `./scripts/install-native.sh --dry-run` output contains no upstream installer lines. **Step 5:** Commit `feat(install)!: stop wiring upstream companion tools`.
 
 ### Task 21 (U5): api-doc review without spawning codex
 
 **Files:**
-- Modify: `cmd/harness/apidoc/api_doc_review_runner.go` (replace `exec.Command("codex", ...)` `:24` with prompt+schema render output and a `--result <file>` record path), CLI/MCP descriptors for `api-doc review`/`api_doc_review`
-- Test: `cmd/harness/apidoc` tests (render includes OPEN_API_SPEC prompt source; result file recorded as review evidence; no exec)
+- Modify: `cmd/issueops/apidoc/api_doc_review_runner.go` (replace `exec.Command("codex", ...)` `:24` with prompt+schema render output and a `--result <file>` record path), CLI/MCP descriptors for `api-doc review`/`api_doc_review`
+- Test: `cmd/issueops/apidoc` tests (render includes OPEN_API_SPEC prompt source; result file recorded as review evidence; no exec)
 
 - [ ] **Step 1 (RED):** `TestAPIDocReviewRendersPromptWithoutSpawning` + `TestAPIDocReviewRecordsSuppliedResult`. **Step 2-4:** implement → green; goldens updated. **Step 5:** Commit `feat(apidoc): host-agent review contract, no codex spawn`.
 
 ### Task 22: independence policy docs + ADR
 
 **Files:**
-- Modify: `.agent-harness/ARCHITECTURE.md` (delete/replace the "바퀴를 재발명하지 않는 companion tool 정책" and LLM Wiki policy sections with the standalone policy), root `AGENTS.md` invariants + `CLAUDE.md` philosophy line, `.agent-harness/ADR.md` (record the reversal: decision, rationale — independence/reproducibility/no external keys on core paths — and rejected alternative: opt-in upstream wiring), `.agent-harness/CAUTIONS.md` (never reintroduce a hard external dependency into a readiness gate), `.agent-harness/OPERATIONS.md` (install/update surface changes)
+- Modify: `.issueops/ARCHITECTURE.md` (delete/replace the "바퀴를 재발명하지 않는 companion tool 정책" and LLM Wiki policy sections with the standalone policy), root `AGENTS.md` invariants + `CLAUDE.md` philosophy line, `.issueops/ADR.md` (record the reversal: decision, rationale — independence/reproducibility/no external keys on core paths — and rejected alternative: opt-in upstream wiring), `.issueops/CAUTIONS.md` (never reintroduce a hard external dependency into a readiness gate), `.issueops/OPERATIONS.md` (install/update surface changes)
 
-- [ ] **Step 1:** Update each doc; ADR entry per COMMIT_POLICY/ADR convention. **Step 2:** `go test ./internal/core/issueops -run TestIssueOpsSkill -count=1` + docs index sanity. **Step 3:** Commit `docs(agent-harness)!: standalone policy — upstream dependencies removed (ADR)`.
+- [ ] **Step 1:** Update each doc; ADR entry per COMMIT_POLICY/ADR convention. **Step 2:** `go test ./internal/core/issueops -run TestIssueOpsSkill -count=1` + docs index sanity. **Step 3:** Commit `docs(issueops)!: standalone policy — upstream dependencies removed (ADR)`.
 
 ### Task 16 (runs LAST, after Tasks 1-15 and 17-22): full verification + dogfood
 
@@ -259,19 +259,19 @@
 go mod tidy
 go test ./internal/core/issueops/... -count=1
 go test -race ./internal/core/issueops/... -count=1
-go test ./cmd/harness/... -count=1
-go test ./cmd/harness/... -run Golden -count=1
+go test ./cmd/issueops/... -count=1
+go test ./cmd/issueops/... -run Golden -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: all exit 0.
 
-- [ ] **Step 2:** Dogfood **B1 (S1)** in a scratch repo: umbrella cycle to implement-ready → `child start` ×2 → resume each child by `--id` in separate shells with separate `HARNESS_EXPECTED_WORKTREE` → drive one child to done → `child accept` → parent `pr-readiness --strict --json` shows the remaining `child_incomplete` key → finish + accept second child → key clears. Record transcript evidence.
-- [ ] **Step 4:** Install/update surfaces: `agent-harness update --path-mode=skip --json`, `./bin/agent-harness daemon status --json`, `claude mcp list`, `codex mcp get agent_harness` — all healthy, and the update output shows NO upstream tool wiring.
+- [ ] **Step 2:** Dogfood **B1 (S1)** in a scratch repo: umbrella cycle to implement-ready → `child start` ×2 → resume each child by `--id` in separate shells with separate `ISSUEOPS_EXPECTED_WORKTREE` → drive one child to done → `child accept` → parent `pr-readiness --strict --json` shows the remaining `child_incomplete` key → finish + accept second child → key clears. Record transcript evidence.
+- [ ] **Step 4:** Install/update surfaces: `issueops update --path-mode=skip --json`, `./bin/issueops daemon status --json`, `claude mcp list`, `codex mcp get issueops` — all healthy, and the update output shows NO upstream tool wiring.
 - [ ] **Step 5:** Independence verification (D6): `grep -rn "api.z.ai" internal cmd` → no matches; `grep -rn codegraph_ready internal/core/issueops/issueops_readiness.go` → no matches; `grep -n install_upstream_tools scripts/install-native.sh` → no matches; `Z_AI_API_KEY= go test ./... -count=1` → green. Run the benchmark package (`go test ./internal/core/issueops/benchmark/... -count=1`) and update its fixtures if readiness-key changes shifted expectations.
-- [ ] **Step 6:** Update `.agent-harness/ISSUEOPS_AUDIT.md` with a dated reconciliation entry for the new concurrency surfaces and their test evidence.
+- [ ] **Step 6:** Update `.issueops/ISSUEOPS_AUDIT.md` with a dated reconciliation entry for the new concurrency surfaces and their test evidence.
 - [ ] **Step 7:** Commit `test(orchestration): full verification battery and dogfood evidence`.
 
 ---

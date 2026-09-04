@@ -16,7 +16,7 @@ description: Confirm and create the IssueOps issue that a cycle contracts on. In
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --json
+issueops next --json
 ```
 
 `stage.key`가 `none`이거나 `issue`면 이 스킬이다. 사용자가 라우터의 "새 사이클
@@ -65,27 +65,27 @@ agent-harness issueops next --json
 이 순서가 곧 grill 완료 조건이다. 항목이 비면 grill 진입이 거부된다.
 
 ```bash
-agent-harness issueops start --repo "$SOURCE_ROOT" --json      # ISSUEOPS_ID를 받는다
+issueops start --repo "$SOURCE_ROOT" --json      # ISSUEOPS_ID를 받는다
 
-agent-harness issueops intent record --id "$ISSUEOPS_ID" \
+issueops intent record --id "$ISSUEOPS_ID" \
   --raw-request "<사용자 원문>" --interpreted-intent "<해석>" \
   --success-criteria "<검증 가능한 기준>" --intent-class trivial|standard \
   $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops domain-review record --id "$ISSUEOPS_ID" \
+issueops domain-review record --id "$ISSUEOPS_ID" \
   --model-fit "<도메인 모델과 이 변경의 관계>" $RECORD_ACTOR_FLAGS --json
 
 # 분할하지 않는 경우: 그 근거를 결정으로 남긴다.
-agent-harness issueops decision add --id "$ISSUEOPS_ID" --kind scope \
+issueops decision add --id "$ISSUEOPS_ID" --kind scope \
   --title "no split" --body "<한 owner·한 리뷰로 끝나는 근거>" $RECORD_ACTOR_FLAGS --json
 # 분할하는 경우: remote create-child로 child를 만든다(아래 Parent와 child).
 
-agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
+issueops plan-prep record --id "$ISSUEOPS_ID" \
   --decisions-evidence "<...>" --related-score-ref "<...>" \
   --web-research-evidence "<...>" --codebase-survey-evidence "<...>" \
   $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill $RECORD_ACTOR_FLAGS --json
+issueops phase --id "$ISSUEOPS_ID" --to grill $RECORD_ACTOR_FLAGS --json
 ```
 
 여기까지가 로컬 기록이다. 다음은 원격 write이므로 본문 초안을 사용자에게 보여 주고
@@ -94,9 +94,9 @@ agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill $RECORD_ACTOR_FLAGS 
 readback, 모호할 때의 reconcile을 소유한다.
 
 ```bash
-agent-harness issueops remote score --input "$SCORE_INPUT" --judge none --json > "$SCORE_FILE"
+issueops remote score --input "$SCORE_INPUT" --judge none --json > "$SCORE_FILE"
 # → issueops-remote-write 절차로 remote create-issue 실행
-agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" $RECORD_ACTOR_FLAGS --json
+issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" $RECORD_ACTOR_FLAGS --json
 ```
 
 `remote create-issue`가 `issue_url`을 record에 이미 넣었으면 `link-issue`는 생략한다.
@@ -223,7 +223,7 @@ provider API나 전체 IssueOps lifecycle을 재설계하지 않는다.
 공백 label과 중복 label이 request에 남는다.
 
 ## 현재 근거
-`cmd/harness/issueopscli/remotecmd/remote.go`의 repeated flag 경계.
+`cmd/issueops/issueopscli/remotecmd/remote.go`의 repeated flag 경계.
 ```
 
 로그는 secret을 제거한 짧은 code block으로만 붙인다. 긴 로그 전체나
@@ -249,9 +249,9 @@ score 결과를 보존하고 body file을 위 형식으로 먼저 읽어 본다.
 규율은 [`issueops-remote-write`](../issueops-remote-write/SKILL.md)가 소유한다.
 
 ```bash
-agent-harness issueops remote score \
+issueops remote score \
   --input "$SCORE_INPUT" --judge none --json > "$SCORE_FILE"
-agent-harness issueops remote create-issue \
+issueops remote create-issue \
   --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --title "[enhancement] IssueOps 생성 경계를 분리한다" \
   --template implementation_task --body-file "$BODY_FILE" \
@@ -262,7 +262,7 @@ agent-harness issueops remote create-issue \
 child는 parent URL이 record에 연결되고 umbrella branch gate가 통과한 뒤 만든다.
 
 ```bash
-agent-harness issueops remote create-child \
+issueops remote create-child \
   --id "$ISSUEOPS_ID" --title "[p] Issue body 계약을 검증한다" \
   --template child_task --body-file "$CHILD_BODY" \
   --label enhancement --assignee "$ASSIGNEE" \

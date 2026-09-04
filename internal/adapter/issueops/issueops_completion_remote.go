@@ -9,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/port"
 )
 
 // completionArtifactNames는 워크트리 artifact 디렉토리에서 보존 대상으로
 // 수집하는 파일 목록이다(설계 v5 WS2/WS4).
-var completionArtifactNames = []string{"plan", "spec", "turing-loop"}
+var completionArtifactNames = []string{"plan", "spec", "verified-execution-loop"}
 
-// completionTuringSummaryLimit bounds the turing summary excerpt; full texts of
+// completionTuringSummaryLimit bounds the verified-execution summary excerpt; full texts of
 // plan/spec travel as collapsible blocks with their own provider-side limit.
 const completionTuringSummaryLimit = 4 * 1024
 
@@ -168,7 +168,7 @@ func gatherCompletionSection(record issueops.IssueOpsRecord) port.IssueProviderC
 			completion.PlanBody = body
 		case "spec":
 			completion.SpecBody = body
-		case "turing-loop":
+		case "verified-execution-loop":
 			if len(body) > completionTuringSummaryLimit {
 				body = body[:completionTuringSummaryLimit] + "\n… (절단)"
 			}

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	projectdoc "agent-harness/internal/domain/projectdoc"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	projectdoc "issueops/internal/domain/projectdoc"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 )
 
 func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrapResult, error) {
@@ -31,7 +31,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 	manifestPath := filepath.Join(root, filepath.FromSlash(projectdocdomain.ManifestRelPath()))
 	manifestExisted := fileExists(manifestPath)
 	// Legacy flat layout: family root documents exist without the modular
-	// contract. agent-harness is a library applied to many repositories, so
+	// contract. issueops is a library applied to many repositories, so
 	// an in-progress repo's established flat docs stay untouched: creating
 	// module starters and a manifest around curated flat roots would produce
 	// a half-migrated layout that violates the optimize checker contract.
@@ -163,7 +163,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		}
 	}
 	if !req.Write {
-		warnings = append(warnings, "dry_run_only: rerun without --dry-run to create missing AGENTS.md/.agent-harness docs and repo metadata; add --sync to refresh existing docs")
+		warnings = append(warnings, "dry_run_only: rerun without --dry-run to create missing AGENTS.md/.issueops docs and repo metadata; add --sync to refresh existing docs")
 	}
 	return ProjectDocsBootstrapResult{
 		OK:             true,

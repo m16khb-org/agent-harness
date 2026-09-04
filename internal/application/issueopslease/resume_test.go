@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestResumeRejectsBeforeArtifactsAndInventory(t *testing.T) {

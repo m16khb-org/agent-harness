@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- support-plane 수정은 `/Users/sample/workspace/agent-harness`의 `main`에서 메인 에이전트가 직접 수행한다.
+- support-plane 수정은 `/Users/sample/workspace/issueops`의 `main`에서 메인 에이전트가 직접 수행한다.
 - production code를 쓰기 전에 해당 동작의 focused RED를 실행하고 예상한 이유로 실패하는지 확인한다.
 - 새 Go 주석은 비자명한 identity/CAS 이유만 한글로 작성한다.
 - 특정 lifecycle ID, issue number, repository path, failure message를 production 분기에 하드코딩하지 않는다.
@@ -37,8 +37,8 @@
 - `internal/adapter/orca/execution.go`: mutation 전 local validation의 typed non-invocation receipt.
 - `internal/adapter/orca/execution_test.go`: GitHub/GitLab marker mismatch와 client mutation 0회.
 - `internal/core/issueops/execution_api.go`: 변경 없이 CLI/MCP shared action 경계의 source of truth로 유지.
-- `cmd/harness/issueopscli/executioncmd/execution.go`: 변경 없이 기존 reconcile parser를 재사용.
-- `cmd/harness/mcpcli/mcp_tool_issueops_execution.go`: 변경 없이 기존 shared action dispatch를 재사용.
+- `cmd/issueops/issueopscli/executioncmd/execution.go`: 변경 없이 기존 reconcile parser를 재사용.
+- `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go`: 변경 없이 기존 shared action dispatch를 재사용.
 
 ---
 
@@ -86,13 +86,13 @@ func parseLegacyOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error
 - Canonical prepare marker:
 
 ```text
-agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69
+issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69
 ```
 
 - Canonical resume marker:
 
 ```text
-agent-harness issueops-v1 resume lifecycle=io-aaaaaaaaaaaa generation=2 operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab issue=2646
+issueops-v1 resume lifecycle=io-aaaaaaaaaaaa generation=2 operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab issue=2646
 ```
 
 - Consumes: `IssueOpsRecord.BranchPrepare`, `remote.ProviderFromURL`, `remote.IssueNumber`.
@@ -115,7 +115,7 @@ func TestOrcaIntentMarkerRoundTripsProviderAndPurposeIdentity(t *testing.T) {
 				Generation: 1, OperationID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 				Provider: "github", Issue: 69,
 			},
-			want: "agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69",
+			want: "issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69",
 		},
 		{
 			name: "gitlab resume",
@@ -124,7 +124,7 @@ func TestOrcaIntentMarkerRoundTripsProviderAndPurposeIdentity(t *testing.T) {
 				Generation: 2, OperationID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 				Provider: "gitlab", Issue: 2646,
 			},
-			want: "agent-harness issueops-v1 resume lifecycle=io-aaaaaaaaaaaa generation=2 operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab issue=2646",
+			want: "issueops-v1 resume lifecycle=io-aaaaaaaaaaaa generation=2 operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab issue=2646",
 		},
 	}
 	for _, test := range tests {
@@ -143,12 +143,12 @@ func TestOrcaIntentMarkerRoundTripsProviderAndPurposeIdentity(t *testing.T) {
 
 func TestOrcaIntentMarkerRejectsPartialDuplicateAndUnknownIdentity(t *testing.T) {
 	for _, marker := range []string{
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab",
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb issue=69",
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github provider=gitlab issue=69",
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=0",
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=bitbucket issue=69",
-		"agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69 extra=value",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=gitlab",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb issue=69",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github provider=gitlab issue=69",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=0",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=bitbucket issue=69",
+		"issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb provider=github issue=69 extra=value",
 	} {
 		if _, err := parseOrcaIntentMarker(marker); err == nil {
 			t.Fatalf("invalid marker was accepted: %q", marker)
@@ -169,7 +169,7 @@ provider == "github" || provider == "gitlab"
 
 - [ ] **Step 2: Write the AST source ratchet**
 
-Create `execution_orca_marker_source_test.go` using `filepath.WalkDir`, `go/parser`, and `ast.Inspect`. Recursively scan non-test `.go` files in `internal/core/issueops`, unquote every string literal, and fail when `agent-harness issueops-v1` appears outside `execution_orca_marker.go`:
+Create `execution_orca_marker_source_test.go` using `filepath.WalkDir`, `go/parser`, and `ast.Inspect`. Recursively scan non-test `.go` files in `internal/core/issueops`, unquote every string literal, and fail when `issueops-v1` appears outside `execution_orca_marker.go`:
 
 ```go
 func TestOrcaIntentMarkerLiteralHasOneProductionOwner(t *testing.T) {
@@ -191,7 +191,7 @@ func TestOrcaIntentMarkerLiteralHasOneProductionOwner(t *testing.T) {
 				return true
 			}
 			value, err := strconv.Unquote(literal.Value)
-			if err == nil && strings.Contains(value, "agent-harness issueops-v1") {
+			if err == nil && strings.Contains(value, "issueops-v1") {
 				t.Errorf("%s contains an independently owned Orca marker literal", path)
 			}
 			return true
@@ -221,7 +221,7 @@ Expected: compile failure for missing marker types/functions; after test scaffol
 In `execution_orca_marker.go`, keep the marker prefix literal in one constant:
 
 ```go
-const orcaIntentMarkerPrefix = "agent-harness issueops-v1"
+const orcaIntentMarkerPrefix = "issueops-v1"
 
 func (e *orcaIntentContractError) Error() string {
 	if strings.TrimSpace(e.Detail) == "" {
@@ -240,8 +240,8 @@ Render fixed field order only. Prepare requires generation 1 but omits the gener
 Parse with exact token count and exact field order. Do not accept map-style arbitrary ordering, duplicate fields, unknown fields, or provider/issue partial presence. `parseLegacyOrcaIntentMarker` accepts only the two old producer formats:
 
 ```text
-agent-harness issueops-v1 lifecycle=ID operation=OP
-agent-harness issueops-v1 resume lifecycle=ID generation=N operation=OP
+issueops-v1 lifecycle=ID operation=OP
+issueops-v1 resume lifecycle=ID generation=N operation=OP
 ```
 
 The legacy parser returns provider `""` and issue `0`; it never invents identity.
@@ -601,7 +601,7 @@ func writeLegacyNotInvokedResumeIntent(
 ) string {
 	t.Helper()
 	legacy := fmt.Sprintf(
-		"agent-harness issueops-v1 resume lifecycle=%s generation=%d operation=%s",
+		"issueops-v1 resume lifecycle=%s generation=%d operation=%s",
 		payload.LifecycleID, payload.Generation, payload.OperationID,
 	)
 	payload.Marker = legacy
@@ -731,10 +731,10 @@ Lore body must name `not_invoked_proven` as the sole migration authority and sta
 
 **Files:**
 - Modify only if a test exposes drift:
-  - `cmd/harness/issueopscli/executioncmd/execution_resume_test.go`
-  - `cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go`
+  - `cmd/issueops/issueopscli/executioncmd/execution_resume_test.go`
+  - `cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go`
   - `internal/core/lifecycle/lifecycle_execution_matrix_test.go`
-- Build artifact: `bin/agent-harness`
+- Build artifact: `bin/issueops`
 
 **Interfaces:**
 - CLI `issueops execution reconcile` and MCP `issueops_execution action=reconcile` continue to call `issueops.ExecuteExecution`.
@@ -749,14 +749,14 @@ Run as one all-or-nothing battery:
 go test ./internal/core/issueops ./internal/adapter/orca \
   -run 'OrcaIntentMarker|SealExternalOrcaIntent|ExecutionResume|ExecutionOrcaReconcile|LegacyOrca|InvokeIntent|ExactGit(Hub|Lab)Marker|Reconcile.*InspectOrca' \
   -count=1
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./internal/adapter/mcp \
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/adapter/mcp \
   -run 'ExecutionResume|ExecutionActionRequestFromMCP|IssueOpsExecution|IssueOpsAdvertisesOnlyExecutionActionTool' \
   -count=1
 go test ./internal/core/lifecycle \
   -run 'TestExecutionSnapshotFileCommandsReachTypedControlPlane|TestExactIssueOpsOwnerMutation' \
   -count=1
 go vet ./internal/core/issueops ./internal/adapter/orca
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: every command exits 0. If any command fails, fix the scoped defect and restart this battery from its first command.
@@ -767,8 +767,8 @@ Run:
 
 ```bash
 git diff --check
-rg -n 'agent-harness issueops-v1' internal/core/issueops --glob '*.go' --glob '!**/*_test.go'
-./bin/agent-harness issueops execution status --id io-803741d62baf --json
+rg -n 'issueops-v1' internal/core/issueops --glob '*.go' --glob '!**/*_test.go'
+./bin/issueops execution status --id io-803741d62baf --json
 ```
 
 Expected:
@@ -794,27 +794,27 @@ Expected: local and remote SHA match and the worktree is clean.
 Run:
 
 ```bash
-ah update
-agent-harness inspect --json
-agent-harness daemon status --json
-codex mcp get agent_harness
+io update
+issueops inspect --json
+issueops daemon status --json
+codex mcp get issueops
 claude mcp list
 ```
 
-Confirm the installed `agent-harness` resolves to the pushed build and both host integrations point at that installation. Do not run OpenWiki update.
+Confirm the installed `issueops` resolves to the pushed build and both host integrations point at that installation. Do not run OpenWiki update.
 
 - [ ] **Step 5: Preview the live recovery without mutation**
 
 Capture the current native identity without evaluating generated shell:
 
 ```bash
-identity_json="$(agent-harness issueops execution whoami --json)"
+identity_json="$(issueops execution whoami --json)"
 actor_host="$(jq -r '.host' <<<"$identity_json")"
 actor_session="$(jq -r '.session_id' <<<"$identity_json")"
 actor_pid="$(jq -r '.ancestry[0].pid' <<<"$identity_json")"
 actor_started="$(jq -r '.ancestry[0].started_at' <<<"$identity_json")"
 actor_executable="$(jq -r '.ancestry[0].executable' <<<"$identity_json")"
-agent-harness issueops execution reconcile \
+issueops execution reconcile \
   --id io-803741d62baf --preview \
   --host "$actor_host" --session-id "$actor_session" \
   --session-pid "$actor_pid" --session-started-at "$actor_started" \
@@ -830,7 +830,7 @@ Expected: operation ID and `owner_launch` pending remain unchanged and `external
 Run the same command with `--confirm` instead of `--preview`. Then read:
 
 ```bash
-agent-harness issueops execution status --id io-803741d62baf --json
+issueops execution status --id io-803741d62baf --json
 orca worktree show --worktree path:/Users/sample/workspace/service-api.worktrees/2646-unify-guest-promotion-api --json
 git -C /Users/sample/workspace/service-api.worktrees/2646-unify-guest-promotion-api status --short --branch
 ```
@@ -865,5 +865,5 @@ Only after Step 6 proves claimable authority and the exact Orca binding, use the
 - [ ] CLI/MCP use the shared action and hook mutation fences remain fail-closed.
 - [ ] Focused tests, focused race, vet, and build pass in one fresh verification run.
 - [ ] `main` local/remote SHA match after non-force push.
-- [ ] `ah update`, daemon, Codex MCP, and Claude MCP readbacks point to the updated binary.
+- [ ] `io update`, daemon, Codex MCP, and Claude MCP readbacks point to the updated binary.
 - [ ] Live #2646 recovery creates no duplicate Orca resources and preserves its code diff.

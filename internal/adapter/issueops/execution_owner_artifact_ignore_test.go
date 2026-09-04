@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
+	"issueops/internal/adapter/preflight"
 )
 
 // TestOwnerArtifactDirectoryIsInvisibleToGitStatus는 하네스가 만든 봉인
 // 아티팩트가 하네스 자신의 게이트를 막지 않는지 본다.
 //
 // `execution prepare`는 plan을 canonical worktree 안
-// `.agent-harness/issues/<n>/artifact/`에 materialize한다. 이 경로는 대상
-// 저장소에서 추적되지 않으므로 `git status --porcelain`에 `?? .agent-harness/`로
+// `.issueops/issues/<n>/artifact/`에 materialize한다. 이 경로는 대상
+// 저장소에서 추적되지 않으므로 `git status --porcelain`에 `?? .issueops/`로
 // 잡히고, strict PR readiness의 `worktree_clean`과 `cleanup finish`가 막힌다.
 // 구현을 모두 마친 PR 게이트에서야 `worktree_clean` 한 단어로 드러나기 때문에
 // 원인이 하네스 자신이라는 사실을 알아내기 어렵다. `ChangeFingerprint`도
@@ -26,7 +26,7 @@ import (
 // 그대로 보여야 한다.
 func TestOwnerArtifactDirectoryIsInvisibleToGitStatus(t *testing.T) {
 	repo := initIssueOpsRepo(t)
-	artifactDir := filepath.Join(repo, ".agent-harness", "issues", "1", "artifact")
+	artifactDir := filepath.Join(repo, ".issueops", "issues", "1", "artifact")
 
 	if err := writeExecutionOwnerArtifact(repo, filepath.Join(artifactDir, "plan.md"), []byte("plan\n")); err != nil {
 		t.Fatalf("write owner artifact: %v", err)
@@ -43,12 +43,12 @@ func TestOwnerArtifactDirectoryIsInvisibleToGitStatus(t *testing.T) {
 	// 사용자의 다른 미추적 파일은 계속 보여야 한다. 아티팩트 무시가
 	// 실제 dirt까지 가리면 게이트가 무의미해진다.
 	writeIssueOpsFile(t, repo, "user-change.txt", "user\n")
-	writeIssueOpsFile(t, repo, ".agent-harness/issues/1/notes.md", "notes\n")
+	writeIssueOpsFile(t, repo, ".issueops/issues/1/notes.md", "notes\n")
 	code, out, stderr = preflight.GitCmd(repo, "status", "--porcelain=v1", "--untracked-files=all")
 	if code != 0 {
 		t.Fatalf("git status failed: %s", stderr)
 	}
-	for _, want := range []string{"user-change.txt", ".agent-harness/issues/1/notes.md"} {
+	for _, want := range []string{"user-change.txt", ".issueops/issues/1/notes.md"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("git status must still report untracked %q; got:\n%s", want, out)
 		}

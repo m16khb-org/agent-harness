@@ -22,10 +22,10 @@ type IssueOpsActor struct {
 //     ReflectCleanupAudit를 재사용하지 않는 이유는 빈 completion payload가 열린
 //     이슈에 가짜 "완료 기록" 섹션을 append하고, 그 마커만 보는
 //     `completion_reflected` 게이트가 미래 사이클의 파괴적 finish를 영구
-//     개방하기 때문이다(brooks F3).
+//     개방하기 때문이다(design-review F3).
 //   - 보존 불변식 C2-F6("레코드 삭제 전 보존")의 의도적 예외: 원격에 남길
 //     자리가 없으므로 삭제 대상 레코드 전문을 결과 JSON에 담는 것이 유일한
-//     보존 채널이다(brooks F7 완화책).
+//     보존 채널이다(design-review F7 완화책).
 type CleanupAbandonRequest struct {
 	ID          string
 	Reason      string

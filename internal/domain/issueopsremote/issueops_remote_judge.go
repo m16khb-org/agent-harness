@@ -3,7 +3,7 @@ package remote
 import (
 	"fmt"
 
-	"agent-harness/internal/domain/judgement"
+	"issueops/internal/domain/judgement"
 )
 
 func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {

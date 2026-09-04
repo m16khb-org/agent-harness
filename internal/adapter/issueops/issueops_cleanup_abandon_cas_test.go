@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // 게이트를 통과한 레코드는 삭제 CAS에서도 통과해야 한다. 두 곳이 같은 조건을

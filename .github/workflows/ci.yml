@@ -5,7 +5,7 @@ name: CI
 # The self-verify gate runs with --judge none (LLM eval off by default) and a
 # pinned --seed, so this is pure wiring of existing commands: no live-skill
 # invocation and no model is required in CI. See
-# .agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md (A1).
+# .issueops/plans/harness-quality-program-v2-externally-benchmarked.md (A1).
 on:
   workflow_dispatch:
   push:
@@ -103,12 +103,12 @@ jobs:
 
       - name: Script unit tests (repo-owned validators)
         # scripts/*_test.py cover validate-skill.py, verify-skill-shell.py, and
-        # the engelbart skill contract; the Go suite only shells out to the
+        # the meeting-notes skill contract; the Go suite only shells out to the
         # validators themselves, so their own unit tests need this step.
         run: python3 -m unittest discover -s scripts -p '*_test.py'
 
       - name: Build
-        run: go build -o bin/agent-harness ./cmd/harness
+        run: go build -o bin/issueops ./cmd/issueops
 
       - name: Test (catches golden drift + all unit/contract regressions)
         run: go test ./... -count=1
@@ -125,4 +125,4 @@ jobs:
           }
           trap cleanup EXIT
           HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./scripts/install-native.sh --skip-build --path-mode=skip
-          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./bin/issueops self-verify --seed=100 --target-score=95 --json

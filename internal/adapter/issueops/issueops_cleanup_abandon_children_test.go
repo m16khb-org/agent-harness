@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	issueops "agent-harness/internal/contract/issueops"
+	issueops "issueops/internal/contract/issueops"
 )
 
 func childRefs(ids ...string) []issueops.IssueOpsChildCycleRef {

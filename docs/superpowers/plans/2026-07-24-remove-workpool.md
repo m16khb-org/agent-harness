@@ -1,25 +1,25 @@
 # Workpool One-Shot Removal Implementation Plan
 
-> **For the execution agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans`, `superpowers:test-driven-development`, and `superpowers:verification-before-completion`. Execute in `/Users/sample/workspace/agent-harness.worktrees/remove-workpool` only.
+> **For the execution agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans`, `superpowers:test-driven-development`, and `superpowers:verification-before-completion`. Execute in `/Users/sample/workspace/issueops.worktrees/remove-workpool` only.
 
 **Goal:** Remove the `workpool` feature in one source change, including its Go core, CLI, MCP, IssueOps gate, hook reminder, public contracts, tests, and active documentation.
 
 **Architecture:** Actual subagent concurrency belongs to each host runtime. Codex uses its native spawned-thread limit; durable delegated work uses IssueOps child cycles and the generation-fenced execution contract. The old workpool SQLite database is left inert on disk and is not migrated or deleted.
 
-**Tech Stack:** Go 1.26.x, standard `flag` CLI, MCP Go SDK, SQLite-backed harness state, golden contract tests, Markdown project guidance.
+**Tech Stack:** Go 1.26.x, standard `flag` CLI, MCP Go SDK, SQLite-backed issueops state, golden contract tests, Markdown project guidance.
 
 ## Global Constraints
 
-- Work only in `/Users/sample/workspace/agent-harness.worktrees/remove-workpool` on branch `m16khb/remove-workpool`.
+- Work only in `/Users/sample/workspace/issueops.worktrees/remove-workpool` on branch `m16khb/remove-workpool`.
 - Baseline is exact commit `9650fc908a085697b2caedc0d922b5267bda25a5`; `go test ./... -count=1` passed before implementation.
-- Do not touch `/Users/sample/workspace/agent-harness` or copy its uncommitted changes into this worktree.
+- Do not touch `/Users/sample/workspace/issueops` or copy its uncommitted changes into this worktree.
 - Remove the feature in one branch change. Do not add deprecation aliases, compatibility shims, hidden MCP aliases, or recovery commands.
-- Do not delete or mutate `~/.local/state/agent-harness/workpool/harness.db`; do not call mutating legacy `workpool status/reap/close` commands.
+- Do not delete or mutate `~/.local/state/issueops/workpool/issueops.db`; do not call mutating legacy `workpool status/reap/close` commands.
 - Do not commit, push, create a PR, merge, or clean either worktree.
 - Preserve unrelated behavior, but clean product-specific workpool material from tracked historical ADR/plan/spec/issue documents too. Rewrite mixed documents surgically around IssueOps child cycles, native host concurrency, or generic SQLite maintenance; do not delete unrelated sections or whole mixed-purpose documents.
 - Use `apply_patch` for source edits and file deletion. Use formatting/golden-generation commands only for mechanical output.
 - The public post-removal contract is:
-  - `agent-harness workpool ...` is an unknown top-level command.
+  - `issueops workpool ...` is an unknown top-level command.
   - every `workpool_*` MCP call is an unknown tool and no `workpool_*` tool appears in `tools/list`.
   - strict IssueOps PR readiness no longer reads a workpool namespace or emits `pool_incomplete:*`.
   - hook reminders contain child-cycle guidance only.
@@ -31,7 +31,7 @@
 - **Input:** clean branch at the baseline SHA plus this plan; no source-worktree changes and no runtime-state mutation.
 - **Output:** a reviewable uncommitted diff removing every live workpool surface, regenerated goldens, and verification evidence.
 - **Sanity cases:** unknown CLI command, absent MCP tools, child-only reminder, strict readiness unaffected by inert workpool state.
-- **Adversarial cases:** a stale `~/.local/state/agent-harness/workpool/harness.db` must neither be mutated nor restore a gate; historical Markdown mentions must not be mistaken for active functionality.
+- **Adversarial cases:** a stale `~/.local/state/issueops/workpool/issueops.db` must neither be mutated nor restore a gate; historical Markdown mentions must not be mistaken for active functionality.
 - **Tool truth:** verify with current CodeGraph/`rg`, Go tests, the built binary, and Git status; do not infer from this plan when repository evidence differs.
 
 ---
@@ -42,8 +42,8 @@
 - Modify: `internal/adapter/cli/usage_test.go` or the existing CLI catalog test that owns `Commands()`/`Usage()`
 - Modify: `internal/adapter/mcp/catalog_test.go`
 - Modify: `internal/core/hookprompt/orchestration_reminder_test.go`
-- Modify: `cmd/harness/statecli/state_cli_maintain_test.go`
-- Modify: `cmd/harness/hookcli/hook_stop_contract_test.go`
+- Modify: `cmd/issueops/statecli/state_cli_maintain_test.go`
+- Modify: `cmd/issueops/hookcli/hook_stop_contract_test.go`
 
 **Interfaces:**
 - Consumes: `cli.Commands`, `cli.Usage`, `mcp.AdvertisedTools`, `mcp.DispatchMap`, `orchestrationReminderValue`, state-maintenance result roots.
@@ -59,7 +59,7 @@
           t.Fatal("workpool command must be removed")
       }
   }
-  if strings.Contains(Usage("test"), "agent-harness workpool") {
+  if strings.Contains(Usage("test"), "issueops workpool") {
       t.Fatal("usage must not advertise workpool")
   }
   for _, tool := range AdvertisedTools() {
@@ -87,7 +87,7 @@
   Run:
 
   ```bash
-  go test ./internal/adapter/cli ./internal/adapter/mcp ./internal/core/hookprompt ./cmd/harness/statecli ./cmd/harness/hookcli -count=1
+  go test ./internal/adapter/cli ./internal/adapter/mcp ./internal/core/hookprompt ./cmd/issueops/statecli ./cmd/issueops/hookcli -count=1
   ```
 
   Expected: failures naming the still-present `workpool` command/tools/reminder/fixed root. If every test passes, strengthen the assertions until at least one failure proves the old feature is still observable.
@@ -97,21 +97,21 @@
 ### Task 2: Remove the CLI, MCP, and response-contract surfaces
 
 **Files:**
-- Delete: `cmd/harness/workpoolcli/workpool.go`
-- Delete: `cmd/harness/workpoolcli/workpool_cli_test.go`
-- Delete: `cmd/harness/mcpcli/mcp_tool_workpool.go`
-- Delete: `cmd/harness/mcpcli/mcp_workpool_test.go`
+- Delete: `cmd/issueops/workpoolcli/workpool.go`
+- Delete: `cmd/issueops/workpoolcli/workpool_cli_test.go`
+- Delete: `cmd/issueops/mcpcli/mcp_tool_workpool.go`
+- Delete: `cmd/issueops/mcpcli/mcp_workpool_test.go`
 - Delete: `internal/adapter/mcp/workpool_catalog.go`
-- Modify: `cmd/harness/harnessapp/cli_facade.go`
-- Modify: `cmd/harness/harnessapp/root_command_facade.go`
+- Modify: `cmd/issueops/issueopsapp/cli_facade.go`
+- Modify: `cmd/issueops/issueopsapp/root_command_facade.go`
 - Modify: `internal/adapter/cli/usage.go`
 - Modify: `internal/adapter/mcp/catalog.go`
 - Modify: `internal/adapter/mcp/catalog_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_tools.go`
-- Modify: `cmd/harness/mcpcli/mcp_sdk_server.go`
-- Modify: `cmd/harness/contractcli/contract.go`
-- Modify: `cmd/harness/harnessapp/response_contract_cli_snapshot_test.go`
-- Modify: `cmd/harness/harnessapp/response_contract_mcp_snapshot_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tools.go`
+- Modify: `cmd/issueops/mcpcli/mcp_sdk_server.go`
+- Modify: `cmd/issueops/contractcli/contract.go`
+- Modify: `cmd/issueops/issueopsapp/response_contract_cli_snapshot_test.go`
+- Modify: `cmd/issueops/issueopsapp/response_contract_mcp_snapshot_test.go`
 
 **Interfaces:**
 - Consumes: top-level CLI command map, adapter command catalog, MCP catalog/dispatch map, contract-schema registry.
@@ -138,7 +138,7 @@
   Run:
 
   ```bash
-  go test ./internal/adapter/cli ./internal/adapter/mcp ./cmd/harness/mcpcli ./cmd/harness/harnessapp ./cmd/harness/contractcli -count=1
+  go test ./internal/adapter/cli ./internal/adapter/mcp ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp ./cmd/issueops/contractcli -count=1
   ```
 
   Expected: compilation succeeds; golden tests may still fail only because checked-in snapshots have not yet been regenerated.
@@ -151,15 +151,15 @@
 - Delete: `internal/core/workpool/`
 - Delete: `internal/core/workpool_facade.go`
 - Delete: `internal/core/issueops_pool_gate_test.go`
-- Delete: `cmd/harness/issueopscli/issueops_pool_gate_cli_test.go`
+- Delete: `cmd/issueops/issueopscli/issueops_pool_gate_cli_test.go`
 - Modify: `internal/core/issueops_facade.go`
 - Modify: `internal/core/hookprompt/orchestration_reminder.go`
 - Modify: `internal/core/hookprompt/orchestration_reminder_test.go`
-- Modify: `cmd/harness/hookcli/hook_stop_contract_test.go`
+- Modify: `cmd/issueops/hookcli/hook_stop_contract_test.go`
 - Modify: `internal/core/state/state_maintain.go`
 - Modify: `internal/core/state/state_doctor_entry.go`
 - Modify: `internal/core/issueops/reset_legacy_process.go`
-- Modify: `cmd/harness/statecli/state_cli_maintain_test.go`
+- Modify: `cmd/issueops/statecli/state_cli_maintain_test.go`
 
 **Interfaces:**
 - Consumes: strict IssueOps readiness, child reminder, state root catalog, legacy process classifier.
@@ -203,15 +203,15 @@
 
   ```bash
   gofmt -w \
-    cmd/harness/contractcli/contract.go \
-    cmd/harness/harnessapp/cli_facade.go \
-    cmd/harness/harnessapp/root_command_facade.go \
-    cmd/harness/harnessapp/response_contract_cli_snapshot_test.go \
-    cmd/harness/harnessapp/response_contract_mcp_snapshot_test.go \
-    cmd/harness/hookcli/hook_stop_contract_test.go \
-    cmd/harness/mcpcli/mcp_sdk_server.go \
-    cmd/harness/mcpcli/mcp_tools.go \
-    cmd/harness/statecli/state_cli_maintain_test.go \
+    cmd/issueops/contractcli/contract.go \
+    cmd/issueops/issueopsapp/cli_facade.go \
+    cmd/issueops/issueopsapp/root_command_facade.go \
+    cmd/issueops/issueopsapp/response_contract_cli_snapshot_test.go \
+    cmd/issueops/issueopsapp/response_contract_mcp_snapshot_test.go \
+    cmd/issueops/hookcli/hook_stop_contract_test.go \
+    cmd/issueops/mcpcli/mcp_sdk_server.go \
+    cmd/issueops/mcpcli/mcp_tools.go \
+    cmd/issueops/statecli/state_cli_maintain_test.go \
     internal/adapter/cli/usage.go \
     internal/adapter/cli/usage_test.go \
     internal/adapter/mcp/catalog.go \
@@ -222,7 +222,7 @@
     internal/core/issueops_facade.go \
     internal/core/state/state_doctor_entry.go \
     internal/core/state/state_maintain.go
-  go test ./internal/core/... ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/statecli -count=1
+  go test ./internal/core/... ./cmd/issueops/issueopscli ./cmd/issueops/hookcli ./cmd/issueops/statecli -count=1
   rg -n -i 'workpool|work pool|DispatchWorkPool|WorkPool' --glob '*.go' cmd internal
   ```
 
@@ -233,9 +233,9 @@
 ### Task 4: Regenerate public goldens and prove removed commands are rejected
 
 **Files:**
-- Modify mechanically: `cmd/harness/testdata/usage.golden.txt`
-- Modify mechanically: `cmd/harness/testdata/mcp_tools.golden.json`
-- Modify mechanically: `cmd/harness/testdata/response_contracts.golden.json`
+- Modify mechanically: `cmd/issueops/testdata/usage.golden.txt`
+- Modify mechanically: `cmd/issueops/testdata/mcp_tools.golden.json`
+- Modify mechanically: `cmd/issueops/testdata/response_contracts.golden.json`
 
 **Interfaces:**
 - Consumes: live CLI usage, MCP advertised catalog, response-contract snapshot builders.
@@ -244,8 +244,8 @@
 - [ ] **Step 1: Run golden tests before update**
 
   ```bash
-  go test ./cmd/harness/contractgolden -run Golden -count=1
-  go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+  go test ./cmd/issueops/contractgolden -run Golden -count=1
+  go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
   ```
 
   Expected: focused golden mismatch failures showing removed workpool entries.
@@ -253,16 +253,16 @@
 - [ ] **Step 2: Regenerate goldens through the owning tests**
 
   ```bash
-  go test ./cmd/harness/contractgolden -run Golden -update -count=1
-  go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -update -count=1
+  go test ./cmd/issueops/contractgolden -run Golden -update -count=1
+  go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -update -count=1
   ```
 
 - [ ] **Step 3: Verify regenerated goldens**
 
   ```bash
-  go test ./cmd/harness/contractgolden -run Golden -count=1
-  go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-  rg -n -i 'workpool|work pool|workpool_' cmd/harness/testdata
+  go test ./cmd/issueops/contractgolden -run Golden -count=1
+  go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+  rg -n -i 'workpool|work pool|workpool_' cmd/issueops/testdata
   ```
 
   Expected: both tests pass and the final `rg` exits 1 with no matches.
@@ -271,7 +271,7 @@
 
   ```bash
   removal_bin="$(mktemp)"
-  go build -o "$removal_bin" ./cmd/harness
+  go build -o "$removal_bin" ./cmd/issueops
   "$removal_bin" workpool status --pool wp-does-not-exist
   ```
 
@@ -285,13 +285,13 @@
 - Modify: `AGENTS.md`
 - Modify: `README.md`
 - Modify: `README.en.md`
-- Modify: `.agent-harness/ARCHITECTURE.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/AGENT_WORKFLOW.md`
-- Modify: `.agent-harness/SUB_AGENT_PATTERNS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Modify: `.agent-harness/CAUTIONS.md`
-- Modify: `.agent-harness/ADR.md`
+- Modify: `.issueops/ARCHITECTURE.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/AGENT_WORKFLOW.md`
+- Modify: `.issueops/SUB_AGENT_PATTERNS.md`
+- Modify: `.issueops/TESTING.md`
+- Modify: `.issueops/CAUTIONS.md`
+- Modify: `.issueops/ADR.md`
 - Modify: `skills/issueops/SKILL.md`
 - Modify: `skills/issueops/references/orchestration.md`
 - Modify: `docs/superpowers/issues/2026-07-17-issue-21-owned-skills-review.md`
@@ -333,7 +333,7 @@
 
 - [ ] **Step 5: Do not rewrite unrelated generic terminology**
 
-  Do not alter generic algorithm discussion of a worker pool, database connection pool, Go worker goroutines, or host-native subagent pools unless it explicitly references the removed agent-harness product/command/state namespace.
+  Do not alter generic algorithm discussion of a worker pool, database connection pool, Go worker goroutines, or host-native subagent pools unless it explicitly references the removed issueops product/command/state namespace.
 
 - [ ] **Step 6: Audit all tracked documentation**
 
@@ -359,15 +359,15 @@
 
   ```bash
   gofmt -w \
-    cmd/harness/contractcli/contract.go \
-    cmd/harness/harnessapp/cli_facade.go \
-    cmd/harness/harnessapp/root_command_facade.go \
-    cmd/harness/harnessapp/response_contract_cli_snapshot_test.go \
-    cmd/harness/harnessapp/response_contract_mcp_snapshot_test.go \
-    cmd/harness/hookcli/hook_stop_contract_test.go \
-    cmd/harness/mcpcli/mcp_sdk_server.go \
-    cmd/harness/mcpcli/mcp_tools.go \
-    cmd/harness/statecli/state_cli_maintain_test.go \
+    cmd/issueops/contractcli/contract.go \
+    cmd/issueops/issueopsapp/cli_facade.go \
+    cmd/issueops/issueopsapp/root_command_facade.go \
+    cmd/issueops/issueopsapp/response_contract_cli_snapshot_test.go \
+    cmd/issueops/issueopsapp/response_contract_mcp_snapshot_test.go \
+    cmd/issueops/hookcli/hook_stop_contract_test.go \
+    cmd/issueops/mcpcli/mcp_sdk_server.go \
+    cmd/issueops/mcpcli/mcp_tools.go \
+    cmd/issueops/statecli/state_cli_maintain_test.go \
     internal/adapter/cli/usage.go \
     internal/adapter/cli/usage_test.go \
     internal/adapter/mcp/catalog.go \
@@ -388,9 +388,9 @@
 - [ ] **Step 2: Run focused contract gates**
 
   ```bash
-  go test ./internal/adapter/cli ./internal/adapter/mcp ./internal/core/hookprompt ./cmd/harness/statecli ./cmd/harness/hookcli -count=1
-  go test ./cmd/harness/contractgolden -run Golden -count=1
-  go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+  go test ./internal/adapter/cli ./internal/adapter/mcp ./internal/core/hookprompt ./cmd/issueops/statecli ./cmd/issueops/hookcli -count=1
+  go test ./cmd/issueops/contractgolden -run Golden -count=1
+  go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
   ```
 
 - [ ] **Step 3: Run full correctness and race gates**
@@ -406,7 +406,7 @@
 
   ```bash
   removal_bin="$(mktemp)"
-  go build -o "$removal_bin" ./cmd/harness
+  go build -o "$removal_bin" ./cmd/issueops
   "$removal_bin" version
   unlink "$removal_bin"
   ```
@@ -416,7 +416,7 @@
   ```bash
   rg -n -i 'workpool|work pool|DispatchWorkPool|WorkPool|workpool_' \
     --glob '*.go' --glob '*.json' --glob '*.txt' cmd internal
-  git ls-files 'internal/core/workpool/**' 'cmd/harness/workpoolcli/**' '*workpool*' '*pool_gate*'
+  git ls-files 'internal/core/workpool/**' 'cmd/issueops/workpoolcli/**' '*workpool*' '*pool_gate*'
   ```
 
   Expected: no live Go, golden, dedicated package, or pool-gate file remains. Repository-wide Markdown matches are limited to this plan and one compact ADR removal record.
@@ -424,7 +424,7 @@
 - [ ] **Step 6: Prove boundaries were respected**
 
   ```bash
-  git -C /Users/sample/workspace/agent-harness status --short
+  git -C /Users/sample/workspace/issueops system-status --short
   git status --short --branch
   ```
 

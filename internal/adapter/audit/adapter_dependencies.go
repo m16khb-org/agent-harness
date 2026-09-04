@@ -1,7 +1,7 @@
 package audit
 
 import (
-	policycontract "agent-harness/internal/contract/policy"
+	policycontract "issueops/internal/contract/policy"
 )
 
 // 명령 정책 평가·실행과 git 관측은 composition root가 설치한다. 이 package는

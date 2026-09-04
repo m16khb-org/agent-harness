@@ -112,10 +112,10 @@ else:
         raise SystemExit(1)
 PY
 
-[[ -x "$source_root/bin/agent-harness" ]] || fail_before_mutation 'source binary must exist'
+[[ -x "$source_root/bin/issueops" ]] || fail_before_mutation 'source binary must exist'
 [[ -x "$child_root/scripts/install-native.sh" ]] || fail_before_mutation 'child installer must exist'
 
-temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-child-smoke.XXXXXX")"
+temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/issueops-child-smoke.XXXXXX")"
 chmod 0700 "$temporary_root"
 before_file="$temporary_root/before.json"
 activated_file="$temporary_root/activated.json"
@@ -129,7 +129,7 @@ finalized=0
 lock_held=0
 restoring=0
 pending_signal=0
-state_root="${HARNESS_STATE_DIR:-${HOME:?}/.local/state/agent-harness}"
+state_root="${ISSUEOPS_STATE_DIR:-${HOME:?}/.local/state/issueops}"
 lock_path="$state_root/child-host-smoke.lock"
 local_head=""
 remote_head=""
@@ -159,8 +159,8 @@ import tomllib
 
 root, output, home, codex_home = sys.argv[1:]
 root = os.path.realpath(root)
-binary = os.path.join(root, "bin", "agent-harness")
-command = os.path.join(home, ".local", "bin", "agent-harness")
+binary = os.path.join(root, "bin", "issueops")
+command = os.path.join(home, ".local", "bin", "issueops")
 surfaces = [
     ("claude", "hooks", os.path.join(home, ".claude", "settings.json")),
     ("claude", "mcp", os.path.join(home, ".claude.json")),
@@ -340,7 +340,7 @@ import sys
 import tempfile
 
 root, claude_observation, home = sys.argv[1:]
-binary = os.path.join(root, "bin", "agent-harness")
+binary = os.path.join(root, "bin", "issueops")
 
 def instrument(path, observation):
     info = os.lstat(path)
@@ -351,7 +351,7 @@ def instrument(path, observation):
     hooks = document.get("hooks")
     if not isinstance(hooks, dict):
         raise SystemExit(1)
-    prefix = f"/usr/bin/env HARNESS_CHILD_SMOKE_HOOKS=1 HARNESS_CHILD_SMOKE_OBSERVATION_FILE={shlex.quote(observation)} "
+    prefix = f"/usr/bin/env ISSUEOPS_CHILD_SMOKE_HOOKS=1 ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE={shlex.quote(observation)} "
     for event, subcommand in (("SessionStart", "session-start"),):
         matches = 0
         for group in hooks.get(event, []):
@@ -401,18 +401,18 @@ import sys
 import tomllib
 
 root, home, codex_home = sys.argv[1:]
-binary = os.path.join(root, "bin", "agent-harness")
+binary = os.path.join(root, "bin", "issueops")
 with open(os.path.join(codex_home, "config.toml"), "rb") as handle:
-    codex_mcp = tomllib.load(handle).get("mcp_servers", {}).get("agent_harness", {})
+    codex_mcp = tomllib.load(handle).get("mcp_servers", {}).get("issueops", {})
 with open(os.path.join(codex_home, "hooks.json"), encoding="utf-8") as handle:
     codex_hooks = json.load(handle)
 with open(os.path.join(home, ".claude.json"), encoding="utf-8") as handle:
-    claude_mcp = json.load(handle).get("mcpServers", {}).get("agent_harness", {})
+    claude_mcp = json.load(handle).get("mcpServers", {}).get("issueops", {})
 with open(os.path.join(home, ".claude", "settings.json"), encoding="utf-8") as handle:
     claude_hooks = json.load(handle)
 
 for server in (codex_mcp, claude_mcp):
-    if server.get("command") != binary or server.get("args") != ["mcp"] or server.get("env", {}).get("HARNESS_ROOT") != root:
+    if server.get("command") != binary or server.get("args") != ["mcp"] or server.get("env", {}).get("ISSUEOPS_ROOT") != root:
         raise SystemExit(1)
 
 def event_commands(document, event):
@@ -437,7 +437,7 @@ for document, expected_by_event in contracts:
         for group in groups:
             for hook in group.get("hooks", []):
                 command = hook.get("command")
-                if isinstance(command, str) and "/bin/agent-harness' hook" in command:
+                if isinstance(command, str) and "/bin/issueops' hook" in command:
                     managed_events.add(event)
     if managed_events != set(expected_by_event):
         raise SystemExit(1)
@@ -447,7 +447,7 @@ for document, expected_by_event in contracts:
         managed = []
         for hook in event_commands(document, event):
             command = hook.get("command")
-            if isinstance(command, str) and "/bin/agent-harness' hook" in command and not command.startswith(f"'{binary}' hook"):
+            if isinstance(command, str) and "/bin/issueops' hook" in command and not command.startswith(f"'{binary}' hook"):
                 raise SystemExit(1)
             if isinstance(command, str) and command.startswith(managed_prefix):
                 managed.append(hook)
@@ -469,14 +469,14 @@ import subprocess
 import sys
 
 root = sys.argv[1]
-binary = os.path.join(root, "bin", "agent-harness")
+binary = os.path.join(root, "bin", "issueops")
 
 def run_bounded(command):
     import resource
     import tempfile
 
     environment = dict(os.environ)
-    environment["HARNESS_ROOT"] = root
+    environment["ISSUEOPS_ROOT"] = root
     limit = 64 << 10
 
     def cap_files():
@@ -497,14 +497,14 @@ def run_bounded(command):
         except UnicodeDecodeError:
             raise SystemExit(1)
 
-codex = json.loads(run_bounded(["codex", "mcp", "get", "agent_harness", "--json"]))
+codex = json.loads(run_bounded(["codex", "mcp", "get", "issueops", "--json"]))
 transport = codex.get("transport", {})
-if codex.get("name") != "agent_harness" or codex.get("enabled") is not True:
+if codex.get("name") != "issueops" or codex.get("enabled") is not True:
     raise SystemExit(1)
-if transport.get("type") != "stdio" or transport.get("command") != binary or transport.get("args") != ["mcp"] or transport.get("env", {}).get("HARNESS_ROOT") != root:
+if transport.get("type") != "stdio" or transport.get("command") != binary or transport.get("args") != ["mcp"] or transport.get("env", {}).get("ISSUEOPS_ROOT") != root:
     raise SystemExit(1)
-claude = run_bounded(["claude", "mcp", "get", "agent_harness"])
-for expected in ("Status: ✔ Connected", f"Command: {binary}", "Args: mcp", f"HARNESS_ROOT={root}"):
+claude = run_bounded(["claude", "mcp", "get", "issueops"])
+for expected in ("Status: ✔ Connected", f"Command: {binary}", "Args: mcp", f"ISSUEOPS_ROOT={root}"):
     if expected not in claude:
         raise SystemExit(1)
 PY
@@ -568,13 +568,13 @@ if set(value) != {"root_sha256", "binary_sha256", "command", "surfaces"}:
     raise SystemExit(1)
 sha = re.compile(r"[0-9a-f]{64}")
 expected_root = hashlib.sha256(os.path.realpath(root).encode()).hexdigest()
-with open(os.path.join(root, "bin", "agent-harness"), "rb") as handle:
+with open(os.path.join(root, "bin", "issueops"), "rb") as handle:
     expected_binary = hashlib.sha256(handle.read()).hexdigest()
 if value["root_sha256"] != expected_root or value["binary_sha256"] != expected_binary:
     raise SystemExit(1)
 command = value["command"]
-expected_command = os.path.join(os.environ["HOME"], ".local", "bin", "agent-harness")
-expected_target = os.path.join(os.path.realpath(root), "bin", "agent-harness")
+expected_command = os.path.join(os.environ["HOME"], ".local", "bin", "issueops")
+expected_target = os.path.join(os.path.realpath(root), "bin", "issueops")
 if not isinstance(command, dict) or set(command) != {"path", "target", "sha256"}:
     raise SystemExit(1)
 if command != {"path": expected_command, "target": expected_target, "sha256": expected_binary}:
@@ -742,7 +742,7 @@ finish() {
   local verdict="$requested_verdict"
   restoring=1
   set +e
-  HARNESS_ROOT="$source_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
+  ISSUEOPS_ROOT="$source_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
   local restore_install_status=$?
   restore_activation_snapshot "$activation_snapshot"
   local restore_snapshot_status=$?
@@ -847,8 +847,8 @@ IFS=$'\t' read -r remote_head remote_name remote_extra <<<"$remote_output"
 codex_version="$(bounded_version codex)" || fail_before_mutation 'Codex version probe failed'
 claude_version="$(bounded_version claude)" || fail_before_mutation 'Claude version probe failed'
 
-(cd "$child_root" && go build -o "$child_root/bin/agent-harness" ./cmd/harness) || fail_before_mutation 'child build failed'
-child_binary="$child_root/bin/agent-harness"
+(cd "$child_root" && go build -o "$child_root/bin/issueops" ./cmd/issueops) || fail_before_mutation 'child build failed'
+child_binary="$child_root/bin/issueops"
 [[ -x "$child_binary" ]] || fail_before_mutation 'child binary is not executable'
 "$child_binary" version >/dev/null || fail_before_mutation 'child binary version check failed'
 child_binary_sha256="$(file_sha256 "$child_binary")" || fail_before_mutation 'child binary digest failed'
@@ -856,7 +856,7 @@ child_binary_sha256="$(file_sha256 "$child_binary")" || fail_before_mutation 'ch
 dry_home="$temporary_root/dry-home"
 mkdir -p "$dry_home/.codex"
 chmod 0700 "$dry_home" "$dry_home/.codex"
-HOME="$dry_home" CODEX_HOME="$dry_home/.codex" HARNESS_ROOT="$child_root" \
+HOME="$dry_home" CODEX_HOME="$dry_home/.codex" ISSUEOPS_ROOT="$child_root" \
   "$child_binary" install --dry-run --project-local --path-mode=skip --json >"$dry_run_file" || fail_before_mutation 'child install dry-run failed'
 validate_install_dry_run "$dry_run_file" || fail_before_mutation 'child install dry-run contract failed'
 validate_managed_activation_identity "$source_root" || fail_before_mutation 'current activation does not belong to source-root'
@@ -866,7 +866,7 @@ validate_activation_digest "$before_file" "$source_root" || fail_before_mutation
 capture_activation_snapshot "$activation_snapshot" || fail_before_mutation 'cannot capture exact source activation snapshot'
 
 mutation_started=1
-HARNESS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --adopt-command-file --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
+ISSUEOPS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --adopt-command-file --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
 validate_managed_activation_identity "$child_root" || fail_after_mutation 'activated managed identity drifted'
 host_mcp_readback "$child_root" activated || fail_after_mutation 'activated host-native MCP readback failed'
 instrument_claude_child_smoke_hooks "$child_root" "$claude_observation" || fail_after_mutation 'Claude child smoke hook instrumentation failed'
@@ -884,14 +884,14 @@ PY
 [[ "$(bounded_version codex)" == "$codex_version" ]] || fail_after_mutation 'Codex version drifted after activation'
 [[ "$(bounded_version claude)" == "$claude_version" ]] || fail_after_mutation 'Claude version drifted after activation'
 
-evidence_dir="$child_root/.agent-harness/evidence/child-host-smoke"
+evidence_dir="$child_root/.issueops/evidence/child-host-smoke"
 for host in codex claude; do
   observation="$temporary_root/$host-observation.json"
   (
     cd "$child_root"
-    HARNESS_TOOL_CONFORMANCE_LIVE=1 \
-    HARNESS_CHILD_SMOKE_HOOKS=1 \
-    HARNESS_CHILD_SMOKE_OBSERVATION_FILE="$observation" \
+    ISSUEOPS_TOOL_CONFORMANCE_LIVE=1 \
+    ISSUEOPS_CHILD_SMOKE_HOOKS=1 \
+    ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE="$observation" \
       "$child_binary" contract conformance live \
         --hosts "$host" \
         --only "$host:empty_object" \

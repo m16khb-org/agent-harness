@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "algorithm-optimization",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a0027e",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "7ce6a8178fedbfd1088f512e9cd0bd708e7044988afd90561ef6e204535277c6",
+      "receipt_bytes": 2347
+    },
+    {
+      "task_id": "st_01a002ca",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "8cab45aeb683e864e744ce6c2194f8621e1682dcb72af69c8c660021b69dc591",
+      "receipt_bytes": 8860
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "algorithm-optimization/TASK.md",
+      "fixture_sha256": "27e0bfe13fa4900567ca287b06f920fa70ef0018d6fc1843cc23958b47144170",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "profile_hot_path",
+        "quadratic_scaling"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "algorithm-optimization/BOUNDARY.md",
+      "fixture_sha256": "52ede4bd1ce0207c233a83b1693482fb2c971d829af47d1554943cb8d66be63e",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "no_change_threshold",
+        "crossover_evidence"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "algorithm-optimization/OPERATIONAL.md",
+      "fixture_sha256": "a830f8df2cef9c8ea94eeb3953c5413a989b5b68f4c3033b7e31acc0d52de642",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "complexity_bound",
+        "memory_budget_invariant"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

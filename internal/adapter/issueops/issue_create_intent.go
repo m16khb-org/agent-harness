@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/linking"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsremote "agent-harness/internal/domain/issueopsremote"
+	"issueops/internal/adapter/issueops/linking"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsremote "issueops/internal/domain/issueopsremote"
 )
 
 func BeginIssueCreateIntent(
@@ -45,7 +45,7 @@ func BeginIssueCreateIntent(
 		}
 		record.IssueCreateIntent = &issueopscontract.IssueOpsIssueCreateIntent{
 			OperationID:      strings.TrimSpace(request.OperationID),
-			Marker:           "<!-- agent-harness:issue-create:" + strings.TrimSpace(request.OperationID) + " -->",
+			Marker:           "<!-- issueops:issue-create:" + strings.TrimSpace(request.OperationID) + " -->",
 			Provider:         strings.TrimSpace(request.Provider),
 			ProjectAuthority: strings.TrimSpace(request.ProjectAuthority),
 			Title:            strings.TrimSpace(request.Title),

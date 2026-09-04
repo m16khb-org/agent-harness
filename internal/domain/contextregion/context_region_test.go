@@ -1,9 +1,9 @@
 package contextregion_test
 
 import (
-	docs "agent-harness/internal/adapter/docs"
-	"agent-harness/internal/domain/contextregion"
 	"encoding/json"
+	docs "issueops/internal/adapter/docs"
+	"issueops/internal/domain/contextregion"
 	"os"
 	"path/filepath"
 	"testing"
@@ -128,10 +128,10 @@ func TestDocsIndexImmutablePrefixIsByteDeterministic(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("# Root\n\n## Rules\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, ".agent-harness"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".issueops"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".agent-harness", "ARCHITECTURE.md"), []byte("# Arch\n\n## Boundaries\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".issueops", "ARCHITECTURE.md"), []byte("# Arch\n\n## Boundaries\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

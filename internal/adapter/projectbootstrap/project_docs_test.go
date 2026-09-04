@@ -1,20 +1,20 @@
 package projectbootstrap
 
 import (
-	projectdoccontract "agent-harness/internal/contract/projectdoc"
 	"encoding/json"
+	projectdoccontract "issueops/internal/contract/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/projectdocs"
-	projectdoc "agent-harness/internal/domain/projectdoc"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	"issueops/internal/adapter/projectdocs"
+	projectdoc "issueops/internal/domain/projectdoc"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 )
 
 func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/app\n")
 	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Existing Rules\n\nKeep this.\n")
@@ -33,7 +33,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
-	if projectPlanContainsRel(dry.Files, ".agent-harness/VCS.md") {
+	if projectPlanContainsRel(dry.Files, ".issueops/VCS.md") {
 		t.Fatalf("optional VCS.md must not be created by bootstrap: %+v", dry.Files)
 	}
 	if dry.LifecycleState.ProjectStateDir == "" || dry.LifecycleState.ProjectJSONPath == "" {
@@ -69,7 +69,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		t.Fatalf("persisted metadata missing project profile: %+v", written.LifecycleState.Profile.Metadata)
 	}
 	agents := mustRead(t, filepath.Join(root, "AGENTS.md"))
-	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, projectdocdomain.AgentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
+	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, projectdocdomain.AgentsStartMarker) || !strings.Contains(agents, ".issueops/TESTING.md") || !strings.Contains(agents, ".issueops/OPERATIONS.md") {
 		t.Fatalf("AGENTS.md marker block not merged correctly:\n%s", agents)
 	}
 	for _, name := range projectdocdomain.ProjectDocNames() {
@@ -118,7 +118,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 }
 
 func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
@@ -127,10 +127,10 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 		task string
 		want []string
 	}{
-		{"commit and push", []string{"AGENTS.md", ".agent-harness/COMMIT_POLICY.md", ".agent-harness/TESTING.md"}},
-		{"deploy with env", []string{"AGENTS.md", ".agent-harness/OPERATIONS.md", ".agent-harness/TECH_STACK.md"}},
-		{"conflicting instructions", []string{"AGENTS.md", ".agent-harness/CONSTITUTION.md"}},
-		{"finish work", []string{"AGENTS.md", ".agent-harness/AGENT_WORKFLOW.md"}},
+		{"commit and push", []string{"AGENTS.md", ".issueops/COMMIT_POLICY.md", ".issueops/TESTING.md"}},
+		{"deploy with env", []string{"AGENTS.md", ".issueops/OPERATIONS.md", ".issueops/TECH_STACK.md"}},
+		{"conflicting instructions", []string{"AGENTS.md", ".issueops/CONSTITUTION.md"}},
+		{"finish work", []string{"AGENTS.md", ".issueops/AGENT_WORKFLOW.md"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.task, func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 }
 
 func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
 	mustWrite(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "COMMIT_POLICY.md"), "# Custom Commit Policy\n\nKeep local policy detail.\n")
@@ -185,7 +185,7 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 }
 
 func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
@@ -198,7 +198,7 @@ func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
 }
 
 func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -227,7 +227,7 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 		OK:       true,
 		Kind:     "project_docs_bootstrap",
 		RepoRoot: "/repo",
-		DocsDir:  "/repo/.agent-harness",
+		DocsDir:  "/repo/.issueops",
 		Write:    true,
 		Sync:     true,
 		DryRun:   false,
@@ -243,7 +243,7 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 			},
 		},
 		Files: []projectdoc.ProjectDocsPlannedFile{
-			{RelPath: ".agent-harness/ARCHITECTURE.md", Action: "write", SHA256: "abc"},
+			{RelPath: ".issueops/ARCHITECTURE.md", Action: "write", SHA256: "abc"},
 		},
 	}
 
@@ -254,10 +254,10 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 	text := string(payload)
 	for _, want := range []string{
 		`"repo_root":"/repo"`,
-		`"docs_dir":"/repo/.agent-harness"`,
+		`"docs_dir":"/repo/.issueops"`,
 		`"package_managers":["go"]`,
 		`"lifecycle_state"`,
-		`"rel_path":".agent-harness/ARCHITECTURE.md"`,
+		`"rel_path":".issueops/ARCHITECTURE.md"`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("JSON payload missing %s: %s", want, text)
@@ -266,7 +266,7 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 }
 
 func TestBootstrapKeepsLegacyFlatLayoutUnmigrated(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -323,7 +323,7 @@ func TestBootstrapKeepsLegacyFlatLayoutUnmigrated(t *testing.T) {
 }
 
 func TestBootstrapPlanMarksPreservedFilesOnDryRun(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -357,7 +357,7 @@ func TestBootstrapPlanMarksPreservedFilesOnDryRun(t *testing.T) {
 }
 
 func TestBootstrapCreatesDesignDocOnlyForClientRepositories(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	clientRoot := t.TempDir()
 	mustWrite(t, filepath.Join(clientRoot, "package.json"), `{"dependencies":{"react":"^18.0.0"},"devDependencies":{"vite":"^5.0.0"}}`)
 	mustWrite(t, filepath.Join(clientRoot, "DESIGN.md"), "# Curated Design\n")

@@ -11,10 +11,10 @@ import (
 	"sort"
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
-	statedomain "agent-harness/internal/domain/state"
-	"agent-harness/internal/domain/statepath"
-	stateport "agent-harness/internal/port/state"
+	statecontract "issueops/internal/contract/state"
+	statedomain "issueops/internal/domain/state"
+	"issueops/internal/domain/statepath"
+	stateport "issueops/internal/port/state"
 )
 
 const stateBucket = "state"

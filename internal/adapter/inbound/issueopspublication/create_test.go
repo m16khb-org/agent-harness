@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
-	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/issueops"
+	publicationcontract "issueops/internal/contract/issueopspublication"
+	"issueops/internal/port"
 )
 
 func TestCreateHandlerMapsAllPublicFields(t *testing.T) {

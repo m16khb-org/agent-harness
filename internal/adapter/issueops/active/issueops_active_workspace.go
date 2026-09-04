@@ -1,8 +1,8 @@
 package active
 
 import (
-	"agent-harness/internal/adapter/issueops/pathutil"
-	model "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/pathutil"
+	model "issueops/internal/contract/issueops"
 )
 
 // CycleForWorkspace는 주어진 경로에서 작업 중인 non-done 사이클을 돌려준다.

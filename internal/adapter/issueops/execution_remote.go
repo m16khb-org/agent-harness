@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/artifactverify"
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/issueopsremote"
-	"agent-harness/internal/domain/policy"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/issueops/artifactverify"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/domain/issueopsremote"
+	"issueops/internal/domain/policy"
+	"issueops/internal/port"
 )
 
 var externalIntentBucket = fmt.Sprintf("external_intent_v%d", issueops.IssueOpsSchemaVersion)
@@ -96,13 +96,13 @@ func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (i
 		if record.Execution.Pending != nil {
 			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("external intent is already pending; run execution reconcile")
 		}
-		// publication 하드 게이트: planner급 brooks 리뷰의 pass 기록 없이는
+		// publication 하드 게이트: planner급 design-review 리뷰의 pass 기록 없이는
 		// publication을 열지 않는다(설계 v5 WS5). execution이 있는 모든 모드가
 		// 대상이다 — 9단계 재편에서 direct가 기본 경로가 되고 검증 단계가 이
 		// 기록을 만든다.
 		currentReviewFingerprint := implementation.ChangeFingerprint(record)
 		if missing := implementationReviewMissing(record, currentReviewFingerprint); missing != "" {
-			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create requires a pass implementation review (%s); record it with `agent-harness issueops implementation-review record --id %s ...`", missing, record.ID)
+			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create requires a pass implementation review (%s); record it with `issueops implementation-review record --id %s ...`", missing, record.ID)
 		}
 		// ai_slop_clean 선례(strict:59-61)와 동형: 리뷰가 fingerprint를 봉인했는데
 		// 현재 값을 계산할 수 없으면 staleness 판정을 조용히 끄는 대신 거부한다.
@@ -163,7 +163,7 @@ func beginRemotePullRequestIntentWithOperationID(stateRoot string, expected issu
 	if !validRemotePullRequestOperationID(operationID) {
 		return issueops.IssueOpsRecord{}, externalRemotePRPayload{}, fmt.Errorf("remote operation ID must be exactly 32 lowercase hexadecimal characters")
 	}
-	marker := "<!-- agent-harness:issueops-v1 operation=" + operationID + " -->"
+	marker := "<!-- issueops:issueops-v1 operation=" + operationID + " -->"
 	providerReq.Body = strings.TrimSpace(providerReq.Body) + "\n\n" + marker
 	payload := externalRemotePRPayload{
 		SchemaVersion: issueops.IssueOpsSchemaVersion, OperationID: operationID, Provider: provider, Kind: kind,

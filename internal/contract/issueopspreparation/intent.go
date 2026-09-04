@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 	InvocationUnknown     = "unknown"
 	MaxInvocationAttempts = 2
 
-	markerPrefix = "agent-harness issueops-v1"
+	markerPrefix = "issueops-v1"
 )
 
 var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -481,10 +481,10 @@ func parseMarker(marker string) (MarkerIdentity, error) {
 	identity := MarkerIdentity{}
 	var offset int
 	switch {
-	case len(fields) == 6 && fields[0] == "agent-harness" && fields[1] == "issueops-v1":
-		identity.Purpose, identity.Generation, offset = PurposePrepare, 1, 2
-	case len(fields) == 8 && fields[0] == "agent-harness" && fields[1] == "issueops-v1" && fields[2] == "resume":
-		identity.Purpose, offset = PurposeResume, 3
+	case len(fields) == 5 && fields[0] == "issueops-v1":
+		identity.Purpose, identity.Generation, offset = PurposePrepare, 1, 1
+	case len(fields) == 7 && fields[0] == "issueops-v1" && fields[1] == "resume":
+		identity.Purpose, offset = PurposeResume, 2
 	default:
 		return MarkerIdentity{}, invalidMarker()
 	}

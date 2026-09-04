@@ -66,7 +66,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
-`agent-harness`는 Codex, Claude Code, Omo native 세 호스트에서 같은 방식으로 사용할 수 있는 개인 에이전트 하네스 프로젝트다.
+`issueops`는 Codex, Claude Code, Omo native 세 호스트에서 같은 방식으로 사용할 수 있는 개인 에이전트 하네스 프로젝트다.
 이 문서는 에이전트가 이 저장소에서 작업할 때 먼저 읽어야 하는 루트 규칙이다.
 
 <!-- project rules -->
@@ -90,48 +90,48 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | 통합 표면 | 1차 CLI, 2차 daemon-backed MCP stdio proxy, 3차 local job worker | 모든 에이전트는 shell/CLI를 다룰 수 있고, Claude Code는 MCP 연동이 자연스럽다. MCP backend daemon은 공통 context/state에 쓰고, 장기 job worker는 필요성이 확인된 뒤 도입한다. |
 | 구현 언어 | **Go** | 현재 로컬 toolchain이 Go 1.26.3이고, 단일 바이너리·동시성·CLI/MCP/daemon 구현 생산성이 Rust보다 유리하다. |
 
-상세 근거와 단계별 계획은 `.agent-harness/ADR.md`를 따른다.
+상세 근거와 단계별 계획은 `.issueops/ADR.md`를 따른다.
 
 ## 6. Required Reading / Agent Docs
 
 작업 시작 전 다음 문서를 범위에 맞게 확인한다.
 
-- `.agent-harness/CONSTITUTION.md`: 문서 우선순위, 안전·정확성·아키텍처 원칙
-- `.agent-harness/ARCHITECTURE.md`: Codex/Claude/Omo 공용 하네스 구조, plugin vs worker 판단, 경계
-- `.agent-harness/CONVENTIONS.md`: Go 패키지 구조, CLI/MCP/worker 구현 컨벤션
-- `.agent-harness/COMMIT_POLICY.md`: Conventional Commit + Lore body 하이브리드 커밋 규칙
-- `.agent-harness/TESTING.md`: 문서/코드 변경 검증 기준
-- `.agent-harness/OPEN_API_SPEC.md`: endpoint/DTO/OpenAPI 변경 시 정적+에이전트 문서화 게이트 프롬프트
-- `.agent-harness/CAUTIONS.md`: 반복 실수와 운영 주의사항
-- `.agent-harness/TECH_STACK.md`: 선택한 기술 스택과 예정 명령어
-- `.agent-harness/ADR.md`: 구현 로드맵과 완료 기준
-- `.agent-harness/OPERATIONS.md`: Codex/Claude/Omo native skill, MCP, CLI 사용법
-- `.agent-harness/AGENT_WORKFLOW.md`: 에이전트 시작·작업·검증·완료 흐름과 MCP/문서 사용 규칙
+- `.issueops/CONSTITUTION.md`: 문서 우선순위, 안전·정확성·아키텍처 원칙
+- `.issueops/ARCHITECTURE.md`: Codex/Claude/Omo 공용 하네스 구조, plugin vs worker 판단, 경계
+- `.issueops/CONVENTIONS.md`: Go 패키지 구조, CLI/MCP/worker 구현 컨벤션
+- `.issueops/COMMIT_POLICY.md`: Conventional Commit + Lore body 하이브리드 커밋 규칙
+- `.issueops/TESTING.md`: 문서/코드 변경 검증 기준
+- `.issueops/OPEN_API_SPEC.md`: endpoint/DTO/OpenAPI 변경 시 정적+에이전트 문서화 게이트 프롬프트
+- `.issueops/CAUTIONS.md`: 반복 실수와 운영 주의사항
+- `.issueops/TECH_STACK.md`: 선택한 기술 스택과 예정 명령어
+- `.issueops/ADR.md`: 구현 로드맵과 완료 기준
+- `.issueops/OPERATIONS.md`: Codex/Claude/Omo native skill, MCP, CLI 사용법
+- `.issueops/AGENT_WORKFLOW.md`: 에이전트 시작·작업·검증·완료 흐름과 MCP/문서 사용 규칙
 - `skills/self-verify/SKILL.md`: 자기 검증 루프 실행 계약
 - `skills/self-augment/SELF_AUGMENTATION.md`: 자가 증강 루프의 95점 종료 게이트, 테스트/QA/개선 실행 계약
 
-충돌 시 우선순위는 **현재 사용자 지시 → 가장 가까운 `AGENTS.md`/`CLAUDE.md` → 루트 `AGENTS.md` → `.agent-harness/CONSTITUTION.md` → 나머지 project docs → README/과거 계획** 순서다.
+충돌 시 우선순위는 **현재 사용자 지시 → 가장 가까운 `AGENTS.md`/`CLAUDE.md` → 루트 `AGENTS.md` → `.issueops/CONSTITUTION.md` → 나머지 project docs → README/과거 계획** 순서다.
 
 ## 7. Working Contract
 
 - 핵심 동작은 host-specific plugin에 넣지 말고 Go core/port에 둔다.
-- **Sub-agent 사용 원칙:** 메인 에이전트가 직접 작업을 수행한다. Sub-agent는 12가지 검증된 net-positive 패턴(악마의 변호인, 대량 탐색, 병렬 독립 연구, 격리 작업 등 — `.agent-harness/SUB_AGENT_PATTERNS.md` 참조)에만 예외적으로 사용한다. 단일 파일 편집, 전체 컨텍스트가 필요한 작업, 교차 아키텍처 판단은 sub-agent로 위임하지 않는다.
+- **Sub-agent 사용 원칙:** 메인 에이전트가 직접 작업을 수행한다. Sub-agent는 12가지 검증된 net-positive 패턴(악마의 변호인, 대량 탐색, 병렬 독립 연구, 격리 작업 등 — `.issueops/SUB_AGENT_PATTERNS.md` 참조)에만 예외적으로 사용한다. 단일 파일 편집, 전체 컨텍스트가 필요한 작업, 교차 아키텍처 판단은 sub-agent로 위임하지 않는다.
 - Codex용 plugin/skill, Claude Code용 slash command/hook/MCP 설정, Omo용 native skill/MCP/extension 설정은 core 호출을 위한 얇은 어댑터로 둔다.
 - 공용 스킬은 `skills/<skill-name>/`을 source of truth로 두고, 기본 설치는 사용자 홈의 Codex/Claude/Omo skill 경로만 연결한다. 적용 대상 레포에는 명시적 `--project-local` 없이는 파일을 쓰지 않는다.
 - 원격에 남는 한국어 텍스트는 write 직전에 `fluent-korean` 스킬을 호출해 다듬는다. 대상은 issue와 PR/MR의 제목·본문, issue 댓글, review thread 답글이다. 한국어 게이트는 한글 비율만 검사하므로 AI가 쓴 티는 이 호출로만 걸러진다.
-- 커밋 메시지는 `.agent-harness/COMMIT_POLICY.md`의 **Conventional Commit subject + Lore body** 형식을 따른다.
+- 커밋 메시지는 `.issueops/COMMIT_POLICY.md`의 **Conventional Commit subject + Lore body** 형식을 따른다.
 - CLI는 사람이 직접 실행해도 이해 가능한 JSON/text 출력을 제공해야 한다.
 - MCP tool schema와 CLI JSON 출력은 호스트별로 다르게 만들지 않는다.
-- command policy는 built-in catalog를 기본으로 하되 workspace별 `.agent-harness/policy.json` override를 매 평가마다 로드한다. load/parse 문제는 기존 `warnings` 필드로 노출하고, 전역 first-root cache를 만들지 않는다.
+- command policy는 built-in catalog를 기본으로 하되 workspace별 `.issueops/policy.json` override를 매 평가마다 로드한다. load/parse 문제는 기존 `warnings` 필드로 노출하고, 전역 first-root cache를 만들지 않는다.
 - IssueOps record JSON에는 `schema_version`이 포함된다. 현재 쓰기 버전은 1이며, missing/zero/future/unsupported schema는 모두 generic `invalid state`로 fail-safe 거부한다(`TestIssueOpsReaderRejectsMissingAndZeroSchema`). 자동 승격이나 변환 명령은 없다.
 - local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다. 현재 daemon은 MCP proxy backend다.
-- 에이전트 state는 repo 소스와 분리한다. 추적해야 할 지식은 `.agent-harness/`에, 런타임 캐시/로그는 user state 또는 ignored workspace state에 둔다.
+- 에이전트 state는 repo 소스와 분리한다. 추적해야 할 지식은 `.issueops/`에, 런타임 캐시/로그는 user state 또는 ignored workspace state에 둔다.
 
 ## 8. Current Directory Map
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | composition root와 inbound CLI/MCP/daemon/hook adapter. top-level 명령(정규 목록은 `agent-harness --help`): `api-doc`, `bootstrap`, `channel`, `contract`, `daemon`, `docs`, `doctor`, `gates`, `guard`, `hook`, `inspect`, `install`, `issueops`, `loop`, `mcp`, `policy`, `preflight`, `project`, `quality`, `self-augment`, `self-verify`, `state`, `status`, `trace`, `update`, `verify-work`, `version`, `web-fetch`, `worker` |
+| `cmd/issueops/` | composition root와 inbound CLI/MCP/daemon/hook adapter. top-level 명령(정규 목록은 `issueops --help`): `api-doc`, `bootstrap`, `channel`, `contract`, `daemon`, `docs`, `doctor`, `gates`, `guard`, `hook`, `inspect`, `install`, `issueops`, `loop`, `mcp`, `policy`, `preflight`, `project`, `quality`, `self-augment`, `self-verify`, `state`, `status`, `trace`, `update`, `verify-work`, `version`, `web-fetch`, `worker` |
 | `internal/contract/` | CLI, MCP, state가 공유하는 versioned DTO와 response contract |
 | `internal/domain/` | filesystem, process, DB를 모르는 순수 규칙, reducer, classifier |
 | `internal/application/` | domain과 좁은 port를 조합하는 capability use case |
@@ -143,9 +143,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | `configs/` | Codex/Claude/Omo/MCP 설정 템플릿 |
 | `.claude/skills/` | 명시적 `--project-local` 때만 생성되는 Claude Code project-native skill 연결. 기본 설치에서는 생성하지 않으며 git 추적 금지 |
 | `.mcp.json` | 이 하네스 repo의 dogfood/project-local Claude MCP 설정. 기본 설치는 user-scope MCP를 사용하며 대상 repo에는 쓰지 않음 |
-| `bin/agent-harness` | 빌드된 로컬 하네스 CLI/MCP 바이너리 |
+| `bin/issueops` | 빌드된 로컬 하네스 CLI/MCP 바이너리 |
 | `skills/` | Codex/Claude/Omo가 공유하는 스킬 source of truth |
-| `.agent-harness/` | 에이전트용 프로젝트 지식 베이스 |
+| `.issueops/` | 에이전트용 프로젝트 지식 베이스 |
 
 문서·설정·실행 코드가 함께 존재하므로, 작업 전 실제 tree와 설치 상태를 다시 확인한다.
 
@@ -155,29 +155,29 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ```bash
 find . -maxdepth 3 -type f | sort
-find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
+find .issueops -maxdepth 1 -type f -name '*.md' | sort
 python3 scripts/validate-skill.py skills/atomic-commit-push
 ./scripts/install-native.sh
-./bin/agent-harness bootstrap --dry-run
+./bin/issueops bootstrap --dry-run
 ./scripts/install-native.sh --dry-run --json
 gofmt -l $(git ls-files '*.go')
 go vet ./...
 go test ./... -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness inspect --json
-./bin/agent-harness docs --json
-./bin/agent-harness daemon status --json
-./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state maintain --json && rm -rf "$tmp_state"
-tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
-gates_demo="$(mktemp -d)" && (cd "$gates_demo" && "$OLDPWD/bin/agent-harness" gates init --scope smoke --gate "G1: smoke | CHECK: printf %s ok | EXPECT: ok" --json && "$OLDPWD/bin/agent-harness" gates check --cwd "$gates_demo" --workspace-root "$gates_demo" --json && "$OLDPWD/bin/agent-harness" gates report --cwd "$gates_demo" --workspace-root "$gates_demo") && rm -rf "$gates_demo"
-./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-codex mcp get agent_harness
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops inspect --json
+./bin/issueops docs --json
+./bin/issueops daemon status --json
+./bin/issueops policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+tmp_state="$(mktemp -d)" && ISSUEOPS_STATE_DIR="$tmp_state" ./bin/issueops state maintain --json && rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && ISSUEOPS_STATE_DIR="$tmp_state" ./bin/issueops loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
+gates_demo="$(mktemp -d)" && (cd "$gates_demo" && "$OLDPWD/bin/issueops" gates init --scope smoke --gate "G1: smoke | CHECK: printf %s ok | EXPECT: ok" --json && "$OLDPWD/bin/issueops" gates check --cwd "$gates_demo" --workspace-root "$gates_demo" --json && "$OLDPWD/bin/issueops" gates report --cwd "$gates_demo" --workspace-root "$gates_demo") && rm -rf "$gates_demo"
+./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json
+codex mcp get issueops
 claude mcp list
 test -f ~/.omo/mcp.json
-test -f ~/.omo/extensions/agent-harness.js
+test -f ~/.omo/extensions/issueops.js
 ```
 
 Go 코드가 추가된 뒤 표준 검증:
@@ -188,15 +188,15 @@ gofmt -l $(git ls-files '*.go')
 go vet ./...
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 ## 10. Critical Invariants
 
-- Codex, Claude Code, Omo native에서 관찰되는 하네스 결과가 같아야 하며 `agent-harness update`가 세 호스트를 함께 갱신한다.
+- Codex, Claude Code, Omo native에서 관찰되는 하네스 결과가 같아야 하며 `issueops update`가 세 호스트를 함께 갱신한다.
 - 같은 스킬을 host별로 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
-- 하네스 설치·업데이트·검증 경로는 독립 실행 가능해야 한다. 외부 도구가 필요하면 사용자가 해당 도구의 공식 경로로 별도 설치하고, agent-harness는 그 설치를 대행하거나 readiness gate로 요구하지 않는다.
-- 외부 도구의 전문 기능은 agent-harness core에 복제하지 않는다. 필요한 통합은 파일/프로세스/문서처럼 검증 가능한 일반 경계로만 다룬다.
+- 하네스 설치·업데이트·검증 경로는 독립 실행 가능해야 한다. 외부 도구가 필요하면 사용자가 해당 도구의 공식 경로로 별도 설치하고, issueops는 그 설치를 대행하거나 readiness gate로 요구하지 않는다.
+- 외부 도구의 전문 기능은 issueops core에 복제하지 않는다. 필요한 통합은 파일/프로세스/문서처럼 검증 가능한 일반 경계로만 다룬다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - response-contract golden은 CLI command list, MCP tool list, 필수 response fields를 고정한다. docs-index는 문서 본문/목록 churn에 과민하지 않도록 required-doc projection과 count/schema만 검증한다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.
@@ -207,13 +207,13 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## 11. Manual Notes
 
-- 반복 실수나 운영 주의는 `.agent-harness/CAUTIONS.md`에 추가한다.
-- 구현 규칙은 `.agent-harness/CONVENTIONS.md`, 테스트 규칙은 `.agent-harness/TESTING.md`, 기술 선택은 `.agent-harness/TECH_STACK.md`에 반영한다.
-- 큰 설계 변경은 `.agent-harness/ADR.md`의 결정·로드맵을 함께 갱신한다.
+- 반복 실수나 운영 주의는 `.issueops/CAUTIONS.md`에 추가한다.
+- 구현 규칙은 `.issueops/CONVENTIONS.md`, 테스트 규칙은 `.issueops/TESTING.md`, 기술 선택은 `.issueops/TECH_STACK.md`에 반영한다.
+- 큰 설계 변경은 `.issueops/ADR.md`의 결정·로드맵을 함께 갱신한다.
 
 ## 12. API Documentation Gate
 
-- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `agent-harness api-doc static-check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`로 host-agent prompt/schema를 렌더하고, 리뷰 결과 JSON을 `--result`/`result_file`로 기록한다.
+- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `issueops api-doc static-check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`로 host-agent prompt/schema를 렌더하고, 리뷰 결과 JSON을 `--result`/`result_file`로 기록한다.
 - 대상 Node/Nest repo에 `npm run swagger:check`가 있으면 그 wrapper를 우선 사용한다.
 - 기본 검사는 git 변경분의 API candidate files로 제한하고, 기존 레거시 전체 Swagger 부채를 이번 변경의 실패 원인으로 삼지 않는다.
 

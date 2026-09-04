@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	issueops "agent-harness/internal/contract/issueops"
+	issueops "issueops/internal/contract/issueops"
 )
 
 // TestCleanupAbandonClearsAsymmetricResidue는 #433을 고정한다.

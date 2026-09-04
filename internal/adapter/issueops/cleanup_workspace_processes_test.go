@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func cleanupSnapshotEntry(pid, ppid int, exe string) nativeProcessSnapshotEntry {
@@ -31,7 +31,7 @@ func TestBuildCleanupOccupancyJoinsReceiptsAndCountsDescendants(t *testing.T) {
 		30000: cleanupSnapshotEntry(30000, 20804, "claude"),
 		30001: cleanupSnapshotEntry(30001, 30000, "node"),
 		700:   cleanupSnapshotEntry(700, 1, "zsh"),
-		777:   cleanupSnapshotEntry(777, 700, "agent-harness"),
+		777:   cleanupSnapshotEntry(777, 700, "issueops"),
 	}
 	procs := []workspaceProcess{
 		{PID: 502, Command: "sleep", FD: "cwd"},

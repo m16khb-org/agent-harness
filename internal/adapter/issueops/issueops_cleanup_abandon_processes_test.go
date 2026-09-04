@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // abandonResidueFixture는 execution 없이 record가 link한 실제 워크트리·브랜치를
@@ -127,14 +127,14 @@ func TestCleanupAbandonOrcaTerminalsGates(t *testing.T) {
 		return result.Missing
 	}
 	if missing := run(t, port.ExecutionOrcaOwnerInventory{TerminalLive: true, TerminalInventoryComplete: true}); !containsString(missing, "orca_resources_absent") {
-		t.Fatalf("with the worktree absent, apply ①′ never runs, so a live terminal must still refuse (parnas #478 F4): %v", missing)
+		t.Fatalf("with the worktree absent, apply ①′ never runs, so a live terminal must still refuse (pr-review #478 F4): %v", missing)
 	}
 	if missing := run(t, port.ExecutionOrcaOwnerInventory{TaskLive: true, TaskStatus: "dispatched"}); !containsString(missing, "orca_resources_absent") {
 		t.Fatalf("live task/dispatch residue must still refuse: %v", missing)
 	}
 }
 
-// parnas #478 finding 1: #433이 허용하는 worktree-only 잔여(branch 부재)에서 ①′가
+// pr-review #478 finding 1: #433이 허용하는 worktree-only 잔여(branch 부재)에서 ①′가
 // 실패하면 receipt는 WorktreeHead만 갖는다. 그 receipt가 다음 preview를
 // cleanup_failure_inventory로 영구히 막으면 안 된다.
 func TestCleanupAbandonStopFailureInWorktreeOnlyResidueIsRePreviewable(t *testing.T) {
@@ -170,7 +170,7 @@ func TestCleanupAbandonStopFailureInWorktreeOnlyResidueIsRePreviewable(t *testin
 	}
 }
 
-// parnas #478 F4: ⑨는 TerminalLive를 ①′가 실제로 닫을 수 있을 때(워크트리 존재·
+// pr-review #478 F4: ⑨는 TerminalLive를 ①′가 실제로 닫을 수 있을 때(워크트리 존재·
 // 터미널 나열)만 통과시킨다. 워크트리가 없거나 런타임이 터미널을 나열하지 못하면
 // 살아 있는 터미널은 소유자 없는 자원으로 남으므로 orca_resources_absent로 거부한다.
 func TestCleanupAbandonLiveTerminalPassesOnlyWhenStopReachesIt(t *testing.T) {

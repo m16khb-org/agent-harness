@@ -3,8 +3,8 @@ package issueopsstatus
 import (
 	"context"
 
-	issueopsstatusapplication "agent-harness/internal/application/issueopsstatus"
-	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+	issueopsstatusapplication "issueops/internal/application/issueopsstatus"
+	issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 )
 
 func NewStatusHandler(service *issueopsstatusapplication.Service) func(

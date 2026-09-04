@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 type fakeRepository struct {

@@ -1,7 +1,7 @@
 package lintdiagnose
 
 import (
-	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
+	lintdiagnosecontract "issueops/internal/contract/lintdiagnose"
 	"strings"
 	"testing"
 )

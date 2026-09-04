@@ -11,7 +11,7 @@
         "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "branch": "refs/heads/16-demo",
         "displayName": "16-demo",
-        "comment": "agent-harness issueops=io-demo ownership=epoch-1 attempt=1",
+        "comment": "issueops=io-demo ownership=epoch-1 attempt=1",
         "baseRef": "refs/remotes/origin/16-demo",
         "linkedIssue": 16,
         "linkedGitLabIssue": null

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // GitLab 안내에 결함이 셋 있었다. 근거는 추측이 아니라 상류 소스다 — `glab`이

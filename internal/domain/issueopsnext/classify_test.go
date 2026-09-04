@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsnextcontract "agent-harness/internal/contract/issueopsnext"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsnextcontract "issueops/internal/contract/issueopsnext"
 )
 
 func defaultCompletion(phase issueopsnextcontract.Phase) Readiness {
@@ -195,7 +195,7 @@ func TestClassifyStages(t *testing.T) {
 		{"docs reviewed implementation review missing", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "implementation_review"), "verify", 7},
 		{"feedback contract update missing", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseFeedback)), "contract_feedback_issue_update"), "verify", 7},
 		{"stale seal returns to clean", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "ai_slop_clean_stale"), "clean", 5},
-		{"gates ledger incomplete", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "gates_incomplete:.agent-harness/gates.md"), "verify", 7},
+		{"gates ledger incomplete", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "gates_incomplete:.issueops/gates.md"), "verify", 7},
 		{"only upstream missing", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "upstream"), "commit-push", 8},
 		{"pushed and clean", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean))), "commit-push", 8},
 		{"unmatched local key falls back", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseFeedback)), "branch_match"), "unknown", 7},
@@ -233,13 +233,13 @@ func TestClassifyNextCommandTable(t *testing.T) {
 		prefix string
 		kind   string
 	}{
-		{"none starts a cycle", Input{SourceRoot: "/repo"}, "agent-harness issueops start --repo /repo", "exact"},
-		{"issue records intent", baseRecord(issueopsnextcontract.PhaseGrill), "agent-harness issueops intent record", "template"},
-		{"handoff prepares execution", withDA(withDesign(withStagedPlan(withBranch(withIssue(baseRecord(issueopsnextcontract.PhasePlan)))))), "agent-harness issueops execution prepare", "template"},
-		{"stop verdict regresses", withDAStop(withDesign(withStagedPlan(withBranch(withIssue(baseRecord(issueopsnextcontract.PhasePlan)))))), "agent-harness issueops regress --id io-test", "template"},
-		{"commit-push checks strict readiness", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "upstream"), "agent-harness issueops pr-readiness --id io-test --strict", "exact"},
-		{"done checks cleanup", baseRecord(issueopsnextcontract.PhaseDone), "agent-harness issueops cleanup status --id io-test --merged", "exact"},
-		{"unknown falls back to status", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseFeedback)), "branch_match"), "agent-harness issueops status --id io-test", "exact"},
+		{"none starts a cycle", Input{SourceRoot: "/repo"}, "issueops start --repo /repo", "exact"},
+		{"issue records intent", baseRecord(issueopsnextcontract.PhaseGrill), "issueops intent record", "template"},
+		{"handoff prepares execution", withDA(withDesign(withStagedPlan(withBranch(withIssue(baseRecord(issueopsnextcontract.PhasePlan)))))), "issueops execution prepare", "template"},
+		{"stop verdict regresses", withDAStop(withDesign(withStagedPlan(withBranch(withIssue(baseRecord(issueopsnextcontract.PhasePlan)))))), "issueops regress --id io-test", "template"},
+		{"commit-push checks strict readiness", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseAISlopClean)), "upstream"), "issueops pr-readiness --id io-test --strict", "exact"},
+		{"done checks cleanup", baseRecord(issueopsnextcontract.PhaseDone), "issueops cleanup status --id io-test --merged", "exact"},
+		{"unknown falls back to status", withLocal(withSelfHolder(baseRecord(issueopsnextcontract.PhaseFeedback)), "branch_match"), "issueops status --id io-test", "exact"},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -267,14 +267,14 @@ func TestClassifyIssueStageNeverRecommendsBranchPrepare(t *testing.T) {
 
 func TestClassifyExits(t *testing.T) {
 	self := Classify(withSelfHolder(baseRecord(issueopsnextcontract.PhaseImplement)))
-	if !strings.HasPrefix(self.Exits.PauseCommand, "agent-harness issueops execution release") {
+	if !strings.HasPrefix(self.Exits.PauseCommand, "issueops execution release") {
 		t.Fatalf("self holder must be able to pause, got %q", self.Exits.PauseCommand)
 	}
 	stale := Classify(withHolder(baseRecord(issueopsnextcontract.PhaseImplement), "codex", "s-2", false))
-	if !strings.HasPrefix(stale.Exits.TakeoverCommand, "agent-harness issueops execution replace") {
+	if !strings.HasPrefix(stale.Exits.TakeoverCommand, "issueops execution replace") {
 		t.Fatalf("stale holder must be replaceable, got %q", stale.Exits.TakeoverCommand)
 	}
-	if !strings.HasPrefix(self.Exits.AbandonCommand, "agent-harness issueops cleanup abandon --id io-test --reason") {
+	if !strings.HasPrefix(self.Exits.AbandonCommand, "issueops cleanup abandon --id io-test --reason") {
 		t.Fatalf("abandon must always be offered, got %q", self.Exits.AbandonCommand)
 	}
 	none := Classify(Input{})
@@ -309,7 +309,7 @@ func TestOwnerCommandCoversGateMap(t *testing.T) {
 		"schema_evidence", "schema_evidence_stale",
 		"feedback_classification", "feedback_resolution", "contract_feedback_issue_update",
 		"remote_artifact", "child_incomplete", "child_unvalidated", "child_rejected_unresolved",
-		"gates_incomplete:.agent-harness/gates.md", "duplicate_issue_artifact:https://example.com/1",
+		"gates_incomplete:.issueops/gates.md", "duplicate_issue_artifact:https://example.com/1",
 		"worktree_clean", "upstream", "upstream_fetch", "upstream_synced", "branch_match",
 	}
 	for _, key := range keys {
@@ -317,11 +317,11 @@ func TestOwnerCommandCoversGateMap(t *testing.T) {
 		if strings.TrimSpace(command) == "" {
 			t.Fatalf("missing owner command for %q", key)
 		}
-		if !strings.HasPrefix(command, "agent-harness ") {
-			t.Fatalf("owner command for %q must be an agent-harness command, got %q", key, command)
+		if !strings.HasPrefix(command, "issueops ") {
+			t.Fatalf("owner command for %q must be an issueops command, got %q", key, command)
 		}
 	}
-	if got := OwnerCommand("io-test", "who_knows"); got != "agent-harness issueops status --id io-test --json" {
+	if got := OwnerCommand("io-test", "who_knows"); got != "issueops status --id io-test --json" {
 		t.Fatalf("an unknown gate must fall back to status, got %q", got)
 	}
 }

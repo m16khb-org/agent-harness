@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/contract/issueops"
 )
 
 func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
@@ -169,7 +169,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 		ProblemSummary: "Foldering bug",
 		ProposedDesign: "Gate implementation on reviewed design",
 		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
-		Verification:   []string{"go test ./internal/core/issueops ./cmd/harness/issueopscli"},
+		Verification:   []string{"go test ./internal/core/issueops ./cmd/issueops/issueopscli"},
 		Risks:          []string{"existing lifecycle tests need explicit gate setup"},
 		Approved:       false,
 	})
@@ -184,7 +184,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 		ProposedDesign: "Gate implementation on reviewed design",
 		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
 		Alternatives:   []string{"docs-only guidance"},
-		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops ./cmd/harness/issueopscli"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops ./cmd/issueops/issueopscli"},
 		Risks:          []string{"existing lifecycle tests need explicit gate setup"},
 		Approved:       true,
 	})

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func crossProjectRecord(codeProjectKey string) model.IssueOpsRecord {

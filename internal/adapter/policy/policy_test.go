@@ -1,7 +1,7 @@
 package policy
 
 import (
-	policydomain "agent-harness/internal/contract/policy"
+	policydomain "issueops/internal/contract/policy"
 	"os"
 	"path/filepath"
 	"testing"
@@ -159,8 +159,8 @@ func TestRunReadOnlyCommandExecutesAllowedArgvOnly(t *testing.T) {
 
 func TestRunReadOnlyCommandUsesEmptyEnvUnlessAllowlisted(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("AGENT_HARNESS_ENV_LEAK_TEST", "leaked")
-	argv := []string{"awk", `BEGIN { print ENVIRON["AGENT_HARNESS_ENV_LEAK_TEST"] }`}
+	t.Setenv("ISSUEOPS_ENV_LEAK_TEST", "leaked")
+	argv := []string{"awk", `BEGIN { print ENVIRON["ISSUEOPS_ENV_LEAK_TEST"] }`}
 
 	defaultEnv := RunReadOnlyCommand(policydomain.CommandPolicyRequest{
 		WorkspaceRoot: root,
@@ -177,7 +177,7 @@ func TestRunReadOnlyCommandUsesEmptyEnvUnlessAllowlisted(t *testing.T) {
 		CWD:           root,
 		Argv:          argv,
 		Timeout:       "30s",
-		EnvAllowlist:  []string{"AGENT_HARNESS_ENV_LEAK_TEST"},
+		EnvAllowlist:  []string{"ISSUEOPS_ENV_LEAK_TEST"},
 	})
 	if !allowlisted.OK || allowlisted.Stdout != "leaked\n" {
 		t.Fatalf("allowlisted env was not exposed: %+v", allowlisted)

@@ -21,20 +21,20 @@ decision and a separate `issueops cleanup remote-branch` flow.
 
 ## Load first
 
-- Run `agent-harness issueops next --id "$ISSUEOPS_ID" --json` first and confirm
+- Run `issueops next --id "$ISSUEOPS_ID" --json` first and confirm
   `stage.key` is `done`. Anything else belongs to the stage that key names.
 - Load **`issueops`** for lifecycle and cleanup-state rules.
 - Load **`issueops-remote-write`** before the `remote reflect-completion` and
   `remote close-issue` writes below: it owns the preview, the identical confirm, the
   readback, and the reconcile-instead-of-retry rule for every governed remote mutation.
-- Load **`torvalds`** for worktree and branch verification.
+- Load **`git-operations`** for worktree and branch verification.
 - For GitLab issues, also load **`gitlab-usecase`** before any provider call.
 
 ## Preconditions
 
 1. Resolve one exact lifecycle ID:
    - prefer a user-supplied ID or `$ISSUEOPS_ID`;
-   - otherwise run `agent-harness issueops list --repo "$PWD" --json`;
+   - otherwise run `issueops list --repo "$PWD" --json`;
    - if zero or multiple plausible cycles remain, ask which ID to clean.
 2. Run from the record's source repository, never from the worktree that will
    be removed.
@@ -100,9 +100,9 @@ remote branch — use [`issueops-abandon`](../issueops-abandon/SKILL.md).
 Read the lifecycle and cleanup inventory:
 
 ```text
-agent-harness issueops status --id "$ISSUEOPS_ID" --json
-agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
-agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
+issueops status --id "$ISSUEOPS_ID" --json
+issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+issueops remote close-issue --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --json
 ```
 
@@ -183,9 +183,9 @@ completion section has been written to the issue; the execution reference
 preserve first, then close.
 
 ```text
-agent-harness issueops remote reflect-completion --id "$ISSUEOPS_ID" \
+issueops remote reflect-completion --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --json
-agent-harness issueops remote reflect-completion --id "$ISSUEOPS_ID" \
+issueops remote reflect-completion --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --confirm --json
 ```
 
@@ -195,7 +195,7 @@ completion is an idempotent success.
 ### 2. Close and verify the issue
 
 ```text
-agent-harness issueops remote close-issue --id "$ISSUEOPS_ID" \
+issueops remote close-issue --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --confirm --json
 ```
 
@@ -207,7 +207,7 @@ closed state. Already-closed is an idempotent success.
 Issue closure changes cleanup readiness. Obtain a fresh fingerprint:
 
 ```text
-agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
+issueops cleanup finish --id "$ISSUEOPS_ID" \
   --provider "$PROVIDER" --preview --json
 ```
 
@@ -250,7 +250,7 @@ targets. Do not reuse a stale fingerprint.
 Execute the preview's `next_command` exactly. It must be the typed form:
 
 ```text
-agent-harness issueops cleanup finish --id "$ISSUEOPS_ID" \
+issueops cleanup finish --id "$ISSUEOPS_ID" \
   --apply --confirm --fingerprint "$FINGERPRINT" --json
 ```
 

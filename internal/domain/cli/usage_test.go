@@ -8,7 +8,7 @@ import (
 func TestUsageIncludesCommandCatalog(t *testing.T) {
 	usage := Usage("test")
 	for _, command := range Commands() {
-		if !strings.Contains(usage, "harness "+command.Name) && command.Name != "version" {
+		if !strings.Contains(usage, "issueops "+command.Name) && command.Name != "version" {
 			t.Fatalf("usage does not mention command %q\n%s", command.Name, usage)
 		}
 	}
@@ -20,7 +20,7 @@ func TestUsageIncludesCommandCatalog(t *testing.T) {
 }
 func TestUsageIncludesUpdateCommand(t *testing.T) {
 	usage := Usage("test")
-	if !strings.Contains(usage, "agent-harness update") {
+	if !strings.Contains(usage, "issueops update") {
 		t.Fatalf("usage missing update command\n%s", usage)
 	}
 	found := false
@@ -38,7 +38,7 @@ func TestUsageIncludesUpdateCommand(t *testing.T) {
 func TestUsageOmitsRetiredSelfVerifyModes(t *testing.T) {
 	for line := range strings.SplitSeq(Usage("test"), "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "agent-harness self-verify ") {
+		if !strings.HasPrefix(line, "issueops self-verify ") {
 			continue
 		}
 		for _, retired := range []string{"--full", "--iterations"} {
@@ -95,7 +95,7 @@ func TestUsageOmitsRetiredPoolCommand(t *testing.T) {
 			t.Fatalf("%s command must be removed", retiredCommand)
 		}
 	}
-	if strings.Contains(Usage("test"), "agent-harness "+retiredCommand) {
+	if strings.Contains(Usage("test"), "issueops "+retiredCommand) {
 		t.Fatalf("usage must not advertise %s", retiredCommand)
 	}
 }

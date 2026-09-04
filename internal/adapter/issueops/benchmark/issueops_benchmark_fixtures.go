@@ -1,9 +1,9 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"encoding/json"
 	"fmt"
+	issueopscontract "issueops/internal/contract/issueops"
 	"os"
 	"path/filepath"
 	"sort"

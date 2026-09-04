@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func retargetActorRecord(t *testing.T, status issueops.LeaseStatus, holder *issueops.NativeActor) (issueops.IssueOpsRecord, string) {

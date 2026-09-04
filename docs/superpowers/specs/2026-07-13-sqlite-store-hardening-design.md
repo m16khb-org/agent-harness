@@ -1,7 +1,7 @@
 # SQLite Store Hardening Design
 
 **Date:** 2026-07-13
-**Scope:** `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md` T18 remaining work
+**Scope:** `.issueops/issues/_unnumbered/issueops-stability-concurrency-multisession-hardening.md` T18 remaining work
 **Status:** written spec approved with ordered cross-root correction; implementation planning in progress
 
 ## 1. Purpose
@@ -39,10 +39,10 @@ This change hardens those four boundaries without changing row schemas, CLI/MCP 
 ## 4. Preserved Invariants
 
 - One absolute state root maps to one cached `*DB` per process.
-- Spans serialize per root in-process and through `harness.lock.db` across processes.
+- Spans serialize per root in-process and through `issueops.lock.db` across processes.
 - A root may appear at most once in one propagated span context chain. Distinct roots may nest only under a documented acyclic caller order.
 - The retained production cross-root order is `remote-create-live/<id>` outer span followed by the main IssueOps-root span; the reverse order is not introduced.
-- The SQLite transaction is used only as the span lock; data writes continue through `harness.db` autocommit operations.
+- The SQLite transaction is used only as the span lock; data writes continue through `issueops.db` autocommit operations.
 - Callback errors retain their identity.
 - Transaction rollback and local-gate release run on every normal callback return path.
 - A callback panic is not recovered; deferred rollback and local-gate release still run while the panic unwinds.
@@ -127,8 +127,8 @@ The migration is internal to this repository. It may change unexported helper si
 Permission repair is bounded to:
 
 - the exact absolute store root: `0700`
-- `harness.db`: `0600`
-- `harness.lock.db`: `0600`
+- `issueops.db`: `0600`
+- `issueops.lock.db`: `0600`
 - `-wal`, `-shm`, and `-journal` sidecars for both database files: `0600`
 
 No directory traversal or wildcard discovery is used. An unrelated file in the same root retains its original mode.
@@ -172,7 +172,7 @@ The test binary serves as a helper subprocess selected by a dedicated environmen
 5. The parent kills and waits for the holder process.
 6. The same contender must emit `acquired` and exit successfully within a bounded timeout.
 
-Every subprocess has explicit kill-and-wait cleanup registered before assertions that can fail. The test uses only a temporary store. It never opens or checkpoints `~/.local/state/agent-harness`.
+Every subprocess has explicit kill-and-wait cleanup registered before assertions that can fail. The test uses only a temporary store. It never opens or checkpoints `~/.local/state/issueops`.
 
 ## 8. FD-growth Measurement
 
@@ -231,11 +231,11 @@ Final verification uses serialized full-suite commands because this repository's
 go test -p 1 -timeout 20m ./... -count=1
 go test -race -p 1 -timeout 20m ./... -count=1
 go vet ./...
-tmp_bin="$(mktemp -d)/agent-harness" && go build -o "$tmp_bin" ./cmd/harness
+tmp_bin="$(mktemp -d)/issueops" && go build -o "$tmp_bin" ./cmd/issueops
 git diff --check
 ```
 
-No command may target live user state, overwrite tracked `bin/agent-harness`, or push without a separate explicit request.
+No command may target live user state, overwrite tracked `bin/issueops`, or push without a separate explicit request.
 
 ## 12. Acceptance Criteria
 

@@ -1,13 +1,13 @@
 package issueopslease
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"errors"
+	issueopscontract "issueops/internal/contract/issueops"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 type ResumeHandler struct{ service *leaseapp.ResumeService }

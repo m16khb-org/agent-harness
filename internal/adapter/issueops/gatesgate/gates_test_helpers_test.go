@@ -1,8 +1,8 @@
 package gatesgate
 
 import (
-	gatesadapter "agent-harness/internal/adapter/gates"
-	policyadapter "agent-harness/internal/adapter/policy"
+	gatesadapter "issueops/internal/adapter/gates"
+	policyadapter "issueops/internal/adapter/policy"
 )
 
 // production wiring과 같은 구현을 설치한다. gates adapter의 policy 실행기도

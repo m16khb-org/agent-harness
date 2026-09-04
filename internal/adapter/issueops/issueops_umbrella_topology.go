@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // UmbrellaBranchGateReason은 우산 사이클이 provider-native 자식 작업 항목을 만들
@@ -21,11 +21,11 @@ func UmbrellaBranchGateReason(record issueops.IssueOpsRecord) string {
 	branch := strings.TrimSpace(record.Branch)
 	if branch == "" {
 		return "IssueOps 우산 사이클은 자체 브랜치를 가져야 자식 작업 항목을 만들 수 있다; " +
-			"`agent-harness issueops start --branch NAME`으로 브랜치를 정한 뒤 `agent-harness issueops branch prepare`를 실행하라"
+			"`issueops start --branch NAME`으로 브랜치를 정한 뒤 `issueops branch prepare`를 실행하라"
 	}
 	if record.BranchPrepare == nil {
 		return fmt.Sprintf("IssueOps 우산 사이클 %s는 자식 작업 항목을 만들기 전에 우산 브랜치 %s를 준비해야 한다; "+
-			"`agent-harness issueops branch prepare --id %s --branch %s --base-branch REF`를 먼저 실행하라",
+			"`issueops branch prepare --id %s --branch %s --base-branch REF`를 먼저 실행하라",
 			record.ID, branch, record.ID, branch)
 	}
 	if prepared := strings.TrimSpace(record.BranchPrepare.Branch); prepared != branch {

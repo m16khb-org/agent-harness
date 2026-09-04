@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/outbound/sqlstore"
 )
 
 // TestWithIssueOpsLockRejectsSameRootReentry proves the in-process fail-closed
@@ -31,9 +31,9 @@ func TestWithIssueOpsLockRejectsSameRootReentry(t *testing.T) {
 }
 
 const (
-	lockHelperModeEnv   = "HARNESS_ISSUEOPS_LOCK_HELPER"
-	lockHelperRootEnv   = "HARNESS_ISSUEOPS_LOCK_ROOT"
-	lockHelperMarkerEnv = "HARNESS_ISSUEOPS_LOCK_MARKER"
+	lockHelperModeEnv   = "ISSUEOPS_ISSUEOPS_LOCK_HELPER"
+	lockHelperRootEnv   = "ISSUEOPS_ISSUEOPS_LOCK_ROOT"
+	lockHelperMarkerEnv = "ISSUEOPS_ISSUEOPS_LOCK_MARKER"
 )
 
 func appendLockMarker(path, line string) error {

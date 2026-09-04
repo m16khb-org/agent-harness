@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
+	provenanceport "issueops/internal/port/issueopsprovenance"
 )
 
 type executableObserver struct {

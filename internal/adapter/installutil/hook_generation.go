@@ -49,5 +49,5 @@ func HookTargetGenerationMessages(config map[string]any, host, expected, running
 // 순서다. 문장이 아니라 실행 가능한 형태로 준다 — 교착 상태의 사용자에게
 // 필요한 것은 설명이 아니라 다음 명령이다.
 func HookGenerationRecoveryCommand(target string) string {
-	return fmt.Sprintf("go build -o %s ./cmd/harness && %s install --json", target, target)
+	return fmt.Sprintf("go build -o %s ./cmd/issueops && %s install --json", target, target)
 }

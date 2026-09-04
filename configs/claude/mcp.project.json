@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "agent_harness_project": {
+    "issueops_project": {
       "args": [
         "mcp"
       ],
-      "command": "./bin/agent-harness",
+      "command": "./bin/issueops",
       "env": {
-        "HARNESS_ROOT": "."
+        "ISSUEOPS_ROOT": "."
       },
       "type": "stdio"
     }

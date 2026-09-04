@@ -1,8 +1,8 @@
 package projectbootstrap
 
 import (
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	projectdoccontract "agent-harness/internal/contract/projectdoc"
+	lifecyclecontract "issueops/internal/contract/lifecycle"
+	projectdoccontract "issueops/internal/contract/projectdoc"
 )
 
 type (

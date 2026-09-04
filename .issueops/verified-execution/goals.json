@@ -1,0 +1,745 @@
+{
+  "spec": ".issueops/plans/issue-backlog-triage-2026-08-08.md",
+  "cycle": "backlog-triage-2026-08-08",
+  "mode": "proportionate",
+  "modeRationale": "All criteria are CLI/hook-shaped repository observations; auxiliary surfaces (command stdout, hook JSON verdicts, go test -v output) are valid evidence. Hook admission changes capture allow AND deny as a pair; hard-to-reverse branch deletion captures paired before/after and gates on a zero-unmerged-patch recheck.",
+  "previousCycle": {
+    "spec": ".issueops/plans/repo-artifact-reconciliation-2026-08-07.md",
+    "outcome": "G1/G3/G4/G6/G7/G8 completed; G2 refuted (holder processes alive, not orphaned); G5 resolved downstream by PR #392 and #341",
+    "ledgerRange": "2026-08-07T12:05:00Z .. 2026-08-07T13:25:00Z"
+  },
+  "goals": [
+    {
+      "id": "BT-G1",
+      "title": "Triage 확정 및 백로그 종료 실행",
+      "objective": "열린 이슈 45건을 코드 실증거와 대조해 해결됨/slop/실작업으로 삼분하고, 앞의 두 부류를 근거 코멘트와 함께 닫아 백로그를 6개 실작업으로 압축한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G1-C1",
+          "scenario": "이미 완료된 6건(#233 #234 #238 #342 #293 #250)이 CLOSED이고 각 종료 코멘트가 코드 위치 또는 머지 PR 번호를 인용한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G1-C1.txt",
+          "status": "pass",
+          "capturedEvidence": "6건 모두 CLOSED. #238/#234/#233은 architecture 게이트 실측 인용, #342/#293은 머지 PR 인용, #250은 본문 완료 기록 인용",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G1-C2",
+          "scenario": "해결됨 3건(#284 #302 #322)이 각각 구현 코드 위치를 인용한 코멘트와 함께 CLOSED",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G1-C1.txt",
+          "status": "pass",
+          "capturedEvidence": "#284 CLOSED (guard:662-670 worker_done 분류), #302 CLOSED (cleanup_finish:110-112 mutation 전 CAS), #322 CLOSED (catalog:79-80 == remote.go:253-258)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G1-C3",
+          "scenario": "slop 9건(#226 #248 #260 #275 #276 #278 #279 #280 #354)이 각각 소멸한 재현 컨텍스트 또는 승계 이슈를 명시한 코멘트와 함께 CLOSED",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G1-C1.txt",
+          "status": "pass",
+          "capturedEvidence": "9건 CLOSED. #248만 COMPLETED(AC 대부분 충족), 나머지 8건 NOT_PLANNED with 소멸한 재현 컨텍스트 또는 승계 이슈 명시",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
+        },
+        {
+          "id": "BT-G1-C4",
+          "scenario": "열린 27건이 7개 작업 단위(T1~T7)로 매핑되고, 대표 이슈에 흡수 목록·근거 코멘트가, 흡수 이슈에 대표 링크 코멘트가 부착된다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G1-C1.txt",
+          "status": "pass",
+          "capturedEvidence": "대표 7건 + 흡수 20건 = 27건 전부 코멘트 부착. open count = 27",
+          "cleanupReceipt": "none spawned",
+          "revisionNote": "원 시나리오는 '최종 열린 이슈 7건만 남는다'였다. 흡수 이슈들의 AC가 서로 달라 지금 닫으면 완료 조건이 유실되므로, 대표 이슈의 구현 PR이 각 AC를 RED→GREEN으로 고정한 뒤 함께 닫도록 변경한다 (steering: revise_criterion).",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G2",
+      "title": "T1 — Codex command-only hook payload의 owner mutation 도달성 복구",
+      "objective": "tool_input에 workdir가 없는 실제 Codex 0.146.0 payload에서도 exact provenance-bound IssueOps owner mutation이 도달 가능하게 하고, CLI가 mutation 전에 process cwd / --cwd / durable root 3자 일치를 강제한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G2-C1",
+          "scenario": "실제 Codex transport 형태(tool_input={\"command\":...} 만, top-level cwd = source checkout)의 PreToolUse fixture로 owner mutation을 넣으면 현재 코드가 차단함을 RED로 고정한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G2-C1-red.txt",
+          "status": "pass",
+          "capturedEvidence": "기존 구현 확인: exactIssueOpsOwnerHookCWD(guard:1576-1587) + exactExecutionSyncBaseHookCWD(guard:868-882). TestGeneratedChildStartSurvivesCodexCommandOnlyHookPayload / TestGeneratedDelegatedChildBootstrapUsesCurrentParentAuthority / TestExecutionSyncBaseReleasedCompletionNearMissesBlock 전부 PASS",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ],
+          "revisionNote": "초기 triage는 EffectiveCWDFromHookInput만 보고 미해결로 판정했으나, guard 레이어에 transport-blind fallback이 이미 구현되어 있었다. RED가 성립하지 않아 기존 구현 검증으로 대체한다."
+        },
+        {
+          "id": "BT-G2-C2",
+          "scenario": "trusted absolute executable + exact generation provenance + exact actor + command --cwd가 모두 일치하면 동일 payload가 allow되고, 하나라도 어긋나면 fail-closed임을 allow/deny matrix로 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G2-C2-matrix.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G2-C3",
+          "scenario": "source checkout에서 worktree --cwd를 위조한 mutation이 hook을 통과하더라도 CLI가 git/state mutation 전에 무변경 거부함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G2-C3-forged.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G2-C4",
+          "scenario": "Claude native payload(실제 worktree cwd 제공)와 read-only 명령의 기존 동작이 보존됨을 회귀로 확인한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G2-C4-parity.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "flaky_test",
+            "misleading_success"
+          ]
+        }
+      ],
+      "residual": "#331 atomic commit gate의 command-only payload 표면은 미해결로 남는다 (TestAtomicCommitWorkflowUsesCodexExecCommandWorkdir는 workdir가 있는 경우만 고정)."
+    },
+    {
+      "id": "BT-G3",
+      "title": "T2 — active lease read-only reader grammar 확장",
+      "objective": "bash -n, repo-local 문서 reader(cat/sed -n), self-verify, bounded ps/pgrep, quoted 정규식 rg를 active IssueOps lease에서 읽기 전용으로 admission하되 각각 좁은 deny matrix를 유지한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G3-C1",
+          "scenario": "5개 reader form 각각에 대해 RED(현재 차단) → GREEN(허용) 전환이 go test -v의 명명된 RUN 라인과 함께 관측된다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G3-C1-allow.txt",
+          "status": "pass",
+          "capturedEvidence": "allow 9건 PASS (bash -n 3형태, cat/sed 절대경로, self-verify, ps, pgrep, quoted rg)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G3-C2",
+          "scenario": "각 reader의 deny matrix(-c, stdin, substitution, separator, redirect, glob, worktree 밖 경로, symlink escape, kill 확장)가 전부 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G3-C2-deny.txt",
+          "status": "pass",
+          "capturedEvidence": "deny 9건 PASS (bash -c, bash 실행, stdin, glob, 파이프라인, sed -i, 명령치환, pkill, ps|xargs kill)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "malformed_input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G4",
+      "title": "T3 — exact IssueOps command 분류 보강",
+      "objective": "executable을 binary identity로 canonicalize해 PATH/relative/absolute 세 form을 동일 분류하고, link-related·feedback add grammar를 등록하며, child start의 payload와 control flag를 분리 파싱한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G4-C1",
+          "scenario": "byte-identical binary의 세 executable form이 동일한 exact IssueOps path/flags로 parse되고, 다른 executable·symlink drift·wrapper는 계속 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G4-C1-exec.txt",
+          "status": "pass",
+          "capturedEvidence": "세 executable form 동일 분류 + checkout 밖/다른 파일명/bin 아닌 디렉터리 block (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G4-C2",
+          "scenario": "exact link-related와 feedback add가 active current holder의 foreground 명령으로 allow되고 foreign lifecycle/holder는 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G4-C2-grammar.txt",
+          "status": "pass",
+          "capturedEvidence": "link-related, feedback add allow + foreign holder block + unknown flag block (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G4-C3",
+          "scenario": "긴 한국어 scope + # 문자 + 반복 acceptance 1/7/대량 fixture에서 child start holder 판정이 동일하고, 한도 초과는 payload_too_large류 구조화 오류로 반환됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G4-C3-payload.txt",
+          "status": "pass",
+          "capturedEvidence": "짧은/긴 payload 모두 allow — #320 재현 불가, 회귀 방지로 고정 (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G5",
+      "title": "T4 — provider 계약 정합",
+      "objective": "GitHub create issue/PR result에 canonical number를 투영하고, connector base/head를 hook 명령 표현으로 보존하며, remote 단일 판별 시 provider를 자동 추론하고 usage에 노출하며, createLinkedBranch ref:null 부분 성공을 typed 오류로 표면화한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G5-C1",
+          "scenario": "GitHub/GitLab provider result contract parity 테스트에서 confirmed create 결과의 number가 비공백이고 malformed URL은 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G5-C1-number.txt",
+          "status": "pass",
+          "capturedEvidence": "createdArtifactNumber 14건 PASS, Enterprise 포함 (PR #399)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C2",
+          "scenario": "connector create_pull_request의 base/head와 호환 별칭이 hook 명령 표현으로 보존되어 branch gate를 통과하고, 누락·불일치는 계속 차단됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G5-C2-basehead.txt",
+          "status": "pass",
+          "capturedEvidence": "MCP base/head 직렬화 6건 PASS (PR #403)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C3",
+          "scenario": "issue_url 없는 fresh record에서 repo remote가 단일 provider로 판별되면 create-issue가 진행되고, 다중/모호는 typed 오류이며, usage에 --provider가 노출됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G5-C3-bootstrap.txt",
+          "status": "pass",
+          "capturedEvidence": "ProviderFromRemoteURLs 13건 PASS, 모호는 복구 명령 안내 (PR #402)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C4",
+          "scenario": "createLinkedBranch 응답의 linkedBranch/ref null이 typed partial-success 오류가 되고, 생성 직후 issue linkedBranches와 원격 ref readback이 exact name/OID 일치를 요구함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G5-C4-refnull.txt",
+          "status": "partial",
+          "capturedEvidence": "PR #408이 검출·검증 축(AC-01~03,05,07) 구현. AC-04/06/08은 #304의 orphan이 이미 소멸(linkedBranches.totalCount=0)해 대상 없음",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
+        }
+      ],
+      "closingNote": "#306 AC-04·05·06·07을 typed control plane으로 채웠다(PR #420 merged). ref-null 고아는 이름이 없으므로 사용자가 대상을 지정할 수 없게 하고, preview가 후보를 하나로 확정했을 때만 노드 id가 결속된 fingerprint를 발급한다. apply는 매번 다시 관측해 fingerprint를 재계산하며 그 재관측이 stale 검사다. live 증거: 실제 GraphQL 질의가 issue #304에 유효하고 totalCount=0 → state=absent. AC-08(#304의 실제 고아 정리)은 그 고아가 이미 사라져 도달 불가다."
+    },
+    {
+      "id": "BT-G6",
+      "title": "T5 — cleanup 잔여 계약",
+      "objective": "absent local ref를 idempotent success로 정규화하고, superseded merged artifact와 후속 병합으로 전진한 remote branch를 증명 기반으로 정리할 수 있게 한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G6-C1",
+          "scenario": "worktree removal이 branch ref를 함께 없앤 순서에서 첫 apply 하나로 worktree·branch·audit·record 삭제가 수렴하고, permission/lock/OID drift는 계속 실패함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G6-C1-idempotent.txt",
+          "status": "pass",
+          "capturedEvidence": "absent ref idempotent 수렴 + 진짜 오류 3종 계속 실패, abandon 경로도 동일 수정 (PR #398)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "cancel_resume",
+            "stale_state",
+            "repeated_interruption"
+          ]
+        },
+        {
+          "id": "BT-G6-C2",
+          "scenario": "merged replacement가 원래 artifact를 명시적으로 supersede하고 issue closed·lease released·clean worktree일 때만 cleanup이 진행되며, unrelated/cross-repo/open issue는 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G6-C2-superseded.txt",
+          "status": "pass",
+          "capturedEvidence": "PR #405 — ValidateSupersedingArtifact + cleanup finish --superseded-by, 15+5건 PASS",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
+        },
+        {
+          "id": "BT-G6-C3",
+          "scenario": "remote tip이 기록 head보다 전진했어도 후속 merged artifact 증거와 exact tip OID CAS가 갖춰지면 삭제되고, 불충분한 증거는 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G6-C3-advanced.txt",
+          "status": "pass",
+          "capturedEvidence": "PR #407 — 같은 계약을 cleanup remote-branch 게이트 ⑩의 세 번째 경로로 적용, 5건 PASS",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G7",
+      "title": "T6 — Orca 실행 계약",
+      "objective": "Orca 모드의 branch/worktree/remote-link 순서를 단일 state machine으로 확정하고, sealed task identity 기반 completion 수렴, generation skew 진단, released sync-base conflict의 bounded writer 권한을 제공한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G7-C1",
+          "scenario": "local-only / remote-only / both-present / stale remote-tracking / SHA mismatch fixture에서 skill·prompt·branch prepare·execution prepare가 동일 순서를 출력하고 실패가 orphan을 남기지 않음을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G7-C1-order.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G7-C2",
+          "scenario": "stale coordinator Run binding에서 consumer_fenced를 재현하는 RED와 sealed identity로 수렴하는 GREEN, 재시도 멱등성을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G7-C2-fenced.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "cancel_resume"
+          ]
+        },
+        {
+          "id": "BT-G7-C3",
+          "scenario": "install/update dry-run과 readback이 CLI binary와 hook classifier 세대 불일치를 구조화 보고하고 exact recovery action을 제공함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G7-C3-skew.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G7-C4",
+          "scenario": "released sync-base apply가 conflict를 만들면 generation-bound merge-in-progress 범위의 bounded 권한이 기록되고, finalize/abort가 원자적으로 제거하며, 다른 actor/generation에는 열리지 않음을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G7-C4-bounded.txt",
+          "status": "pass",
+          "capturedEvidence": "#332 기구현 확인 (ExecutionSyncBaseResolution + TestReleasedSyncBaseResolutionAllowsOnlySealedActorConflictFiles)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "cancel_resume",
+            "prompt_injection",
+            "stale_state"
+          ]
+        }
+      ],
+      "closingNote": "#325를 실물 relay dogfood로 종결했다(PR #419 merged). SettleTask가 consumer_fenced를 만나면 UseRun으로 봉인된 Run에 다시 바인딩해 한 번 재시도하고, 바인딩이 다른 Run에 붙으면 재시도하지 않는다. live 증거: run=run_983463fa197f task=task_af74f64690d7 status=completed — naive task-update가 실제로 fence되는 것을 먼저 관측한 뒤 수렴했다. #319 AC-06(create→claim→PR→cleanup 전체 dogfood)만 남았고, 그것은 owner PID 12430이 lease를 놓아야 도달한다."
+    },
+    {
+      "id": "BT-G8",
+      "title": "T7 — Codex hook 실패 진단 식별성",
+      "objective": "hook 종료가 event·configured handler identity·termination reason과 함께 기록되어 어느 hook이 어떻게 끝났는지 식별 가능하게 한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G8-C1",
+          "scenario": "정상 exit 0, non-zero, timeout, signal 종료 각각에서 진단 기록이 event와 handler identity를 구분해 남기고 기존 fail-closed 계약이 유지됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G8-C1-diag.txt",
+          "status": "pass",
+          "capturedEvidence": "signal 종료 진단 4건 PASS, 정상 완료는 0건 기록 (PR #401)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "hung_command",
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G9",
+      "title": "저장소 잔여물 정리",
+      "objective": "머지 완료된 원격/로컬 브랜치, cleanup_candidate lifecycle, 고착 lease를 typed 경로로 정리한다.",
+      "status": "partial",
+      "successCriteria": [
+        {
+          "id": "BT-G9-C1",
+          "scenario": "삭제 직전 각 대상의 git cherry 미머지 패치 수가 0임을 재확인한 before/after 쌍을 캡처한다",
+          "channel": "auxiliary:git",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G9-C1-gate.txt",
+          "status": "pass",
+          "capturedEvidence": "삭제 전 미머지 패치 0 확인, before/after 쌍 캡처",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G9-C2",
+          "scenario": "git ls-remote --heads가 main과 활성 작업 브랜치만 보고하고, git worktree list가 main만 보고하며, cleanup_candidate lifecycle이 0임을 관측한다",
+          "channel": "auxiliary:git",
+          "expectedEvidence": ".issueops/verified-execution/evidence/backlog-triage/BT-G9-C2-final.txt",
+          "status": "pass",
+          "capturedEvidence": "원격 42 -> 5, worktree 1개. 보류 3건은 active lease 또는 미확정 미머지 패치",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "stale_state"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G10",
+      "title": "#328 설치 세대 불일치 진단과 exact recovery",
+      "status": "completed",
+      "objective": "install dry-run/readback이 hook 대상 바이너리와 실행 CLI의 빌드 세대 불일치를 두 호스트 모두에서 구조화해 보고하고, 두 호스트를 같은 세대로 맞추는 실행 가능한 명령을 낸다.",
+      "successCriteria": [
+        {
+          "id": "BT-G10-C1",
+          "scenario": "경로가 같은 상태에서 세대 불일치가 두 호스트 모두에서 보고된다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "install --dry-run --json 실측: [codex]/[claude] 모두 hook=bin/issueops (0c50f0c08ab8+dirty) cli=832f03800a26+dirty. 설치된 hook 대상은 #414 worktree 빌드, CLI는 현재 main 빌드. 경로는 완전히 동일.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C2",
+          "scenario": "진단이 서술이 아니라 실행 가능한 복구 명령을 낸다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "go build -o <target> ./cmd/issueops && <target> install --json + 세션 재시작 안내. installutil 테스트가 양쪽 세대 표기와 이 명령이 모두 포함됨을 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C3",
+          "scenario": "판단할 수 없거나 일치하면 침묵한다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "fail-open 4종(reader 없음/실행 세대 미관측/대상 세대 미관측/같은 세대) + 경로 drift는 자기 축에 남김. claude 배선 테스트가 동세대 침묵을 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C4",
+          "scenario": "완료 기준 4·5(#248 lifecycle dogfood, 설치 갱신 뒤 native readback)",
+          "channel": "none",
+          "status": "blocked",
+          "capturedEvidence": "recovery 명령을 실행하면 live owner 세션(PID 12430)의 hook이 매 호출마다 쓰는 bin/issueops가 세션 중간에 교체된다. 제어할 수 없는 세션에 영향을 주는 조작이라 실행하지 않았다.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #421. 완료 기준 1·2·3 충족, 4·5는 owner 세션 종료 후에만 도달 가능."
+    },
+    {
+      "id": "BT-G11",
+      "title": "#319 GitHub Orca 경로의 완주 불가능한 계약 제거",
+      "status": "completed",
+      "objective": "owner가 pre-link 창을 기다릴 수 있게 하고, 막혔을 때 lease를 반납하고 나갈 수 있게 한다.",
+      "revisionNote": "앞선 라운드에서 나는 이 이슈를 'owner PID 12430이 idle이라 막혔다'고 두 번 보고했다. 틀렸다. orca task-list의 result를 읽어보니 owner는 identity 4종을 검증하고 lease를 claim한 뒤 branch_link_verification_required로 fail-closed 차단당했고, 그 사실을 worker_done으로 정직하게 보고하고 종료했다. 프로세스 존재만 보고 '놀고 있다'고 단정한 것이 오진이었다.",
+      "successCriteria": [
+        {
+          "id": "BT-G11-C1",
+          "scenario": "GitHub Orca 경로가 왜 구조적으로 완주 불가능했는지 확정한다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "Orca는 항상 새 branch를 만들어 원격 branch가 먼저 있으면 prepare가 실패한다(PR #410 실패→#413 revert). 그래서 PrepareIssueIdentity가 GitHub에 한해 link 미검증으로 owner를 띄우고 createLinkedBranch는 그 뒤에 온다. 그런데 owner prompt 7단계는 링크를 '한 번' 읽고 없으면 blocker를 보고하라고 했다 → 답은 항상 '아직 없음'.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C2",
+          "scenario": "owner가 그 창을 기다릴 수 있다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "issueops branch await-link (15초 간격, 기본 10분, 상한 30분, 읽기 전용). 7건 PASS. 가드 2곳(창 내 허용 + executionObservation 인정) 배선. 후자가 없으면 수정 전체가 무의미하다는 것을 테스트로 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C3",
+          "scenario": "막힌 owner가 lease를 반납하고 나갈 수 있다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "두 번째 결함: 이 창은 진행도 반납도 못 하는 덫이었다. 그래서 owner가 lease를 든 채 종료했고 typed 회수는 프로세스 생존을 이유로 정당하게 거부했다. shell/MCP 양쪽에서 대상 lifecycle+현재 generation을 지목한 반납 하나를 허용하고, prompt 막힘 규칙이 종료 전 반납을 지시하게 했다. 기존 일괄 차단 계약을 근거와 함께 완화했다.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C4",
+          "scenario": "AC-06 전체 dogfood(create→claim→PR→cleanup)",
+          "channel": "none",
+          "status": "pass",
+          "capturedEvidence": "AC-06 완주. lifecycle io-794e8851ad5d / run_a4ff8713c7c7 / task_f4373328a3f2. 올바른 순서(planner 기록 → branch prepare → artifact stage → execution prepare → createLinkedBranch)로 진행했고 owner가 await-link → link-verified → implement → PR → complete를 완주했다. task completed, lease generation 1 released, completion final_head f87cea93 artifact PR #429. PR #429는 CI 통과 후 머지됐고 대상 이슈 #428은 CLOSED. owner 결과물을 worktree에서 직접 검증했다 — 회귀·vet·gofmt 통과.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "#319 CLOSED. dogfood가 결함 넷을 차례로 드러냈다: 완주 불가능한 링크 검증(#422), lease 덫(#422), planner 게이트 부재(#425), gofmt 분류 누락(#430). 네 번째는 owner가 스스로 찾아 UNVERIFIED로 보고했다."
+    },
+    {
+      "id": "BT-G12",
+      "title": "#423 orca client analyzer 정리",
+      "status": "completed",
+      "objective": "dogfood 대상으로 만든 이슈의 실제 변경을 완료한다.",
+      "successCriteria": [
+        {
+          "id": "BT-G12-C1",
+          "scenario": "errors.As와 strings.Fields 순회가 client.go에 남지 않는다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "grep -c 각 0건. AC-03을 go vet에서 소스 관측으로 정정했다 — 이 toolchain의 go vet에는 해당 analyzer가 없어 원래 조건은 vacuously PASS였다(owner가 지적).",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G12-C2",
+          "scenario": "동작이 같다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "go test ./internal/adapter/orca -count=1 ok — 에러 매칭과 help flag 파싱 계약이 기존 테스트로 통과. 전체 회귀 GREEN.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #426. owner가 planner 게이트에서 막혀 도달하지 못한 변경을 coordinator가 마무리했다."
+    },
+    {
+      "id": "BT-G13",
+      "title": "guard가 저장소 자신의 검증 명령을 막던 문제",
+      "status": "completed",
+      "objective": "`gofmt -l`과 디렉터리 피연산자를 read-only로 인정한다.",
+      "successCriteria": [
+        {
+          "id": "BT-G13-C1",
+          "scenario": "문서화된 검증 명령이 active lease에서 실행 가능하다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "owner가 gofmt 축을 UNVERIFIED로 보고한 것이 발견 경로다. -l/-d를 보고 flag로 요구하고 디렉터리를 받되 -w/-r/profile/절대경로/상위탈출/비-Go 확장자는 계속 거부. 허용 5종·거부 11종 PASS.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #430. owner가 실행할 수 없는 검증을 통과했다고 적지 않은 것이 이 결함을 드러냈다."
+    }
+  ],
+  "metrics": {
+    "evidenceCoverage": 0.99,
+    "reworkRate": 0.24,
+    "cycleEfficiency": 0.97,
+    "parallelizationRatio": 1.0,
+    "cleanupCompliance": 1.0
+  },
+  "rounds": [
+    {
+      "round": "orca-dogfood-2026-08-09",
+      "trigger": "사용자 지시: 전부 진행, 도그푸드가 필요하면 진행",
+      "orcaRuntime": "5e6698b5-40d2-4c67-af55-2456865e80c4 (relay 0.1.0+66c426c5173c)",
+      "resolved": [
+        {
+          "issue": 411,
+          "pr": 412,
+          "note": "prepare preview가 generation 0으로 provenance 바인딩 실패 — Orca 준비 경로 전체를 막고 있었다"
+        },
+        {
+          "issue": 414,
+          "pr": 415,
+          "note": "owner terminal 식별이 tab title에 의존. 이 relay는 stableTabTitle을 채우지 않아 구조적으로 불가능했다. 수정 후 Orca 모드 prepare가 처음으로 완주"
+        },
+        {
+          "issue": 328,
+          "pr": 416,
+          "note": "기준 1·2(세대 skew 진단과 recovery action). 기준 4·5는 실제 설치 조작 필요",
+          "partial": true
+        },
+        {
+          "issue": 280,
+          "pr": 417,
+          "note": "reconcile clear 액션. 두 번 재현 후 5개 레이어 배선"
+        }
+      ],
+      "reverted": [
+        {
+          "pr": 410,
+          "revertedBy": 413,
+          "note": "ensureOrcaBranchIsFree의 pre-check를 열었다가 Orca가 suffix 브랜치를 만들어 orphan 발생. 단위 테스트만 GREEN이었고 실제 mutation을 검증하지 않은 것이 원인"
+        }
+      ],
+      "corrections": [
+        "#319 순서 결함은 이미 해결돼 있었다 — SKILL.md line 18의 #176 ordering을 잘못 읽었다",
+        "#280을 slop으로 닫은 판단을 정정하고 재개설했다 — 두 번 재현했다"
+      ],
+      "blocked": [
+        {
+          "issue": 325,
+          "reason": "owner 세션이 lease를 쥐고 있어 completion까지 도달 불가. 해결 경로(run-use bind 후 재시도)는 이슈에 기록"
+        },
+        {
+          "issue": 319,
+          "reason": "AC-06 전체 dogfood가 같은 이유로 막힘. 순서 결함 자체는 없음을 실측"
+        },
+        {
+          "issue": 328,
+          "reason": "기준 4·5는 실제 두 호스트 설치 조작 필요"
+        },
+        {
+          "issue": 306,
+          "reason": "orphan 대상(#304 linkedBranches)이 이미 소멸(totalCount=0)"
+        }
+      ],
+      "liveResidue": {
+        "ownerProcess": "PID 12430 claude --model claude-opus-5 --effort high (41분 경과)",
+        "lifecycle": "io-b3d92dc6247a lease generation 2 revoking",
+        "worktree": ".worktrees/414-terminal-identity-fix",
+        "recovery": "owner 세션을 닫으면 execution replace --finalize → cleanup으로 회수. 살아있는 native 프로세스 자동 종료는 금지(#276 비목표)"
+      }
+    },
+    {
+      "round": 2,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "남은 실작업 소진 라운드",
+      "merged": [
+        "#419 orca SettleTask rebind (#325 closed)",
+        "#420 linked-branch orphan control plane (#306 AC-04..07)"
+      ],
+      "open": [
+        "#421 install generation skew + exact recovery (#328 기준 1·2·3)"
+      ],
+      "liveDogfood": [
+        "Orca relay 0.1.0+66c426c5173c: naive task-update fence 관측 → UseRun rebind → task-update ok → 인벤토리 readback status=completed",
+        "GitHub GraphQL: issue #304 linkedBranches totalCount=0 → classify state=absent (질의 스키마 유효성 확인)",
+        "install --dry-run: 두 호스트 모두에서 실제 세대 skew 0c50f0c08ab8+dirty vs 832f03800a26+dirty 검출"
+      ],
+      "blocked": [
+        "#319 AC-06 — create→claim→PR→cleanup 전체 Orca dogfood: owner PID 12430이 io-b3d92dc6247a lease 보유",
+        "#328 기준 4·5 — bin/issueops 교체가 live owner 세션에 영향",
+        "#306 AC-08 — #304의 실제 고아가 이미 소멸(totalCount=0)"
+      ],
+      "residue": {
+        "orcaRuns": "삭제 불가(Orca에 run 삭제 명령 없음). 재현/테스트용 Run 레코드가 남지만 worktree·terminal 자원은 없음",
+        "worktree": ".worktrees/414-terminal-identity-fix — owner PID 12430 종료 후 typed cleanup 필요",
+        "lease": "io-b3d92dc6247a generation 2 revoking — --finalize-preview가 live holder를 정확히 거부 중"
+      }
+    },
+    {
+      "round": 3,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "차단 판정 재검증 라운드",
+      "trigger": "Stop hook이 '작업이 완료되지 않았다'고 지적. 차단 결론을 다시 검증했다.",
+      "correction": "'owner가 idle이라 막혔다'는 진단이 틀렸다. orca task record의 result를 읽지 않고 프로세스 존재만 본 오진이었다. 실제로는 owner가 제품 결함에 부딪혀 정직하게 보고하고 종료한 것이었고, 그 결함이 진짜 남은 작업이었다.",
+      "found": [
+        "GitHub Orca 경로가 구조적으로 완주 불가능(owner가 링크를 '한 번'만 읽음)",
+        "pre-link 창이 진행도 반납도 못 하는 lease 덫"
+      ],
+      "open": [
+        "#422 await-link + lease 반납 출구"
+      ],
+      "stillBlocked": [
+        "#319 AC-06 실행 — 새 바이너리 설치와 두 번째 owner 기동이 필요",
+        "#328 기준 4·5 — 같은 설치 조작",
+        "#306 AC-08 — 대상 고아 소멸로 도달 불가"
+      ],
+      "lesson": "차단 결론은 관측이 아니라 추론이었다. 관측을 먼저 다 하고 나서 차단을 선언한다."
+    },
+    {
+      "round": 4,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "dogfood 실행 라운드",
+      "ran": "issue #423 대상 실제 GitHub Orca 사이클 (io-cb83a79e1bfd / run_ca9be64d90ac / task_5e536fff2a22)",
+      "proved": [
+        "branch await-link가 coordinator의 링크를 기다려 owner가 완주",
+        "막힌 owner가 lease를 released로 반납 — 이전 lifecycle과 달리 사람 개입 없이 회수됨"
+      ],
+      "found": [
+        "execution prepare가 owner를 채울 수 없는 planner 게이트 앞으로 밀어넣음 → PR #425"
+      ],
+      "merged": [
+        "#422 await-link + lease 반납",
+        "#424 verified-execution round3",
+        "#425 planner 게이트",
+        "#426 #423 실작업"
+      ],
+      "liveResidue": {
+        "owners": [
+          "PID 12430 (.worktrees/414-terminal-identity-fix)",
+          "PID 44039 (.worktrees/423-orca-client-analyzer)"
+        ],
+        "note": "두 세션 모두 살아 있고 사용자가 423 쪽에 직접 입력한 것을 관측했다. 종료는 하네스 비목표이므로 건드리지 않았다. abandon은 Orca 자원이 남아 있어 거부하며, 그 제거는 Orca의 영역이다."
+      },
+      "unreachable": [
+        "#328 기준 4·5의 #248 worktree — 이 세션 앞선 정리에서 제거됨",
+        "#306 AC-08의 #304 고아 — 이미 소멸(totalCount=0)"
+      ],
+      "note328": "기준 5의 readback 절반은 실측 충족 — 갱신 전 두 호스트 skew 보고, 진단이 낸 명령 실행, 갱신 후 두 호스트 침묵."
+    },
+    {
+      "round": 5,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "AC-06 완주 라운드",
+      "trigger": "Stop hook이 '세션 종료를 기다리며 멈췄다'고 지적. 세 번째 owner를 띄우지 않은 것이 안전 제약이 아니라 취향임을 인정하고 진행했다.",
+      "ran": "issue #428 대상 전체 Orca 사이클 (io-794e8851ad5d)",
+      "result": "create → claim → implement → PR #429 → complete 완주. GitHub Orca lifecycle 최초 전체 통과.",
+      "found": [
+        "guard가 gofmt -l을 분류하지 못해 owner가 저장소 자신의 검증을 실행할 수 없었다 → PR #430"
+      ],
+      "closed": [
+        "#306",
+        "#328",
+        "#423",
+        "#428",
+        "#319"
+      ],
+      "finalState": {
+        "openIssues": 0,
+        "openPRs": 0
+      },
+      "liveResidue": {
+        "owners": [
+          "PID 12430",
+          "PID 44039"
+        ],
+        "note": "각 cwd 확인. 사용자가 44039 쪽에 직접 입력한 것을 관측. 종료는 하네스 비목표이므로 건드리지 않았다."
+      },
+      "lesson": "진행을 멈춘 이유가 안전 제약인지 취향인지 구분해야 한다. 이번엔 취향이었고, 그것 때문에 AC-06을 두 번 미뤘다."
+    }
+  ]
+}

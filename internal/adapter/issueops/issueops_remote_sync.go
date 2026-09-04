@@ -6,14 +6,14 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	remote "agent-harness/internal/domain/issueopsremote"
+	"issueops/internal/contract/issueops"
+	remote "issueops/internal/domain/issueopsremote"
 )
 
 // SyncRemoteIssueGraph posts a comment on the cycle's parent issue listing all
 // typed related-issue links from the cycle's issue graph. This mirrors the
 // local typed graph to the remote provider so collaborators can traverse the
-// decision structure without local harness state.
+// decision structure without local issueops state.
 func SyncRemoteIssueGraph(record issueops.IssueOpsRecord) (map[string]any, error) {
 	issueURL := strings.TrimSpace(record.IssueURL)
 	if issueURL == "" {
@@ -33,7 +33,7 @@ func SyncRemoteIssueGraph(record issueops.IssueOpsRecord) (map[string]any, error
 
 	var body strings.Builder
 	body.WriteString("## Related Issue Graph\n\n")
-	body.WriteString("This issue graph was recorded by agent-harness IssueOps:\n\n")
+	body.WriteString("This issue graph was recorded by issueops IssueOps:\n\n")
 	for _, link := range record.IssueLinks {
 		label := linkTypeLabel(link.Type)
 		body.WriteString(fmt.Sprintf("- **%s**: %s", label, link.URL))

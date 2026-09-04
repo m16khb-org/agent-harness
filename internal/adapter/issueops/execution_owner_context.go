@@ -13,11 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/domain/commandparse"
-	"agent-harness/internal/domain/issueopsremote"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/domain/commandparse"
+	"issueops/internal/domain/issueopsremote"
+	"issueops/internal/port"
 )
 
 //go:embed testdata/execution_owner_prompt.txt
@@ -57,29 +57,29 @@ type executionOwnerCommands struct {
 }
 
 type executionOwnerContextPacket struct {
-	SchemaVersion    int                    `json:"schema_version"`
-	LifecycleID      string                 `json:"lifecycle_id"`
-	Mode             issueops.ExecutionMode `json:"mode"`
-	SourceRoot       string                 `json:"source_root"`
-	WorktreeRoot     string                 `json:"worktree_root"`
-	WorktreeBase     string                 `json:"worktree_base"`
-	Branch           string                 `json:"branch"`
-	BaseHead         string                 `json:"base_head"`
-	CurrentHead      string                 `json:"current_head"`
-	LeaseGeneration  uint64                 `json:"lease_generation"`
-	Issue            executionOwnerIssue    `json:"issue"`
-	OwnerHost        string                 `json:"owner_host"`
-	OwnerModel       string                 `json:"owner_model"`
-	OwnerEffort      string                 `json:"owner_effort,omitempty"`
-	ReviewerModel    string                 `json:"reviewer_model,omitempty"`
-	ReviewerEffort   string                 `json:"reviewer_effort,omitempty"`
-	RequiredDocs     []string               `json:"required_docs"`
-	RequiredSkills   []string               `json:"required_skills"`
-	AcceptanceIDs    []string               `json:"acceptance_ids"`
-	Verification     []string               `json:"verification_commands"`
-	TuringReportPath string                 `json:"turing_report_path"`
-	ArtifactManifest map[string]string      `json:"artifact_manifest,omitempty"`
-	Commands         executionOwnerCommands `json:"commands"`
+	SchemaVersion          int                    `json:"schema_version"`
+	LifecycleID            string                 `json:"lifecycle_id"`
+	Mode                   issueops.ExecutionMode `json:"mode"`
+	SourceRoot             string                 `json:"source_root"`
+	WorktreeRoot           string                 `json:"worktree_root"`
+	WorktreeBase           string                 `json:"worktree_base"`
+	Branch                 string                 `json:"branch"`
+	BaseHead               string                 `json:"base_head"`
+	CurrentHead            string                 `json:"current_head"`
+	LeaseGeneration        uint64                 `json:"lease_generation"`
+	Issue                  executionOwnerIssue    `json:"issue"`
+	OwnerHost              string                 `json:"owner_host"`
+	OwnerModel             string                 `json:"owner_model"`
+	OwnerEffort            string                 `json:"owner_effort,omitempty"`
+	ReviewerModel          string                 `json:"reviewer_model,omitempty"`
+	ReviewerEffort         string                 `json:"reviewer_effort,omitempty"`
+	RequiredDocs           []string               `json:"required_docs"`
+	RequiredSkills         []string               `json:"required_skills"`
+	AcceptanceIDs          []string               `json:"acceptance_ids"`
+	Verification           []string               `json:"verification_commands"`
+	VerificationReportPath string                 `json:"verification_report_path"`
+	ArtifactManifest       map[string]string      `json:"artifact_manifest,omitempty"`
+	Commands               executionOwnerCommands `json:"commands"`
 }
 
 type executionOwnerSnapshot struct {
@@ -145,7 +145,7 @@ func readExecutionOwnerSnapshot(ctx context.Context, record issueops.IssueOpsRec
 	return executionOwnerSnapshot{
 		issue:                executionOwnerIssue{URL: strings.TrimSpace(snapshot.URL), Body: snapshot.Body, BodySHA256: digestExecutionOwnerBytes([]byte(snapshot.Body))},
 		requiredDocs:         executionOwnerRequiredDocs(record.Repo),
-		requiredSkills:       []string{"issueops", "turing", "atomic-commit-push"},
+		requiredSkills:       []string{"issueops", "verified-execution", "atomic-commit-push"},
 		acceptanceIDs:        acceptance,
 		verificationCommands: verification,
 	}, nil
@@ -172,7 +172,7 @@ func buildExecutionOwnerArtifacts(record issueops.IssueOpsRecord, req ExecutionP
 		return executionOwnerArtifacts{}, fmt.Errorf("execution identity is unavailable for owner packet")
 	}
 	packetPath, promptPath := executionOwnerArtifactPaths(record)
-	// 구현 diff의 brooks 리뷰는 planner급 모델이 수행한다(설계 v5 WS5). 값은
+	// 구현 diff의 design-review 리뷰는 planner급 모델이 수행한다(설계 v5 WS5). 값은
 	// 감사 기록이자 owner 프롬프트 지시일 뿐 게이트 조건이 아니다.
 	reviewerModel, reviewerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
 	commands := executionOwnerCommandsFor(record, req, snapshot.issue.BodySHA256)
@@ -185,7 +185,7 @@ func buildExecutionOwnerArtifacts(record issueops.IssueOpsRecord, req ExecutionP
 		OwnerHost: strings.ToLower(strings.TrimSpace(req.OwnerHost)), OwnerModel: strings.TrimSpace(req.OwnerModel), OwnerEffort: strings.TrimSpace(req.OwnerEffort),
 		ReviewerModel: reviewerModel, ReviewerEffort: reviewerEffort,
 		RequiredDocs: snapshot.requiredDocs, RequiredSkills: snapshot.requiredSkills, AcceptanceIDs: snapshot.acceptanceIDs,
-		Verification: snapshot.verificationCommands, TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
+		Verification: snapshot.verificationCommands, VerificationReportPath: executionOwnerVerificationReportPath(record), Commands: commands,
 		ArtifactManifest: artifactManifest,
 	}
 	packetBytes, err := json.MarshalIndent(packet, "", "  ")
@@ -244,7 +244,7 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"ENTER_PR_COMMAND":                packet.Commands.EnterPR,
 		"REQUIRED_DOCS":                   renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
 		"ACCEPTANCE_IDS": strings.Join(packet.AcceptanceIDs, ", "), "VERIFICATION_COMMANDS": renderExecutionOwnerLines(packet.Verification),
-		"TURING_REPORT_PATH": packet.TuringReportPath, "REMOTE_CREATE_COMMAND": packet.Commands.RemoteCreate, "COMPLETE_COMMAND": packet.Commands.Complete,
+		"TURING_REPORT_PATH": packet.VerificationReportPath, "REMOTE_CREATE_COMMAND": packet.Commands.RemoteCreate, "COMPLETE_COMMAND": packet.Commands.Complete,
 	}
 	missing := ""
 	prompt := executionPromptPlaceholder.ReplaceAllStringFunc(executionOwnerPromptTemplate, func(token string) string {
@@ -273,7 +273,7 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"worktree_root", packet.WorktreeRoot}, {"worktree_base", packet.WorktreeBase}, {"branch", packet.Branch},
 		{"base_head", packet.BaseHead}, {"issue_url", packet.Issue.URL}, {"issue_body_sha256", packet.Issue.BodySHA256},
 		{"packet_path", packetPath}, {"packet_sha256", packetDigest}, {"owner_host", packet.OwnerHost},
-		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
+		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"verification_report_path", packet.VerificationReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
 		{"verify_branch_link_read_command", packet.Commands.VerifyBranchLinkRead},
 		{"verify_branch_link_command", packet.Commands.VerifyBranchLink},
@@ -316,10 +316,10 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		"--session-pid", "<SESSION_PID>", "--session-started-at", "<SESSION_STARTED_AT>", "--session-executable", "<SESSION_EXECUTABLE>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
-	status := "agent-harness issueops execution status --id " + quoteExecutionOwnerArg(record.ID) + " --json"
+	status := "issueops execution status --id " + quoteExecutionOwnerArg(record.ID) + " --json"
 	claim := "none"
 	if record.Execution.Mode == issueops.ExecutionModeOrca {
-		claim = "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(record.ID) +
+		claim = "issueops execution claim --id " + quoteExecutionOwnerArg(record.ID) +
 			" --generation " + strconv.FormatUint(generation, 10) + " --claim-current-token" +
 			" --issue-body-sha256 " + strings.TrimSpace(issueBodySHA256) + " --context-packet-sha256 <PACKET_SHA256> " + actorFlags + " --json"
 	}
@@ -329,7 +329,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 	}, " ")
 	// 반납은 막힌 owner의 안전한 출구다. 들고 종료하면 프로세스가 살아 있는 한
 	// 아무도 그 lifecycle을 회수할 수 없다(#319).
-	release := "agent-harness issueops execution release --id " + quoteExecutionOwnerArg(record.ID) +
+	release := "issueops execution release --id " + quoteExecutionOwnerArg(record.ID) +
 		" --generation " + strconv.FormatUint(record.Execution.Lease.Generation, 10) + " " + actorFlags + " --json"
 	verifyBranchLinkRead := "none"
 	verifyBranchLink := "none"
@@ -338,7 +338,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		if strings.EqualFold(strings.TrimSpace(prepared.Provider), "github") {
 			// GitHub에서만 pre-link 창이 존재한다. GitLab은 prepare 시점에
 			// 이미 link_verified를 요구하므로 기다릴 것이 없다(#319).
-			awaitBranchLink = "agent-harness issueops branch await-link --id " + quoteExecutionOwnerArg(record.ID) + " --json"
+			awaitBranchLink = "issueops branch await-link --id " + quoteExecutionOwnerArg(record.ID) + " --json"
 			projectKey := remote.ProjectKey(prepared.IssueURL, "github", "issue")
 			issueNumber := remote.IssueNumber(prepared.IssueURL)
 			repoSlug := strings.TrimPrefix(projectKey, "github.com/")
@@ -347,7 +347,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 					" --repo " + quoteExecutionOwnerArg(repoSlug)
 			}
 		}
-		verifyBranchLink = "agent-harness issueops branch prepare --id " + quoteExecutionOwnerArg(record.ID) +
+		verifyBranchLink = "issueops branch prepare --id " + quoteExecutionOwnerArg(record.ID) +
 			" --provider " + quoteExecutionOwnerArg(strings.ToLower(strings.TrimSpace(prepared.Provider))) +
 			" --issue-url " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.IssueURL)) +
 			" --branch " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.Branch)) +
@@ -366,48 +366,48 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 	planPath := sealedArtifactPath(record, record.Execution.Workspace.Root, "plan")
 	linkPlan := "none"
 	if strings.TrimSpace(record.PlanPath) == "" {
-		linkPlan = "agent-harness issueops link-plan --id " + quoteExecutionOwnerArg(record.ID) +
+		linkPlan = "issueops link-plan --id " + quoteExecutionOwnerArg(record.ID) +
 			" --plan-path " + quoteExecutionOwnerArg(planPath) + " " + shortActor + " --json"
 	}
-	compatibilityReview := "agent-harness issueops compatibility review --id " + quoteExecutionOwnerArg(record.ID) +
+	compatibilityReview := "issueops compatibility review --id " + quoteExecutionOwnerArg(record.ID) +
 		" --backward-compatibility " + quoteExecutionOwnerArg("<BACKWARD_COMPATIBILITY>") +
 		" --side-effect " + quoteExecutionOwnerArg("<SIDE_EFFECT>") +
 		" --rollback-plan " + quoteExecutionOwnerArg("<ROLLBACK_PLAN>") +
 		" --verification " + quoteExecutionOwnerArg("<COMPATIBILITY_VERIFICATION>") + " --approved " +
 		shortActor + " --json"
-	enterImplement := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+	enterImplement := "issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to implement " + shortActor + " --json"
 	if record.Phase == issueops.IssueOpsPhaseAISlopClean || record.Phase == issueops.IssueOpsPhaseFeedback {
 		enterImplement = "none"
 	}
-	aiSlopCleanRecord := "agent-harness issueops ai-slop-clean record --id " + quoteExecutionOwnerArg(record.ID) +
+	aiSlopCleanRecord := "issueops ai-slop-clean record --id " + quoteExecutionOwnerArg(record.ID) +
 		" --category <CLEANUP_CATEGORY> --verification <VERIFICATION_EVIDENCE> " + shortActor + " --json"
-	enterAISlopClean := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+	enterAISlopClean := "issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to ai-slop-clean " + shortActor + " --json"
 	base := ""
 	if record.BranchPrepare != nil {
 		base = strings.TrimSpace(record.BranchPrepare.BaseBranch)
 	}
-	remote := "agent-harness issueops remote create-pr --id " + quoteExecutionOwnerArg(record.ID) +
+	remote := "issueops remote create-pr --id " + quoteExecutionOwnerArg(record.ID) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) + " --title <PR_TITLE> --body-file <PR_BODY_FILE>" +
 		" --head " + quoteExecutionOwnerArg(record.Execution.Workspace.Branch) + " --base " + quoteExecutionOwnerArg(base) +
 		" --label <LABEL> --assignee <ASSIGNEE> " + actorFlags + " --confirm --json"
-	complete := "agent-harness issueops execution complete --id " + quoteExecutionOwnerArg(record.ID) +
-		" --generation " + strconv.FormatUint(generation, 10) + " --final-head <FINAL_HEAD> --turing-report " + quoteExecutionOwnerArg(executionOwnerTuringReportPath(record)) +
+	complete := "issueops execution complete --id " + quoteExecutionOwnerArg(record.ID) +
+		" --generation " + strconv.FormatUint(generation, 10) + " --final-head <FINAL_HEAD> --verification-report " + quoteExecutionOwnerArg(executionOwnerVerificationReportPath(record)) +
 		" --remote-artifact-url <DRAFT_PR_OR_MR_URL> --verification <VERIFICATION_EVIDENCE> " + actorFlags + " --confirm --json"
 	plannerModel, plannerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
-	implementationReview := "agent-harness issueops implementation-review record --id " + quoteExecutionOwnerArg(record.ID) +
+	implementationReview := "issueops implementation-review record --id " + quoteExecutionOwnerArg(record.ID) +
 		" --verdict <VERDICT> --finding <FINDING> --evidence <EVIDENCE> --reviewer-host " + strings.ToLower(strings.TrimSpace(req.OwnerHost)) +
 		" --reviewer-model " + quoteExecutionOwnerArg(plannerModel)
 	if strings.TrimSpace(plannerEffort) != "" {
 		implementationReview += " --reviewer-effort " + quoteExecutionOwnerArg(plannerEffort)
 	}
 	implementationReview += " " + shortActor + " --json"
-	projectDocsReview := "agent-harness issueops project-docs-review record --id " + quoteExecutionOwnerArg(record.ID) +
+	projectDocsReview := "issueops project-docs-review record --id " + quoteExecutionOwnerArg(record.ID) +
 		" --verdict <PROJECT_DOCS_VERDICT> --doc <UPDATED_DOC_PATH> --evidence <PROJECT_DOCS_EVIDENCE> " + shortActor + " --json"
-	schemaEvidence := "agent-harness issueops schema-evidence record --id " + quoteExecutionOwnerArg(record.ID) +
+	schemaEvidence := "issueops schema-evidence record --id " + quoteExecutionOwnerArg(record.ID) +
 		" --measurement <OBSERVED_VALUE> --source <OBSERVATION_SOURCE> " + shortActor + " --json"
-	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+	enterPR := "issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
 		LeaseStatus: status, Claim: claim, VerifyBranchLinkRead: verifyBranchLinkRead,
@@ -479,13 +479,13 @@ func SealedOwnerContextPacketPath(record issueops.IssueOpsRecord) string {
 
 func executionOwnerArtifactPaths(record issueops.IssueOpsRecord) (string, string) {
 	key := digestExecutionOwnerBytes([]byte(record.ID))[:16]
-	base := filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, "generation-"+strconv.FormatUint(record.Execution.Lease.Generation, 10))
+	base := filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, "generation-"+strconv.FormatUint(record.Execution.Lease.Generation, 10))
 	return filepath.Join(base, "context.json"), filepath.Join(base, "owner-prompt.txt")
 }
 
-func executionOwnerTuringReportPath(record issueops.IssueOpsRecord) string {
+func executionOwnerVerificationReportPath(record issueops.IssueOpsRecord) string {
 	key := digestExecutionOwnerBytes([]byte(record.ID))[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "turing", "issueops-v1-"+key+".json")
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "verified-execution", "issueops-v1-"+key+".json")
 }
 
 func writeExecutionOwnerArtifact(root, path string, value []byte) error {
@@ -543,7 +543,7 @@ func ensureExecutionOwnerArtifactDirectory(root, target string) error {
 // `.gitignore`를 둔다.
 //
 // 아티팩트는 하네스가 대상 저장소의 워크트리 안에 쓰지만 저장소의 산출물이
-// 아니다. 무시 규칙이 없으면 `git status`가 `?? .agent-harness/`를 보고하고,
+// 아니다. 무시 규칙이 없으면 `git status`가 `?? .issueops/`를 보고하고,
 // 그 dirt가 strict PR readiness의 `worktree_clean`과 `cleanup finish`를 막는다.
 // 하네스가 만든 흔적이 하네스 자신의 게이트를 막는 셈이고, 구현을 모두 마친
 // PR 게이트에서야 `worktree_clean` 한 단어로 드러나 원인을 찾기 어렵다.
@@ -570,9 +570,9 @@ func ensureExecutionOwnerArtifactIgnore(dir string) error {
 
 func executionOwnerRequiredDocs(root string) []string {
 	candidates := []string{
-		"AGENTS.md", ".agent-harness/CONSTITUTION.md", ".agent-harness/ARCHITECTURE.md", ".agent-harness/CONVENTIONS.md",
-		".agent-harness/TESTING.md", ".agent-harness/CAUTIONS.md", ".agent-harness/TECH_STACK.md", ".agent-harness/ADR.md",
-		".agent-harness/OPERATIONS.md", ".agent-harness/AGENT_WORKFLOW.md",
+		"AGENTS.md", ".issueops/CONSTITUTION.md", ".issueops/ARCHITECTURE.md", ".issueops/CONVENTIONS.md",
+		".issueops/TESTING.md", ".issueops/CAUTIONS.md", ".issueops/TECH_STACK.md", ".issueops/ADR.md",
+		".issueops/OPERATIONS.md", ".issueops/AGENT_WORKFLOW.md",
 	}
 	out := make([]string, 0, len(candidates))
 	for _, rel := range candidates {

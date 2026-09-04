@@ -33,12 +33,12 @@ nil service/handler를 fail-closed하고 actor, CWD, request-scoped reader, 공�
 - `internal/core/issueops/execution_orca_intent.go`: narrow purpose-bound wrappers
 - 대응 repository/adapter/CAS tests
 
-outbound는 core를 import하지 않고 `ReconcileEffects`만 의존한다. harnessapp의 `coreReconcileEffects`가 canonicalize/read/request/mark-invoking/record-failure/apply-receipt wrapper를 호출한다.
+outbound는 core를 import하지 않고 `ReconcileEffects`만 의존한다. issueopsapp의 `coreReconcileEffects`가 canonicalize/read/request/mark-invoking/record-failure/apply-receipt wrapper를 호출한다.
 
 ## 5. Kind-local router와 production composition
 
 - `internal/core/issueops/execution_api.go`
-- `cmd/harness/harnessapp/issueops_reconcile_wiring.go`
+- `cmd/issueops/issueopsapp/issueops_reconcile_wiring.go`
 - CLI/MCP dependency plumbing과 behavioral tests
 
 세 Orca kind confirm은 handler 1회, remote PR/preview/no-pending/unsupported는 0회다. `worktree_create` receipt만 request-scoped reader를 사용한다. 새 wiring은 legacy orchestration helper를 호출하지 않는다.
@@ -51,20 +51,20 @@ outbound는 core를 import하지 않고 `ReconcileEffects`만 의존한다. harn
 
 ## 7. 문서, CI, verification
 
-필요한 경우 `.agent-harness/ARCHITECTURE.md`, `CONVENTIONS.md`, `OPERATIONS.md`, `TESTING.md`를 최소 갱신한다. `.github/workflows/ci.yml`은 remote full test와 `go test -race ./... -count=1`을 실행한다.
+필요한 경우 `.issueops/ARCHITECTURE.md`, `CONVENTIONS.md`, `OPERATIONS.md`, `TESTING.md`를 최소 갱신한다. `.github/workflows/ci.yml`은 remote full test와 `go test -race ./... -count=1`을 실행한다.
 
 ```bash
 go test ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -run Reconcile -count=1
 go test ./internal/core/issueops -run 'Reconcile|OrcaIntent|IssueSnapshot' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Reconcile|ExecutionHandler|IssueSnapshot|ResponseContractsGolden' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Reconcile|ExecutionHandler|IssueSnapshot|ResponseContractsGolden' -count=1
 go test ./internal/architecture -run Dependency -count=1
-go test -race ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Reconcile|ExecutionHandler|IssueSnapshot' -count=1
-go vet ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness contract check --json
+go test -race ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Reconcile|ExecutionHandler|IssueSnapshot' -count=1
+go vet ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops contract check --json
 git diff --check
 ```
 
-명령, exit code, 핵심 output과 원격 CI run URL을 `.agent-harness/turing/issue194-report.md`에 기록한다. 독립 implementation review 후 atomic commit/push와 parent-base draft PR을 만든다.
+명령, exit code, 핵심 output과 원격 CI run URL을 `.issueops/verified-execution/issue194-report.md`에 기록한다. 독립 implementation review 후 atomic commit/push와 parent-base draft PR을 만든다.

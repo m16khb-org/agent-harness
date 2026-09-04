@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-TARGETS="${HARNESS_RELEASE_TARGETS:-darwin/arm64 darwin/amd64 linux/amd64 linux/arm64}"
-OUT_DIR="${HARNESS_RELEASE_OUT_DIR:-}"
-KEEP_TMP="${HARNESS_RELEASE_KEEP_TMP:-0}"
+ROOT="${ISSUEOPS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+TARGETS="${ISSUEOPS_RELEASE_TARGETS:-darwin/arm64 darwin/amd64 linux/amd64 linux/arm64}"
+OUT_DIR="${ISSUEOPS_RELEASE_OUT_DIR:-}"
+KEEP_TMP="${ISSUEOPS_RELEASE_KEEP_TMP:-0}"
 
 usage() {
   cat <<'EOF'
 Usage: scripts/release-build-matrix.sh
 
 Cross-build the release binary for the supported release target matrix.
-Artifacts are written to a temporary directory unless HARNESS_RELEASE_OUT_DIR
+Artifacts are written to a temporary directory unless ISSUEOPS_RELEASE_OUT_DIR
 is set.
 
 Environment:
-  HARNESS_RELEASE_TARGETS="darwin/arm64 linux/amd64"  Override target list.
-  HARNESS_RELEASE_OUT_DIR=/path/to/output             Keep artifacts there.
-  HARNESS_RELEASE_KEEP_TMP=1                          Keep temp artifacts.
+  ISSUEOPS_RELEASE_TARGETS="darwin/arm64 linux/amd64"  Override target list.
+  ISSUEOPS_RELEASE_OUT_DIR=/path/to/output             Keep artifacts there.
+  ISSUEOPS_RELEASE_KEEP_TMP=1                          Keep temp artifacts.
 EOF
 }
 
@@ -52,7 +52,7 @@ fi
 
 tmp=""
 if [[ -z "$OUT_DIR" ]]; then
-  tmp="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-release-matrix.XXXXXX")"
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/issueops-release-matrix.XXXXXX")"
   OUT_DIR="$tmp"
 fi
 
@@ -77,12 +77,12 @@ for target in $TARGETS; do
     printf 'invalid target %q; expected GOOS/GOARCH\n' "$target" >&2
     exit 2
   fi
-  out="$OUT_DIR/agent-harness-${os}-${arch}"
+  out="$OUT_DIR/issueops-${os}-${arch}"
   if [[ "$os" == "windows" ]]; then
     out="${out}.exe"
   fi
   log "building ${target}"
-  (cd "$ROOT" && GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -o "$out" ./cmd/harness)
+  (cd "$ROOT" && GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -o "$out" ./cmd/issueops)
   if [[ ! -s "$out" ]]; then
     printf 'build output missing or empty: %s\n' "$out" >&2
     exit 1

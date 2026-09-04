@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestIsPrunableRequiresResolvedIssueCreateIntent(t *testing.T) {

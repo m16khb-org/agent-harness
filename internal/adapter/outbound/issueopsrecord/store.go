@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 var bucket = fmt.Sprintf("issueops_v%d", issueopscontract.IssueOpsSchemaVersion)

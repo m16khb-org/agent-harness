@@ -8,12 +8,12 @@ import (
 
 func TestExecutionCompletionJSONRoundTrip(t *testing.T) {
 	completion := Completion{
-		Generation:        7,
-		FinalHead:         "abc1234",
-		TuringReportPath:  "docs/turing/io-9.md",
-		Verification:      []string{"go test ./...", "agent-harness self-verify --json"},
-		RemoteArtifactURL: "https://example.com/pr/9",
-		CompletedAt:       "2026-08-25T00:00:00Z",
+		Generation:             7,
+		FinalHead:              "abc1234",
+		VerificationReportPath: "docs/verified-execution/io-9.md",
+		Verification:           []string{"go test ./...", "issueops self-verify --json"},
+		RemoteArtifactURL:      "https://example.com/pr/9",
+		CompletedAt:            "2026-08-25T00:00:00Z",
 	}
 	raw, err := json.Marshal(completion)
 	if err != nil {
@@ -24,7 +24,7 @@ func TestExecutionCompletionJSONRoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal failed: %v", err)
 	}
 	if decoded.Generation != completion.Generation || decoded.FinalHead != completion.FinalHead ||
-		decoded.TuringReportPath != completion.TuringReportPath ||
+		decoded.VerificationReportPath != completion.VerificationReportPath ||
 		decoded.RemoteArtifactURL != completion.RemoteArtifactURL ||
 		decoded.CompletedAt != completion.CompletedAt ||
 		len(decoded.Verification) != len(completion.Verification) ||

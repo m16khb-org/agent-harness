@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 // PlannerGate는 owner가 스스로 채울 수 없는 planner 소유 전제 하나다.
@@ -38,19 +38,19 @@ func MissingPlannerGates(record leasecontract.Record) []PlannerGate {
 	if !plannerIntentRecorded(record.Intent) {
 		missing = append(missing, PlannerGate{
 			Key:     "intent_contract",
-			Command: "agent-harness issueops intent record --id " + id + " --raw-request <TEXT> --interpreted-intent <TEXT> --success-criteria <TEXT> ...",
+			Command: "issueops intent record --id " + id + " --raw-request <TEXT> --interpreted-intent <TEXT> --success-criteria <TEXT> ...",
 		})
 	}
 	if !plannerDesignReviewApproved(record.DesignReview) {
 		missing = append(missing, PlannerGate{
 			Key:     "design_review",
-			Command: "agent-harness issueops design review --id " + id + " --problem-summary <TEXT> --proposed-design <TEXT> --verification <TEXT> --approved ...",
+			Command: "issueops design review --id " + id + " --problem-summary <TEXT> --proposed-design <TEXT> --verification <TEXT> --approved ...",
 		})
 	}
 	if !plannerDevilsAdvocateCleared(record.DevilsAdvocateReview) {
 		missing = append(missing, PlannerGate{
 			Key:     "devils_advocate_review",
-			Command: "agent-harness issueops devils-advocate review --id " + id + " --reviewer-context subagent --verdict <VERDICT> --finding <TEXT> ...",
+			Command: "issueops devils-advocate review --id " + id + " --reviewer-context subagent --verdict <VERDICT> --finding <TEXT> ...",
 		})
 	}
 	return missing

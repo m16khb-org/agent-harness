@@ -3,7 +3,7 @@ package issueopspreparation
 import (
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func TestPrepareContractClonesMutableAuthority(t *testing.T) {

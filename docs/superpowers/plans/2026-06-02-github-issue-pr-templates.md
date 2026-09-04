@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add GitHub and GitLab issue and PR/MR templates so `agent-harness` remote artifacts preserve IssueOps-quality problem, evidence, scope, and verification data on both hosts.
+**Goal:** Add GitHub and GitLab issue and PR/MR templates so `issueops` remote artifacts preserve IssueOps-quality problem, evidence, scope, and verification data on both hosts.
 
 **Architecture:** Keep this as repository metadata only. GitHub issue forms live under `.github/ISSUE_TEMPLATE/`, the GitHub pull request template lives at `.github/pull_request_template.md`, GitLab issue templates live under `.gitlab/issue_templates/`, and the GitLab merge request template lives under `.gitlab/merge_request_templates/`; no harness core, hook, MCP, or installer behavior changes.
 

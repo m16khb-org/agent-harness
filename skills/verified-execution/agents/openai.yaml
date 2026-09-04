@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verified Execution"
+  short_description: "Execute goals and verify completion with evidence"
+  default_prompt: "Use $verified-execution to turn this goal into observable checks, execute the work, and capture evidence for every completion claim."

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/stringlist"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/domain/stringlist"
 )
 
 // IssueOpsLocalPRReadiness는 네트워크를 건드리지 않는 판정이다. strict에서

@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // Status display fills in a derived phase ledger when none was stamped, so old

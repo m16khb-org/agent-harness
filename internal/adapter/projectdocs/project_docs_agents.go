@@ -25,9 +25,9 @@ func RenderAgentsWithBlock(root, existing string) string {
 		bullets = append(bullets, "- UI, styling, or design-system changes: "+ProjectDocsDir+"/DESIGN.md (client repositories only)")
 	}
 	block := strings.TrimSpace(fmt.Sprintf(`%s
-## agent-harness project docs
+## issueops project docs
 
-This repository uses agent-harness project docs. Read existing AGENTS.md rules first, then read only the additional documents relevant to the task.
+This repository uses issueops project docs. Read existing AGENTS.md rules first, then read only the additional documents relevant to the task.
 
 %s
 %s`, agentsStartMarker, strings.Join(bullets, "\n"), agentsEndMarker)) + "\n"
@@ -47,7 +47,7 @@ This repository uses agent-harness project docs. Read existing AGENTS.md rules f
 }
 
 // designDocExists reports whether this repo carries a design-system doc:
-// either the agent-facing .agent-harness/DESIGN.md or a curated root
+// either the agent-facing .issueops/DESIGN.md or a curated root
 // DESIGN.md that stays authoritative for the design system.
 func designDocExists(root string) bool {
 	for _, rel := range []string{
@@ -66,7 +66,7 @@ func ensureBehavioralGuidelinesAtTop(text string) string {
 	if strings.HasPrefix(trimmed, "# AGENTS.md\n\nBehavioral guidelines to reduce common LLM coding mistakes.") {
 		return text
 	}
-	// agent-harness is a library applied to many repositories: when the
+	// issueops is a library applied to many repositories: when the
 	// existing AGENTS.md already opens with its own heading and guidance,
 	// that curated content stays authoritative. Do not stack the generic
 	// behavioral template on top of repo-authored rules.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Algorithm Optimization"
+  short_description: "Optimize algorithms with measured complexity evidence"
+  default_prompt: "Use $algorithm-optimization to improve this algorithm’s time or space complexity and verify correctness with invariants and benchmarks."

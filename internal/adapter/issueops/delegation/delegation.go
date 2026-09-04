@@ -3,7 +3,7 @@ package delegation
 import (
 	"strings"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // ParentReviewPattern marks a child cycle's synthesized devil's-advocate verdict

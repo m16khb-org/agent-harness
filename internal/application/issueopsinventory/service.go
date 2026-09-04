@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
-	issueopsinventorydomain "agent-harness/internal/domain/issueopsinventory"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
+	issueopsinventorydomain "issueops/internal/domain/issueopsinventory"
 )
 
 type Service struct {

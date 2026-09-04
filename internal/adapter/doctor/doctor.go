@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/domain/operationalhealth"
+	"issueops/internal/domain/operationalhealth"
 )
 
 func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
@@ -19,7 +19,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		Healthy:           true,
 		Kind:              "harness_doctor",
 		Version:           req.Version,
-		HarnessRoot:       req.HarnessRoot,
+		IssueOpsRoot:      req.IssueOpsRoot,
 		RepoRoot:          root,
 		StateDir:          StateDir(),
 		ActiveConnections: req.DaemonAdmission.ActiveConnections,
@@ -30,19 +30,19 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		Issues:            []HarnessDoctorIssue{},
 		GeneratedAt:       time.Now().UTC().Format(time.RFC3339Nano),
 	}
-	addCheck(&result, "binary", true, "agent-harness command is running")
+	addCheck(&result, "binary", true, "issueops command is running")
 	checkDaemonAdmission(&result, req.DaemonAdmission)
 
 	stateDoctor, stateDoctorErr := StateDoctor()
 	if stateDoctorErr != nil {
-		addIssue(&result, "state_doctor_error", "error", "state doctor could not inspect the user-state store", StateDir(), &HarnessDoctorFix{Description: "Check user-state directory permissions or set HARNESS_STATE_DIR to a writable location."})
+		addIssue(&result, "state_doctor_error", "error", "state doctor could not inspect the user-state store", StateDir(), &HarnessDoctorFix{Description: "Check user-state directory permissions or set ISSUEOPS_STATE_DIR to a writable location."})
 	} else {
 		addCheck(&result, "state_store", stateDoctor.Healthy, stateDoctor.StateDir)
 		for _, issue := range stateDoctor.Issues {
 			if req.OperationalSnapshot != nil && isUnexpectedStateArtifact(issue.Code) {
 				continue
 			}
-			addIssue(&result, "state_"+issue.Code, issue.Severity, issue.Message, issue.Path, &HarnessDoctorFix{Command: "agent-harness state doctor --json", Description: "Inspect state-store integrity details with the narrow state doctor."})
+			addIssue(&result, "state_"+issue.Code, issue.Severity, issue.Message, issue.Path, &HarnessDoctorFix{Command: "issueops state doctor --json", Description: "Inspect state-store integrity details with the narrow state doctor."})
 		}
 	}
 	if req.OperationalSnapshot != nil {
@@ -75,14 +75,14 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 
 	lifecycle, err := ValidateProjectLifecycleState(root)
 	if err != nil {
-		addIssue(&result, "lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Initialize project lifecycle state and repo metadata through project bootstrap."})
+		addIssue(&result, "lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "issueops project bootstrap --repo " + shellQuote(root), Description: "Initialize project lifecycle state and repo metadata through project bootstrap."})
 	} else {
 		result.LifecycleState = lifecycle
 		addCheck(&result, "project_lifecycle_state", lifecycle.Exists && lifecycle.NamespaceValid, lifecycle.ProjectStateDir)
 		if !lifecycle.Exists {
-			addIssue(&result, "lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create the repo-scoped lifecycle namespace and profile metadata in user-state."})
+			addIssue(&result, "lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "issueops project bootstrap --repo " + shellQuote(root), Description: "Create the repo-scoped lifecycle namespace and profile metadata in user-state."})
 		} else if !lifecycle.NamespaceValid {
-			addIssue(&result, "lifecycle_namespace_mismatch", "error", "project lifecycle state fingerprint does not match this repo", lifecycle.ProjectJSONPath, &HarnessDoctorFix{Command: "agent-harness doctor --repo " + shellQuote(root) + " --json", Description: "Review the namespace mismatch before migrating or deleting stale state."})
+			addIssue(&result, "lifecycle_namespace_mismatch", "error", "project lifecycle state fingerprint does not match this repo", lifecycle.ProjectJSONPath, &HarnessDoctorFix{Command: "issueops doctor --repo " + shellQuote(root) + " --json", Description: "Review the namespace mismatch before migrating or deleting stale state."})
 		}
 	}
 
@@ -94,7 +94,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		checkMCPGateways(&result, req.Home)
 	}
 	checkNativeIntegrations(&result, req.Home)
-	checkBinaryDrift(&result, req.HarnessRoot)
+	checkBinaryDrift(&result, req.IssueOpsRoot)
 
 	sort.Slice(result.Issues, func(i, j int) bool {
 		if result.Issues[i].Severity != result.Issues[j].Severity {

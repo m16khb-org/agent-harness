@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 const (

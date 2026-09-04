@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 type ReseedOwnerArtifacts func(context.Context, leasecontract.Record) (leasecontract.ReseedReceipt, error)
@@ -136,13 +136,13 @@ func joinReseedArtifactErrors(primary, cleanup error) error {
 
 func reseedOwnerArtifactPaths(record leasecontract.Record) []string {
 	key := claimTokenSHA256(record.ID)[:16]
-	base := filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, "generation-"+fmt.Sprintf("%d", record.Execution.Lease.Generation))
+	base := filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, "generation-"+fmt.Sprintf("%d", record.Execution.Lease.Generation))
 	return []string{filepath.Join(base, "context.json"), filepath.Join(base, "owner-prompt.txt")}
 }
 
 func reseedTokenPath(record leasecontract.Record) string {
 	key := claimTokenSHA256(record.ID)[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
 }
 
 func removeReseedRuntimeFile(root, path string) error {

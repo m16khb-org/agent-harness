@@ -156,8 +156,8 @@ The score schema must not depend on Gemini-specific fields so another judge back
 Add benchmark subcommands under `issueops`.
 
 ```bash
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
-agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
+issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
 Expected run output:
@@ -221,7 +221,7 @@ Skipping these checks is a critical failure because it can make workers review o
 
 Benchmark fixtures are source-controlled under `testdata/issueops/fixtures`.
 
-Benchmark run outputs should be compact enough to save under harness state, not the target repository. The saved result should include scores, critical failures, judge metadata, and enough fixture/artifact identifiers to compare baseline and candidate runs.
+Benchmark run outputs should be compact enough to save under issueops state, not the target repository. The saved result should include scores, critical failures, judge metadata, and enough fixture/artifact identifiers to compare baseline and candidate runs.
 
 IssueOps workflow state should be extended later to include branch and worktree evidence. Runtime worktree state must remain outside the target repository source tree except for the git worktree itself.
 
@@ -238,7 +238,7 @@ Implementation should be verified with:
 - bounded review gate tests for short-review verifier/direct review preference and constrained `code-reviewer` prompts,
 - response contract golden updates,
 - `go test ./... -count=1`,
-- `go build -o bin/agent-harness ./cmd/harness`,
+- `go build -o bin/issueops ./cmd/issueops`,
 - a smoke benchmark run against sample fixtures using fake judge output.
 
 ## Open Decisions

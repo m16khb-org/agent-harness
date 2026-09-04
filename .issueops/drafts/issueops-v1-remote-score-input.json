@@ -1,0 +1,77 @@
+{
+  "provider": "github",
+  "threshold": 0.70,
+  "issue": {
+    "title": "IssueOps v1: Orca 선택형 실행 인계와 교체 가능한 격리 worktree write lease 재설계",
+    "body": "enhancement architecture refactor. IssueOps 실행 계층을 schema version 1의 current write lease로 재설계한다. Orca ready이면 여러 coordinator가 각각 독립 lifecycle, isolated worktree, logical owner slot에 Codex 또는 Claude owner를 handoff하고 즉시 종료한다. Orca missing 또는 unready이면 handoff 없이 같은 main session이 새로 생성하고 link한 isolated worktree에서 direct implementation을 계속한다. session은 배정 worktree에만 write하고 source와 다른 worktree는 read-only로 관찰한다. 최초 session 영구 봉인, coordinator 생존 의존, multi-cycle ambiguity, circular deny, Stop 무한 재진입, legacy ownership ledger와 GJC Reasonix first-party 경로를 제거한다. crash 뒤 fresh session은 같은 dirty worktree를 보존하며 lease generation을 CAS 교체한다."
+  },
+  "issue_candidates": [
+    {
+      "id": "3",
+      "title": "issueops SOLID/중복/legacy 구조 리팩터링",
+      "body": "전체 코드베이스의 SOLID, 중복, legacy 구조를 characterization test와 격리 worktree로 리팩터링하는 상위 맥락.",
+      "url": "https://github.com/m16khb-org/issueops/issues/3",
+      "state": "closed",
+      "labels": ["enhancement"]
+    },
+    {
+      "id": "16",
+      "title": "feat(issueops): hand off Orca worktree execution to a fresh session",
+      "body": "Orca ready이면 coordinator가 fresh owner session으로 handoff하고 probe failure이면 inline으로 유지하는 최초 execution lease 설계. Codex Claude GJC를 함께 지원했다.",
+      "url": "https://github.com/m16khb-org/issueops/issues/16",
+      "state": "closed",
+      "labels": ["enhancement"]
+    },
+    {
+      "id": "22",
+      "title": "Supervised handoff pre-dispatch 복구 교착 해소",
+      "body": "다른 cycle session binding 안내와 taskless cleanup receipt가 결합해 pre-dispatch cancel과 resume recovery가 교착된 bug.",
+      "url": "https://github.com/m16khb-org/issueops/issues/22",
+      "state": "closed",
+      "labels": ["bug"]
+    },
+    {
+      "id": "26",
+      "title": "Supervised handoff 다중 coordinator bootstrap·self-heal",
+      "body": "여러 coordinator가 서로 다른 IssueOps record와 Orca worktree를 동시에 dispatch하고 global singleton lock 없이 exact record worktree authority를 가져야 한다는 bug fix.",
+      "url": "https://github.com/m16khb-org/issueops/issues/26",
+      "state": "closed",
+      "labels": ["bug"]
+    },
+    {
+      "id": "47",
+      "title": "다중 supervised IssueOps cycle의 control-plane 자기교착 수정",
+      "body": "같은 source checkout의 active cycle이 둘 이상일 때 read-only observation, goal plan control-plane, exact lifecycle recovery까지 ambiguity로 차단된 self-deadlock bug.",
+      "url": "https://github.com/m16khb-org/issueops/issues/47",
+      "state": "closed",
+      "labels": ["bug"]
+    },
+    {
+      "id": "65",
+      "title": "[IssueOps] 병렬 격리 handoff liveness·관측성 추적",
+      "body": "병렬 worktree handoff에서 owner orientation exact command 누락, coordinator mailbox, read-only 범위, cleanup Stop 무한 재진입을 재현한 body-of-record.",
+      "url": "https://github.com/m16khb-org/issueops/issues/65",
+      "state": "closed",
+      "labels": ["bug"]
+    },
+    {
+      "id": "68",
+      "title": "IssueOps 활성 owner 수정 요청 및 런타임 재결합 수명주기 경로 추가",
+      "body": "fresh source session의 owner modification request, runtime rebind, closed handoff force-release가 exact session authority와 recovery gate에 막힌 후속 enhancement.",
+      "url": "https://github.com/m16khb-org/issueops/issues/68",
+      "state": "closed",
+      "labels": ["enhancement"]
+    }
+  ],
+  "label_candidates": [
+    {"name": "bug", "description": "Something isn't working", "aliases": ["deadlock", "infinite deny", "교착", "무한 재진입"]},
+    {"name": "documentation", "description": "Improvements or additions to documentation", "aliases": ["docs", "문서"]},
+    {"name": "duplicate", "description": "This issue or pull request already exists"},
+    {"name": "enhancement", "description": "New feature or request", "aliases": ["architecture", "refactor", "재설계", "기능"]},
+    {"name": "good first issue", "description": "Good for newcomers"},
+    {"name": "help wanted", "description": "Extra attention is needed"},
+    {"name": "invalid", "description": "This doesn't seem right"},
+    {"name": "question", "description": "Further information is requested"},
+    {"name": "wontfix", "description": "This will not be worked on"}
+  ]
+}

@@ -6,10 +6,10 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
-	model "agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	"issueops/internal/adapter/issueops"
+	model "issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
 )
 
 func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
@@ -27,7 +27,7 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 		Workspace: execution.Workspace, Execution: &execution,
 		ClaimTokenPath: "/tokens/199", IssueBodySHA256: "issue-sha", ContextPacketPath: "/packets/199",
 		ContextPacketSHA256: "packet-sha", OwnerPromptPath: "/prompts/199", OwnerPromptSHA256: "prompt-sha",
-		IssueSnapshotSource: "provider", NextCommand: "agent-harness next",
+		IssueSnapshotSource: "provider", NextCommand: "issueops next",
 	}}
 
 	got, err := NewHandler(service)(context.Background(), "/state", request, issueops.ExecutionPrepareInvocation{})
@@ -52,7 +52,7 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 		Workspace: coreWorkspace(execution.Workspace), Execution: coreExecution(&execution),
 		ClaimTokenPath: "/tokens/199", IssueBodySHA256: "issue-sha", ContextPacketPath: "/packets/199",
 		ContextPacketSHA256: "packet-sha", OwnerPromptPath: "/prompts/199", OwnerPromptSHA256: "prompt-sha",
-		IssueSnapshotSource: "provider", NextCommand: "agent-harness next",
+		IssueSnapshotSource: "provider", NextCommand: "issueops next",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("result=%#v want=%#v", got, want)
@@ -107,7 +107,7 @@ func fullContractExecution() leasecontract.Execution {
 		},
 		Orca:       &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", RunID: "run", WorktreeInstanceID: "instance", LeaseGeneration: 3, OwnerHost: "claude", OwnerModel: "model", OwnerEffort: "high", TaskID: "task", DispatchID: "dispatch", TerminalPTYID: "pty"},
 		Pending:    &leasecontract.ExternalIntent{OperationID: "operation", Kind: "orca_prepare", Marker: "marker", StartedAt: "started"},
-		Completion: &leasecontract.Completion{FinalHead: "head", TuringReportPath: "/report", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://example.test/pr/199", CompletedAt: "completed"},
+		Completion: &leasecontract.Completion{FinalHead: "head", VerificationReportPath: "/report", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://example.test/pr/199", CompletedAt: "completed"},
 		CompletionHistory: []leasecontract.CompletionHistoryEntry{{
 			Generation: 2, Completion: leasecontract.Completion{Verification: []string{"old history verification"}}, Reason: "reseed", ReopenedAt: "reopened",
 		}},

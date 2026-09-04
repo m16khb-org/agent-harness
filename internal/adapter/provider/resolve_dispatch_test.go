@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // Resolve는 provider 이름 디스패치다. 지원 목록 에러가 정확한 이름을

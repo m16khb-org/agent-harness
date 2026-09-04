@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	preparationdomain "agent-harness/internal/domain/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	preparationdomain "issueops/internal/domain/issueopspreparation"
 )
 
 type Service struct {
@@ -345,11 +345,11 @@ func (service *Service) resolveExisting(snapshot preparationcontract.Snapshot, c
 		return result, nil
 	case preparationdomain.CodePendingReconcile:
 		result.OK = false
-		result.NextCommand = "agent-harness issueops execution reconcile --id " + snapshot.Record.ID + " --preview ACTOR_FLAGS"
+		result.NextCommand = "issueops execution reconcile --id " + snapshot.Record.ID + " --preview ACTOR_FLAGS"
 		return result, fmt.Errorf("IssueOps execution has a pending external intent; run %s", result.NextCommand)
 	case preparationdomain.CodeModeMismatch:
 		result.OK = false
-		result.NextCommand = fmt.Sprintf("agent-harness issueops execution switch-mode --id %s --mode %s --json", snapshot.Record.ID, decision.RequestedMode)
+		result.NextCommand = fmt.Sprintf("issueops execution switch-mode --id %s --mode %s --json", snapshot.Record.ID, decision.RequestedMode)
 		return result, fmt.Errorf("IssueOps execution is already prepared as %s; switching to %s removes the canonical worktree, so run %s", decision.ResolvedMode, decision.RequestedMode, result.NextCommand)
 	case preparationdomain.CodeWriterless:
 		result.OK = false
@@ -443,7 +443,7 @@ func selectionReceipt(decision preparationdomain.Decision, selectedAt string) le
 }
 
 func prepareConfirmCommand(command preparationcontract.Command, decision preparationdomain.Decision) string {
-	parts := []string{"agent-harness", "issueops", "execution", "prepare", "--id", quoteArg(command.ID), "--mode", quoteArg(decision.RequestedMode)}
+	parts := []string{"issueops", "execution", "prepare", "--id", quoteArg(command.ID), "--mode", quoteArg(decision.RequestedMode)}
 	if command.OwnerHost != "" {
 		parts = append(parts, "--owner-host", quoteArg(command.OwnerHost))
 	}
@@ -500,13 +500,13 @@ func writerlessNextCommand(snapshot preparationcontract.Snapshot) string {
 	switch execution.Lease.Status {
 	case "claimable":
 		if execution.Mode == preparationcontract.ModeOrca {
-			return "agent-harness issueops execution resume --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --confirm"
+			return "issueops execution resume --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --confirm"
 		}
-		return "agent-harness issueops execution claim --id " + quoteArg(record.ID) + " --generation " + strconv.FormatUint(generation, 10) + " --claim-current-token"
+		return "issueops execution claim --id " + quoteArg(record.ID) + " --generation " + strconv.FormatUint(generation, 10) + " --claim-current-token"
 	case "released":
-		return "agent-harness issueops execution replace --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --preview"
+		return "issueops execution replace --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --preview"
 	case "revoking":
-		return "agent-harness issueops execution replace --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --finalize-preview"
+		return "issueops execution replace --id " + quoteArg(record.ID) + " --expected-generation " + strconv.FormatUint(generation, 10) + " --finalize-preview"
 	default:
 		return ""
 	}

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	issueopsapplication "agent-harness/internal/application/issueopsinventory"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsapplication "issueops/internal/application/issueopsinventory"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 type fakeScanner struct {

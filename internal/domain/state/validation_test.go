@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	statecontract "agent-harness/internal/contract/state"
-	statedomain "agent-harness/internal/domain/state"
+	statecontract "issueops/internal/contract/state"
+	statedomain "issueops/internal/domain/state"
 )
 
 func TestValidateRecordAcceptsOnlyExactCurrentV1(t *testing.T) {

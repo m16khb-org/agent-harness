@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	"agent-harness/internal/adapter/projectdocs/detection"
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	"issueops/internal/adapter/projectdocs/detection"
+	projectdoc "issueops/internal/domain/projectdoc"
 )
 
 func detectFrameworks(root string, files []string, addEvidence func(string)) []string {

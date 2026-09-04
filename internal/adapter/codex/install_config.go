@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func writeGlobalConfig(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
@@ -25,7 +25,7 @@ func writeGlobalConfig(path string, req port.NativeInstallRequest) (port.Install
 	} else if !os.IsNotExist(err) && !req.DryRun {
 		return file, err
 	}
-	for _, section := range []string{"mcp_servers.agent_harness", "mcp_servers.agent_harness.env", "mcp_servers.agent-harness", "mcp_servers.agent-harness.env"} {
+	for _, section := range []string{"mcp_servers.issueops", "mcp_servers.issueops.env"} {
 		text = removeTOMLSection(text, section)
 	}
 	if strings.TrimSpace(text) != "" && !strings.HasSuffix(text, "\n") {
@@ -54,24 +54,24 @@ func writeGlobalConfig(path string, req port.NativeInstallRequest) (port.Install
 }
 
 func codexGlobalBlock(req port.NativeInstallRequest) string {
-	return fmt.Sprintf(`[mcp_servers.agent_harness]
+	return fmt.Sprintf(`[mcp_servers.issueops]
 command = %s
 args = ["mcp"]
 startup_timeout_sec = 30
 
-[mcp_servers.agent_harness.env]
-HARNESS_ROOT = %s
+[mcp_servers.issueops.env]
+ISSUEOPS_ROOT = %s
 `, TOMLString(req.BinPath), TOMLString(req.Root))
 }
 
 func codexTemplate(req port.NativeInstallRequest) string {
-	return `[mcp_servers.agent_harness]
-command = "./bin/agent-harness"
+	return `[mcp_servers.issueops]
+command = "./bin/issueops"
 args = ["mcp"]
 startup_timeout_sec = 30
 
-[mcp_servers.agent_harness.env]
-HARNESS_ROOT = "."
+[mcp_servers.issueops.env]
+ISSUEOPS_ROOT = "."
 `
 }
 

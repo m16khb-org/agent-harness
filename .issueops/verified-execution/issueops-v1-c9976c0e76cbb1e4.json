@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "kind": "issueops_v1_turing_report",
+  "lifecycle_id": "io-e380b34f0b6b",
+  "generation": 1,
+  "mode": "orca",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-terra",
+    "effort": "xhigh"
+  },
+  "workspace": {
+    "root": "/Users/m16khb/Workspace/issueops.worktrees/470-worker-done-artifact-lane-b",
+    "branch": "470-worker-done-artifact-lane-b",
+    "base_head": "020d4fba5a6cf8f674c67c9e900418d3b881d58f"
+  },
+  "final_head": "the commit containing this report; supplied as an exact SHA to execution complete",
+  "digests": {
+    "issue_body_sha256": "eb8b64bba08a00196af5dff54b637c41191fa4fd588fbc14c07d2cd4675224f9",
+    "context_packet_sha256": "a43a5e6240988df43a297b79ad151508333a0d1eae43b0ae4a65deb21cd7d645",
+    "owner_prompt_sha256": "bd46a6e0342c024cb1b57f41a97342b63a63c617c19a6e79d27b15470104d66b"
+  },
+  "artifact_sha256": {
+    "plan": {
+      "source_sha256": "f35448d5d2c8e95f22879e7500cd0d40152d8309739f062b82864b42599a5e7c",
+      "manifest_sha256": "f35448d5d2c8e95f22879e7500cd0d40152d8309739f062b82864b42599a5e7c",
+      "materialized_sha256": "f35448d5d2c8e95f22879e7500cd0d40152d8309739f062b82864b42599a5e7c",
+      "path": ".issueops/artifact/plan.md",
+      "mode": "0600",
+      "regular_file": true,
+      "marker": "WD3-B-020d4fba-20260810"
+    },
+    "spec": {
+      "source_sha256": "4e1f721813c81ed99d2ddb201eada2ebf7b45c17dcbf9fc9f1091d88fd7a4870",
+      "manifest_sha256": "4e1f721813c81ed99d2ddb201eada2ebf7b45c17dcbf9fc9f1091d88fd7a4870",
+      "materialized_sha256": "4e1f721813c81ed99d2ddb201eada2ebf7b45c17dcbf9fc9f1091d88fd7a4870",
+      "path": ".issueops/artifact/spec.md",
+      "mode": "0600",
+      "regular_file": true,
+      "marker": "WD3-B-020d4fba-20260810"
+    },
+    "verified-execution-loop": {
+      "source_sha256": "0361a23e5ca0f93250427aa058fd5140416915ae8ce7e5cddc7efad0f097051c",
+      "manifest_sha256": "0361a23e5ca0f93250427aa058fd5140416915ae8ce7e5cddc7efad0f097051c",
+      "materialized_sha256": "0361a23e5ca0f93250427aa058fd5140416915ae8ce7e5cddc7efad0f097051c",
+      "path": ".issueops/artifact/verified-execution-loop.md",
+      "mode": "0600",
+      "regular_file": true,
+      "marker": "WD3-B-020d4fba-20260810"
+    }
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "status": "pass",
+      "test_name": "sealed identity and native generation claim",
+      "command": "sha256 issue body/context/owner prompt; issueops execution claim --id io-e380b34f0b6b --generation 1 --claim-current-token ...",
+      "observed_result": "Issue, context, and owner-prompt SHA-256 values matched the sealed receipt; generation 1 became active for the native Codex holder."
+    },
+    {
+      "id": "AC-02",
+      "status": "pass",
+      "test_name": "sealed artifact manifest and materialization",
+      "command": "shasum -a 256 .issueops/artifact/{plan,spec,verified-execution-loop}.md; stat -f '%N type=%HT mode=%Lp links=%l' ...",
+      "observed_result": "All three source/manifest/materialized SHA-256 triples match; every file is a non-symlink regular file with mode 0600 and marker B."
+    },
+    {
+      "id": "AC-03",
+      "status": "pass",
+      "test_name": "sealed GitHub linked-branch readback",
+      "command": "issueops branch await-link --id io-e380b34f0b6b --json; gh issue develop --list 470 --repo m16khb/issueops; issueops branch prepare ... --link-verified",
+      "observed_result": "The linked branch is 470-worker-done-artifact-lane-b at sealed OID 020d4fba5a6cf8f674c67c9e900418d3b881d58f and durable branch_prepare.link_verified is true."
+    },
+    {
+      "id": "AC-04",
+      "status": "pass",
+      "test_name": "installed fixed binary and completion regression",
+      "command": "go version -m /Users/m16khb/.local/bin/issueops; go test ./internal/application/issueopscompletion -run 'TestComplete(CommitsWithoutOrcaSettle|IdenticalRetrySkipsEnvironmentWithoutOrcaSettle)' -count=1",
+      "observed_result": "Installed binary reports vcs.revision 020d4fba5a6cf8f674c67c9e900418d3b881d58f with vcs.modified=false; focused completion regression passed."
+    },
+    {
+      "id": "AC-05",
+      "status": "in_progress",
+      "test_name": "report-only commit, governed draft PR, and durable completion",
+      "command": "git diff --check; atomic commit/push; issueops remote create-pr; issueops execution complete",
+      "observed_result": "Pending final artifact validation, review, publication, and completion receipt."
+    }
+  ],
+  "verification": [
+    {
+      "command": "go version -m /Users/m16khb/.local/bin/issueops",
+      "result": "PASS",
+      "evidence": "vcs.revision=020d4fba5a6cf8f674c67c9e900418d3b881d58f; vcs.modified=false"
+    },
+    {
+      "command": "go test ./internal/application/issueopscompletion -run 'TestComplete(CommitsWithoutOrcaSettle|IdenticalRetrySkipsEnvironmentWithoutOrcaSettle)' -count=1",
+      "result": "PASS",
+      "evidence": "ok issueops/internal/application/issueopscompletion"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS",
+      "evidence": "baseline clean before lane report artifacts"
+    }
+  ],
+  "scope": {
+    "production_source_changed": false,
+    "allowed_changed_files": [
+      ".issueops/verified-execution/issueops-v1-c9976c0e76cbb1e4.json",
+      ".issueops/verified-execution/issueops-v1-c9976c0e76cbb1e4-pr.md"
+    ]
+  },
+  "implementation_review": {
+    "reviewer_model": "gpt-5.6-sol",
+    "reviewer_effort": "xhigh",
+    "verdict": "pending"
+  },
+  "publication": {
+    "commit": "single atomic commit containing this report",
+    "draft_pr_url": "pending governed publication",
+    "completion_receipt": "pending exact final HEAD and draft PR readback"
+  },
+  "coordinator_pending": [
+    "VAL-01 three-lane overlap and unique resource snapshot",
+    "VAL-02 raw accepted worker_done and no settle projection",
+    "VAL-03 sequential merge and typed cleanup readback"
+  ],
+  "deviations": []
+}

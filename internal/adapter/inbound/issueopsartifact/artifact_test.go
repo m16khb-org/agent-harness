@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopsartifactapplication "agent-harness/internal/application/issueopsartifact"
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
+	issueopsartifactapplication "issueops/internal/application/issueopsartifact"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
 )
 
 type fakeRepository struct {
@@ -68,7 +68,7 @@ func TestHandlersStageRejectsInvalidNameWithoutRepositoryWrite(t *testing.T) {
 
 	if _, err := handlers.Stage("/state", "io-1", "../escape", []byte("# x")); err == nil {
 		t.Fatal("invalid artifact name must fail")
-	} else if !strings.Contains(err.Error(), "plan|spec|turing-loop") {
+	} else if !strings.Contains(err.Error(), "plan|spec|verified-execution-loop") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if repo.updateCalls != 0 {

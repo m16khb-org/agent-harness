@@ -22,7 +22,7 @@
 - The request key excludes actor identity and uses length-delimited hashing over the exact design fields so identical requests from separate fresh source sessions converge.
 - Do not hold the IssueOps cycle lock during the Orca process call. Finalization must re-read and update only the immutable entry identified by `request_key`; unrelated concurrent record changes must survive.
 - No direct `git push` exception is added. Only the active owner can apply feedback, commit, and invoke `issueops handoff publish --confirm`.
-- Use `apply_patch` for implementation edits. Preserve unrelated changes. Future commits require explicit user authorization and must follow `.agent-harness/COMMIT_POLICY.md`; no push is authorized by this plan.
+- Use `apply_patch` for implementation edits. Preserve unrelated changes. Future commits require explicit user authorization and must follow `.issueops/COMMIT_POLICY.md`; no push is authorized by this plan.
 - If implementation reveals a need to change any invariant above, stop and amend/re-review the design before continuing.
 - Angle-bracket tokens in command illustrations name runtime fields supplied by tests or fixtures; they are not unresolved authoring placeholders and must never be pasted literally by an operator.
 
@@ -386,10 +386,10 @@ feat(issueops): deliver durable correction requests
 ### Task 4: Add CLI and MCP action parity
 
 **Files:**
-- Modify: `cmd/harness/issueopscli/issueops_handoff_cli.go`
-- Modify: `cmd/harness/issueopscli/issueops_handoff_cli_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_handlers.go`
-- Modify: `cmd/harness/mcpcli/mcp_issueops_helpers_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops_handoff_cli.go`
+- Modify: `cmd/issueops/issueopscli/issueops_handoff_cli_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_handlers.go`
+- Modify: `cmd/issueops/mcpcli/mcp_issueops_helpers_test.go`
 - Modify: `internal/adapter/mcp/issueops_lifecycle_catalog.go`
 - Modify: `internal/adapter/mcp/issueops_catalog_test.go`
 
@@ -402,7 +402,7 @@ feat(issueops): deliver durable correction requests
 Extend `TestIssueOpsHandoffExposesOnlyCurrentActions` and add focused parsing/output tests for:
 
 ```text
-agent-harness issueops handoff request-modification \
+issueops handoff request-modification \
   --id <id> \
   --host <host> \
   --session-id <session> \
@@ -424,7 +424,7 @@ Update parity expectations so the action enum includes `request-modification`, t
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./internal/adapter/mcp -run 'Handoff|ModificationRequest|ActionParity' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./internal/adapter/mcp -run 'Handoff|ModificationRequest|ActionParity' -count=1
 ```
 
 Expected: FAIL because the surface is absent.
@@ -595,15 +595,15 @@ If production code changed, use `fix(issueops)` and explain the exposed defect i
 ### Task 7: Align operator docs, skill guidance, and public goldens
 
 **Files:**
-- Modify: `.agent-harness/AGENT_WORKFLOW.md`
-- Modify: `.agent-harness/ARCHITECTURE.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Modify: `.agent-harness/CAUTIONS.md`
+- Modify: `.issueops/AGENT_WORKFLOW.md`
+- Modify: `.issueops/ARCHITECTURE.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/TESTING.md`
+- Modify: `.issueops/CAUTIONS.md`
 - Modify: `skills/issueops/references/worktree-context.md`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Modify: `cmd/harness/testdata/response_contracts.golden.json`
-- Modify only if generated contract content requires it: `cmd/harness/testdata/mcp_tools.golden.json`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json`
+- Modify only if generated contract content requires it: `cmd/issueops/testdata/mcp_tools.golden.json`
 
 **Interfaces:**
 - Documents the typed source-to-owner correction channel and the owner feedback/implement/republish loop.
@@ -628,7 +628,7 @@ State the 32-entry cap, redaction/body bounds, crash tombstone, and the fact tha
 Search first:
 
 ```bash
-rg -n 'terminal send|orchestration send|continue|resume|modification|feedback add|handoff publish' .agent-harness skills/issueops/references/worktree-context.md
+rg -n 'terminal send|orchestration send|continue|resume|modification|feedback add|handoff publish' .issueops skills/issueops/references/worktree-context.md
 ```
 
 Replace only statements that authorize free-form correction steering. Preserve the narrow existing wake/resume and cancellation/recovery contracts where they serve different states.
@@ -648,9 +648,9 @@ Expected: PASS.
 Run the normal golden tests first and inspect the diff. Use the repository's supported update switch only for intended public-surface changes:
 
 ```bash
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
-go test ./cmd/harness/harnessapp -run Golden -update -count=1
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run Golden -update -count=1
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -count=1
 ```
 
 Expected: first run reports only the intended handoff surface drift; update changes the relevant snapshots; final run passes. Inspect every golden diff and reject unrelated churn.
@@ -659,8 +659,8 @@ Expected: first run reports only the intended handoff surface drift; update chan
 
 ```bash
 git diff --check
-rg -n 'request-modification|modification_requests|feedback add|fast-forward' .agent-harness skills/issueops docs/superpowers/specs/2026-07-22-issueops-handoff-modification-request-design.md
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./internal/adapter/mcp -count=1
+rg -n 'request-modification|modification_requests|feedback add|fast-forward' .issueops skills/issueops docs/superpowers/specs/2026-07-22-issueops-handoff-modification-request-design.md
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./internal/adapter/mcp -count=1
 ```
 
 Expected: no whitespace error; the typed lifecycle appears in every required contract; tests pass.
@@ -693,7 +693,7 @@ Expected: only files named in this plan are changed, and there are no whitespace
 - [ ] **Step 2: Run the focused cross-layer suite**
 
 ```bash
-go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/adapter/mcp ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -count=1
+go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/adapter/mcp ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -count=1
 ```
 
 Expected: PASS.
@@ -703,7 +703,7 @@ Expected: PASS.
 ```bash
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: all commands exit 0. Re-run `git status --short` and ensure the built binary did not create an unintended tracked diff.
@@ -711,8 +711,8 @@ Expected: all commands exit 0. Re-run `git status --short` and ensure the built 
 - [ ] **Step 4: Re-run the public contracts**
 
 ```bash
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 ```
 
 Expected: PASS with no unreviewed golden drift.

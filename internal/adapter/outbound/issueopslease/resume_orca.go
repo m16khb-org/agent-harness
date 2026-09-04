@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 type ResumeOwnerObserver func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error)

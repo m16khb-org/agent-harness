@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/contract/issueops"
 )
 
 type claimableExecutionFixture struct {
@@ -42,7 +42,7 @@ func newClaimableExecutionFixture(t *testing.T, stateRoot, branch string) claima
 	}
 	record.WorktreePath = worktree
 	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
-		Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
+		Provider: "github", IssueURL: "https://github.com/example/issueops/issues/69",
 		Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
 	record.Execution = &issueops.Execution{
@@ -67,9 +67,9 @@ func newClaimableExecutionFixture(t *testing.T, stateRoot, branch string) claima
 func prepareExecutionCompletionFixture(t *testing.T, stateRoot string, fixture *claimableExecutionFixture) {
 	t.Helper()
 	fixture.record.Phase = IssueOpsPhasePR
-	fixture.record.IssueURL = "https://github.com/example/agent-harness/issues/69"
+	fixture.record.IssueURL = "https://github.com/example/issueops/issues/69"
 	fixture.record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
-		Provider: "github", Kind: "pr", URL: "https://github.com/example/agent-harness/pull/69",
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/issueops/pull/69",
 		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"},
 		VerifiedAt: "2026-07-22T00:00:00Z", TargetBranch: "main",
 	}

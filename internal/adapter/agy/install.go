@@ -3,7 +3,7 @@ package agy
 import (
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type Installer struct{}

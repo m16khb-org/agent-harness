@@ -1,8 +1,8 @@
 package looprun
 
 import (
-	loopruncontract "agent-harness/internal/contract/looprun"
 	"fmt"
+	loopruncontract "issueops/internal/contract/looprun"
 	"sort"
 	"strings"
 )

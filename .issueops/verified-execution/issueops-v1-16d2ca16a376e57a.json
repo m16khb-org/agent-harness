@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "marker": "WD3-C-020d4fba-20260810",
+  "lifecycle_id": "io-33e9a677ab1e",
+  "generation": 1,
+  "mode": "orca",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-terra",
+    "effort": "xhigh"
+  },
+  "identity": {
+    "issue_body_sha256": "8bb58e88fd0a276e57ff54652c725b22825a8246813827130b74d9fab85a46bd",
+    "context_packet_sha256": "1b1ae3f76113f8e466cb2d1ec8fe7a698a5a8bcc84d7e8e0b8b70e0b8edcafea",
+    "owner_prompt_sha256": "f7436b8fafa49025fd1f1a24bf6a293725a4fe7e50f6e9c6d9206e97ad41f129",
+    "canonical_worktree": "/Users/m16khb/Workspace/issueops.worktrees/471-worker-done-artifact-lane-c",
+    "branch": "471-worker-done-artifact-lane-c",
+    "base_head": "020d4fba5a6cf8f674c67c9e900418d3b881d58f"
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "result": "pass",
+      "evidence": [
+        "context.json SHA-256 matched the sealed packet value",
+        "GitHub issue body UTF-8 SHA-256 matched the sealed issue value",
+        "execution claim succeeded for generation 1 with the native Codex receipt"
+      ],
+      "cleanup": "none"
+    },
+    {
+      "id": "AC-02",
+      "result": "pass",
+      "artifacts": {
+        "plan": {
+          "source_sha256": "48f53042a1180cd09a2a1cd802c074c1f76078ea8c73c10941bd593ef4d23a74",
+          "manifest_sha256": "48f53042a1180cd09a2a1cd802c074c1f76078ea8c73c10941bd593ef4d23a74",
+          "materialized_sha256": "48f53042a1180cd09a2a1cd802c074c1f76078ea8c73c10941bd593ef4d23a74"
+        },
+        "spec": {
+          "source_sha256": "83520470d53fe7a56f0691fb634bf47e0be5580acfff8ff852fcf66cb7396d4d",
+          "manifest_sha256": "83520470d53fe7a56f0691fb634bf47e0be5580acfff8ff852fcf66cb7396d4d",
+          "materialized_sha256": "83520470d53fe7a56f0691fb634bf47e0be5580acfff8ff852fcf66cb7396d4d"
+        },
+        "verified-execution-loop": {
+          "source_sha256": "54428becb497baa0efdd25bbf2d81df44333469fe1c82d9bc21e25c8dad8c58b",
+          "manifest_sha256": "54428becb497baa0efdd25bbf2d81df44333469fe1c82d9bc21e25c8dad8c58b",
+          "materialized_sha256": "54428becb497baa0efdd25bbf2d81df44333469fe1c82d9bc21e25c8dad8c58b"
+        }
+      },
+      "evidence": "All materialized files were regular non-symlink files with mode 0600; no lane A/B marker was present.",
+      "cleanup": "none"
+    },
+    {
+      "id": "AC-03",
+      "result": "pass",
+      "evidence": "branch await-link observed 471-worker-done-artifact-lane-c at sealed base 020d4fba5a6cf8f674c67c9e900418d3b881d58f; gh issue develop readback matched; branch prepare recorded link_verified=true.",
+      "cleanup": "none"
+    },
+    {
+      "id": "AC-04",
+      "result": "pass",
+      "installed_binary": {
+        "path": "/Users/m16khb/.local/bin/issueops",
+        "vcs_revision": "020d4fba5a6cf8f674c67c9e900418d3b881d58f",
+        "vcs_modified": false
+      },
+      "verification": [
+        "go test ./internal/application/issueopscompletion -run TestComplete(CommitsWithoutOrcaSettle|IdenticalRetrySkipsEnvironmentWithoutOrcaSettle) -count=1: PASS",
+        "git diff --check before report creation: PASS"
+      ],
+      "cleanup": "none"
+    },
+    {
+      "id": "AC-05",
+      "result": "ready_for_execution_complete",
+      "scope": "Only this Turing JSON and the lane C draft PR body are committed; production source is unchanged.",
+      "evidence": "Artifact commit a8854b2d04cd5e650897464e5b92842a208eeb0b was pushed and draft PR #474 was read back with main target, bug label, m16khb assignee, and the Korean body.",
+      "cleanup": "none"
+    }
+  ],
+  "changed_files": [
+    ".issueops/verified-execution/issueops-v1-16d2ca16a376e57a.json",
+    ".issueops/verified-execution/issueops-v1-16d2ca16a376e57a-pr-body.md"
+  ],
+  "review": {
+    "reviewer_model": "gpt-5.6-sol",
+    "reviewer_effort": "xhigh",
+    "verdict": "pass",
+    "finding": "No blocking issue: only the lane C evidence files are added; AC-05 remains bounded to publication and durable completion.",
+    "evidence": "The initial pre-commit Brooks review inspected the exact worktree status, branch, HEAD, and both add-only artifact files."
+  },
+  "publication": {
+    "artifact_commit": "a8854b2d04cd5e650897464e5b92842a208eeb0b",
+    "draft_pr_url": "https://github.com/m16khb-org/issueops/pull/474",
+    "draft_pr_verified": true,
+    "execution_completion": "pending; this report update must be committed and pushed before the generation-fenced complete command."
+  },
+  "coordinator_pending": {
+    "VAL-01": "three-lane overlap and uniqueness snapshot",
+    "VAL-02": "completion response settlement-field absence and raw accepted worker_done evidence",
+    "VAL-03": "sequential merge and typed cleanup readback"
+  },
+  "verification_mode": "proportionate report-only CLI lifecycle evidence",
+  "skipped_checks": "none"
+}

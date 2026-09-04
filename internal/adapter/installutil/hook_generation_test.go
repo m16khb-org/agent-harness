@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const hookBin = "/repo/bin/agent-harness"
+const hookBin = "/repo/bin/issueops"
 
 func generationConfig(targets ...string) map[string]any {
 	groups := make([]any, 0, len(targets))
@@ -28,7 +28,7 @@ func TestHookTargetGenerationMessagesNamesBothBuildsAndAnExactRecovery(t *testin
 	}
 	for _, needle := range []string{
 		"aaaaaaaaaaaa", "bbbbbbbbbbbb+dirty", hookBin, "claude",
-		"go build -o " + hookBin + " ./cmd/harness", hookBin + " install --json",
+		"go build -o " + hookBin + " ./cmd/issueops", hookBin + " install --json",
 	} {
 		if !strings.Contains(messages[0], needle) {
 			t.Fatalf("메시지에 %q가 있어야 한다: %s", needle, messages[0])
@@ -62,13 +62,13 @@ func TestHookTargetGenerationStaysQuietWhenItCannotJudge(t *testing.T) {
 // 두 번 말하지 않음을 고정한다. 경로가 다르면 drift 메시지가 이미 그것을
 // 보고하고, 여기서 다시 말하면 사용자는 무엇이 문제인지 흐려진다.
 func TestHookTargetGenerationLeavesPathDriftToItsOwnAxis(t *testing.T) {
-	messages := HookTargetGenerationMessages(generationConfig("/old/bin/agent-harness"), "codex", hookBin, "bbbbbbbbbbbb",
+	messages := HookTargetGenerationMessages(generationConfig("/old/bin/issueops"), "codex", hookBin, "bbbbbbbbbbbb",
 		func(string) string { return "aaaaaaaaaaaa" })
 	if len(messages) != 0 {
 		t.Fatalf("경로 drift는 drift 축의 일이다: %v", messages)
 	}
 	// 그 경로 불일치는 여전히 보고돼야 한다.
-	if drift := HookTargetDriftMessages(generationConfig("/old/bin/agent-harness"), "codex", hookBin); len(drift) != 1 {
+	if drift := HookTargetDriftMessages(generationConfig("/old/bin/issueops"), "codex", hookBin); len(drift) != 1 {
 		t.Fatalf("drift 축은 계속 보고해야 한다: %v", drift)
 	}
 }

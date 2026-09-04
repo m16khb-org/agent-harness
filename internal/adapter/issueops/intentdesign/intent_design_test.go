@@ -3,7 +3,7 @@ package intentdesign
 import (
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func TestCleanTextValues(t *testing.T) {
@@ -141,7 +141,7 @@ func TestRecordIntentWritesCleanRedactedContract(t *testing.T) {
 		},
 	}
 	record, err := RecordIntent(store, "state", "io-1", model.IssueOpsIntentRecordRequest{
-		RawRequest:        "fix flaky quality gate in cmd/harness",
+		RawRequest:        "fix flaky quality gate in cmd/issueops",
 		InterpretedIntent: "stabilize quality gate coverage workflow for harness commands",
 		SuccessCriteria:   []string{" tests pass ", "", "docs updated", "tests pass"},
 		Constraints:       []string{"no schema changes"},

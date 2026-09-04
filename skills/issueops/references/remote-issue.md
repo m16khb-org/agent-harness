@@ -9,7 +9,7 @@ The lifecycle may enter `plan` only after that skill records the canonical
 remote issue and its verification evidence.
 
 The focused creation skills resolve the concrete current user and pass it through
-the provider-neutral `agent-harness issueops remote` commands. Do not put raw
+the provider-neutral `issueops remote` commands. Do not put raw
 provider mutation commands or placeholders such as `@me` in a skill workflow.
 
 Before creating or editing the remote issue, proactively score related issues and labels. Gather candidate issues and labels from the target provider, build an `issueops remote score` request, and apply only selected candidates whose score is at or above the threshold. The count is not fixed; the threshold decides the set.
@@ -24,20 +24,20 @@ Always inspect the current issue list and label list before deciding whether to 
 Run the deterministic score first:
 
 ```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
+issueops remote score --input issueops-remote-score.json --judge none --json
 ```
 
 For semantic judgment, render the read-only `background_join` prompt:
 
 ```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge prompt --json
+issueops remote score --input issueops-remote-score.json --judge prompt --json
 ```
 
 Give the returned `prompt` field to a fresh independent host agent. Save only
 that agent's result JSON, then strict-decode it before any remote artifact write:
 
 ```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge file --judge-file issueops-remote-judge.json --json
+issueops remote score --input issueops-remote-score.json --judge file --judge-file issueops-remote-judge.json --json
 ```
 
 If an independent host agent is unavailable or intentionally disabled, use the
@@ -88,7 +88,7 @@ GitHub and GitLab expose similar concepts through different mechanisms. Never ap
 | Concept | GitHub mechanism | GitLab mechanism |
 | --- | --- | --- |
 | Related / non-hierarchical link | Cross-reference in the issue body (`#123` or full URL). GitHub has no native "linked items" relation, so body references are correct. | Native **linked items** (relation), not a body section. Create with `glab api projects/:id/issues/:iid/links -X POST -f target_project_id=<id> -f target_issue_iid=<iid> -f link_type=relates_to` (`relates_to` \| `blocks` \| `is_blocked_by`). |
-| Parent → child work breakdown (tasks) | `agent-harness issueops remote create-child` creates and verifies the native hierarchy. | The same provider-neutral command owns GitLab child Task creation through its adapter. |
+| Parent → child work breakdown (tasks) | `issueops remote create-child` creates and verifies the native hierarchy. | The same provider-neutral command owns GitLab child Task creation through its adapter. |
 | Labels | Pass selected labels through `remote create-issue/create-child/create-pr`; verify live values. | Same command and verification contract; provider syntax stays inside the adapter. |
 | Assignee | Pass the concrete username through the remote command; verify live value. | Same command; never use `@me` as a provider username. |
 
@@ -135,4 +135,4 @@ provider별 링크와 계층 규칙만 소유한다. 게이트 스크립트도 �
 - Attach GitLab relations through the native issue-links capability. Do not
   revive deprecated provider-specific creation aliases.
 
-원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.
+원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.

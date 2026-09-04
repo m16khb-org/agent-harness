@@ -1,12 +1,12 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
+	tracecontract "issueops/internal/contract/trace"
 	"sort"
 	"strings"
 
-	"agent-harness/internal/contract/failurecause"
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/contract/failurecause"
+	"issueops/internal/domain/policy"
 )
 
 func nestedMap(doc map[string]any, key string) map[string]any {

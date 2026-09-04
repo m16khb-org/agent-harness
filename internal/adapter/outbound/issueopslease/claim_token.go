@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func claimTokenPath(record leasecontract.Record) string {
 	key := claimTokenSHA256(record.ID)[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
 }
 
 func readCurrentClaimToken(record leasecontract.Record, path string) (string, error) {

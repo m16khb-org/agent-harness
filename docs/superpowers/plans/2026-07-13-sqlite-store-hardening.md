@@ -17,7 +17,7 @@
 - Preserve the existing `remote-create-live/<id>` outer root followed by the main IssueOps root; do not introduce the reverse acquisition.
 - Repair only the exact store root and fixed SQLite main/sidecar path set. Do not recursively chmod, follow symlinks, chmod parent directories, or touch unrelated files.
 - Use only temporary state roots in tests. Do not inspect, checkpoint, chmod, or mutate live user state.
-- Build to a temporary path. Do not overwrite tracked `bin/agent-harness`.
+- Build to a temporary path. Do not overwrite tracked `bin/issueops`.
 - Keep every intermediate commit compilable and focused. Do not push without separate approval.
 - Run `gofmt` on every changed Go file before its focused test command.
 
@@ -55,9 +55,9 @@
 ### Aligned documentation
 
 - `docs/superpowers/specs/2026-07-13-sqlite-store-hardening-design.md`: approved ordered cross-root correction.
-- `.agent-harness/ADR.md`: final span-chain and remote-create lock-order decision.
-- `.agent-harness/CAUTIONS.md`: root-chain and ordering guidance.
-- `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md`: T18 evidence.
+- `.issueops/ADR.md`: final span-chain and remote-create lock-order decision.
+- `.issueops/CAUTIONS.md`: root-chain and ordering guidance.
+- `.issueops/issues/_unnumbered/issueops-stability-concurrency-multisession-hardening.md`: T18 evidence.
 
 ---
 
@@ -564,8 +564,8 @@ Create:
 
 - `TestOpenRepairsPermissiveRootAndKnownFiles`: pre-create root `0755`, open it, drift root and every existing known SQLite file, cached-open it, assert root `0700`, known files `0600`, unrelated file unchanged.
 - `TestOpenRejectsSymlinkRootWithoutChangingTarget`: assert failure and unchanged target mode.
-- `TestOpenRejectsSymlinkKnownFileWithoutChangingTarget`: symlink `harness.db`, assert failure and unchanged target.
-- `TestOpenRejectsNonRegularKnownFile`: place a directory at `harness.db`, assert path-specific failure.
+- `TestOpenRejectsSymlinkKnownFileWithoutChangingTarget`: symlink `issueops.db`, assert failure and unchanged target.
+- `TestOpenRejectsNonRegularKnownFile`: place a directory at `issueops.db`, assert path-specific failure.
 - `TestMaintainUsesExactPermissionRepair`: assert only known repaired basenames are reported and unrelated mode is unchanged.
 
 ```bash
@@ -640,9 +640,9 @@ Define `sqlstoreHelperProcess` with `cmd *exec.Cmd`, marker channel, captured st
 - [ ] **Step 2: Implement holder and contender modes**
 
 ```go
-switch os.Getenv("HARNESS_SQLSTORE_PROCESS_HELPER") {
+switch os.Getenv("ISSUEOPS_SQLSTORE_PROCESS_HELPER") {
 case "holder":
-	d, err := Open(os.Getenv("HARNESS_SQLSTORE_PROCESS_DIR"))
+	d, err := Open(os.Getenv("ISSUEOPS_SQLSTORE_PROCESS_DIR"))
 	if err != nil { t.Fatal(err) }
 	err = d.WithSpan(context.Background(), func(context.Context) error {
 		fmt.Fprintln(os.Stdout, "locked")
@@ -650,7 +650,7 @@ case "holder":
 	})
 	t.Fatal(err)
 case "contender":
-	d, err := Open(os.Getenv("HARNESS_SQLSTORE_PROCESS_DIR"))
+	d, err := Open(os.Getenv("ISSUEOPS_SQLSTORE_PROCESS_DIR"))
 	if err != nil { t.Fatal(err) }
 	fmt.Fprintln(os.Stdout, "attempting")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -674,7 +674,7 @@ default:
 gofmt -w internal/core/sqlstore/process_crash_test.go
 go test ./internal/core/sqlstore -run '^TestWithSpanRecoversAfterHolderProcessIsKilled$' -count=10
 go test -race ./internal/core/sqlstore -run '^TestWithSpanRecoversAfterHolderProcessIsKilled$' -count=3
-ps -axo pid,ppid,etime,command | rg 'TestWithSpanProcessHelper|HARNESS_SQLSTORE_PROCESS_HELPER' || true
+ps -axo pid,ppid,etime,command | rg 'TestWithSpanProcessHelper|ISSUEOPS_SQLSTORE_PROCESS_HELPER' || true
 git add -- internal/core/sqlstore/process_crash_test.go
 git diff --cached --check
 git commit -m "test(sqlstore): prove process crash lock recovery" -m $'Lore:\n- Intent: Prove a killed span holder cannot strand later processes.\n- Why: Goroutine tests do not exercise process death or driver teardown.\n- Changes:\n  - Add exact subprocess markers and bounded handshakes.\n  - Kill and wait every child on all paths.\n- Verify: Repeated crash and race tests pass with no helper left.\n- Risk: Test-only temporary state and bounded process timing.'
@@ -688,9 +688,9 @@ Expected: every repetition passes and no helper process survives.
 
 **Files:**
 - Create: `internal/core/sqlstore/resource_test.go`
-- Modify: `.agent-harness/ADR.md`
-- Modify: `.agent-harness/CAUTIONS.md`
-- Modify: `.agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md`
+- Modify: `.issueops/ADR.md`
+- Modify: `.issueops/CAUTIONS.md`
+- Modify: `.issueops/issues/_unnumbered/issueops-stability-concurrency-multisession-hardening.md`
 
 **Interfaces:**
 - Consumes: `handles`, `DB.data`, `DB.span`, and final Tasks 2-8 behavior.
@@ -746,21 +746,21 @@ go test -p 1 -timeout 20m ./... -count=1
 go test -race -p 1 -timeout 20m ./... -count=1
 go vet ./...
 tmp_dir="$(mktemp -d)"
-go build -o "$tmp_dir/agent-harness" ./cmd/harness
+go build -o "$tmp_dir/issueops" ./cmd/issueops
 rm -rf "$tmp_dir"
 git diff --check
 python3 skills/atomic-commit-push/scripts/api_doc_gate.py .
 ```
 
-Expected: every command exits zero, API gate has no candidate files, and tracked `bin/agent-harness` is unchanged.
+Expected: every command exits zero, API gate has no candidate files, and tracked `bin/issueops` is unchanged.
 
 - [ ] **Step 5: Verify final invariants and hygiene**
 
 ```bash
 rg -n 'WithSpanContext|WithSpan\(func\(' internal --glob '*.go'
 rg -n '\.WithSpan\(' internal --glob '*.go' --glob '!**/*_test.go'
-git diff -- bin/agent-harness
-ps -axo pid,ppid,etime,command | rg 'TestWithSpanProcessHelper|HARNESS_SQLSTORE_PROCESS_HELPER' || true
+git diff -- bin/issueops
+ps -axo pid,ppid,etime,command | rg 'TestWithSpanProcessHelper|ISSUEOPS_SQLSTORE_PROCESS_HELPER' || true
 ```
 
 Expected: no legacy API; exactly eight production calls; no binary diff; no helper child.
@@ -768,7 +768,7 @@ Expected: no legacy API; exactly eight production calls; no binary diff; no help
 - [ ] **Step 6: Commit evidence and docs**
 
 ```bash
-git add -- internal/core/sqlstore/resource_test.go .agent-harness/ADR.md .agent-harness/CAUTIONS.md .agent-harness/issues/_unnumbered/agent-harness-stability-concurrency-multisession-hardening.md
+git add -- internal/core/sqlstore/resource_test.go .issueops/ADR.md .issueops/CAUTIONS.md .issueops/issues/_unnumbered/issueops-stability-concurrency-multisession-hardening.md
 git diff --cached --check
 git commit -m "docs(sqlstore): record T18 hardening evidence" -m $'Lore:\n- Intent: Close T18 with measured resources and aligned lock-order guidance.\n- Why: Docs must match root-chain, permission, cancellation, and crash contracts.\n- Changes:\n  - Add deterministic handle and pool measurements with FD logging.\n  - Record verified evidence in ADR, cautions, and the hardening plan.\n- Verify: Focused, full, race, vet, build, hygiene, and API gates pass.\n- Risk: Test and docs only; eviction stays out of scope.'
 ```

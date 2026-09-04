@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopsbodysync"
+	contract "issueops/internal/contract/issueopsbodysync"
 )
 
 const (
 	completionBlock = "<!-- issueops:completion:start -->\n## 완료 기록\n<!-- issueops:completion:end -->"
 	advocateBlock   = "<!-- issueops:devils-advocate:start -->\n- 반론\n<!-- issueops:devils-advocate:end -->"
-	createMarker    = "<!-- agent-harness:issue-create:0123456789abcdef0123456789abcdef -->"
+	createMarker    = "<!-- issueops:issue-create:0123456789abcdef0123456789abcdef -->"
 )
 
 func TestSHA256BodyIsStableAndDistinct(t *testing.T) {
@@ -35,11 +35,11 @@ func TestMergePreservesEveryManagedRegion(t *testing.T) {
 		{"none", "## 문제\n옛 본문\n", nil},
 		{"completion", "## 문제\n옛 본문\n\n" + completionBlock + "\n", []string{"issueops:completion"}},
 		{"advocate", "## 문제\n옛 본문\n\n" + advocateBlock + "\n", []string{"issueops:devils-advocate"}},
-		{"create marker", createMarker + "\n\n## 문제\n옛 본문\n", []string{"agent-harness:issue-create"}},
+		{"create marker", createMarker + "\n\n## 문제\n옛 본문\n", []string{"issueops:issue-create"}},
 		{
 			"all three in appearance order",
 			createMarker + "\n\n## 문제\n옛 본문\n\n" + advocateBlock + "\n\n" + completionBlock + "\n",
-			[]string{"agent-harness:issue-create", "issueops:devils-advocate", "issueops:completion"},
+			[]string{"issueops:issue-create", "issueops:devils-advocate", "issueops:completion"},
 		},
 	}
 	for _, tt := range tests {

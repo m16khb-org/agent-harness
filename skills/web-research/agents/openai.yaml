@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web Research"
+  short_description: "Research questions and verify claims across web sources"
+  default_prompt: "Use $web-research to research this question across independent sources and return cited, cross-checked findings."

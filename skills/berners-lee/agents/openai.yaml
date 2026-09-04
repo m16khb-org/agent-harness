@@ -1,4 +1,0 @@
-interface:
-  display_name: "Berners-Lee"
-  short_description: "Research and verify claims across linked web sources"
-  default_prompt: "Use $berners-lee to research this question across multiple sources and return cited, cross-checked findings."

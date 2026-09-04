@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+	issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 )
 
 type Service struct {

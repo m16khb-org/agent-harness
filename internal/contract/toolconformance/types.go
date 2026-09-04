@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"agent-harness/internal/contract/failurecause"
+	"issueops/internal/contract/failurecause"
 )
 
 const (

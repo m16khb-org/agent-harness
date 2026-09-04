@@ -21,13 +21,13 @@ type Readback struct {
 
 type BeginRequest struct {
 	StateRoot    string
-	HarnessRoot  string
+	IssueOpsRoot string
 	TargetBinary string
 }
 
 type SealRequest struct {
 	StateRoot     string
-	HarnessRoot   string
+	IssueOpsRoot  string
 	TargetBinary  string
 	TransitionID  string
 	CatalogSHA256 string
@@ -36,14 +36,14 @@ type SealRequest struct {
 
 type AbortRequest struct {
 	StateRoot    string
-	HarnessRoot  string
+	IssueOpsRoot string
 	TargetBinary string
 	TransitionID string
 }
 
 type Result struct {
 	StateRoot    string
-	HarnessRoot  string
+	IssueOpsRoot string
 	TargetBinary string
 	BinarySHA256 string
 	TransitionID string

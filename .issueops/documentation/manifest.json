@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "max_root_lines": 250,
+  "max_module_lines": 250,
+  "families": [
+    {
+      "root": ".issueops/ADR.md",
+      "module_dir": ".issueops/adr",
+      "responsibility": "accepted architecture decisions and roadmap"
+    },
+    {
+      "root": ".issueops/ARCHITECTURE.md",
+      "module_dir": ".issueops/architecture",
+      "responsibility": "dependency direction and runtime topology"
+    },
+    {
+      "root": ".issueops/CAUTIONS.md",
+      "module_dir": ".issueops/cautions",
+      "responsibility": "known risks and incident lessons"
+    },
+    {
+      "root": ".issueops/CONVENTIONS.md",
+      "module_dir": ".issueops/conventions",
+      "responsibility": "implementation and interface conventions"
+    },
+    {
+      "root": ".issueops/OPERATIONS.md",
+      "module_dir": ".issueops/operations/guides",
+      "responsibility": "installation and runtime operation"
+    },
+    {
+      "root": ".issueops/TESTING.md",
+      "module_dir": ".issueops/testing",
+      "responsibility": "test strategy and verification gates"
+    }
+  ],
+  "single_owner_topics": {
+    "commit formatting": ".issueops/COMMIT_POLICY.md",
+    "constitutional priority and safety": ".issueops/CONSTITUTION.md",
+    "OpenAPI requirements": ".issueops/OPEN_API_SPEC.md",
+    "technology selection": ".issueops/TECH_STACK.md",
+    "agent execution sequence": ".issueops/AGENT_WORKFLOW.md",
+    "issueops historical audit": ".issueops/archive/issueops-audit.md",
+    "whole-project audit snapshot": ".issueops/PROJECT_AUDIT.md"
+  }
+}

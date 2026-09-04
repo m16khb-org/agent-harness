@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	core "agent-harness/internal/adapter/toolconformance"
-	"agent-harness/internal/port"
+	core "issueops/internal/adapter/toolconformance"
+	"issueops/internal/port"
 )
 
 type fakeProbeRunner struct {

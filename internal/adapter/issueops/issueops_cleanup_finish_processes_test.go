@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // quietCleanupProcesses는 점유가 없는 워크트리 관측이다. 요청자(777)의 계보는
@@ -516,7 +516,7 @@ func TestCleanupFinishReportsStoppedProcessesAndAudit(t *testing.T) {
 	}
 }
 
-// parnas #478 finding 2: preview가 나열한 Orca 터미널을 apply가 닫지 못하면
+// pr-review #478 finding 2: preview가 나열한 Orca 터미널을 apply가 닫지 못하면
 // 시그널 경로로 넘어가지 말고 workspace_processes_stop에서 멈춰야 한다. apply 직전
 // Orca 상태가 바뀐 경우는 fingerprint가 잡는다.
 func TestCleanupFinishApplyFailsClosedWhenOrcaTerminalStopFails(t *testing.T) {
@@ -603,7 +603,7 @@ func TestCleanupFinishApplyFailsClosedWhenOrcaTerminalStopFails(t *testing.T) {
 	})
 }
 
-// parnas #478 finding 3 / AC-01: 런타임이 ready면 점유·바인딩·호스팅과 무관하게
+// pr-review #478 finding 3 / AC-01: 런타임이 ready면 점유·바인딩·호스팅과 무관하게
 // 워크트리 터미널을 나열하고 apply가 닫는다. cwd를 옮긴 셸은 점유자가 아니지만
 // Orca 레지스트리에는 워크트리 터미널로 남아 있다.
 func TestCleanupFinishListsAndStopsOrcaTerminalsWithoutOccupants(t *testing.T) {

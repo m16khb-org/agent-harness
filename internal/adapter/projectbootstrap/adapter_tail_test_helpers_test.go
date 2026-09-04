@@ -1,8 +1,8 @@
 package projectbootstrap
 
 import (
-	fingerprintt4d "agent-harness/internal/adapter/lifecycle/fingerprint"
-	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
+	fingerprintt4d "issueops/internal/adapter/lifecycle/fingerprint"
+	projectdocsadapter "issueops/internal/adapter/projectdocs"
 )
 
 // production wiring과 같은 구현을 설치한다.

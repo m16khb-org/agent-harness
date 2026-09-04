@@ -8,8 +8,8 @@ import (
 	"io"
 	"strings"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	statecontract "agent-harness/internal/contract/state"
+	issueopscontract "issueops/internal/contract/issueops"
+	statecontract "issueops/internal/contract/state"
 )
 
 func Decode(id string, data []byte) (issueopscontract.IssueOpsRecord, error) {

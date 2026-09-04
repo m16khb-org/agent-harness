@@ -1,0 +1,26 @@
+package basiccli
+
+import (
+	"flag"
+	"fmt"
+)
+
+func runPreflight(args []string) error {
+	fs := flag.NewFlagSet("preflight", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", true, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	target := ""
+	if fs.NArg() > 0 {
+		target = fs.Arg(0)
+	}
+	if deps.GitPreflight == nil {
+		return fmt.Errorf("git preflight is not configured")
+	}
+	result := deps.GitPreflight(deps.ResolveTarget(target), deps.IssueOpsRoot())
+	if *jsonOut {
+		return printJSON(result)
+	}
+	return printJSON(result)
+}

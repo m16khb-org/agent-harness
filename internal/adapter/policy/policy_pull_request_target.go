@@ -3,7 +3,7 @@ package policy
 import (
 	"strings"
 
-	"agent-harness/internal/domain/commandparse"
+	"issueops/internal/domain/commandparse"
 )
 
 // PreparedBaseBranchLookup은 워크스페이스에서 진행 중인 IssueOps 사이클이
@@ -12,7 +12,7 @@ import (
 //
 // 2026-08-27에 PR target 가드가 사라진 원인이 정확히 이런 배선 파일 하나의
 // 소실이었다. 그래서 이 변수는 두 겹으로 지켜진다. composition root에
-// 설치되었는지를 harnessapp의 배선 테스트가 확인하고, 설치된 뒤 실제로
+// 설치되었는지를 issueopsapp의 배선 테스트가 확인하고, 설치된 뒤 실제로
 // 거부가 나오는지를 EvaluateCommandPolicy 통합 테스트가 확인한다.
 var PreparedBaseBranchLookup func(workspace string) (string, bool)
 

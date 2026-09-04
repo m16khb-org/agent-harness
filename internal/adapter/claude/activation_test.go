@@ -1,18 +1,18 @@
 package claude
 
 import (
-	install "agent-harness/internal/adapter/install"
 	"encoding/json"
+	install "issueops/internal/adapter/install"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestVerifyActivationRejectsClaudeAliasAndStaleTarget(t *testing.T) {
+func TestVerifyActivationRejectsClaudeStaleTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestVerifyActivationRejectsClaudeAliasAndStaleTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	servers := config["mcpServers"].(map[string]any)
-	servers["agent-harness"] = servers["agent_harness"]
+	servers["issueops"].(map[string]any)["command"] = "/wrong/issueops"
 	changed, err := json.Marshal(config)
 	if err != nil {
 		t.Fatal(err)
@@ -40,14 +40,14 @@ func TestVerifyActivationRejectsClaudeAliasAndStaleTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := VerifyActivation(req); err == nil {
-		t.Fatal("obsolete Claude MCP alias was accepted")
+		t.Fatal("stale Claude MCP target was accepted")
 	}
 }
 
 func TestVerifyActivationRejectsClaudeWorktreeHookTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestVerifyActivationRejectsClaudeWorktreeHookTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "agent-harness")
+	stale := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "issueops")
 	raw = []byte(strings.ReplaceAll(string(raw), req.BinPath, stale))
 	if err := os.WriteFile(hooksPath, raw, 0o600); err != nil {
 		t.Fatal(err)

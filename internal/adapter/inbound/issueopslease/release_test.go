@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 
-	"agent-harness/internal/adapter/issueops"
-	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	statecontract "agent-harness/internal/contract/state"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	"issueops/internal/adapter/issueops"
+	leaseadapter "issueops/internal/adapter/outbound/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	statecontract "issueops/internal/contract/state"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testing.T) {
@@ -30,7 +30,7 @@ func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testin
 			Lease:          leasecontract.Lease{Generation: 1, Status: "active", Holder: &actor, ClaimedAt: "2026-07-29T00:00:01Z"},
 			Orca:           &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", RunID: "run", OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", TaskID: "task", DispatchID: "dispatch"},
 			Pending:        &leasecontract.ExternalIntent{OperationID: "pending", Kind: "pr_create", Marker: "marker", StartedAt: "2026-07-29T00:00:02Z"},
-			Completion:     &leasecontract.Completion{FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/196.json", Verification: []string{"focused"}, RemoteArtifactURL: "https://example.test/pull/196", CompletedAt: "2026-07-29T00:00:03Z"},
+			Completion:     &leasecontract.Completion{FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/196.json", Verification: []string{"focused"}, RemoteArtifactURL: "https://example.test/pull/196", CompletedAt: "2026-07-29T00:00:03Z"},
 			Failure:        &leasecontract.FailureDetail{OperationID: "failed-operation", Code: "transient", Message: "retry", At: "2026-07-29T00:00:04Z"},
 			SyncBaseEvents: []leasecontract.SyncBaseEvent{{Mode: "apply", BaseBranch: "117-parent", BaseOID: strings.Repeat("c", 40), MergeCommit: strings.Repeat("d", 40), Actor: "codex", At: "2026-07-29T00:00:05Z"}},
 		},

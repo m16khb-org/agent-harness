@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	"issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 // remoteBranchAdvancedTipGit는 원격 tip이 기록된 머지 head보다 전진했고 base
@@ -70,7 +70,7 @@ func TestCleanupRemoteBranchAcceptsSupersedingArtifactForUnmergedOriginal(t *tes
 	if result.SupersededBy != replacement || result.Fingerprint == "" {
 		t.Fatalf("replacement evidence must be fingerprinted: %+v", result)
 	}
-	wantNext := "agent-harness issueops cleanup remote-branch --id " + record.ID +
+	wantNext := "issueops cleanup remote-branch --id " + record.ID +
 		" --apply --confirm --fingerprint " + result.Fingerprint +
 		" --superseded-by '" + replacement + "' --json"
 	if result.NextCommand != wantNext {

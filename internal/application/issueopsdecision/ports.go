@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
 )
 
 type Repository interface {

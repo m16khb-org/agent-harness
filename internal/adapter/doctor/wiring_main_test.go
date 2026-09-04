@@ -1,7 +1,7 @@
 package doctor
 
 import (
-	lifecycle "agent-harness/internal/adapter/lifecycle"
+	lifecycle "issueops/internal/adapter/lifecycle"
 	"os"
 	"testing"
 )

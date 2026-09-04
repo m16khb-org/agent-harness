@@ -3,7 +3,7 @@ package port
 import (
 	"testing"
 
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
 )
 
 func TestLegacyImplementerDefaultsMatchPreparationContract(t *testing.T) {

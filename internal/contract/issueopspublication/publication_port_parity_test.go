@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	publication "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/port"
+	publication "issueops/internal/contract/issueopspublication"
+	"issueops/internal/port"
 )
 
 func TestProviderCreateRequestJSONMatchesPort(t *testing.T) {

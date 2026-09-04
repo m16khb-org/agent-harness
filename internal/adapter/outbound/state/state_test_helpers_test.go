@@ -1,6 +1,6 @@
 package state
 
-import statecontract "agent-harness/internal/contract/state"
+import statecontract "issueops/internal/contract/state"
 
 func containsString(items []string, want string) bool {
 	for _, item := range items {

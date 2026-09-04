@@ -192,7 +192,7 @@ git commit -m "feat(issueops): model Orca Run identity" \
     "runs": [
       {
         "id": "run_issueops_1",
-        "objective": "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test",
+        "objective": "issueops-v1 lifecycle=io-test generation=1 intent=op-test",
         "legacy": 0
       }
     ]
@@ -210,7 +210,7 @@ git commit -m "feat(issueops): model Orca Run identity" \
   "result": {
     "run": {
       "id": "run_issueops_1",
-      "objective": "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test",
+      "objective": "issueops-v1 lifecycle=io-test generation=1 intent=op-test",
       "legacy": 0
     }
   },
@@ -617,10 +617,10 @@ git commit -m "feat(issueops): seal Orca Runs in external intents" \
 - Modify: `internal/core/issueops/execution_lease_test.go`
 - Modify: `internal/core/issueops/issueops_cleanup_abandon.go`
 - Modify: `internal/core/issueops/issueops_cleanup_abandon_orca_test.go`
-- Modify: `cmd/harness/issueopscli/executioncmd/execution.go`
-- Modify: `cmd/harness/issueopscli/executioncmd/execution_settle_wiring_test.go`
-- Modify: `cmd/harness/issueopscli/issueops_execution_cli.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution.go`
+- Modify: `cmd/issueops/issueopscli/executioncmd/execution.go`
+- Modify: `cmd/issueops/issueopscli/executioncmd/execution_settle_wiring_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops_execution_cli.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go`
 
 **Interfaces:**
 - Consumes: `OrcaBinding.RunID`, `ExecutionOrcaOwnerInventoryRequest.RunID`
@@ -655,7 +655,7 @@ Run:
 
 ```bash
 go test ./internal/core/issueops -run 'TestExecution(CompleteSettlesOrcaTask|OwnerInventory.*Run)|TestAbandon.*Orca.*Run' -count=1
-go test ./cmd/harness/issueopscli/executioncmd -run 'TestActionDepsCarriesTheOrcaTaskSettler' -count=1
+go test ./cmd/issueops/issueopscli/executioncmd -run 'TestActionDepsCarriesTheOrcaTaskSettler' -count=1
 ```
 
 Expected: function signature 또는 missing RunID assertion으로 FAIL.
@@ -681,9 +681,9 @@ Run:
 
 ```bash
 go test ./internal/core/issueops -run 'TestExecution(Complete|Resume|Replace|Lease).*(Orca|Run)|TestAbandon.*Orca' -count=1
-go test ./cmd/harness/issueopscli/executioncmd -run 'TestActionDeps.*Settler' -count=1
-go test ./cmd/harness/harnessapp -run 'Test.*Execution.*Wiring' -count=1
-go test ./cmd/harness/mcpcli -run 'Test.*IssueOps.*Execution' -count=1
+go test ./cmd/issueops/issueopscli/executioncmd -run 'TestActionDeps.*Settler' -count=1
+go test ./cmd/issueops/issueopsapp -run 'Test.*Execution.*Wiring' -count=1
+go test ./cmd/issueops/mcpcli -run 'Test.*IssueOps.*Execution' -count=1
 ```
 
 Expected: PASS.
@@ -691,7 +691,7 @@ Expected: PASS.
 - [ ] **Step 5: Task 5를 커밋한다**
 
 ```bash
-git add internal/core/issueops/execution_api.go internal/core/issueops/execution_complete.go internal/core/issueops/execution_complete_orca_settle_test.go internal/core/issueops/execution_lease.go internal/core/issueops/execution_lease_test.go internal/core/issueops/issueops_cleanup_abandon.go internal/core/issueops/issueops_cleanup_abandon_orca_test.go cmd/harness/issueopscli/executioncmd/execution.go cmd/harness/issueopscli/executioncmd/execution_settle_wiring_test.go cmd/harness/issueopscli/issueops_execution_cli.go cmd/harness/mcpcli/mcp_tool_issueops_execution.go
+git add internal/core/issueops/execution_api.go internal/core/issueops/execution_complete.go internal/core/issueops/execution_complete_orca_settle_test.go internal/core/issueops/execution_lease.go internal/core/issueops/execution_lease_test.go internal/core/issueops/issueops_cleanup_abandon.go internal/core/issueops/issueops_cleanup_abandon_orca_test.go cmd/issueops/issueopscli/executioncmd/execution.go cmd/issueops/issueopscli/executioncmd/execution_settle_wiring_test.go cmd/issueops/issueopscli/issueops_execution_cli.go cmd/issueops/mcpcli/mcp_tool_issueops_execution.go
 git commit -m "fix(issueops): retain Run authority through cleanup" \
   -m "Context: completion and owner inspection previously projected only task and dispatch IDs." \
   -m "Decision: pass the sealed Run ID through settle, resume, replace, abandon, CLI, and MCP wiring." \
@@ -706,8 +706,8 @@ git commit -m "fix(issueops): retain Run authority through cleanup" \
 - Modify: `internal/core/operationalhealth/*_test.go`
 - Modify: `internal/adapter/operationalhealth/collector.go`
 - Modify: `internal/adapter/operationalhealth/collector_test.go`
-- Modify if golden drift proves necessary: `cmd/harness/contractgolden/testdata/*`
-- Modify if response projection proves necessary: `cmd/harness/harnessapp/testdata/*`
+- Modify if golden drift proves necessary: `cmd/issueops/contractgolden/testdata/*`
+- Modify if response projection proves necessary: `cmd/issueops/issueopsapp/testdata/*`
 
 **Interfaces:**
 - Consumes: cross-Run `ListAllTasks`/`ListDispatchedTasks` rows with `RunID`
@@ -770,9 +770,9 @@ Run:
 go test ./internal/port ./internal/core/issueops/model -count=1
 go test ./internal/adapter/orca -count=1
 go test ./internal/core/issueops -run 'TestExecution(Orca|Resume|Complete|Lease|Reconcile)|TestAbandon.*Orca' -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'Test.*(Execution|IssueOps)' -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli -run 'Test.*(Execution|IssueOps)' -count=1
 ```
 
 Expected: PASS. Golden mismatch가 실제 public `run_id` 추가 때문일 때만 해당
@@ -783,7 +783,7 @@ fixture를 갱신하고, 무관한 golden churn은 되돌린다.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 rg -n 'orchestration", "(task-create|task-list|task-update|dispatch|send)' internal/adapter/orca
 git diff --check
 ```
@@ -798,7 +798,7 @@ Expected:
 - [ ] **Step 7: Task 6 코드 변경을 커밋하고 main을 푸시한다**
 
 ```bash
-git add internal/core/operationalhealth internal/adapter/operationalhealth cmd/harness/contractgolden/testdata cmd/harness/harnessapp/testdata
+git add internal/core/operationalhealth internal/adapter/operationalhealth cmd/issueops/contractgolden/testdata cmd/issueops/issueopsapp/testdata
 git commit -m "fix(health): classify Orca tasks by Run" \
   -m "Context: task IDs alone no longer identify ownership once orchestration is partitioned into explicit Runs." \
   -m "Decision: project Run IDs into health snapshots and match ownership with exact Run-task keys." \
@@ -811,9 +811,9 @@ git push origin main
 Run:
 
 ```bash
-ah update
-ah daemon status --json
-ah inspect --json
+io update
+io daemon status --json
+io inspect --json
 ```
 
 Expected:
@@ -828,7 +828,7 @@ Expected:
 Parent worktree:
 
 ```text
-/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
+/Users/sample/workspace/issueops.worktrees/117-hexagonal-architecture-migration
 ```
 
 순서:
@@ -851,7 +851,7 @@ mode=orca
 owner_host=codex
 owner_model=gpt-5.6-terra
 owner_effort=xhigh
-parent_worktree=/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration
+parent_worktree=/Users/sample/workspace/issueops.worktrees/117-hexagonal-architecture-migration
 ```
 
 Expected preview:

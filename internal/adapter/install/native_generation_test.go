@@ -37,7 +37,7 @@ func TestRunningBuildGenerationIsObservable(t *testing.T) {
 // TestFileBuildGenerationFailsQuietlyOnUnreadablePaths는 읽지 못한 경로를
 // 오류가 아니라 미관측으로 다루는지 고정한다.
 func TestFileBuildGenerationFailsQuietlyOnUnreadablePaths(t *testing.T) {
-	for _, path := range []string{"", "   ", "/nonexistent/agent-harness", t.TempDir()} {
+	for _, path := range []string{"", "   ", "/nonexistent/issueops", t.TempDir()} {
 		if got := FileBuildGeneration(path); got.Observed() {
 			t.Fatalf("읽을 수 없는 경로는 미관측이어야 한다: %q -> %+v", path, got)
 		}

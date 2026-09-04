@@ -1,11 +1,11 @@
 package preflight
 
 import (
-	preflightcontract "agent-harness/internal/contract/preflight"
+	preflightcontract "issueops/internal/contract/preflight"
 	"strings"
 )
 
-func GitPreflight(target, harnessRoot string) preflightcontract.PreflightResult {
+func GitPreflight(target, issueOpsRoot string) preflightcontract.PreflightResult {
 	code, root, stderr := GitCmd(target, "rev-parse", "--show-toplevel")
 	if code != 0 {
 		return preflightcontract.PreflightResult{OK: false, Error: "not_git_repo", Path: target, Detail: stderr, Upstream: nil, Ahead: nil, Behind: nil}
@@ -53,7 +53,7 @@ func GitPreflight(target, harnessRoot string) preflightcontract.PreflightResult 
 		Remotes:          listRemotes(root),
 		LastCommit:       GitOut(root, "log", "-1", "--pretty=format:%h %s"),
 		RecentCommits:    recentCommits(root, 5),
-		CommitStyleHints: commitStyleHints(root, harnessRoot, 10),
+		CommitStyleHints: commitStyleHints(root, issueOpsRoot, 10),
 		StagedFiles:      staged,
 		UnstagedFiles:    unstaged,
 		UntrackedFiles:   untracked,

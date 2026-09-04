@@ -10,11 +10,11 @@ import (
 	"os"
 	"strings"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	statecontract "agent-harness/internal/contract/state"
-	leasedomain "agent-harness/internal/domain/issueopslease"
-	"agent-harness/internal/port"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	statecontract "issueops/internal/contract/state"
+	leasedomain "issueops/internal/domain/issueopslease"
+	"issueops/internal/port"
 )
 
 const (

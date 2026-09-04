@@ -37,11 +37,11 @@ func checkProjectDocs(r *HarnessDoctorResult, root string) {
 		}
 	}
 	if len(missing) == 0 {
-		addCheck(r, "project_docs", true, "all standard .agent-harness docs exist")
+		addCheck(r, "project_docs", true, "all standard .issueops docs exist")
 		return
 	}
 	addCheck(r, "project_docs", false, strings.Join(missing, ", "))
-	addIssue(r, "project_docs_missing", "warning", "standard .agent-harness docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create or refresh the standard project guidance docs and profile metadata."})
+	addIssue(r, "project_docs_missing", "warning", "standard .issueops docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "issueops project bootstrap --repo " + shellQuote(root), Description: "Create or refresh the standard project guidance docs and profile metadata."})
 }
 
 func checkRepoLocalRuntimeState(r *HarnessDoctorResult, root string) {
@@ -58,7 +58,7 @@ func checkRepoLocalRuntimeState(r *HarnessDoctorResult, root string) {
 	if b, err := os.ReadFile(stateMD); err == nil {
 		lower := strings.ToLower(string(b))
 		if strings.Contains(lower, "schema") || strings.Contains(lower, "runtime state") || strings.Contains(lower, "jsonl") {
-			addIssue(r, "repo_local_state_present", "warning", "STATE.md appears to describe runtime/schema state rather than shared project knowledge", stateMD, &HarnessDoctorFix{Description: "Keep lifecycle schemas in agent-harness core and runtime state in user-state, not target repo docs."})
+			addIssue(r, "repo_local_state_present", "warning", "STATE.md appears to describe runtime/schema state rather than shared project knowledge", stateMD, &HarnessDoctorFix{Description: "Keep lifecycle schemas in issueops core and runtime state in user-state, not target repo docs."})
 		}
 	}
 }
@@ -68,11 +68,11 @@ func checkLoopContracts(r *HarnessDoctorResult, root string) {
 	incomplete := summary.Active + summary.Exhausted
 	addCheck(r, "loop_contracts", incomplete == 0 && len(warnings) == 0, fmt.Sprintf("active=%d exhausted=%d", summary.Active, summary.Exhausted))
 	if len(warnings) > 0 {
-		addIssue(r, "loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
+		addIssue(r, "loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), LoopStateRoot(), &HarnessDoctorFix{Command: "issueops loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
 		return
 	}
 	if incomplete > 0 {
-		addIssue(r, "loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
+		addIssue(r, "loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), LoopStateRoot(), &HarnessDoctorFix{Command: "issueops loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
 	}
 }
 
@@ -87,7 +87,7 @@ func checkPipeCapacity(r *HarnessDoctorResult) {
 	summary := fmt.Sprintf("capacity=%d bytes", capacity)
 	if capacity < pipeCapacityWarningThreshold {
 		addCheck(r, "pipe_capacity", false, summary)
-		addIssue(r, "pipe_capacity_degraded", "warning", "system pipe buffer degraded; long-lived host process may be leaking pipes; see CAUTIONS 2026-07-09", "", &HarnessDoctorFix{Description: "Restart the leaking long-lived host process, then rerun lsof pipe counts and agent-harness doctor."})
+		addIssue(r, "pipe_capacity_degraded", "warning", "system pipe buffer degraded; long-lived host process may be leaking pipes; see CAUTIONS 2026-07-09", "", &HarnessDoctorFix{Description: "Restart the leaking long-lived host process, then rerun lsof pipe counts and issueops doctor."})
 		return
 	}
 	addCheck(r, "pipe_capacity", true, summary)
@@ -255,7 +255,7 @@ func uniqueMCPGatewayPorts(endpoints []mcpGatewayEndpoint) []int {
 }
 
 func probeMCPGatewayHTTP(target string) error {
-	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"agent-harness-doctor","version":"0"}}}`
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"issueops-doctor","version":"0"}}}`
 	req, err := http.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	if err != nil {
 		return err
@@ -301,26 +301,26 @@ func checkNativeIntegrations(r *HarnessDoctorResult, home string) {
 		return
 	}
 	if _, err := os.Stat(filepath.Join(home, ".codex", "hooks.json")); os.IsNotExist(err) {
-		addIssue(r, "codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install", Description: "Install user-level hooks, skills, and MCP configuration."})
+		addIssue(r, "codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "issueops install", Description: "Install user-level hooks, skills, and MCP configuration."})
 	}
 	addCheck(r, "native_integrations", true, "checked user-level integration paths")
 }
 
-func checkBinaryDrift(r *HarnessDoctorResult, harnessRoot string) {
-	if harnessRoot == "" {
+func checkBinaryDrift(r *HarnessDoctorResult, issueOpsRoot string) {
+	if issueOpsRoot == "" {
 		return
 	}
-	binPath := filepath.Join(harnessRoot, "bin", "agent-harness")
+	binPath := filepath.Join(issueOpsRoot, "bin", "issueops")
 	binInfo, err := os.Stat(binPath)
 	if err != nil {
-		addCheck(r, "binary_drift", true, "no prebuilt bin/agent-harness found; skipping drift check")
+		addCheck(r, "binary_drift", true, "no prebuilt bin/issueops found; skipping drift check")
 		return
 	}
 	binTime := binInfo.ModTime()
 	latestSourceTime := binTime
 	sourceDirs := []string{
-		filepath.Join(harnessRoot, "cmd"),
-		filepath.Join(harnessRoot, "internal"),
+		filepath.Join(issueOpsRoot, "cmd"),
+		filepath.Join(issueOpsRoot, "internal"),
 	}
 	for _, dir := range sourceDirs {
 		// walk 오류는 callback 안에서 건너뛰므로 반환값은 항상 nil이다.
@@ -336,9 +336,9 @@ func checkBinaryDrift(r *HarnessDoctorResult, harnessRoot string) {
 	}
 	if latestSourceTime.After(binTime) {
 		delta := latestSourceTime.Sub(binTime).Round(time.Second)
-		addCheck(r, "binary_drift", false, fmt.Sprintf("bin/agent-harness is %s older than latest source change", delta))
-		addIssue(r, "binary_drift", "warning", fmt.Sprintf("bin/agent-harness may be stale (%s older than source)", delta), binPath, &HarnessDoctorFix{Command: "go build -o bin/agent-harness ./cmd/harness", Description: "Rebuild the agent-harness binary from the current source."})
+		addCheck(r, "binary_drift", false, fmt.Sprintf("bin/issueops is %s older than latest source change", delta))
+		addIssue(r, "binary_drift", "warning", fmt.Sprintf("bin/issueops may be stale (%s older than source)", delta), binPath, &HarnessDoctorFix{Command: "go build -o bin/issueops ./cmd/issueops", Description: "Rebuild the issueops binary from the current source."})
 	} else {
-		addCheck(r, "binary_drift", true, "bin/agent-harness is current")
+		addCheck(r, "binary_drift", true, "bin/issueops is current")
 	}
 }

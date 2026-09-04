@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestExecutionActionResumeFailsClosedWithoutHandler(t *testing.T) {

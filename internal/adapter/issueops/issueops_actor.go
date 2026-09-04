@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
-	issueopsartifactdomain "agent-harness/internal/domain/issueopsartifact"
+	"issueops/internal/contract/issueops"
+	issueopsartifactdomain "issueops/internal/domain/issueopsartifact"
 )
 
 // validateExecutionMutation binds every durable IssueOps mutation to the

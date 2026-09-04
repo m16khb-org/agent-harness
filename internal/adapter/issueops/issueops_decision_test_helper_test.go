@@ -1,11 +1,11 @@
 package issueops
 
 import (
-	issueopsdecisioninbound "agent-harness/internal/adapter/inbound/issueopsdecision"
-	issueopsauthorizationoutbound "agent-harness/internal/adapter/outbound/issueopsauthorization"
-	issueopsdecisionoutbound "agent-harness/internal/adapter/outbound/issueopsdecision"
-	issueopsdecisionapplication "agent-harness/internal/application/issueopsdecision"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsdecisioninbound "issueops/internal/adapter/inbound/issueopsdecision"
+	issueopsauthorizationoutbound "issueops/internal/adapter/outbound/issueopsauthorization"
+	issueopsdecisionoutbound "issueops/internal/adapter/outbound/issueopsdecision"
+	issueopsdecisionapplication "issueops/internal/application/issueopsdecision"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func addIssueOpsDecisionForTest(

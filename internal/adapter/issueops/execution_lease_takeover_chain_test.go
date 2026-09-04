@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // 인수 경로의 첫 명령은 `replace --preview`이고, 그 뒤 단계는 preview가 돌려주는

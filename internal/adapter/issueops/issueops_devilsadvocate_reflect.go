@@ -7,8 +7,8 @@ import (
 
 	"context"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // ReflectDevilsAdvocateFindings writes the recorded devil's-advocate findings

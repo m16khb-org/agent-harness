@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 // Reasons a declared entry is skipped rather than installed.

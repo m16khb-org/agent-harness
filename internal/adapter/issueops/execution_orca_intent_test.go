@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestOrcaIntentWorktreeReceiptPersistsPlanBeforeNextIntent(t *testing.T) {
@@ -57,7 +57,7 @@ func TestOrcaIntentWorktreeReceiptPersistsPlanBeforeNextIntent(t *testing.T) {
 		t.Fatal(err)
 	}
 	// #482: linked issue 16 seals under the issue folder, recorded in workspace.artifact_dir.
-	wantPath := filepath.Join(worktree, ".agent-harness", "issues", "16", "artifact", "plan.md")
+	wantPath := filepath.Join(worktree, ".issueops", "issues", "16", "artifact", "plan.md")
 	if advanced.PlanPath != wantPath || next.Stage != "terminal_create" {
 		t.Fatalf("advanced plan=%q stage=%q want plan=%q terminal_create", advanced.PlanPath, next.Stage, wantPath)
 	}

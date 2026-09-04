@@ -4,7 +4,7 @@ bin/
 
 # Runtime/local state
 data/
-.harness/
+.issueops-runtime/
 .codegraph/
 cache/
 .omx/
@@ -16,7 +16,7 @@ cache/
 .antigravitycli/
 .omo/
 evidence
-.agent-harness/state/
+.issueops/state/
 
 # Language/tool caches
 __pycache__/
@@ -28,8 +28,8 @@ GOOD_PROMPT_EXAMPLE.md
 
 # Local, non-portable skill background
 skills/*/background.local.md
-.agent-harness/artifact/
+.issueops/artifact/
 # Per-issue artifact folder: review working files and tmp are never committed (#480)
-.agent-harness/issues/*/review/
-.agent-harness/tmp/
-.agent-harness/issues/*/artifact/
+.issueops/issues/*/review/
+.issueops/tmp/
+.issueops/issues/*/artifact/

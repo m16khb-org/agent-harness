@@ -16,7 +16,7 @@ Integrate the three accepted Orca child reviews for GitHub issues #19, #20, and 
 1. Fast-forward the parent branch to `origin/main` and cherry-pick only accepted child commits.
    - Check: the parent diff contains the three child review reports and only their evidence-backed skill edits.
 2. Preserve the #28 plan and all observed IssueOps/Orca blockers.
-   - Check: the legacy E2E plan and `.agent-harness/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md` contain exact attempt/task/dispatch evidence without secrets.
+   - Check: the legacy E2E plan and `.issueops/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md` contain exact attempt/task/dispatch evidence without secrets.
 3. Fix the failed-result JSON round-trip defect found during #21 recovery.
    - Check: a regression reproduces the pre-fix invalid envelope and passes after nil canonicalization.
 4. Validate all ten pioneer skills and run the Turing verification wave.

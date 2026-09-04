@@ -1,4 +1,4 @@
-// Package issueopsnext holds the wire contract of `agent-harness issueops next`:
+// Package issueopsnext holds the wire contract of `issueops next`:
 // the read-only projection that says which stage of the ten-stage cycle the
 // caller is in and which command advances it.
 //
@@ -7,7 +7,7 @@
 // 위해서다.
 package issueopsnext
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 type Record = issueopscontract.IssueOpsRecord
 type Phase = issueopscontract.IssueOpsPhase

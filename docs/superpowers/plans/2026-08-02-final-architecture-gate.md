@@ -6,7 +6,7 @@
 
 **Architecture:** Treat the production Go import graph as the deletion authority and the existing architecture fitness test as the dependency authority. Preserve every package with a production importer or contract ownership, then record final evidence in tracked design/plan/Turing documents. Validate hooks through isolated enabled host configurations rather than the current disabled Codex process.
 
-**Tech Stack:** Go 1.26.3, `go list`, Go tests/race/vet/build, agent-harness IssueOps/self-verify, Codex and Claude native hook JSON.
+**Tech Stack:** Go 1.26.3, `go list`, Go tests/race/vet/build, issueops IssueOps/self-verify, Codex and Claude native hook JSON.
 
 ## Global Constraints
 
@@ -25,11 +25,11 @@
 **Files:**
 - Inspect: `internal/architecture/dependency_test.go`
 - Inspect: `internal/architecture/testdata/legacy_imports.txt`
-- Create later: `.agent-harness/turing/issue200-report.md`
+- Create later: `.issueops/verified-execution/issue200-report.md`
 
 **Interfaces:**
 - Consumes: production package `ImportPath` and `Imports` from `go list -json ./...`.
-- Produces: exact importer lists for `internal/core`, `internal/core/issueops`, `internal/port`, and `cmd/harness/issueopscli`, plus an explicit removal set.
+- Produces: exact importer lists for `internal/core`, `internal/core/issueops`, `internal/port`, and `cmd/issueops/issueopscli`, plus an explicit removal set.
 
 - [ ] **Step 1: Capture the production graph twice**
 
@@ -82,8 +82,8 @@
 **Files:**
 - Inspect: `configs/codex/hooks.json`
 - Inspect: `configs/claude/hooks.settings.json`
-- Inspect: `cmd/harness/hookcli/**`
-- Update later: `.agent-harness/turing/issue200-report.md`
+- Inspect: `cmd/issueops/hookcli/**`
+- Update later: `.issueops/verified-execution/issue200-report.md`
 
 **Interfaces:**
 - Consumes: canonical worktree, active generation-1 holder receipt, built child binary, default IssueOps state, and repository hook configs.
@@ -91,7 +91,7 @@
 
 - [ ] **Step 1: Build the exact child binary and prepare bounded sentinels**
 
-  Build `./bin/agent-harness` at the reviewed child HEAD. Allocate exact `/tmp` result and sentinel paths with `mktemp` and record them before either host probe. The sentinel command must be harmless, scoped to its exact temporary path, and attempted once.
+  Build `./bin/issueops` at the reviewed child HEAD. Allocate exact `/tmp` result and sentinel paths with `mktemp` and record them before either host probe. The sentinel command must be harmless, scoped to its exact temporary path, and attempted once.
 
 - [ ] **Step 2: Exercise the direct full-payload matrix in isolated fixture state**
 
@@ -99,7 +99,7 @@
 
 - [ ] **Step 3: Prove Codex configuration discovery and live invocation**
 
-  Verify `.codex/` is ignored and absent, then copy the exact `configs/codex/hooks.json` bytes to `.codex/hooks.json`. From the canonical worktree, launch a fresh Codex app-server with hooks enabled and require `hooks/list` to report the repository `PreToolUse` command. Launch a separate `codex exec --enable hooks --dangerously-bypass-hook-trust --ephemeral -C <canonical-worktree> --json` session and instruct it to attempt the one exact sentinel command. Use default IssueOps state; do not set `HARNESS_STATE_DIR`. Expected: the foreign-session hook block is present in output and the sentinel does not exist.
+  Verify `.codex/` is ignored and absent, then copy the exact `configs/codex/hooks.json` bytes to `.codex/hooks.json`. From the canonical worktree, launch a fresh Codex app-server with hooks enabled and require `hooks/list` to report the repository `PreToolUse` command. Launch a separate `codex exec --enable hooks --dangerously-bypass-hook-trust --ephemeral -C <canonical-worktree> --json` session and instruct it to attempt the one exact sentinel command. Use default IssueOps state; do not set `ISSUEOPS_STATE_DIR`. Expected: the foreign-session hook block is present in output and the sentinel does not exist.
 
 - [ ] **Step 4: Prove Claude configuration loading and live invocation**
 
@@ -112,7 +112,7 @@
 ### Task 4: Run final verification and publish the child
 
 **Files:**
-- Create: `.agent-harness/turing/issue200-report.md`
+- Create: `.issueops/verified-execution/issue200-report.md`
 - Verify: all files changed from exact parent base.
 
 **Interfaces:**
@@ -125,15 +125,15 @@
 
 - [ ] **Step 2: Run full local gates**
 
-  Run `go test ./... -count=1`, `go test -race ./... -count=1`, `go vet ./...`, and `go build -o bin/agent-harness ./cmd/harness`. Expected: all PASS.
+  Run `go test ./... -count=1`, `go test -race ./... -count=1`, `go vet ./...`, and `go build -o bin/issueops ./cmd/issueops`. Expected: all PASS.
 
 - [ ] **Step 3: Run deterministic self-verification**
 
-  Run `./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json`. Expected: ten successful iterations, minimum goal score at least 95, no gaps.
+  Run `./bin/issueops self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json`. Expected: ten successful iterations, minimum goal score at least 95, no gaps.
 
 - [ ] **Step 4: Record final evidence report**
 
-  Map AC-200-01..09 to exact commands, outputs, commit SHA, hook receipts, and cleanup inventory in `.agent-harness/turing/issue200-report.md`; commit it atomically.
+  Map AC-200-01..09 to exact commands, outputs, commit SHA, hook receipts, and cleanup inventory in `.issueops/verified-execution/issue200-report.md`; commit it atomically.
 
 - [ ] **Step 5: Run independent implementation review**
 

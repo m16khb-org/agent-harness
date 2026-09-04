@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type ReseedFenceStore func(string) (port.TransactionalRecordStore, error)

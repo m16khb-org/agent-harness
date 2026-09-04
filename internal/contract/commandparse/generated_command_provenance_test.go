@@ -8,7 +8,7 @@ import (
 
 func TestBindGeneratedCommandRequiresCompleteBinaryProvenance(t *testing.T) {
 	command, err := BindGeneratedCommand(
-		"agent-harness issueops execution resume --id io-1 --expected-generation 7 --confirm",
+		"issueops execution resume --id io-1 --expected-generation 7 --confirm",
 		GeneratedCommandProvenance{LeaseGeneration: 7},
 	)
 	if err == nil {
@@ -21,9 +21,9 @@ func TestBindGeneratedCommandRequiresCompleteBinaryProvenance(t *testing.T) {
 
 func TestBindGeneratedCommandUsesCanonicalExecutableAndAddsBoundedEvidence(t *testing.T) {
 	command, err := BindGeneratedCommand(
-		"agent-harness issueops execution resume --id io-1 --expected-generation 7 --confirm",
+		"issueops execution resume --id io-1 --expected-generation 7 --confirm",
 		GeneratedCommandProvenance{
-			ExecutablePath:   "/repo/bin/agent-harness",
+			ExecutablePath:   "/repo/bin/issueops",
 			ExecutableSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			LeaseGeneration:  7,
 		},
@@ -31,11 +31,11 @@ func TestBindGeneratedCommandUsesCanonicalExecutableAndAddsBoundedEvidence(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(command, "'/repo/bin/agent-harness' issueops execution resume ") {
+	if !strings.HasPrefix(command, "'/repo/bin/issueops' execution resume ") {
 		t.Fatalf("generated command did not select its observed executable: %q", command)
 	}
 	for _, want := range []string{
-		"--generated-by-executable '/repo/bin/agent-harness'",
+		"--generated-by-executable '/repo/bin/issueops'",
 		"--generated-by-sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"--generated-for-generation 7",
 	} {
@@ -59,7 +59,7 @@ func TestConsumeGeneratedCommandProvenanceKeepsManualPATHCommandUnchanged(t *tes
 func TestConsumeGeneratedCommandProvenanceRemovesOnlyCompleteEnvelope(t *testing.T) {
 	args := []string{
 		"execution", "release", "--id", "io-1", "--generation", "7",
-		GeneratedByExecutableFlag, "/repo/bin/agent-harness",
+		GeneratedByExecutableFlag, "/repo/bin/issueops",
 		GeneratedBySHA256Flag, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		GeneratedForGenerationFlag, "7", "--json",
 	}
@@ -67,7 +67,7 @@ func TestConsumeGeneratedCommandProvenanceRemovesOnlyCompleteEnvelope(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !present || evidence.LeaseGeneration != 7 || evidence.ExecutablePath != "/repo/bin/agent-harness" {
+	if !present || evidence.LeaseGeneration != 7 || evidence.ExecutablePath != "/repo/bin/issueops" {
 		t.Fatalf("parsed evidence = %+v present=%t", evidence, present)
 	}
 	want := []string{"execution", "release", "--id", "io-1", "--generation", "7", "--json"}
@@ -78,12 +78,12 @@ func TestConsumeGeneratedCommandProvenanceRemovesOnlyCompleteEnvelope(t *testing
 
 func TestValidateGeneratedCommandInvocationRejectsStaleInstalledBinary(t *testing.T) {
 	expected := GeneratedCommandProvenance{
-		ExecutablePath:   "/worktree/bin/agent-harness",
+		ExecutablePath:   "/worktree/bin/issueops",
 		ExecutableSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		LeaseGeneration:  7,
 	}
 	observed := GeneratedCommandProvenance{
-		ExecutablePath:   "/installed/bin/agent-harness",
+		ExecutablePath:   "/installed/bin/issueops",
 		ExecutableSHA256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		LeaseGeneration:  7,
 	}

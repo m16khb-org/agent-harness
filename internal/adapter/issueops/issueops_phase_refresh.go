@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
 )
 
 func refreshIssueOpsAISlopClean(stateRoot string, record issueops.IssueOpsRecord) (issueops.IssueOpsRecord, error) {

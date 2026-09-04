@@ -61,15 +61,15 @@ func TestParseExactIssueOpsArgsMatchesCommandForms(t *testing.T) {
 			if got.Path != tc.wantPath {
 				t.Fatalf("path=%q want=%q", got.Path, tc.wantPath)
 			}
-			if len(got.Tokens) != len(tc.wantArgv)+2 {
-				t.Fatalf("tokens=%q want argv prefix agent-harness issueops + %q", got.Tokens, tc.wantArgv)
+			if len(got.Tokens) != len(tc.wantArgv)+1 {
+				t.Fatalf("tokens=%q want argv prefix issueops + %q", got.Tokens, tc.wantArgv)
 			}
-			if got.Tokens[0] != "agent-harness" || got.Tokens[1] != "issueops" {
+			if got.Tokens[0] != "issueops" {
 				t.Fatalf("tokens must start with the issueops envelope: %q", got.Tokens)
 			}
 			for i, want := range tc.wantArgv {
-				if got.Tokens[i+2] != want {
-					t.Fatalf("tokens=%q want %q at %d", got.Tokens, want, i+2)
+				if got.Tokens[i+1] != want {
+					t.Fatalf("tokens=%q want %q at %d", got.Tokens, want, i+1)
 				}
 			}
 		})

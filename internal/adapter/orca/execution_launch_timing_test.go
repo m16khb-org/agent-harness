@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // orca는 터미널을 만든 뒤 탭 제목을 비동기로 설정한다. 마커는 그 탭 제목에 있고
@@ -134,7 +134,7 @@ func TestLaunchOwnerDoesNotWaitOnAmbiguousPTYInventory(t *testing.T) {
 func TestLaunchOwnerRefusesAForeignStableTitle(t *testing.T) {
 	prepared, launch := executionLaunchSealed(t)
 	fake := executionLaunchFake(t)
-	fake.terminalInventoryTitles = []string{"agent-harness issueops-v1 lifecycle=io-other"}
+	fake.terminalInventoryTitles = []string{"issueops-v1 lifecycle=io-other"}
 
 	// 상한을 밀리초로 줄인다 — 이 테스트가 검증하는 것은 "상한을 넘으면
 	// 거부한다"이고, 그 상한의 실제 길이는 상수 주석이 근거를 갖는다.

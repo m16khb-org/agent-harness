@@ -1,17 +1,17 @@
 package looprun
 
 import (
-	loopruncontract "agent-harness/internal/contract/looprun"
+	loopruncontract "issueops/internal/contract/looprun"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/outbound/sqlstore"
 )
 
 func TestReadLoopRefusesFutureSchema(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "future-schema", 2)
 	db, err := sqlstore.Open(StateRoot())
 	if err != nil {
@@ -26,7 +26,7 @@ func TestReadLoopRefusesFutureSchema(t *testing.T) {
 }
 
 func TestRepoGateSummaryDoesNotRepairExistingLoopStore(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	if _, err := Start(loopruncontract.StartLoopRequest{Repo: repo, Name: "read-only", Goal: "prove diagnostic reads stay read-only"}); err != nil {
 		t.Fatal(err)
@@ -34,8 +34,8 @@ func TestRepoGateSummaryDoesNotRepairExistingLoopStore(t *testing.T) {
 
 	paths := []string{
 		StateRoot(),
-		filepath.Join(StateRoot(), "harness.db"),
-		filepath.Join(StateRoot(), "harness.lock.db"),
+		filepath.Join(StateRoot(), "issueops.db"),
+		filepath.Join(StateRoot(), "issueops.lock.db"),
 	}
 	for index, path := range paths {
 		mode := os.FileMode(0o644)

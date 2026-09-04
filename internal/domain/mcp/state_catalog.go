@@ -4,7 +4,7 @@ func StateTools() []Tool {
 	return []Tool{
 		{
 			Name:        "state_write",
-			Description: "Write a small agent state checkpoint to HARNESS_STATE_DIR or ~/.local/state/agent-harness. Keys allow [A-Za-z0-9._-] and cannot contain path traversal.",
+			Description: "Write a small agent state checkpoint to ISSUEOPS_STATE_DIR or ~/.local/state/issueops. Keys allow [A-Za-z0-9._-] and cannot contain path traversal.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"key", "content"}, "properties": map[string]any{
 				"key":     map[string]any{"type": "string", "description": "State key, max 128 chars, no path separators."},
 				"content": map[string]any{"type": "string", "description": "State checkpoint content."},

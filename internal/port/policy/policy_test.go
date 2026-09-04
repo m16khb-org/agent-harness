@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	policyport "agent-harness/internal/port/policy"
+	policyport "issueops/internal/port/policy"
 )
 
 type fakeRunner struct{}

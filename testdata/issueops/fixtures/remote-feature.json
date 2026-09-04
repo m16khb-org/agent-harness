@@ -2,7 +2,7 @@
   "id": "remote-feature",
   "title": "Remote-first feature with related issue and label scoring",
   "user_prompt": "Z.AI 외부 LLM 게이트 결과를 캐시해서 같은 입력은 재호출하지 않게 해줘",
-  "repo_context": "agent-harness has a remote issue scoring gate, an external LLM wrapper, and GitHub credentials are discoverable. There are existing issues about external LLM cost and a performance label.",
+  "repo_context": "issueops has a remote issue scoring gate, an external LLM wrapper, and GitHub credentials are discoverable. There are existing issues about external LLM cost and a performance label.",
   "expected_issue": ["states the caching problem", "defines acceptance criteria", "lists non-goals", "includes verification", "scores related issues and labels by threshold", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["starts with a failing test for cache hit", "defines cache key from prompt and command", "uses go test verification"],
   "expected_tasks": ["separates cache store", "separates wrapper integration", "separates metrics"],

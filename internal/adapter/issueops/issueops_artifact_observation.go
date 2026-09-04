@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strings"
 
-	issueopsdomain "agent-harness/internal/domain/issueops"
-	remote "agent-harness/internal/domain/issueopsremote"
+	issueopsdomain "issueops/internal/domain/issueops"
+	remote "issueops/internal/domain/issueopsremote"
 )
 
 // ObserveRemoteArtifact는 원격 artifact의 현재 상태를 provider CLI로 읽는다.

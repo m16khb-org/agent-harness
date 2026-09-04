@@ -1,7 +1,7 @@
 package claude
 
 import (
-	"agent-harness/internal/adapter/installutil"
+	"issueops/internal/adapter/installutil"
 )
 
 // production wiring과 같은 구현을 설치한다.

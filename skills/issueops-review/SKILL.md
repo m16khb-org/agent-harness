@@ -1,6 +1,6 @@
 ---
 name: issueops-review
-description: Run an adversarial brooks review as a fresh sub-agent on an IssueOps plan or implementation diff, then record the verdict in the durable ledger with the plan digest or change fingerprint sealed. Owns the revise and stop loop rules shared by the plan and verify stages. Use when issueops-plan or issueops-verify needs a review, or when the user says "계획 검토", "구현 리뷰", "brooks 돌려줘", "devil's advocate".
+description: Run an adversarial design-review review as a fresh sub-agent on an IssueOps plan or implementation diff, then record the verdict in the durable ledger with the plan digest or change fingerprint sealed. Owns the revise and stop loop rules shared by the plan and verify stages. Use when issueops-plan or issueops-verify needs a review, or when the user says "계획 검토", "구현 리뷰", "design-review 돌려줘", "devil's advocate".
 ---
 
 # IssueOps Review
@@ -11,7 +11,7 @@ description: Run an adversarial brooks review as a fresh sub-agent on an IssueOp
 
 - 계획 단계: [`issueops-plan`](../issueops-plan/SKILL.md)
 - 검증 단계: [`issueops-verify`](../issueops-verify/SKILL.md)
-- 리뷰 렌즈 원문: [`brooks`](../brooks/SKILL.md)
+- 리뷰 렌즈 원문: [`design-review`](../design-review/SKILL.md)
 - 원격 반영 프로토콜: [`issueops-remote-write`](../issueops-remote-write/SKILL.md)
 
 ## 입력
@@ -27,7 +27,7 @@ description: Run an adversarial brooks review as a fresh sub-agent on an IssueOp
 리뷰어 모델과 effort는 다음 명령이 돌려준다.
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 # .review.model, .review.effort
 ```
 
@@ -41,9 +41,9 @@ agent-harness issueops next --id "$ISSUEOPS_ID" --json
 
 ## 실행
 
-현재 호스트의 delegation 도구로 brooks를 **빈 컨텍스트의 새 세션**에 띄운다.
+현재 호스트의 delegation 도구로 design-review를 **빈 컨텍스트의 새 세션**에 띄운다.
 
-저자 세션이 brooks의 게이트를 직접 밟아 보는 것은 리뷰가 아니다. 계획을 쓴
+저자 세션이 design-review의 게이트를 직접 밟아 보는 것은 리뷰가 아니다. 계획을 쓴
 에이전트는 매몰 비용을 지고 있고 자기 합리화를 기억하며 자기 설계를 무의식적으로
 변호한다. 독립성이 기제 전부다. 계획에 아무 투자도 하지 않은 새 컨텍스트만이 저자가
 못 보는 결함을 본다.
@@ -75,12 +75,12 @@ agent-harness issueops next --id "$ISSUEOPS_ID" --json
 
 ```bash
 # --target plan
-agent-harness issueops devils-advocate review --id "$ISSUEOPS_ID" \
+issueops devils-advocate review --id "$ISSUEOPS_ID" \
   --verdict pass --reviewer-context subagent \
   --finding "<무엇을 공격했고 왜 살아남았는가>" $RECORD_ACTOR_FLAGS --json
 
 # --target diff
-agent-harness issueops implementation-review record --id "$ISSUEOPS_ID" \
+issueops implementation-review record --id "$ISSUEOPS_ID" \
   --verdict pass --finding "<finding>" --evidence "<evidence>" \
   --reviewer-host "$HOST" --reviewer-model "$REVIEWER_MODEL" --reviewer-effort "$REVIEWER_EFFORT" \
   $RECORD_ACTOR_FLAGS --json
@@ -95,7 +95,7 @@ agent-harness issueops implementation-review record --id "$ISSUEOPS_ID" \
 - 1·2라운드는 대상 전체를 검토한다. 3라운드부터는 직전 판정 이후의 delta만 본다.
   같은 것을 세 번 읽는 리뷰는 새 결함을 찾지 못한다.
 - `revise`면 호출한 단계가 대상을 고치고 이 스킬을 다시 실행한다.
-- `stop`이면 `--target plan`은 호출자가 `agent-harness issueops regress --id
+- `stop`이면 `--target plan`은 호출자가 `issueops regress --id
   "$ISSUEOPS_ID" --reason "<TEXT>"`로 grill까지 되돌려 재조사·재계획한다.
   `--target diff`는 blocker를 보고하고 멈춘다. 진행 판단은 사용자가 한다.
 - `pass`는 finding이 하나 이상 있어야 기록된다. 아무것도 공격하지 않은 통과는 리뷰가
@@ -113,7 +113,7 @@ agent-harness issueops implementation-review record --id "$ISSUEOPS_ID" \
 절차로 다음을 실행한다.
 
 ```bash
-agent-harness issueops remote reflect-devils-advocate --id "$ISSUEOPS_ID" --confirm --json
+issueops remote reflect-devils-advocate --id "$ISSUEOPS_ID" --confirm --json
 ```
 
 `stop` 판정은 반영이 특히 중요하다. 사이클이 뒤로 돌아간 이유가 이슈에 남지 않으면
@@ -134,9 +134,9 @@ agent-harness issueops remote reflect-devils-advocate --id "$ISSUEOPS_ID" --conf
 
 ## 검증
 
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `devils_advocate_review`
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `devils_advocate_review`
   또는 `implementation_review`에 이번 판정이 있고 digest·fingerprint가 현재 대상과
   같은지 확인한다.
-- `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `missing`에
+- `issueops next --id "$ISSUEOPS_ID" --json`의 `missing`에
   `devils_advocate_review*`·`implementation_review*`가 남아 있지 않은지 확인한다.
 - 남아 있으면 그 키가 곧 다음 명령이다. 추측하지 말고 `next_command`를 실행한다.

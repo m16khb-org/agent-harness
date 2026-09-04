@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestResumeOwnerAndStageAdaptersDelegateOnce(t *testing.T) {

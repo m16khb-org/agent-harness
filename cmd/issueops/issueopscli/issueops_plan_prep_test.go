@@ -1,0 +1,61 @@
+package issueopscli
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "example")
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatalf("start JSON: %v\n%s", err, start)
+	}
+	id, _ := record["id"].(string)
+	if id == "" {
+		t.Fatalf("start should return id: %#v", record)
+	}
+
+	// 같은 항목에 evidence와 waive를 동시에 주면 거부되어야 한다.
+	if err := runIssueOps([]string{
+		"plan-prep", "record", "--id", id,
+		"--decisions-evidence", "adr", "--decisions-waive", "nope",
+		"--related-score-ref", "score", "--web-research-waive", "internal",
+		"--codebase-survey-evidence", "rg sweep",
+	}); err == nil {
+		t.Fatal("evidence + waive on one item must error")
+	}
+
+	// codebase survey 항목을 빠뜨리면 거부되어야 한다.
+	if err := runIssueOps([]string{
+		"plan-prep", "record", "--id", id,
+		"--decisions-evidence", ".issueops/ADR.md",
+		"--related-score-ref", "remote score: selected=#1(0.9), threshold=0.70",
+		"--web-research-waive", "internal-only change",
+	}); err == nil {
+		t.Fatal("missing codebase survey item must error")
+	}
+
+	// evidence와 waive를 올바르게 섞으면 성공하고 plan_prep을 낸다.
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"plan-prep", "record", "--id", id,
+			"--decisions-evidence", ".issueops/ADR.md",
+			"--related-score-ref", "remote score: selected=#1(0.9), threshold=0.70",
+			"--web-research-waive", "internal-only change",
+			"--codebase-survey-evidence", "rg/CodeGraph sweep: touched symbols and files listed in plan",
+			"--json",
+		})
+	})
+	if !strings.Contains(out, "plan_prep") || !strings.Contains(out, "waived") {
+		t.Fatalf("plan-prep record should emit plan_prep with a waived item: %s", out)
+	}
+	if !strings.Contains(out, "codebase_survey") {
+		t.Fatalf("plan-prep record should emit codebase_survey: %s", out)
+	}
+}

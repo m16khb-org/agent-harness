@@ -62,9 +62,9 @@ An IssueOps autoresearch candidate is one proposed improvement to the IssueOps w
 The quality gate is the existing IssueOps benchmark:
 
 ```bash
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
-agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
+issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
 `--judge none` is the deterministic local gate. `--judge llm` is the opt-in LLM gate when Z.AI quota is available. A candidate must not require real GitHub, GitLab, or real model calls to pass local tests.
@@ -106,8 +106,8 @@ Expected implementation surfaces:
 - `skills/issueops/SKILL.md`: workflow contract and quality gate wording.
 - `internal/core/issueops_benchmark.go`: candidate comparison or regression helper if needed.
 - `internal/core/issueops_benchmark_test.go`: deterministic gate coverage.
-- `cmd/harness/issueops.go`: CLI output or command wiring if needed.
-- `cmd/harness/issueops_benchmark_test.go`: CLI behavior tests.
+- `cmd/issueops/issueops.go`: CLI output or command wiring if needed.
+- `cmd/issueops/issueops_benchmark_test.go`: CLI behavior tests.
 - `skills/issueops-create-issue/SKILL.md` and `skills/issueops-create-pr/SKILL.md`: only if the benchmark requires clearer quality wording.
 - `testdata/issueops/fixtures/*.json`: only when adding a new fixture that exposes a real gap.
 
@@ -119,11 +119,11 @@ Required local verification:
 
 ```bash
 go test ./internal/core -run IssueOps -count=1
-go test ./cmd/harness -run IssueOps -count=1
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/issueops -run IssueOps -count=1
+go test ./cmd/issueops -run Golden -count=1
 go test ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+go build -o bin/issueops ./cmd/issueops
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
 ```
 
 Fake Z.AI tests must cover strict JSON success, malformed output failure, schema failure, and gate/regression handling when the implementation touches judge behavior.
@@ -137,4 +137,4 @@ Fake Z.AI tests must cover strict JSON success, malformed output failure, schema
 
 ## Issue Link
 
-Remote issue: https://github.com/example/agent-harness/issues/9
+Remote issue: https://github.com/example/issueops/issues/9

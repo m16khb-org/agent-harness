@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/domain/policy"
-	"agent-harness/internal/port"
+	"issueops/internal/domain/policy"
+	"issueops/internal/port"
 )
 
 type CommandOutput struct {

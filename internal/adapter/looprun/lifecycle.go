@@ -1,11 +1,11 @@
 package looprun
 
 import (
-	loopruncontract "agent-harness/internal/contract/looprun"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	loopruncontract "issueops/internal/contract/looprun"
 	"path/filepath"
 	"regexp"
 	"strings"

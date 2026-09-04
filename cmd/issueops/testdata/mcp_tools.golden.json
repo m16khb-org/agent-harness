@@ -1,0 +1,1402 @@
+[
+  {
+    "description": "Inspect the issueops installation, shared skills, docs, and native Codex/Claude integration status.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Optional target repository path.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "harness_inspect"
+  },
+  {
+    "description": "Run a read-only git preflight for the atomic-commit-push workflow: branch/upstream, staged/unstaged/untracked files, secret-like paths, and commit style hints.",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Git repository path. Defaults to the agent project directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "atomic_commit_preflight"
+  },
+  {
+    "description": "Return the Conventional Commit + Lore body policy used by this harness.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "commit_policy"
+  },
+  {
+    "description": "List shared skills exposed by the harness and their metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "skill_manifest"
+  },
+  {
+    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, .issueops markdown files, and self-* skill docs: relative path, title, headings, and byte size.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "docs_index"
+  },
+  {
+    "description": "Given a task, return the project AGENTS.md and .issueops documents an agent should read before working.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "task": {
+          "description": "Task description such as commit, test, architecture, dependency, deploy, or general.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "project_docs_route"
+  },
+  {
+    "description": "Dry-run the project docs bootstrap that creates or updates AGENTS.md and .issueops/*.md from repository evidence. This tool never writes files.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "project_docs_bootstrap_plan"
+  },
+  {
+    "description": "Read one allowed .issueops project document and return its content plus SHA-256. Use before project_docs_revise so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+    "inputSchema": {
+      "properties": {
+        "rel_path": {
+          "description": "Allowed project doc path, for example .issueops/TESTING.md or TESTING.md.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rel_path"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_read"
+  },
+  {
+    "description": "Revise (fully replace) one allowed .issueops project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_append there.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "Set true to write. Omit or false for dry-run preview.",
+          "type": "boolean"
+        },
+        "content": {
+          "description": "Full replacement content for the one document. Preserve stronger existing local guidance and user decisions.",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "Files, commands, tests, or user instructions that justify the update.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "expected_sha256": {
+          "description": "SHA-256 returned by project_docs_read. Required when the file exists.",
+          "type": "string"
+        },
+        "rel_path": {
+          "description": "Allowed project doc path under .issueops, for example .issueops/OPERATIONS.md.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Short reason for the update and how it maintains current consensus.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rel_path",
+        "content",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_revise"
+  },
+  {
+    "description": "Append one dated record file under .issueops/cautions/ (kind=caution) or .issueops/adr/ (kind=adr) without modifying the family root index. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+    "inputSchema": {
+      "properties": {
+        "alternatives": {
+          "description": "Rejected alternatives or tradeoffs.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "consequences": {
+          "description": "Expected follow-up consequences for ADR records.",
+          "type": "string"
+        },
+        "context": {
+          "description": "Relevant context or trigger.",
+          "type": "string"
+        },
+        "decision": {
+          "description": "Chosen decision; use for ADR records.",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "Commands, files, tests, or source evidence.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "description": "caution for solved problems/false cases; adr for decisions.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "resolution": {
+          "description": "How the problem was solved; use for caution records.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Calling workflow or agent source.",
+          "type": "string"
+        },
+        "summary": {
+          "description": "One-sentence summary of the issue or decision.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Short record title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_append"
+  },
+  {
+    "description": "Render the API documentation host-agent review prompt/schema, or record a supplied JSON review result for staged or explicit controller/DTO/handler/OpenAPI files. By default it scopes to git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt.",
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, review all tracked API candidate files. Default false keeps scope to staged changes.",
+          "type": "boolean"
+        },
+        "diff_file": {
+          "description": "Optional file containing a diff to review instead of git diff --cached.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "prompt_file": {
+          "description": "Optional project-specific Swagger/OpenAPI rules.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target git repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "result_file": {
+          "description": "Optional host-agent JSON review result to record as evidence. Omit to render prompt/schema for the host agent.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "api_doc_review"
+  },
+  {
+    "description": "Run deterministic API documentation checks for syntax-level Swagger/OpenAPI omissions such as missing operation descriptions, params, body/query/header docs, 400/401 responses, and NestJS DTO decorators. Use before api_doc_review.",
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, check all tracked API candidate files. Default false keeps scope to staged changes.",
+          "type": "boolean"
+        },
+        "files": {
+          "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "description": "Target git repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "api_doc_static_check"
+  },
+  {
+    "description": "Evaluate whether an argv-based command request is allowed by the harness command policy without executing it.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_policy_check"
+  },
+  {
+    "description": "Run the command policy and return a fake runner result. This never executes the command; it only proves policy acceptance/denial and audit metadata.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_fake_run"
+  },
+  {
+    "description": "Write a small agent state checkpoint to ISSUEOPS_STATE_DIR or ~/.local/state/issueops. Keys allow [A-Za-z0-9._-] and cannot contain path traversal.",
+    "inputSchema": {
+      "properties": {
+        "content": {
+          "description": "State checkpoint content.",
+          "type": "string"
+        },
+        "key": {
+          "description": "State key, max 128 chars, no path separators.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "content"
+      ],
+      "type": "object"
+    },
+    "name": "state_write"
+  },
+  {
+    "description": "Read an agent state checkpoint by key.",
+    "inputSchema": {
+      "properties": {
+        "key": {
+          "description": "State key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "type": "object"
+    },
+    "name": "state_read"
+  },
+  {
+    "description": "List agent state checkpoint keys and metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "state_list"
+  },
+  {
+    "description": "Prune old agent state checkpoints. Defaults to dry-run; pass confirm=true to delete records older than max_age.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "When true, delete matching records; false or omitted performs a dry-run.",
+          "type": "boolean"
+        },
+        "max_age": {
+          "description": "Duration such as 720h or 168h. Must be positive.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "max_age"
+      ],
+      "type": "object"
+    },
+    "name": "state_prune"
+  },
+  {
+    "description": "Inspect agent state checkpoint files for invalid JSON, key mismatches, byte-count drift, invalid timestamps, and unexpected files without modifying state.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "state_doctor"
+  },
+  {
+    "description": "Run sqlite store maintenance on every existing harness store root: truncate the WAL via wal_checkpoint(TRUNCATE) and re-assert private 0600 file modes. Roots without a store are skipped, never created.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "state_maintain"
+  },
+  {
+    "description": "Prepare, inspect, claim, release, replace, resume, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "enum": [
+            "prepare",
+            "status",
+            "claim",
+            "release",
+            "replace",
+            "resume",
+            "reconcile",
+            "complete"
+          ],
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "claim_current_token": {
+          "type": "boolean"
+        },
+        "claim_token_file": {
+          "type": "string"
+        },
+        "completion_generation": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "confirm": {
+          "type": "boolean"
+        },
+        "context_packet_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "direct_reason": {
+          "type": "string"
+        },
+        "expected_generation": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "expected_readiness_fingerprint": {
+          "type": "string"
+        },
+        "final_head": {
+          "type": "string"
+        },
+        "generation": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "host": {
+          "enum": [
+            "codex",
+            "claude",
+            "omo"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inventory_fingerprint": {
+          "type": "string"
+        },
+        "issue_body_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "issue_snapshot": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 524288,
+              "type": "string"
+            },
+            "provider": {
+              "enum": [
+                "gitlab"
+              ],
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "glab_mcp"
+              ],
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "opened",
+                "closed"
+              ],
+              "type": "string"
+            },
+            "web_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "source",
+            "web_url",
+            "body",
+            "state"
+          ],
+          "type": "object"
+        },
+        "mode": {
+          "enum": [
+            "auto",
+            "direct",
+            "orca"
+          ],
+          "type": "string"
+        },
+        "owner_effort": {
+          "type": "string"
+        },
+        "owner_host": {
+          "enum": [
+            "codex",
+            "claude",
+            "omo"
+          ],
+          "type": "string"
+        },
+        "owner_model": {
+          "type": "string"
+        },
+        "preview": {
+          "type": "boolean"
+        },
+        "quiescence_fingerprint": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "remote_artifact_url": {
+          "type": "string"
+        },
+        "replace_action": {
+          "enum": [
+            "preview",
+            "revoke",
+            "finalize-preview",
+            "finalize",
+            "reseed"
+          ],
+          "type": "string"
+        },
+        "session_executable": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "session_pid": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "session_started_at": {
+          "type": "string"
+        },
+        "verification": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verification_report_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_execution"
+  },
+  {
+    "description": "Create or resume a durable verify-until-done loop contract. This writes state only; it records verify_argv but never executes shell commands.",
+    "inputSchema": {
+      "properties": {
+        "goal": {
+          "description": "Loop goal text.",
+          "type": "string"
+        },
+        "max_attempts": {
+          "description": "Maximum fail attempts before auto-exhaustion.",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Stable loop name. Same repo+name resumes an active loop.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Repository path.",
+          "type": "string"
+        },
+        "verify_argv": {
+          "description": "Command argv to record as intended verification; harness never executes it.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "repo",
+        "name",
+        "goal"
+      ],
+      "type": "object"
+    },
+    "name": "loop_start"
+  },
+  {
+    "description": "Append a pass/fail attempt with evidence to an active loop contract. This writes state and auto-exhausts after max failed attempts.",
+    "inputSchema": {
+      "properties": {
+        "evidence": {
+          "description": "Observable evidence for this attempt.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        },
+        "verdict": {
+          "description": "Attempt verdict: pass or fail.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "verdict",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "name": "loop_record_attempt"
+  },
+  {
+    "description": "Read a durable loop contract status and summary. This does not write state.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "loop_status"
+  },
+  {
+    "description": "Stop a loop contract. success=true requires the latest attempt verdict to be pass; non-success stops require a reason.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason for non-success stop.",
+          "type": "string"
+        },
+        "success": {
+          "description": "Mark the loop succeeded. Requires latest attempt verdict pass.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "loop_stop"
+  },
+  {
+    "description": "Evaluate task gate ledgers (.issueops/gates/*.md; compatible GATES.md and gates/*.md). Runs CHECK commands for unmet gates through the command policy engine (workspace boundary, env allowlist, timeout, audit), matches EXPECT, flips checkboxes, and records evidence. Complete means zero unmet gates; ABANDON gates count as resolved.",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding .issueops/gates/*.md or compatible gate ledgers, and the CHECK working directory. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Environment variable allowlist for CHECK commands. Defaults to HOME,PATH.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover .issueops/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Allow network access for CHECK execution. Default false.",
+          "type": "boolean"
+        },
+        "timeout_seconds": {
+          "description": "Per-CHECK timeout in seconds. Defaults to 120.",
+          "type": "integer"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary for CHECK execution. Defaults to cwd.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Allow workspace-write commands for CHECK execution. Default true.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_check"
+  },
+  {
+    "description": "Report gate ledger state without executing anything or modifying files. Flags unchecked gates and checked-but-EVIDENCE-pending gates (a checkbox is a claim; evidence is the proof).",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding .issueops/gates/*.md or compatible gate ledgers. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover .issueops/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace_root": {
+          "description": "Workspace root. Defaults to cwd.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_status"
+  },
+  {
+    "description": "Render the final-report ledger paste: per-file N-of-N gate counts, per-gate state, evidence, and abandon reasons. Re-measures counts at report time instead of trusting memory.",
+    "inputSchema": {
+      "properties": {
+        "cwd": {
+          "description": "Directory holding .issueops/gates/*.md or compatible gate ledgers. Defaults to the agent project directory.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit gate ledger files. Omit to discover .issueops/gates/*.md plus compatible GATES.md and gates/*.md under cwd.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace_root": {
+          "description": "Workspace root. Defaults to cwd.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gates_report"
+  },
+  {
+    "description": "Record an honest ABANDON line for one gate in a ledger file. Abandoned gates count as resolved but stay visible in reports; use instead of silently dropping a gate.",
+    "inputSchema": {
+      "properties": {
+        "file": {
+          "description": "Gate ledger file. Legacy default is GATES.md; pass namespaced .issueops/gates/\u003cname\u003e.md explicitly.",
+          "type": "string"
+        },
+        "gate_id": {
+          "description": "Gate id to abandon, for example G2.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Honest reason the gate cannot be met.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "gates_abandon"
+  },
+  {
+    "description": "Scaffold a new gate ledger file. Refuses to overwrite an existing file. Each gate spec looks like \"G1: outcome | CHECK: command | EXPECT: expectation\".",
+    "inputSchema": {
+      "properties": {
+        "file": {
+          "description": "Gate ledger file to create. Defaults to .issueops/gates/\u003cscope-slug\u003e.md.",
+          "type": "string"
+        },
+        "gates": {
+          "description": "Gate specs: \"ID: outcome | CHECK: command | EXPECT: expectation\".",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "description": "Gate scope name for the heading.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "gates"
+      ],
+      "type": "object"
+    },
+    "name": "gates_init"
+  },
+  {
+    "description": "Append a durable message to a named session-to-session channel backed by the shared issueops state. Codex, Claude Code, and Omo sessions sharing the state see it. Use for cross-session coordination such as front/server contract negotiation.",
+    "inputSchema": {
+      "properties": {
+        "body": {
+          "description": "Message body.",
+          "type": "string"
+        },
+        "channel": {
+          "description": "Channel name (shared mailbox key), for example contract or front-server.",
+          "type": "string"
+        },
+        "from": {
+          "description": "Sending session identity, for example server, front, or codex:abc.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "from",
+        "body"
+      ],
+      "type": "object"
+    },
+    "name": "channel_send"
+  },
+  {
+    "description": "Read messages from a named channel after a given message id (exclusive). With wait=true, blocks until a new message arrives or the timeout (default 300s) — the receiving side of a front/server session coordination flow.",
+    "inputSchema": {
+      "properties": {
+        "channel": {
+          "description": "Channel name.",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum messages to return. 0 returns all.",
+          "type": "integer"
+        },
+        "since_id": {
+          "description": "Return messages after this message id (exclusive). Omit to read from the beginning.",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "description": "Wait timeout in seconds when wait=true. Default 300.",
+          "type": "integer"
+        },
+        "wait": {
+          "description": "Block until a new message arrives or timeout. Default false.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "type": "object"
+    },
+    "name": "channel_recv"
+  },
+  {
+    "description": "Report whether the shared issueops daemon backing this MCP proxy is reachable, including socket and pid metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "daemon_status"
+  },
+  {
+    "description": "Plan the self-augmentation loop: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to issueops state for durable Reflexion-style memory.",
+    "inputSchema": {
+      "properties": {
+        "cycles": {
+          "description": "Number of autonomous improvement cycles to plan; defaults to 1.",
+          "type": "integer"
+        },
+        "save_state": {
+          "description": "When true, save the selected self-augmentation plan to issueops state.",
+          "type": "boolean"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-augment-latest.",
+          "type": "string"
+        },
+        "target_score": {
+          "description": "Exclusive per-goal score threshold; defaults to 95.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_augment"
+  },
+  {
+    "description": "Store a Reflexion-style self-augmentation lesson in issueops state for durable cross-session learning.",
+    "inputSchema": {
+      "properties": {
+        "candidate_id": {
+          "description": "Candidate id this lesson belongs to; defaults to current selected open candidate.",
+          "type": "string"
+        },
+        "lesson": {
+          "description": "Lesson learned from failure, QA issue, or design concern.",
+          "type": "string"
+        },
+        "next_action": {
+          "description": "Specific next action that should use this lesson.",
+          "type": "string"
+        },
+        "severity": {
+          "description": "info, warning, or error. Defaults to info.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source that produced the lesson; defaults to self-augment.",
+          "type": "string"
+        },
+        "state_key": {
+          "description": "State key; defaults to self-augment-lesson-\u003ccandidate\u003e-\u003ctimestamp\u003e.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lesson",
+        "next_action"
+      ],
+      "type": "object"
+    },
+    "name": "self_augment_lesson"
+  },
+  {
+    "description": "Run one complete deterministic self-verification evidence pass. Termination requires every concrete goal score to be greater than target_score.",
+    "inputSchema": {
+      "properties": {
+        "save_state": {
+          "description": "When true, save compact summary to issueops state after the run.",
+          "type": "boolean"
+        },
+        "seed": {
+          "description": "Seed for deterministic fuzz fixtures.",
+          "type": "integer"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-verify-latest.",
+          "type": "string"
+        },
+        "target_score": {
+          "description": "Exclusive per-goal score threshold; defaults to 95.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_verify"
+  },
+  {
+    "description": "Export the self-verification loop improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
+    "inputSchema": {
+      "properties": {
+        "save_state": {
+          "description": "When true, save the candidate export snapshot to issueops state.",
+          "type": "boolean"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-verify-candidates-latest.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_verify_candidates"
+  },
+  {
+    "description": "List saved self-verification loop summary checkpoints from issueops state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "When true with prune_retention, delete retention candidates beyond retention_limit.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Maximum entries to return; defaults to 20, 0 returns all.",
+          "type": "integer"
+        },
+        "prefix": {
+          "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys.",
+          "type": "string"
+        },
+        "prune_retention": {
+          "description": "When true, plan retention pruning. This is a dry-run unless confirm is also true.",
+          "type": "boolean"
+        },
+        "retention_limit": {
+          "description": "Maximum matching summaries to retain by newest-first ordering. Omit or use 0 to disable retention planning.",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_verify_history"
+  },
+  {
+    "description": "Compare two saved self-verification loop summary checkpoints from issueops state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
+    "inputSchema": {
+      "properties": {
+        "baseline_key": {
+          "description": "State key containing the baseline self-verification summary snapshot.",
+          "type": "string"
+        },
+        "candidate_key": {
+          "description": "State key containing the candidate self-verification summary snapshot.",
+          "type": "string"
+        },
+        "max_elapsed_regression_pct": {
+          "description": "Allowed elapsed_ms increase percentage before regression; defaults to 20.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "baseline_key",
+        "candidate_key"
+      ],
+      "type": "object"
+    },
+    "name": "self_verify_compare"
+  },
+  {
+    "description": "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+    "inputSchema": {
+      "properties": {
+        "allow_failed_source": {
+          "description": "Promote even when the source snapshot did not pass the gate (baseline-poisoning override; off by default).",
+          "type": "boolean"
+        },
+        "baseline_key": {
+          "description": "State key to write as the promoted baseline.",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "When true, write baseline_key; false or omitted performs a dry-run.",
+          "type": "boolean"
+        },
+        "from_key": {
+          "description": "State key containing the candidate self-verification summary snapshot to promote.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_key",
+        "baseline_key"
+      ],
+      "type": "object"
+    },
+    "name": "self_verify_promote"
+  },
+  {
+    "description": "Return the current CLI/MCP compatibility contract, required response fields, and stable schema hash. This tool is read-only and is used before changing response DTOs.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "contract_schema"
+  },
+  {
+    "description": "Check whether the current CLI/MCP compatibility contract is internally consistent. This tool is read-only and returns a pass/fail result plus warnings.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "contract_check"
+  },
+  {
+    "description": "Create a no-shell local worker job record. This writes only to the issueops worker state directory and never executes shell commands.",
+    "inputSchema": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "worker_enqueue"
+  },
+  {
+    "description": "Run an argv-only read-only command as a local worker evidence job. This writes only the worker job record and command evidence, forces write/network/shell disabled, applies workspace policy, timeout, env allowlist, redaction, and bounded output.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "env_allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "workspace_root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "worker_run_read_only"
+  },
+  {
+    "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "worker_status"
+  },
+  {
+    "description": "List no-shell local worker jobs from the issueops worker state directory. This is read-only.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "worker_list"
+  },
+  {
+    "description": "Mark a queued no-shell local worker job as cancelled. This writes only the job lifecycle record and never kills processes.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "worker_cancel"
+  },
+  {
+    "description": "Evaluate command policy and append a redacted JSONL audit record without executing the command. This writes only to the harness audit log.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_policy_audit"
+  },
+  {
+    "description": "Render a host-agent prompt for a Conventional + Lore Hybrid commit message based on git diff.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "staged": {
+          "description": "When true, suggest commit based on staged changes (git diff --cached); otherwise unstaged. Defaults to false.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "commit_suggest"
+  },
+  {
+    "description": "Run a command, capture failure outputs, and render a host-agent diagnosis prompt.",
+    "inputSchema": {
+      "properties": {
+        "command_argv": {
+          "description": "The command argv array to run and diagnose.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_argv"
+      ],
+      "type": "object"
+    },
+    "name": "lint_diagnose"
+  },
+  {
+    "description": "Run the clean-room resilient public web fetch engine with safe URL handling, route accounting, response validation, and citation-ready output.",
+    "inputSchema": {
+      "properties": {
+        "max_chars": {
+          "description": "Optional maximum content characters returned.",
+          "type": "integer"
+        },
+        "timeout": {
+          "description": "Optional fetch timeout such as 30s.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Public http(s) URL to fetch.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "name": "web_fetch_resilient"
+  }
+]

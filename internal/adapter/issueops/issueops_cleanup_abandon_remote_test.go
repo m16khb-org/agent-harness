@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // fakeAbandonRemote는 호출 순서를 기록한다. 원격 효과는 되돌릴 수 없으므로

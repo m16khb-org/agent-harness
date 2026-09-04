@@ -1,9 +1,9 @@
 package toolconformance
 
 import (
-	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"encoding/json"
 	"fmt"
+	toolconformancecontract "issueops/internal/contract/toolconformance"
 	"reflect"
 	"regexp"
 	"sort"

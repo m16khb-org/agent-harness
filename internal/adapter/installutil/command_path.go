@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	managedCommandMainPath   = "agent-harness/cmd/harness"
-	managedCommandModulePath = "agent-harness"
+	managedCommandMainPath   = "issueops/cmd/issueops"
+	managedCommandModulePath = "issueops"
 	managedCommandMaxSize    = int64(268435456)
 )
 
@@ -106,7 +106,7 @@ func prepareManagedCommandPathCandidateWithDeps(target, candidatePath, path stri
 	if err != nil || suffix == "" {
 		return nil, plan, fmt.Errorf("allocate private command backup path")
 	}
-	plan.BackupPath = filepath.Join(filepath.Dir(path), ".agent-harness.command-backup-"+suffix)
+	plan.BackupPath = filepath.Join(filepath.Dir(path), ".issueops.command-backup-"+suffix)
 	plan.RollbackAvailable = true
 	if dryRun {
 		plan.WouldAdopt = true
@@ -318,7 +318,7 @@ func (transaction *ManagedCommandPathTransaction) temporaryRegularPath(kind stri
 	if err != nil || suffix == "" {
 		return "", fmt.Errorf("allocate command %s path", kind)
 	}
-	return filepath.Join(filepath.Dir(transaction.plan.Path), ".agent-harness.command-"+kind+"-"+suffix), nil
+	return filepath.Join(filepath.Dir(transaction.plan.Path), ".issueops.command-"+kind+"-"+suffix), nil
 }
 
 func inspectManagedCommand(path string, readBuildInfo func(string) (managedBuildInfo, error)) (managedCommandIdentity, error) {
@@ -341,7 +341,7 @@ func inspectManagedCommand(path string, readBuildInfo func(string) (managedBuild
 	}
 	build, err := readBuildInfo(path)
 	if err != nil || build.MainPath != managedCommandMainPath || build.ModulePath != managedCommandModulePath {
-		return managedCommandIdentity{}, fmt.Errorf("command does not have the managed agent-harness build identity")
+		return managedCommandIdentity{}, fmt.Errorf("command does not have the managed issueops build identity")
 	}
 	finalInfo, err := os.Lstat(path)
 	if err != nil || !sameManagedCommandIdentity(finalInfo, info, identity) {

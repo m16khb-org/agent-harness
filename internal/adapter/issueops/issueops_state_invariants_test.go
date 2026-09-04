@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestReadIssueOpsRejectsRecordInvariantViolations(t *testing.T) {

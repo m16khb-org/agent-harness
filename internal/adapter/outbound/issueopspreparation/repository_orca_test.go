@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	preparationapp "agent-harness/internal/application/issueopspreparation"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	preparationdomain "agent-harness/internal/domain/issueopspreparation"
+	preparationapp "issueops/internal/application/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	preparationdomain "issueops/internal/domain/issueopspreparation"
 )
 
 func TestOrcaIntentRepositoryBeginsBeforeEffectAtomically(t *testing.T) {
@@ -63,10 +63,10 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 		}
 		if stage == preparationcontract.IntentStageWorktree {
 			state.OwnerArtifacts = preparationcontract.OwnerArtifacts{
-				PlanPath:       "/repo.worktrees/199-orca/.agent-harness/artifact/plan.md",
-				ClaimTokenPath: "/repo.worktrees/199-orca/.agent-harness/state/claim", ClaimTokenSHA256: strings.Repeat("d", 64),
-				ContextPacketPath: "/repo.worktrees/199-orca/.agent-harness/context.json", ContextPacketSHA256: strings.Repeat("c", 64),
-				OwnerPromptPath: "/repo.worktrees/199-orca/.agent-harness/owner.md", OwnerPromptSHA256: strings.Repeat("b", 64),
+				PlanPath:       "/repo.worktrees/199-orca/.issueops/artifact/plan.md",
+				ClaimTokenPath: "/repo.worktrees/199-orca/.issueops/state/claim", ClaimTokenSHA256: strings.Repeat("d", 64),
+				ContextPacketPath: "/repo.worktrees/199-orca/.issueops/context.json", ContextPacketSHA256: strings.Repeat("c", 64),
+				OwnerPromptPath: "/repo.worktrees/199-orca/.issueops/owner.md", OwnerPromptSHA256: strings.Repeat("b", 64),
 			}
 		}
 		progress, applyErr := repository.ApplyReceipt(context.Background(), state, repositoryOrcaReceipt(stage))
@@ -216,7 +216,7 @@ func newOrcaRepositoryFixture(t *testing.T) (*preparationStore, *SQLiteRepositor
 	return store, repository, preparationapp.OrcaBegin{
 		Snapshot: snapshot, Command: command,
 		Workspace:   workspace,
-		Probe:       preparationcontract.ProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh", Provider: "github", Issue: 199, Marker: "agent-harness issueops-v1 lifecycle=io-orca provider=github issue=199", Workspace: workspace},
+		Probe:       preparationcontract.ProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh", Provider: "github", Issue: 199, Marker: "issueops-v1 lifecycle=io-orca provider=github issue=199", Workspace: workspace},
 		Owner:       preparationcontract.OwnerEvidence{IssueURL: record.IssueURL, IssueBody: "body", BodySHA256: strings.Repeat("a", 64), Source: "github", Provider: "github", Issue: 199},
 		OperationID: "0123456789abcdef0123456789abcdef", StartedAt: "2026-08-02T00:00:00Z",
 		Selection: leasecontract.Selection{RequestedMode: "orca", ResolvedMode: "orca", ProbeAttempted: true, ProbeAvailable: true, ProbeReady: true, ProbeCode: "ready", ReadinessFingerprint: decision.ReadinessFingerprint, SelectedAt: "2026-08-02T00:00:00Z"},

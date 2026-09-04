@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/domain/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/domain/issueopslease"
 )
 
 type ReleaseRequest struct {

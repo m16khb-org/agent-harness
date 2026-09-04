@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	issueopsnextcontract "agent-harness/internal/contract/issueopsnext"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	issueopsnextcontract "issueops/internal/contract/issueopsnext"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 // Readiness는 주입된 게이트 판정이다. adapter의 IssueOpsReadiness에서 이
@@ -87,7 +87,7 @@ func Classify(in Input) Decision {
 	decision := Decision{Lease: leaseView(in)}
 	if strings.TrimSpace(in.Record.ID) == "" {
 		decision.Stage = stage(issueopsnextcontract.StageNone, 0)
-		decision.NextCommand = "agent-harness issueops start --repo " + placeholder(in.SourceRoot, "<source_root>") + " --json"
+		decision.NextCommand = "issueops start --repo " + placeholder(in.SourceRoot, "<source_root>") + " --json"
 		return finish(in, decision)
 	}
 	decision.Exits = exits(in)
@@ -99,13 +99,13 @@ func Classify(in Input) Decision {
 
 	if execution != nil && execution.Pending != nil {
 		decision.Stage = stage(issueopsnextcontract.StageBlockedPending, index)
-		decision.NextCommand = "agent-harness issueops execution reconcile --id " + id + " --preview"
+		decision.NextCommand = "issueops execution reconcile --id " + id + " --preview"
 		return finish(in, decision)
 	}
 	if execution == nil && phaseRank(in.Record.Phase) >= phaseRank(issueopsnextcontract.PhasePlan) &&
 		strings.TrimSpace(in.RootConflictID) != "" {
 		decision.Stage = stage(issueopsnextcontract.StageBlockedRoot, 3)
-		decision.NextCommand = "agent-harness issueops list --repo " + placeholder(in.SourceRoot, "<source_root>") + " --json"
+		decision.NextCommand = "issueops list --repo " + placeholder(in.SourceRoot, "<source_root>") + " --json"
 		decision.Warnings = append(decision.Warnings, "canonical worktree root is already claimed by cycle "+strings.TrimSpace(in.RootConflictID))
 		return finish(in, decision)
 	}
@@ -114,7 +114,7 @@ func Classify(in Input) Decision {
 		holderOther := lease.Holder != nil && !holderIsSelf(in)
 		if lease.Status == issueopsnextcontract.LeaseStatusActive && holderOther && live(in.HolderLive) {
 			decision.Stage = stage(issueopsnextcontract.StageBlockedHolderLive, index)
-			decision.NextCommand = "agent-harness issueops execution status --id " + id + " --json"
+			decision.NextCommand = "issueops execution status --id " + id + " --json"
 			return finish(in, decision)
 		}
 		if (lease.Status == issueopsnextcontract.LeaseStatusActive && holderOther && !live(in.HolderLive)) ||
@@ -126,7 +126,7 @@ func Classify(in Input) Decision {
 		if (lease.Status == issueopsnextcontract.LeaseStatusClaimable || lease.Status == issueopsnextcontract.LeaseStatusReleased) &&
 			execution.Completion == nil {
 			decision.Stage = stage(issueopsnextcontract.StageClaim, index)
-			decision.NextCommand = "agent-harness issueops execution status --id " + id + " --json"
+			decision.NextCommand = "issueops execution status --id " + id + " --json"
 			return finish(in, decision)
 		}
 	}
@@ -140,7 +140,7 @@ func Classify(in Input) Decision {
 		return finish(in, decided)
 	}
 	decision.Stage = stage(issueopsnextcontract.StageUnknown, index)
-	decision.NextCommand = "agent-harness issueops status --id " + id + " --json"
+	decision.NextCommand = "issueops status --id " + id + " --json"
 	if in.Local != nil && len(in.Local.Missing) > 0 {
 		decision.Missing = append([]string{}, in.Local.Missing...)
 		decision.Warnings = append(decision.Warnings, "unmatched readiness gates: "+strings.Join(in.Local.Missing, ", "))
@@ -175,7 +175,7 @@ func classifyPreparation(in Input, decision Decision) (Decision, bool) {
 		decision.Stage = stage(issueopsnextcontract.StagePrepare, 2)
 		if record.Phase == issueopsnextcontract.PhaseProblem {
 			decision.Missing = stageOneMissing(in)
-			decision.NextCommand = "agent-harness issueops phase --id " + id + " --to grill --json"
+			decision.NextCommand = "issueops phase --id " + id + " --to grill --json"
 			return decision, true
 		}
 		decision.Missing = []string{"branch_prepare"}
@@ -201,7 +201,7 @@ func classifyPreparation(in Input, decision Decision) (Decision, bool) {
 		return decision, true
 	}
 	decision.Stage = stage(issueopsnextcontract.StagePlanHandoff, 3)
-	decision.NextCommand = "agent-harness issueops execution prepare --id " + id +
+	decision.NextCommand = "issueops execution prepare --id " + id +
 		" --mode auto --owner-host " + placeholder(in.ActorHost, "<host>") + " $ACTOR_FLAGS --json"
 	return decision, true
 }
@@ -222,12 +222,12 @@ func classifyImplementation(in Input, decision Decision) (Decision, bool) {
 				decision.Missing = []string{"compatibility_review"}
 				decision.NextCommand = OwnerCommand(id, "compatibility_review")
 			default:
-				decision.NextCommand = "agent-harness issueops phase --id " + id + " --to implement $ACTOR_FLAGS --json"
+				decision.NextCommand = "issueops phase --id " + id + " --to implement $ACTOR_FLAGS --json"
 			}
 			return decision, true
 		case issueopsnextcontract.PhaseImplement:
 			decision.Stage = stage(issueopsnextcontract.StageImplement, 4)
-			decision.NextCommand = "agent-harness issueops phase --id " + id + " --to ai-slop-clean $ACTOR_FLAGS --json"
+			decision.NextCommand = "issueops phase --id " + id + " --to ai-slop-clean $ACTOR_FLAGS --json"
 			return decision, true
 		}
 	}
@@ -266,7 +266,7 @@ func classifyImplementation(in Input, decision Decision) (Decision, bool) {
 	if subset(local, commitPushLocalKeys) {
 		decision.Stage = stage(issueopsnextcontract.StageCommitPush, 8)
 		decision.Missing = append([]string{}, local...)
-		decision.NextCommand = "agent-harness issueops pr-readiness --id " + id + " --strict --json"
+		decision.NextCommand = "issueops pr-readiness --id " + id + " --strict --json"
 		return decision, true
 	}
 	return decision, false
@@ -279,23 +279,23 @@ func classifyPublication(in Input, decision Decision, index int) (Decision, bool
 		if record.RemoteArtifact == nil {
 			decision.Stage = stage(issueopsnextcontract.StagePRCreate, 9)
 			decision.Missing = []string{"remote_artifact"}
-			decision.NextCommand = "agent-harness issueops remote create-pr --id " + id +
+			decision.NextCommand = "issueops remote create-pr --id " + id +
 				" --expected-generation " + generationText(in) +
 				" --title <TEXT> --head <BRANCH> --base <BRANCH> $ACTOR_FLAGS"
 			return decision, true
 		}
 		if record.Execution.Completion == nil {
 			decision.Stage = stage(issueopsnextcontract.StagePRComplete, 9)
-			decision.NextCommand = "agent-harness issueops execution complete --id " + id +
+			decision.NextCommand = "issueops execution complete --id " + id +
 				" --generation " + generationText(in) +
-				" --final-head <SHA> --turing-report <PATH> --remote-artifact-url " + record.RemoteArtifact.URL +
+				" --final-head <SHA> --verification-report <PATH> --remote-artifact-url " + record.RemoteArtifact.URL +
 				" --verification <TEXT> $ACTOR_FLAGS --confirm"
 			return decision, true
 		}
 	}
 	if record.Phase == issueopsnextcontract.PhaseDone {
 		decision.Stage = stage(issueopsnextcontract.StageDone, 10)
-		decision.NextCommand = "agent-harness issueops cleanup status --id " + id + " --merged --json"
+		decision.NextCommand = "issueops cleanup status --id " + id + " --merged --json"
 		decision.Warnings = append(decision.Warnings, "merge state requires provider readback")
 		return decision, true
 	}
@@ -404,7 +404,7 @@ func leaseView(in Input) issueopsnextcontract.Lease {
 func exits(in Input) issueopsnextcontract.Exits {
 	id := in.Record.ID
 	out := issueopsnextcontract.Exits{
-		AbandonCommand: "agent-harness issueops cleanup abandon --id " + id + " --reason <TEXT> --preview",
+		AbandonCommand: "issueops cleanup abandon --id " + id + " --reason <TEXT> --preview",
 	}
 	if in.Record.Execution == nil {
 		return out
@@ -412,12 +412,12 @@ func exits(in Input) issueopsnextcontract.Exits {
 	lease := in.Record.Execution.Lease
 	generation := generationText(in)
 	if lease.Status == issueopsnextcontract.LeaseStatusActive && holderIsSelf(in) {
-		out.PauseCommand = "agent-harness issueops execution release --id " + id +
+		out.PauseCommand = "issueops execution release --id " + id +
 			" --generation " + generation + " $ACTOR_FLAGS"
 	}
 	if (lease.Status == issueopsnextcontract.LeaseStatusActive && lease.Holder != nil && !holderIsSelf(in) && !live(in.HolderLive)) ||
 		lease.Status == issueopsnextcontract.LeaseStatusRevoking {
-		out.TakeoverCommand = "agent-harness issueops execution replace --id " + id +
+		out.TakeoverCommand = "issueops execution replace --id " + id +
 			" --expected-generation " + generation + " --preview"
 	}
 	return out
@@ -444,7 +444,7 @@ func takeoverCommand(in Input) string {
 	if command := strings.TrimSpace(in.WriterlessRecovery); command != "" {
 		return command
 	}
-	return "agent-harness issueops execution replace --id " + in.Record.ID +
+	return "issueops execution replace --id " + in.Record.ID +
 		" --expected-generation " + generationText(in) + " --preview"
 }
 
@@ -494,7 +494,7 @@ func devilsAdvocateGate(in Input) string {
 func devilsAdvocateCommand(in Input) string {
 	review := in.Record.DevilsAdvocateReview
 	if review != nil && strings.EqualFold(strings.TrimSpace(review.Verdict), "stop") && !review.Waived {
-		return "agent-harness issueops regress --id " + in.Record.ID + " --reason <TEXT>"
+		return "issueops regress --id " + in.Record.ID + " --reason <TEXT>"
 	}
 	return OwnerCommand(in.Record.ID, "devils_advocate_review")
 }

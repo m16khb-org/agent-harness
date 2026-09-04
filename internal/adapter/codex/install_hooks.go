@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFile, []string, error) {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the brooks devil's-advocate an enforced IssueOps gate whose `stop` findings are written back to the remote issue before the cycle regresses to re-plan.
+**Goal:** Make the design-review devil's-advocate an enforced IssueOps gate whose `stop` findings are written back to the remote issue before the cycle regresses to re-plan.
 
 **Architecture:** Add a first-class `IssueOpsDevilsAdvocateReview` record + implement-entry readiness gate (mirroring `compatibilityreview`), a new `UpdateIssueBodySection` provider method that idempotently splices a delimited section into the issue body, a `reflect-devils-advocate` command that stamps `IssueReflectedAt`, and a regress precondition tying it together. Everything follows the existing compatibility-review and provider adapter patterns.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Go module `agent-harness`; run all commands from repo root.
+- Go module `issueops`; run all commands from repo root.
 - gofmt clean (`gofmt -l $(git ls-files '*.go')` empty) + `go build ./...` + `go vet` before every commit.
 - Commit messages: Conventional Commit subject; do NOT put `go build`/`go vet`/`go test ./...` slash-literals in the message body (say "targeted package tests" etc.) — avoids the `.ckignore` scout-block.
 - Golden regen only via `-update`; the diff must be intentional-only (CAUTIONS §27).
@@ -26,8 +26,8 @@
 - `internal/core/issueops/devilsadvocate/devils_advocate.go` — core recorder + validation (mirror `compatibilityreview/compatibility_review.go`).
 - `internal/core/issueops/devilsadvocate/devils_advocate_test.go`
 - `internal/core/issueops/issuebodysection.go` — pure delimited-section splice helper (shared by both adapters via a small exported func in a neutral package; see Task 6).
-- `cmd/harness/issueopscli/issueops_devilsadvocate_cli.go` — CLI `issueops devils-advocate review` (mirror `issueops_compatibility_cli.go`).
-- `cmd/harness/issueopscli/issueops_reflect_cli.go` — CLI `issueops remote reflect-devils-advocate` (or fold into `remotecmd`; see Task 9).
+- `cmd/issueops/issueopscli/issueops_devilsadvocate_cli.go` — CLI `issueops devils-advocate review` (mirror `issueops_compatibility_cli.go`).
+- `cmd/issueops/issueopscli/issueops_reflect_cli.go` — CLI `issueops remote reflect-devils-advocate` (or fold into `remotecmd`; see Task 9).
 
 **Modify:**
 - `internal/core/issueops/model/types.go` — new record type + `DevilsAdvocateReview` field.
@@ -37,11 +37,11 @@
 - `internal/port/provider.go` — `UpdateIssueBodySection` + request/result types on `IssueProvider`.
 - `internal/adapter/provider/github/provider.go` + `_test.go`
 - `internal/adapter/provider/gitlab/provider.go` + `_test.go`
-- `cmd/harness/issueopscli/issueops.go` — register `devils-advocate` subcommand.
-- `cmd/harness/mcpcli/mcp_tool_issueops.go` + `mcp_tool_issueops_handlers.go` — 2 handlers.
+- `cmd/issueops/issueopscli/issueops.go` — register `devils-advocate` subcommand.
+- `cmd/issueops/mcpcli/mcp_tool_issueops.go` + `mcp_tool_issueops_handlers.go` — 2 handlers.
 - `internal/adapter/mcp/issueops_catalog.go` — 2 catalog entries.
-- `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`
-- `skills/issueops/SKILL.md`, `.agent-harness/ADR.md`
+- `cmd/issueops/testdata/mcp_tools.golden.json`, `cmd/issueops/testdata/response_contracts.golden.json`
+- `skills/issueops/SKILL.md`, `.issueops/ADR.md`
 
 ---
 
@@ -64,7 +64,7 @@ package devilsadvocate
 import (
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"issueops/internal/core/issueops/model"
 )
 
 func TestValidateVerdicts(t *testing.T) {
@@ -131,8 +131,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/policy"
+	"issueops/internal/core/issueops/model"
+	"issueops/internal/core/policy"
 )
 
 type Store struct {
@@ -273,8 +273,8 @@ func issueOpsDevilsAdvocateReviewMissing(record IssueOpsRecord) []string {
 ## Task 3: CLI recorder — `issueops devils-advocate review`
 
 **Files:**
-- Create: `cmd/harness/issueopscli/issueops_devilsadvocate_cli.go`
-- Modify: `cmd/harness/issueopscli/issueops.go` (register `"devils-advocate": runIssueOpsDevilsAdvocate`)
+- Create: `cmd/issueops/issueopscli/issueops_devilsadvocate_cli.go`
+- Modify: `cmd/issueops/issueopscli/issueops.go` (register `"devils-advocate": runIssueOpsDevilsAdvocate`)
 - Modify: the CLI test file that drives issueops subcommands (mirror the compatibility CLI test)
 
 **Interfaces:**
@@ -282,7 +282,7 @@ func issueOpsDevilsAdvocateReviewMissing(record IssueOpsRecord) []string {
 
 - [ ] **Step 1: Write the failing test** — a CLI test that starts a cycle, calls `runIssueOpsDevilsAdvocate([]string{"review","--id",id,"--verdict","pass"})`, and asserts the record's `DevilsAdvocateReview.Verdict=="pass"`. Mirror the compatibility CLI test structure.
 
-- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/harness/issueopscli/ -run DevilsAdvocate` — Expected: FAIL (undefined func).
+- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/issueops/issueopscli/ -run DevilsAdvocate` — Expected: FAIL (undefined func).
 
 - [ ] **Step 3: Write the CLI** (mirror `issueops_compatibility_cli.go`):
 
@@ -293,12 +293,12 @@ import (
 	"flag"
 	"fmt"
 
-	"agent-harness/internal/core"
+	"issueops/internal/core"
 )
 
 func runIssueOpsDevilsAdvocate(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]")
+		fmt.Println("Usage: issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]")
 		return nil
 	}
 	if args[0] != "review" {
@@ -327,7 +327,7 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 
 Register in `issueops.go` subcommand map: `"devils-advocate": runIssueOpsDevilsAdvocate,`. Also add a `devils-advocate` entry to `suggestIssueOpsSubcommand` if it has an explicit list.
 
-- [ ] **Step 4: Run tests + build** — Run: `go test ./cmd/harness/issueopscli/ -run DevilsAdvocate` and `go build ./...` — Expected: PASS.
+- [ ] **Step 4: Run tests + build** — Run: `go test ./cmd/issueops/issueopscli/ -run DevilsAdvocate` and `go build ./...` — Expected: PASS.
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(issueopscli): add devils-advocate review subcommand"`.
 
@@ -336,9 +336,9 @@ Register in `issueops.go` subcommand map: `"devils-advocate": runIssueOpsDevilsA
 ## Task 4: MCP recorder tool
 
 **Files:**
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops.go` (registry) + `mcp_tool_issueops_handlers.go` (handler)
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops.go` (registry) + `mcp_tool_issueops_handlers.go` (handler)
 - Modify: `internal/adapter/mcp/issueops_catalog.go` (catalog entry)
-- Modify: `cmd/harness/testdata/mcp_tools.golden.json` (via -update)
+- Modify: `cmd/issueops/testdata/mcp_tools.golden.json` (via -update)
 
 **Interfaces:**
 - Consumes: `core.RecordIssueOpsDevilsAdvocateReview`.
@@ -346,7 +346,7 @@ Register in `issueops.go` subcommand map: `"devils-advocate": runIssueOpsDevilsA
 
 - [ ] **Step 1: Write the failing test** — in the `mcpcli/issueops` black-box test package, drive `issueops_record_devils_advocate_review` with `{id, verdict:"pass"}` and assert the returned record has the verdict. Mirror an existing `handleMCPIssueOpsRecordCompatibilityReview` test.
 
-- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/harness/mcpcli/issueops/ -run DevilsAdvocate` — Expected: FAIL (tool not registered).
+- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/issueops/mcpcli/issueops/ -run DevilsAdvocate` — Expected: FAIL (tool not registered).
 
 - [ ] **Step 3: Add the handler** in `mcp_tool_issueops_handlers.go` (mirror `handleMCPIssueOpsRecordCompatibilityReview`):
 
@@ -364,7 +364,7 @@ func handleMCPIssueOpsRecordDevilsAdvocateReview(args map[string]any) MCPToolOut
 
 Register in the `issueOpsMCPHandlers` map: `"issueops_record_devils_advocate_review": handleMCPIssueOpsRecordDevilsAdvocateReview,`. Add a catalog entry in `issueops_catalog.go` mirroring `issueops_record_compatibility_review` (Name, Description, input schema: `id`, `verdict`, `findings[]`, `waived`, `waiver_rationale`).
 
-- [ ] **Step 4: Regenerate the MCP tools golden** — Run: `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`, then `git --no-pager diff cmd/harness/testdata/mcp_tools.golden.json` and confirm the diff is ONLY the new tool entry. Run the golden test without `-update` to confirm PASS.
+- [ ] **Step 4: Regenerate the MCP tools golden** — Run: `go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -update -count=1`, then `git --no-pager diff cmd/issueops/testdata/mcp_tools.golden.json` and confirm the diff is ONLY the new tool entry. Run the golden test without `-update` to confirm PASS.
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(mcp): add issueops_record_devils_advocate_review tool"`.
 
@@ -513,7 +513,7 @@ func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySect
 
 **Files:**
 - Modify: `internal/core/issueops/issueops_feedback.go` or a new `internal/core/issueops/devilsadvocate` reflect func; add facade `core.ReflectIssueOpsDevilsAdvocateFindings(stateRoot, id string, confirm bool)`.
-- Modify: `cmd/harness/issueopscli/remotecmd/remote.go` (add `reflect-devils-advocate` subcommand) + `cmd/harness/mcpcli` handler + catalog.
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote.go` (add `reflect-devils-advocate` subcommand) + `cmd/issueops/mcpcli` handler + catalog.
 
 **Interfaces:**
 - Consumes: `provider.Resolve`, `UpdateIssueBodySection`, `record.DevilsAdvocateReview.Findings`, `record.IssueURL`.
@@ -521,13 +521,13 @@ func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySect
 
 - [ ] **Step 1: Write the failing test** — with a fake gh, run reflect (confirm=false) → no stamp, preview present; reflect (confirm=true) → `IssueReflectedAt != ""` and the issue body got the section. Reflect with no `DevilsAdvocateReview` or empty findings → error.
 
-- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/harness/issueopscli/remotecmd/ -run Reflect` — Expected: FAIL.
+- [ ] **Step 2: Run to verify it fails** — Run: `go test ./cmd/issueops/issueopscli/remotecmd/ -run Reflect` — Expected: FAIL.
 
 - [ ] **Step 3: Implement the core reflect** (locked read-modify-write, mirror `MarkIssueOpsContractFeedbackIssueUpdated`): read record; require `DevilsAdvocateReview != nil` with findings; resolve provider from `record`; call `UpdateIssueBodySection{Repo, IssueURL, Findings, Confirm}`; on confirmed `Updated`, set `DevilsAdvocateReview.IssueReflectedAt = now` and `TouchWrite`.
 
 - [ ] **Step 4: Wire CLI + MCP** — CLI `issueops remote reflect-devils-advocate --id ID [--confirm] [--json]` in `remotecmd`; MCP `issueops_remote_reflect_devils_advocate` handler + catalog entry.
 
-- [ ] **Step 5: Regenerate goldens** — Run: `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`; confirm `mcp_tools.golden.json` diff is only the new tool. Golden test PASS without `-update`.
+- [ ] **Step 5: Regenerate goldens** — Run: `go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -update -count=1`; confirm `mcp_tools.golden.json` diff is only the new tool. Golden test PASS without `-update`.
 
 - [ ] **Step 6: Run tests + build; Commit** — `git commit -m "feat(issueops): reflect devil's-advocate findings into the remote issue"`.
 
@@ -569,15 +569,15 @@ And after setting `record.Phase = IssueOpsPhaseGrill`, clear the review so the g
 ## Task 9: SKILL + ADR + docs-index golden
 
 **Files:**
-- Modify: `skills/issueops/SKILL.md` (plan + compatibility-review rows, brooks routing row, Concept→Command Map)
-- Modify: `.agent-harness/ADR.md` (new dated ADR)
-- Modify: `cmd/harness/testdata/response_contracts.golden.json` (via -update, if any `.agent-harness/*.md` doc-index changed — ADR.md is indexed)
+- Modify: `skills/issueops/SKILL.md` (plan + compatibility-review rows, design-review routing row, Concept→Command Map)
+- Modify: `.issueops/ADR.md` (new dated ADR)
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json` (via -update, if any `.issueops/*.md` doc-index changed — ADR.md is indexed)
 
 - [ ] **Step 1: Update SKILL.md** — in the plan/compatibility-review guidance, state that a recorded devil's-advocate verdict (pass, or waived stop/revise) is now a machine gate for `implement`, and that a `stop` requires `issueops remote reflect-devils-advocate --confirm` before `issueops regress`. Add the two new commands to the Concept→Command Map.
 
 - [ ] **Step 2: Add an ADR** dated 2026-07-01 (mirror the 2026-06-29 phase-ledger ADR format): Decision = devil's-advocate is a first-class fail-closed gate whose stop findings reflect to the remote issue before regress; Consequences = new record/commands/tools are public contract with goldens.
 
-- [ ] **Step 3: Regenerate response golden** (ADR.md is docs-indexed) — Run: `go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -update -count=1`; confirm the diff is docs_index bytes/headings only (CAUTIONS §27). Golden PASS without `-update`.
+- [ ] **Step 3: Regenerate response golden** (ADR.md is docs-indexed) — Run: `go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -update -count=1`; confirm the diff is docs_index bytes/headings only (CAUTIONS §27). Golden PASS without `-update`.
 
 - [ ] **Step 4: Commit** — `git commit -m "docs(issueops): document the enforced devil's-advocate loop"`.
 
@@ -587,7 +587,7 @@ And after setting `record.Phase = IssueOpsPhaseGrill`, clear the review so the g
 
 - [ ] **Step 1:** `gofmt -l $(git ls-files '*.go')` empty; `go build ./...`; `go vet ./...` clean.
 - [ ] **Step 2:** `go test ./... -count=1` — all packages green (goldens included).
-- [ ] **Step 3: Real-binary E2E** (mirror the create-issue QA in this session's transcript): build `bin/agent-harness`; with a fake `gh` on PATH and a temp cycle brought to implement-readiness, assert: (a) `issueops phase --to implement` (or implement-readiness) is blocked with `devils_advocate_review`; (b) `issueops devils-advocate review --verdict stop --finding …`; (c) implement still blocked (unwaived stop); (d) `issueops remote reflect-devils-advocate --confirm` writes the issue body section (fake gh `issue edit` captured) and stamps reflected; (e) `issueops regress` moves to grill and clears the review; (f) a fresh `--verdict pass` unblocks implement.
+- [ ] **Step 3: Real-binary E2E** (mirror the create-issue QA in this session's transcript): build `bin/issueops`; with a fake `gh` on PATH and a temp cycle brought to implement-readiness, assert: (a) `issueops phase --to implement` (or implement-readiness) is blocked with `devils_advocate_review`; (b) `issueops devils-advocate review --verdict stop --finding …`; (c) implement still blocked (unwaived stop); (d) `issueops remote reflect-devils-advocate --confirm` writes the issue body section (fake gh `issue edit` captured) and stamps reflected; (e) `issueops regress` moves to grill and clears the review; (f) a fresh `--verdict pass` unblocks implement.
 - [ ] **Step 4:** Report evidence; do NOT push (push is a separate user-approval gate).
 
 ---

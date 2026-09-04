@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	issueopscontract "issueops/internal/contract/issueops"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 // awaitFixture는 GitHub Orca 시작 창에 있는 record를 심는다: link 미검증,

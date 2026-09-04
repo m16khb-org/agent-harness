@@ -1,7 +1,7 @@
 package projectdocs
 
 import (
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"strings"
 )
 
@@ -51,11 +51,11 @@ func renderOperations(signals projectdoc.ProjectSignals) string {
 	b.WriteString("\n## Deploy/release\n\n")
 	b.WriteString("- Do not infer deploy procedures automatically. Verify them from CI/CD workflows and operations docs.\n")
 	b.WriteString("\n## Project docs bootstrap and upkeep\n\n")
-	b.WriteString("- `agent-harness project bootstrap --repo . --json` creates docs and user-state repo metadata; `--sync` refreshes them from current evidence.\n")
-	b.WriteString("- After initial setup, agents should read repo evidence and keep `.agent-harness` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_revise`.\n")
+	b.WriteString("- `issueops project bootstrap --repo . --json` creates docs and user-state repo metadata; `--sync` refreshes them from current evidence.\n")
+	b.WriteString("- After initial setup, agents should read repo evidence and keep `.issueops` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_revise`.\n")
 	b.WriteString("- Append resolved false cases and decisions to CAUTIONS/ADR with `project_docs_append` instead of rewriting full documents.\n")
 	b.WriteString("\n## UserPromptSubmit hook\n\n")
-	b.WriteString("- When the host supports it, connect `agent-harness hook user-prompt` to UserPromptSubmit to inject short agent_harness MCP candidates for each user prompt.\n")
+	b.WriteString("- When the host supports it, connect `issueops hook user-prompt` to UserPromptSubmit to inject short issueops MCP candidates for each user prompt.\n")
 	b.WriteString("- The hook does not execute work; it only performs static keyword routing. It does not use the network or read large files.\n")
 	return b.String()
 }
@@ -66,13 +66,13 @@ func renderAgentWorkflow() string {
 ## Start
 
 1. Read AGENTS.md first.
-2. At session start, treat .agent-harness/CONSTITUTION.md as the baseline principle document.
+2. At session start, treat .issueops/CONSTITUTION.md as the baseline principle document.
 3. If MCP is available, send the current task to project_docs_route and select only necessary docs.
 4. Verify inferred doc claims against current files and command output.
 
 ## MCP usage rule
 
-- When the host supports it, agent-harness hook user-prompt injects MCP candidate hints for each user instruction. The hint is a reminder for judgment, not an auto-execution command.
+- When the host supports it, issueops hook user-prompt injects MCP candidate hints for each user instruction. The hint is a reminder for judgment, not an auto-execution command.
 - Use MCP when the task needs current state, repo-specific doc routing, policy decisions, state checkpoints, or durable records that the model should not rely on from memory.
 - Do not use MCP for simple reasoning or summarizing already opened files.
 - Avoid exposing many tools at once; narrowly use route/read/revise/append/check tools that match the task.
@@ -85,20 +85,20 @@ Use the Simplicity First and Surgical Changes principles from AGENTS.md, plus th
 - Do not overwrite existing user changes.
 - Add dependencies, deploy, or perform destructive actions only with explicit instruction or strong evidence.
 - If docs diverge from current code or user consensus, use project_docs_read to verify the current SHA and project_docs_revise to change one document at a time.
-- When a problem occurred and was resolved, record it with MCP project_docs_append(kind=caution) as a dated file under .agent-harness/cautions/.
-- When a structural decision or rejected alternative matters, record it with MCP project_docs_append(kind=adr) as a dated file under .agent-harness/adr/.
+- When a problem occurred and was resolved, record it with MCP project_docs_append(kind=caution) as a dated file under .issueops/cautions/.
+- When a structural decision or rejected alternative matters, record it with MCP project_docs_append(kind=adr) as a dated file under .issueops/adr/.
 
 ## Verify
 
 Use the Goal-Driven Execution principle from AGENTS.md, plus these verification routing rules.
 
-- Before writing or modifying tests, read the good/bad test criteria in .agent-harness/TESTING.md.
+- Before writing or modifying tests, read the good/bad test criteria in .issueops/TESTING.md.
 - When changing CLI/MCP/API documentation contracts, also run golden/schema/smoke verification.
 - Completion reports must include test/build/static-check results and reasons for skipped verification.
 
 ## Finish
 
-- If a commit is needed, follow .agent-harness/COMMIT_POLICY.md.
+- If a commit is needed, follow .issueops/COMMIT_POLICY.md.
 - Record resolved false cases or structural decisions with MCP project_docs_append when useful.
 `
 }

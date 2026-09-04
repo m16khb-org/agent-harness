@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func TestResumeArtifactsCallsReaderOnce(t *testing.T) {

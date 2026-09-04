@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 현재 사용자가 명시한 대로 support-plane 수정은 `/Users/sample/workspace/agent-harness`의 `main`에서 수행한다.
+- 현재 사용자가 명시한 대로 support-plane 수정은 `/Users/sample/workspace/issueops`의 `main`에서 수행한다.
 - 모든 production edit는 먼저 예상 이유의 RED를 확인한 뒤 최소 구현으로 GREEN을 만든다.
 - 새 코드 주석은 비자명한 authority/CAS 이유만 한국어로 작성한다.
 - direct mode, branch/base/parent lineage, active lease replacement, cleanup 동작은 변경하지 않는다.
@@ -28,17 +28,17 @@
 - `internal/core/issueops/execution_orca_intent.go`: prepare/resume purpose를 구분하는 durable payload와 purpose-aware receipt CAS.
 - `internal/core/issueops/execution_orca_intent_test.go`: prepare regression과 legacy payload compatibility.
 - `internal/core/issueops/execution_api.go`: shared CLI/MCP action DTO와 resume dispatch.
-- `cmd/harness/issueopscli/executioncmd/execution.go`: `execution resume` CLI parser.
-- `cmd/harness/issueopscli/executioncmd/execution_resume_test.go`: CLI request mapping과 required generation/confirm.
+- `cmd/issueops/issueopscli/executioncmd/execution.go`: `execution resume` CLI parser.
+- `cmd/issueops/issueopscli/executioncmd/execution_resume_test.go`: CLI request mapping과 required generation/confirm.
 - `internal/adapter/mcp/issueops_catalog.go`: 단일 MCP tool의 action enum/description.
 - `internal/adapter/mcp/issueops_catalog_test.go`: 단일-tool invariant와 resume enum.
-- `cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go`: MCP request mapping.
+- `cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go`: MCP request mapping.
 - `internal/core/commandparse/issueops.go`: exact resume flag catalog.
 - `internal/core/commandparse/issueops_test.go`: exact/near-miss parser cases.
 - `internal/core/lifecycle/lifecycle_execution_guard.go`: confirmed resume control-plane admission.
 - `internal/core/lifecycle/lifecycle_execution_matrix_test.go`: active-authority allow/deny matrix.
-- `cmd/harness/contractcli/contract.go`: resume CLI response shape.
-- `cmd/harness/testdata/usage.golden.txt`, `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`: public contract goldens.
+- `cmd/issueops/contractcli/contract.go`: resume CLI response shape.
+- `cmd/issueops/testdata/usage.golden.txt`, `cmd/issueops/testdata/mcp_tools.golden.json`, `cmd/issueops/testdata/response_contracts.golden.json`: public contract goldens.
 - `skills/issueops/references/execution.md`: reseed → resume → claim 운영 순서.
 - `docs/superpowers/specs/2026-07-30-issueops-orca-owner-resume-design.md`: code-map self-review에서 확인한 finite next-command 규칙 보강.
 
@@ -401,7 +401,7 @@ Then replace `current.Execution.Orca` for both purposes and set
 
 - create a new operation ID;
 - build marker with
-  `fmt.Sprintf("agent-harness issueops-v1 resume lifecycle=%s generation=%d operation=%s", record.ID, generation, operationID)`;
+  `fmt.Sprintf("issueops-v1 resume lifecycle=%s generation=%d operation=%s", record.ID, generation, operationID)`;
 - copy the snapshots before persistence (`prior := *record.Execution.Orca`,
   `lease := record.Execution.Lease`) so later receipt handling never aliases the
   mutable record;
@@ -434,7 +434,7 @@ The claim next command must use shell-quoted literal values and omit token
 contents:
 
 ```text
-agent-harness issueops execution claim --id 'io-id' --generation 3 --claim-token-file '/abs/lease-3.token' --issue-body-sha256 64hex --context-packet-sha256 64hex
+issueops execution claim --id 'io-id' --generation 3 --claim-token-file '/abs/lease-3.token' --issue-body-sha256 64hex --context-packet-sha256 64hex
 ```
 
 - [ ] **Step 8: Route replacement and writer-absent next commands through resume**
@@ -479,9 +479,9 @@ feat(issueops): resume Orca owners after reseed
 **Files:**
 - Modify: `internal/core/issueops/execution_api.go`
 - Modify: `internal/core/issueops/execution_issue_snapshot_test.go`
-- Modify: `cmd/harness/issueopscli/executioncmd/execution.go`
-- Create: `cmd/harness/issueopscli/executioncmd/execution_resume_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go`
+- Modify: `cmd/issueops/issueopscli/executioncmd/execution.go`
+- Create: `cmd/issueops/issueopscli/executioncmd/execution_resume_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go`
 - Modify: `internal/adapter/mcp/issueops_catalog.go`
 - Modify: `internal/adapter/mcp/issueops_catalog_test.go`
 
@@ -565,7 +565,7 @@ if !slices.Contains(actions, "resume") {
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./internal/adapter/mcp \
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/adapter/mcp \
   -run 'Resume|IssueOpsAdvertisesOnlyExecutionActionTool|ExecutionActionRequest' \
   -count=1
 ```
@@ -630,7 +630,7 @@ tool name.
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./internal/adapter/mcp \
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/adapter/mcp \
   -run 'Resume|IssueOpsAdvertisesOnlyExecutionActionTool|ExecutionActionRequest|Usage' \
   -count=1
 ```
@@ -654,10 +654,10 @@ feat(cli): expose IssueOps owner resume
 - Modify: `internal/core/commandparse/issueops_test.go`
 - Modify: `internal/core/lifecycle/lifecycle_execution_guard.go`
 - Modify: `internal/core/lifecycle/lifecycle_execution_matrix_test.go`
-- Modify: `cmd/harness/contractcli/contract.go`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Modify: `cmd/harness/testdata/mcp_tools.golden.json`
-- Modify: `cmd/harness/testdata/response_contracts.golden.json`
+- Modify: `cmd/issueops/contractcli/contract.go`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/testdata/mcp_tools.golden.json`
+- Modify: `cmd/issueops/testdata/response_contracts.golden.json`
 - Modify: `skills/issueops/references/execution.md`
 - Modify: `docs/superpowers/specs/2026-07-30-issueops-orca-owner-resume-design.md`
 
@@ -697,7 +697,7 @@ In the execution matrix, use a lifecycle with active mutation authority.
 Allow:
 
 ```text
-agent-harness issueops execution resume --id io-1 --expected-generation 3 --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-30T00:00:00Z --session-executable /usr/local/bin/codex --cwd /repo.worktrees/resume --confirm --json
+issueops execution resume --id io-1 --expected-generation 3 --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-30T00:00:00Z --session-executable /usr/local/bin/codex --cwd /repo.worktrees/resume --confirm --json
 ```
 
 Block:
@@ -781,7 +781,7 @@ worktree, records binding `lease_generation`, and leaves ambiguous mutations to
 Run:
 
 ```bash
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp \
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp \
   -run Golden -update -count=1
 ```
 
@@ -800,7 +800,7 @@ Run:
 go test ./internal/core/commandparse ./internal/core/lifecycle \
   -run 'Resume|ExecutionAdmitsExactOrcaOwnerControlPlaneCommands|ExecutionKeepsNearMissOrcaOwnerControlPlaneCommandsBlocked' \
   -count=1
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp \
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp \
   -run Golden -count=1
 python3 scripts/validate-skill.py skills/issueops
 ```
@@ -824,10 +824,10 @@ fix(issueops): admit generation-bound owner resume
 - Do not edit #197 worktree until the installed resume control-plane passes.
 
 **Interfaces:**
-- Installed CLI: `agent-harness issueops execution resume`.
+- Installed CLI: `issueops execution resume`.
 - Dogfood lifecycle: `io-6e932f2e6c54`.
-- Canonical worktree: `/Users/sample/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`.
-- Parent worktree: `/Users/sample/workspace/agent-harness.worktrees/117-hexagonal-architecture-migration`.
+- Canonical worktree: `/Users/sample/workspace/issueops.worktrees/197-issueops-lease-claim-vertical`.
+- Parent worktree: `/Users/sample/workspace/issueops.worktrees/117-hexagonal-architecture-migration`.
 - Current released generation before dogfood: 2.
 - Owner: `codex / gpt-5.6-terra / xhigh`.
 
@@ -839,13 +839,13 @@ fix is made:
 ```bash
 go test ./internal/core/issueops/model ./internal/core/issueops -count=1
 go test ./internal/adapter/orca -run 'Intent|Owner' -count=1
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./internal/adapter/mcp -count=1
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/adapter/mcp -count=1
 go test ./internal/core/commandparse ./internal/core/lifecycle -run 'Resume|Execution' -count=1
-go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
+go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run Golden -count=1
 go test -race ./internal/core/issueops -run 'Resume|Reconcile' -count=1
-go vet ./internal/core/issueops/model ./internal/core/issueops ./internal/adapter/orca ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./internal/adapter/mcp ./internal/core/commandparse ./internal/core/lifecycle
+go vet ./internal/core/issueops/model ./internal/core/issueops ./internal/adapter/orca ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/adapter/mcp ./internal/core/commandparse ./internal/core/lifecycle
 python3 scripts/validate-skill.py skills/issueops
-go build -o /tmp/agent-harness-owner-resume ./cmd/harness
+go build -o /tmp/issueops-owner-resume ./cmd/issueops
 ```
 
 Do not substitute a local full suite.
@@ -855,8 +855,8 @@ Do not substitute a local full suite.
 Run:
 
 ```bash
-python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/sample/workspace/agent-harness
-python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/sample/workspace/agent-harness
+python3 skills/atomic-commit-push/scripts/git_preflight.py /Users/sample/workspace/issueops
+python3 skills/atomic-commit-push/scripts/api_doc_gate.py /Users/sample/workspace/issueops
 git status --short --branch
 git log --oneline origin/main..HEAD
 git diff origin/main...HEAD --stat
@@ -881,10 +881,10 @@ The two full SHAs must match.
 Run:
 
 ```bash
-ah update --json
-agent-harness daemon status --json
-agent-harness contract check --json
-codex mcp get agent_harness
+io update --json
+issueops daemon status --json
+issueops contract check --json
+codex mcp get issueops
 claude mcp list
 ```
 
@@ -923,7 +923,7 @@ next_command = execution resume for generation 3
 
 Run the exact `.next_command` returned by reseed after appending the first
 literal `claim_actor_flags` entry from `execution whoami`, canonical
-`--cwd /Users/sample/workspace/agent-harness.worktrees/197-issueops-lease-claim-vertical`,
+`--cwd /Users/sample/workspace/issueops.worktrees/197-issueops-lease-claim-vertical`,
 and `--json`. Do not use shell expansion.
 
 Verify:

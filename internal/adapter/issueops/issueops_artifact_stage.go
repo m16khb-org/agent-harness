@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	remote "agent-harness/internal/domain/issueopsremote"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	remote "issueops/internal/domain/issueopsremote"
 )
 
 // artifactStageBucket은 prepare 이전에 코디네이터가 스테이징한 artifact를
@@ -20,7 +20,7 @@ const artifactStageBucket = "artifact_stage_v1"
 // IssueOpsArtifactDir은 execution.workspace.artifact_dir이 비어 있을 때의
 // legacy 봉인 디렉터리다. `.gitignore` 대상이며 보존은 completion 섹션이
 // 담당한다. 새 prepare는 issueArtifactDirFor로 이슈 폴더 아래를 고른다(#482).
-const IssueOpsArtifactDir = ".agent-harness/artifact"
+const IssueOpsArtifactDir = ".issueops/artifact"
 
 // sealedArtifactDir은 레코드가 봉인 아티팩트를 두는 워크트리 상대 디렉터리다.
 // 레코드 필드만 본다 — 파일시스템 상태나 PlanPath 파싱으로 추론하지 않는다.
@@ -39,7 +39,7 @@ func sealedArtifactPath(record issueops.IssueOpsRecord, root, name string) strin
 }
 
 // issueArtifactDirFor는 새 Workspace가 기록할 artifact_dir이다: linked issue
-// 번호가 있으면 `.agent-harness/issues/<n>/artifact`, 없으면 빈 값(legacy).
+// 번호가 있으면 `.issueops/issues/<n>/artifact`, 없으면 빈 값(legacy).
 func issueArtifactDirFor(record issueops.IssueOpsRecord) string {
 	if dir := remote.IssueArtifactDir(record.IssueURL); dir != "" {
 		return dir
@@ -119,7 +119,7 @@ func (e *devilsAdvocateStaleError) IssueOpsErrorFields() map[string]any {
 }
 
 // 강제 범위는 implement 진입 전까지다: implement 이후의 owner 교체(replacement/
-// reseed)는 구현 중 편집된 플랜을 다시 봉인하는 경로라 brooks 재검토를 요구하지
+// reseed)는 구현 중 편집된 플랜을 다시 봉인하는 경로라 design-review 재검토를 요구하지
 // 않는다 — ai-slop-clean 진입이 plan binding을 보지 않는 것과 같은 이유다.
 func requireDevilsAdvocateBoundToPlan(record issueops.IssueOpsRecord, stagedDigest string) error {
 	review := record.DevilsAdvocateReview
@@ -132,7 +132,7 @@ func requireDevilsAdvocateBoundToPlan(record issueops.IssueOpsRecord, stagedDige
 	if strings.EqualFold(strings.TrimSpace(review.ReviewedPlanDigest), stagedDigest) {
 		return nil
 	}
-	return &devilsAdvocateStaleError{nextCommand: "agent-harness issueops devils-advocate review --id " + quoteExecutionOwnerArg(record.ID) +
+	return &devilsAdvocateStaleError{nextCommand: "issueops devils-advocate review --id " + quoteExecutionOwnerArg(record.ID) +
 		" --reviewer-context subagent --verdict <VERDICT> --finding <TEXT> --json"}
 }
 
@@ -142,7 +142,7 @@ func newPlanArtifactRequiredError(record issueops.IssueOpsRecord, allowStageComm
 		return typed
 	}
 	if identity, err := readLinkedPlanIdentity(record); err == nil {
-		typed.nextCommand = "agent-harness issueops artifact stage --id " + quoteExecutionOwnerArg(record.ID) +
+		typed.nextCommand = "issueops artifact stage --id " + quoteExecutionOwnerArg(record.ID) +
 			" --name plan --file " + quoteExecutionOwnerArg(identity.Path) + " --json"
 	}
 	return typed

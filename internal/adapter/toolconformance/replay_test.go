@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	core "agent-harness/internal/adapter/toolconformance"
+	core "issueops/internal/adapter/toolconformance"
 )
 
 func TestReplayRegressionRejectsInvalidArgumentsBeforeHandlerAndPreservesState(t *testing.T) {

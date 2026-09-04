@@ -1,13 +1,13 @@
 package commitsuggest
 
 import (
-	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
 	"fmt"
+	commitsuggestcontract "issueops/internal/contract/commitsuggest"
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/domain/judgement"
-	"agent-harness/internal/domain/prompt"
+	"issueops/internal/domain/judgement"
+	"issueops/internal/domain/prompt"
 )
 
 func SuggestCommit(req commitsuggestcontract.CommitSuggestRequest) (commitsuggestcontract.CommitSuggestResult, error) {

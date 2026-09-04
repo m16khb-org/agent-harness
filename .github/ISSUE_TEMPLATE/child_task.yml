@@ -8,7 +8,7 @@ body:
       value: |
         큰 IssueOps parent를 provider-native child task로 나눌 때 사용합니다. GitHub에서는 sub-issue, GitLab에서는 child work item/Task로 연결해야 합니다.
 
-        좋은 예시는 `[p]` 또는 `[s]` 제목, 독립적인 범위, 실행 wave, 검증 명령을 포함합니다. 나쁜 예시는 `task: 작업`, parent 없는 child, 댓글에만 남긴 계획입니다. IssueOps cycle에서는 `agent-harness issueops remote create-child`로 생성·연결·검증하세요.
+        좋은 예시는 `[p]` 또는 `[s]` 제목, 독립적인 범위, 실행 wave, 검증 명령을 포함합니다. 나쁜 예시는 `task: 작업`, parent 없는 child, 댓글에만 남긴 계획입니다. IssueOps cycle에서는 `issueops remote create-child`로 생성·연결·검증하세요.
 
   - type: input
     id: parent_issue

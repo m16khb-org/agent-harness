@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 func TestVerifierDelegatesExactCandidateAndLiveChecks(t *testing.T) {

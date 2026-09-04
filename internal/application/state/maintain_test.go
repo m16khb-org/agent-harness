@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestMaintenanceServiceOwnsRootOrdering(t *testing.T) {

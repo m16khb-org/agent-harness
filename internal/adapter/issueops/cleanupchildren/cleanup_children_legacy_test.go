@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	model "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // 위상 규약 이전에 만들어진 우산 레코드는 자체 PR을 갖지 않아 부모 머지 증거를

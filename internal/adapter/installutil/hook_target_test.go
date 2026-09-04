@@ -6,7 +6,7 @@ import (
 )
 
 func TestHookTargetDriftMessages(t *testing.T) {
-	expected := "/source/bin/agent-harness"
+	expected := "/source/bin/issueops"
 	tests := []struct {
 		name   string
 		config map[string]any
@@ -15,27 +15,27 @@ func TestHookTargetDriftMessages(t *testing.T) {
 		{
 			name: "completed worktree target",
 			config: hookTargetTestConfig(
-				"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host codex",
+				"'/source.worktrees/completed/bin/issueops' hook pre-tool-use --host codex",
 			),
-			want: []string{"codex native hook target is stale: observed=/source.worktrees/completed/bin/agent-harness expected=/source/bin/agent-harness; reinstall hooks and restart the codex session"},
+			want: []string{"codex native hook target is stale: observed=/source.worktrees/completed/bin/issueops expected=/source/bin/issueops; reinstall hooks and restart the codex session"},
 		},
 		{
 			name:   "relative legacy target",
-			config: hookTargetTestConfig("./bin/agent-harness hook pre-tool-use --host codex"),
-			want:   []string{"codex native hook target is stale: observed=./bin/agent-harness expected=/source/bin/agent-harness; reinstall hooks and restart the codex session"},
+			config: hookTargetTestConfig("./bin/issueops hook pre-tool-use --host codex"),
+			want:   []string{"codex native hook target is stale: observed=./bin/issueops expected=/source/bin/issueops; reinstall hooks and restart the codex session"},
 		},
 		{
 			name:   "canonical target",
-			config: hookTargetTestConfig("'/source/bin/agent-harness' hook pre-tool-use --host codex"),
+			config: hookTargetTestConfig("'/source/bin/issueops' hook pre-tool-use --host codex"),
 			want:   nil,
 		},
 		{
 			name: "duplicate stale target is reported once",
 			config: map[string]any{"hooks": map[string]any{
-				"PreToolUse":  hookTargetTestConfig("'/old/bin/agent-harness' hook pre-tool-use")["hooks"].(map[string]any)["PreToolUse"],
-				"PostToolUse": hookTargetTestConfig("'/old/bin/agent-harness' hook post-tool-use")["hooks"].(map[string]any)["PreToolUse"],
+				"PreToolUse":  hookTargetTestConfig("'/old/bin/issueops' hook pre-tool-use")["hooks"].(map[string]any)["PreToolUse"],
+				"PostToolUse": hookTargetTestConfig("'/old/bin/issueops' hook post-tool-use")["hooks"].(map[string]any)["PreToolUse"],
 			}},
-			want: []string{"codex native hook target is stale: observed=/old/bin/agent-harness expected=/source/bin/agent-harness; reinstall hooks and restart the codex session"},
+			want: []string{"codex native hook target is stale: observed=/old/bin/issueops expected=/source/bin/issueops; reinstall hooks and restart the codex session"},
 		},
 		{
 			name: "third party and malformed groups are ignored",
@@ -59,8 +59,8 @@ func TestHookTargetDriftMessages(t *testing.T) {
 }
 
 func TestHookCommandTargetDecodesQuotedTargetContainingHookAndEscapedQuote(t *testing.T) {
-	want := "/source thin hook workspace/it's/bin/agent-harness"
-	command := "'/source thin hook workspace/it'\"'\"'s/bin/agent-harness' hook session-start --host codex"
+	want := "/source thin hook workspace/it's/bin/issueops"
+	command := "'/source thin hook workspace/it'\"'\"'s/bin/issueops' hook session-start --host codex"
 	got, ok := hookCommandTarget(command)
 	if !ok || got != want {
 		t.Fatalf("hookCommandTarget(%q) = %q, %t; want %q, true", command, got, ok, want)

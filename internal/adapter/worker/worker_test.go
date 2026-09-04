@@ -1,19 +1,19 @@
 package worker
 
 import (
-	workercontract "agent-harness/internal/contract/worker"
+	workercontract "issueops/internal/contract/worker"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
 
-	policy "agent-harness/internal/contract/policy"
+	policy "issueops/internal/contract/policy"
 )
 
 func TestWriteWorkerJobAtomicAndNoTempLeak(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 
 	job, err := EnqueueWorkerJob("atomic-test", "payload")
 	if err != nil {
@@ -60,7 +60,7 @@ func TestWriteWorkerJobAtomicAndNoTempLeak(t *testing.T) {
 
 func TestWorkerJobLifecycleIsNoShellStateOnly(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	job, err := EnqueueWorkerJob("docs-refresh", "TOKEN=secret-value")
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
@@ -90,7 +90,7 @@ func TestWorkerJobLifecycleIsNoShellStateOnly(t *testing.T) {
 
 func TestWorkerJobInvalidAndListErrorBranches(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	if _, err := EnqueueWorkerJob("", "payload"); err == nil || !strings.Contains(err.Error(), "worker job kind is required") {
 		t.Fatalf("empty kind error = %v", err)
 	}
@@ -120,7 +120,7 @@ func TestWorkerJobInvalidAndListErrorBranches(t *testing.T) {
 
 func TestWorkerCancelRejectsNonQueuedJobs(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	job, err := EnqueueWorkerJob("cancel-status", "payload")
 	if err != nil {
 		t.Fatal(err)
@@ -140,8 +140,8 @@ func TestWorkerCancelRejectsNonQueuedJobs(t *testing.T) {
 
 func TestWorkerDirUsesStateDirFallback(t *testing.T) {
 	state := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", "")
-	t.Setenv("HARNESS_STATE_DIR", state)
+	t.Setenv("ISSUEOPS_WORKER_DIR", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", state)
 	dir, err := workerDir()
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestWorkerDirUsesStateDirFallback(t *testing.T) {
 func TestWorkerRunReadOnlyJobExecutesPolicyAllowedCommand(t *testing.T) {
 	dir := t.TempDir()
 	root := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("worker\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestWorkerRunReadOnlyJobExecutesPolicyAllowedCommand(t *testing.T) {
 func TestWorkerRunReadOnlyTimeoutFailsJobWithBoundedStderr(t *testing.T) {
 	dir := t.TempDir()
 	root := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	fifo := filepath.Join(root, "blocked.fifo")
 	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
 		t.Fatal(err)
@@ -214,7 +214,7 @@ func TestWorkerRunReadOnlyTimeoutFailsJobWithBoundedStderr(t *testing.T) {
 func TestWorkerRunReadOnlyDeniedCommandFailsJobWithoutMarker(t *testing.T) {
 	dir := t.TempDir()
 	root := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 	marker := filepath.Join(root, "marker")
 	job, err := RunReadOnlyWorkerJob("read-only-denied", "", policy.CommandPolicyRequest{
 		WorkspaceRoot: root,
@@ -238,7 +238,7 @@ func TestWorkerRunReadOnlyDeniedCommandFailsJobWithoutMarker(t *testing.T) {
 
 func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 
 	// Create a job that looks like it was running with a dead PID.
 	job, err := EnqueueWorkerJob("stuck-test", "payload")
@@ -288,7 +288,7 @@ func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed(t *testing.T) {
 
 func TestWorkerDetectStuckJobsSkipsAlivePID(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 
 	// Create a job with the current PID — it should NOT be detected as stuck.
 	job, err := EnqueueWorkerJob("alive-test", "payload")
@@ -314,7 +314,7 @@ func TestWorkerDetectStuckJobsSkipsAlivePID(t *testing.T) {
 
 func TestWorkerConcurrentCancelAndRunDoesNotLoseUpdates(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 
 	// Enqueue a job, then race two CancelWorkerJob calls against each
 	// other. Both should end with the job in cancelled state, and neither

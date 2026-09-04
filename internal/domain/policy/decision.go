@@ -1,6 +1,6 @@
 package policy
 
-import policycontract "agent-harness/internal/contract/policy"
+import policycontract "issueops/internal/contract/policy"
 
 import "sort"
 

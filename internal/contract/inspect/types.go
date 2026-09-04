@@ -5,14 +5,14 @@
 package inspect
 
 type InspectInfo struct {
-	OK          bool              `json:"ok"`
-	Version     string            `json:"version"`
-	HarnessRoot string            `json:"harness_root"`
-	TargetRepo  string            `json:"target_repo"`
-	Skills      []SkillInfo       `json:"skills"`
-	Docs        []string          `json:"docs"`
-	Integration IntegrationStatus `json:"integration"`
-	GeneratedAt string            `json:"generated_at"`
+	OK           bool              `json:"ok"`
+	Version      string            `json:"version"`
+	IssueOpsRoot string            `json:"issueops_root"`
+	TargetRepo   string            `json:"target_repo"`
+	Skills       []SkillInfo       `json:"skills"`
+	Docs         []string          `json:"docs"`
+	Integration  IntegrationStatus `json:"integration"`
+	GeneratedAt  string            `json:"generated_at"`
 }
 
 type IntegrationStatus struct {

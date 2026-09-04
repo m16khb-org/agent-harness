@@ -1,7 +1,7 @@
 package inspect
 
 import (
-	inspectcontract "agent-harness/internal/contract/inspect"
+	inspectcontract "issueops/internal/contract/inspect"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,14 +13,14 @@ func InspectHarness(root, target, home, version, skillName string) inspectcontra
 	codexSkill := filepath.Join(home, ".codex", "skills", skillName)
 	claudeSkill := filepath.Join(home, ".claude", "skills", skillName)
 	projectClaudeSkill := filepath.Join(root, ".claude", "skills", skillName)
-	mcpBinary := filepath.Join(root, "bin", "agent-harness")
+	mcpBinary := filepath.Join(root, "bin", "issueops")
 	return inspectcontract.InspectInfo{
-		OK:          true,
-		Version:     version,
-		HarnessRoot: root,
-		TargetRepo:  target,
-		Skills:      ListSkills(root, skillName),
-		Docs:        ListDocs(root),
+		OK:           true,
+		Version:      version,
+		IssueOpsRoot: root,
+		TargetRepo:   target,
+		Skills:       ListSkills(root, skillName),
+		Docs:         ListDocs(root),
 		Integration: inspectcontract.IntegrationStatus{
 			CodexSkillPath:         codexSkill,
 			CodexSkillInstalled:    Exists(filepath.Join(codexSkill, "SKILL.md")),
@@ -78,7 +78,7 @@ func readSkillDescription(path string) string {
 
 func CodexMCPConfigured(path string) bool {
 	b, err := os.ReadFile(path)
-	return err == nil && strings.Contains(string(b), "[mcp_servers.agent_harness]")
+	return err == nil && strings.Contains(string(b), "[mcp_servers.issueops]")
 }
 
 func Exists(path string) bool {

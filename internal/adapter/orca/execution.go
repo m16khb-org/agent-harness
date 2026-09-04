@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type ExecutionProvisioner struct {
@@ -820,5 +820,5 @@ func executionTaskTitle(marker, promptSHA256 string) string {
 		}
 	}
 	intentDigest := sha256.Sum256([]byte(marker + "\n" + strings.ToLower(strings.TrimSpace(promptSHA256))))
-	return fmt.Sprintf("agent-harness issueops-v1 lifecycle=%s intent=%x", lifecycleID, intentDigest[:8])
+	return fmt.Sprintf("issueops-v1 lifecycle=%s intent=%x", lifecycleID, intentDigest[:8])
 }

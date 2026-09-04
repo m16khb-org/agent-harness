@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
-	webfetchdomain "agent-harness/internal/domain/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
+	webfetchdomain "issueops/internal/domain/webfetch"
 )
 
 func TestFetchRejectsUnsafeURLsBeforeNetwork(t *testing.T) {
@@ -324,8 +324,8 @@ func TestRunBenchmarkLiveRequiresExplicitOptIn(t *testing.T) {
 	if err == nil {
 		t.Fatalf("RunBenchmark returned nil error, want explicit live opt-in failure")
 	}
-	if !strings.Contains(err.Error(), "HARNESS_WEBFETCH_LIVE=1") {
-		t.Fatalf("error=%v, want HARNESS_WEBFETCH_LIVE=1 guidance", err)
+	if !strings.Contains(err.Error(), "ISSUEOPS_WEBFETCH_LIVE=1") {
+		t.Fatalf("error=%v, want ISSUEOPS_WEBFETCH_LIVE=1 guidance", err)
 	}
 	if result.LiveParityEvaluated {
 		t.Fatalf("live parity evaluated without opt-in: %#v", result)

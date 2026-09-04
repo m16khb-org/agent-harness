@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // ClosePullRequest는 미머지 PR을 닫는다. 머지된 PR은 닫지 않고 사실만

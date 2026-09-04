@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 func TestReadConfigTreatsAMissingDeclarationAsEmpty(t *testing.T) {
@@ -58,7 +58,7 @@ func TestParseHostInventories(t *testing.T) {
 
 func TestInstalledSkillsListsDirectoriesAndLinks(t *testing.T) {
 	skillsDir := t.TempDir()
-	mkdirAll(t, filepath.Join(skillsDir, "turing"))
+	mkdirAll(t, filepath.Join(skillsDir, "verified-execution"))
 	symlink(t, filepath.Join(skillsDir, "gone"), filepath.Join(skillsDir, "dangling"))
 	writeFile(t, filepath.Join(skillsDir, "notes.md"), "x")
 
@@ -68,7 +68,7 @@ func TestInstalledSkillsListsDirectoriesAndLinks(t *testing.T) {
 		t.Fatalf("InstalledSkills error: %v", err)
 	}
 	sort.Strings(names)
-	if len(names) != 2 || names[0] != "dangling" || names[1] != "turing" {
+	if len(names) != 2 || names[0] != "dangling" || names[1] != "verified-execution" {
 		t.Fatalf("names = %#v, want the directory and the link", names)
 	}
 }
@@ -155,7 +155,7 @@ func newSkillRepo(t *testing.T, skillPath, skillBody string) string {
 	for _, args := range [][]string{
 		{"init", "--quiet", "--initial-branch=main"},
 		{"config", "user.email", "harness@example.com"},
-		{"config", "user.name", "harness"},
+		{"config", "user.name", "issueops"},
 		{"add", "-A"},
 		{"commit", "--quiet", "-m", "seed"},
 	} {

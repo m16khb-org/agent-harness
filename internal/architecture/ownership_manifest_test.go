@@ -14,7 +14,7 @@ func TestOwnershipManifestRejectsLegacyAndInvertedEdges(t *testing.T) {
 		{"core package", dependencyEdge{"internal/core/state", "fmt"}, "ownership_forbids_core_package"},
 		{"core import", dependencyEdge{"internal/contract/state", "internal/core/state"}, "ownership_forbids_core_package"},
 		{"domain adapter", dependencyEdge{"internal/domain/state", "internal/adapter/fs"}, "domain_must_only_import_contract"},
-		{"application command", dependencyEdge{"internal/application/nativeactivation", "cmd/harness"}, "application_must_not_import_adapter_or_cmd"},
+		{"application command", dependencyEdge{"internal/application/nativeactivation", "cmd/issueops"}, "application_must_not_import_adapter_or_cmd"},
 		{"contract domain", dependencyEdge{"internal/contract/state", "internal/domain/state"}, "contract_must_not_import_internal"},
 		{"port domain", dependencyEdge{"internal/port/state", "internal/domain/state"}, "port_must_not_import_internal"},
 	}
@@ -37,7 +37,7 @@ func TestOwnershipManifestAllowsTargetDirections(t *testing.T) {
 		{"internal/application/nativeactivation", "internal/contract/nativeactivation"},
 		{"internal/application/nativeactivation", "internal/port/nativeactivation"},
 		{"internal/adapter/outbound/nativeactivation", "internal/application/nativeactivation"},
-		{"cmd/harness/harnessapp", "internal/adapter/outbound/nativeactivation"},
+		{"cmd/issueops/issueopsapp", "internal/adapter/outbound/nativeactivation"},
 		// DTO가 다른 capability의 DTO를 필드로 갖는 것은 계약 조합이지 구현 의존이
 		// 아니다. contract 사이 참조는 이미 lease/completion/preparation vertical이
 		// 쓰고 있는 방향이다.
@@ -91,7 +91,7 @@ func TestSharedStorageEngineExceptionIsOneDirectionOnly(t *testing.T) {
 		t.Fatal("outbound adapters may use the shared storage engine")
 	}
 	for _, importer := range []string{
-		"cmd/harness/statecli",
+		"cmd/issueops/statecli",
 		"internal/adapter/inbound/issueopslease",
 		"internal/domain/state",
 	} {

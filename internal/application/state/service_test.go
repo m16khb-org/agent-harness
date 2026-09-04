@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
-	stateport "agent-harness/internal/port/state"
+	statecontract "issueops/internal/contract/state"
+	stateport "issueops/internal/port/state"
 )
 
 func TestServiceOwnsStateReadWriteAndUpdateOrchestration(t *testing.T) {

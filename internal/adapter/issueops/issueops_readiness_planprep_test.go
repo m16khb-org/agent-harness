@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func baseIntentRecord(class string) issueops.IssueOpsRecord {
@@ -50,7 +50,7 @@ func TestPlanReadinessSkipsPlanPrepForTrivial(t *testing.T) {
 func TestPlanReadinessAcceptsEvidenceAndWaive(t *testing.T) {
 	rec := baseIntentRecord("standard")
 	rec.PlanPrep = &issueops.IssueOpsPlanPrep{
-		PriorDecisions: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{".agent-harness/ADR.md#gate"}},
+		PriorDecisions: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{".issueops/ADR.md#gate"}},
 		RelatedIssues:  issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"remote score: selected=#12(0.81), threshold=0.70"}},
 		WebResearch:    issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "순수 내부 리팩토링이라 외부 근거 불필요"},
 		CodebaseSurvey: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"rg PlanPrep: internal/core/issueops/issueops_readiness.go, model/types.go, intentdesign/plan_prep.go"}},

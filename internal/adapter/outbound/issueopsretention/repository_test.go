@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	"issueops/internal/adapter/outbound/sqlstore"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestRepositoryReadsListsAndDeletesRecordWithStagedArtifact(t *testing.T) {

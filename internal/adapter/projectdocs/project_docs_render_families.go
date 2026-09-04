@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdoc "agent-harness/internal/domain/projectdoc"
 	"fmt"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"path/filepath"
 	"strings"
 )
@@ -49,7 +49,7 @@ func renderFamilyIndex(f projectdoc.DocFamily) string {
 	fmt.Fprintf(&b, "%s. This root is the family index; focused detail lives under [%s/](%s/).\n\n", capitalize(f.Responsibility), f.ModuleDir, f.ModuleDir)
 	fmt.Fprintf(&b, "- [%s overview](%s)\n\n", title, overviewRel)
 	b.WriteString("## Appending knowledge\n\n")
-	b.WriteString("- Append new dated records with MCP `project_docs_append` or `agent-harness project append`.\n")
+	b.WriteString("- Append new dated records with MCP `project_docs_append` or `issueops project append`.\n")
 	b.WriteString("- Records are written as one file per record inside the module directory, so this index stays small.\n")
 	b.WriteString("- Revise this index only to add links to new curated modules; keep it within the manifest line budget.\n")
 	return b.String()

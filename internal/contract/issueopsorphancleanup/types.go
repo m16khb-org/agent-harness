@@ -2,7 +2,7 @@
 // 요청을 만들고 결과를 읽는 쪽은 그 구현을 알 필요가 없다.
 package issueopsorphancleanup
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 // Request identifies one recordless local worktree and its already-merged
 // remote artifact. It deliberately does not contain a user-supplied merged

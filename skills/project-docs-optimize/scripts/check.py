@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Validate agent-harness operating-document ownership and navigation."""
+"""Validate issueops operating-document ownership and navigation."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ INLINE_CODE = re.compile(r"`[^`]*`")
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate modular agent-harness operating documentation.",
+        description="Validate modular issueops operating documentation.",
     )
     _ = parser.add_argument("--root", type=Path, default=Path.cwd())
     _ = parser.add_argument(
@@ -73,7 +73,7 @@ def local_target(source: Path, raw_target: str) -> Path | None:
 
 
 def validate(root: Path, manifest: Manifest) -> Report:
-    docs_root = root / ".agent-harness"
+    docs_root = root / ".issueops"
     violations: list[Violation] = []
     markdown_files = sorted(docs_root.rglob("*.md"))
     agents = root / "AGENTS.md"
@@ -195,7 +195,7 @@ def main(argv: list[str]) -> int:
     json_output = cast("bool", args.json_output)
     try:
         manifest = load_manifest(
-            root / ".agent-harness" / "documentation" / "manifest.json",
+            root / ".issueops" / "documentation" / "manifest.json",
         )
         report = validate(root, manifest)
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:

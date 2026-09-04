@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/installutil"
-	mcpdomain "agent-harness/internal/domain/mcp"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/installutil"
+	mcpdomain "issueops/internal/domain/mcp"
+	"issueops/internal/port"
 )
 
 func init() {
@@ -32,8 +32,7 @@ func TestInstallerWritesNativeOmoSurfaces(t *testing.T) {
 	req.ProjectLocal = true
 	writeOmoTestJSON(t, filepath.Join(req.Home, ".omo", "mcp.json"), map[string]any{
 		"mcpServers": map[string]any{
-			"other":         map[string]any{"command": "other"},
-			"agent-harness": map[string]any{"command": "obsolete"},
+			"other": map[string]any{"command": "other"},
 		},
 	})
 
@@ -49,19 +48,16 @@ func TestInstallerWritesNativeOmoSurfaces(t *testing.T) {
 	assertOmoTestSkillLink(t, filepath.Join(req.Root, ".omo", "skills", "alpha"), filepath.Join(req.Root, "skills", "alpha"))
 
 	globalMCP := readOmoTestJSON(t, filepath.Join(req.Home, ".omo", "mcp.json"))
-	assertOmoTestMCPServer(t, globalMCP, "agent_harness", req.BinPath, req.Root)
+	assertOmoTestMCPServer(t, globalMCP, "issueops", req.BinPath, req.Root)
 	servers := globalMCP["mcpServers"].(map[string]any)
 	if _, ok := servers["other"]; !ok {
 		t.Fatal("Omo MCP merge removed unrelated server")
 	}
-	if _, ok := servers["agent-harness"]; ok {
-		t.Fatal("Omo MCP merge retained obsolete alias")
-	}
 
 	projectMCP := readOmoTestJSON(t, filepath.Join(req.Root, ".omo", "mcp.json"))
-	assertOmoTestMCPServer(t, projectMCP, "agent_harness_project", "./bin/agent-harness", ".")
+	assertOmoTestMCPServer(t, projectMCP, "issueops_project", "./bin/issueops", ".")
 
-	extension := readOmoTestFile(t, filepath.Join(req.Home, ".omo", "extensions", "agent-harness.js"))
+	extension := readOmoTestFile(t, filepath.Join(req.Home, ".omo", "extensions", "issueops.js"))
 	for _, token := range []string{
 		`pi.on("session_start"`,
 		`pi.on("session_compact"`,
@@ -76,7 +72,7 @@ func TestInstallerWritesNativeOmoSurfaces(t *testing.T) {
 	}
 	for _, path := range []string{
 		filepath.Join(req.Root, "configs", "omo", "mcp.json"),
-		filepath.Join(req.Root, "configs", "omo", "agent-harness.js"),
+		filepath.Join(req.Root, "configs", "omo", "issueops.js"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("missing Omo template %s: %v", path, err)
@@ -121,7 +117,7 @@ func TestVerifyActivationRejectsTamperedExtension(t *testing.T) {
 		t.Fatalf("unexpected Omo activation evidence: %+v", evidence)
 	}
 
-	extensionPath := filepath.Join(req.Home, ".omo", "extensions", "agent-harness.js")
+	extensionPath := filepath.Join(req.Home, ".omo", "extensions", "issueops.js")
 	if err := os.WriteFile(extensionPath, []byte("export default function () {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -132,8 +128,8 @@ func TestVerifyActivationRejectsTamperedExtension(t *testing.T) {
 
 func TestTrackedTemplatesMatchGeneratedContent(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
-	extension := readOmoTestFile(t, filepath.Join(root, "configs", "omo", "agent-harness.js"))
-	if extension != omoLifecycleExtension("./bin/agent-harness") {
+	extension := readOmoTestFile(t, filepath.Join(root, "configs", "omo", "issueops.js"))
+	if extension != omoLifecycleExtension("./bin/issueops") {
 		t.Fatal("tracked Omo lifecycle extension drifted from generated template")
 	}
 	config := readOmoTestJSON(t, filepath.Join(root, "configs", "omo", "mcp.json"))
@@ -168,7 +164,7 @@ func omoTestRequest(t *testing.T) port.NativeInstallRequest {
 	return port.NativeInstallRequest{
 		Root:       root,
 		Home:       home,
-		BinPath:    filepath.Join(root, "bin", "agent-harness"),
+		BinPath:    filepath.Join(root, "bin", "issueops"),
 		SkillNames: []string{"alpha"},
 	}
 }
@@ -220,18 +216,18 @@ func assertOmoTestMCPServer(t *testing.T, config map[string]any, name, command, 
 		t.Fatalf("server %q command = %v, want %s", name, server["command"], command)
 	}
 	env, ok := server["env"].(map[string]any)
-	if !ok || env["HARNESS_ROOT"] != root {
-		t.Fatalf("server %q HARNESS_ROOT drifted: %+v", name, server)
+	if !ok || env["ISSUEOPS_ROOT"] != root {
+		t.Fatalf("server %q ISSUEOPS_ROOT drifted: %+v", name, server)
 	}
 	wantCatalogSHA256, err := SemanticSHA256(mcpdomain.AdvertisedTools())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if env["HARNESS_MCP_CATALOG_SHA256"] != wantCatalogSHA256 {
+	if env["ISSUEOPS_MCP_CATALOG_SHA256"] != wantCatalogSHA256 {
 		t.Fatalf(
-			"server %q HARNESS_MCP_CATALOG_SHA256 = %v, want %s",
+			"server %q ISSUEOPS_MCP_CATALOG_SHA256 = %v, want %s",
 			name,
-			env["HARNESS_MCP_CATALOG_SHA256"],
+			env["ISSUEOPS_MCP_CATALOG_SHA256"],
 			wantCatalogSHA256,
 		)
 	}

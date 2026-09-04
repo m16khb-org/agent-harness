@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // GitHub `createLinkedBranch`(= `gh issue develop`)는 `oid`에서 **새 브랜치를**

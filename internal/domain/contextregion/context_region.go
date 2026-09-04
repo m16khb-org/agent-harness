@@ -5,7 +5,7 @@ import "encoding/json"
 // Context region vocabulary follows cache-first partitioning: Immutable
 // Prefix / Append-Only Log / Volatile Scratch.
 //
-// agent-harness hosts neither a model session nor a prefix cache, so it does
+// issueops hosts neither a model session nor a prefix cache, so it does
 // not adopt the cache engine. It borrows only the determinism contract: the
 // serialized context an agent reuses as a stable prefix must be byte-identical
 // across repeated builds, while volatile fields (timestamps, run ids) live in

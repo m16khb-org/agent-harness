@@ -66,7 +66,7 @@ func catalogSections() []catalogSection {
 func DaemonStatusTool() Tool {
 	return Tool{
 		Name:        "daemon_status",
-		Description: "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
+		Description: "Report whether the shared issueops daemon backing this MCP proxy is reachable, including socket and pid metadata.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 	}
 }
@@ -105,14 +105,14 @@ func DispatchMap() map[string]DispatchGroup {
 	return out
 }
 
-// coreProjectTools returns the harness project-management tools. This is their
+// coreProjectTools returns the issueops project-management tools. This is their
 // single authoritative definition: the CLI catalog package derives its
 // tools/list payload from AdvertisedTools rather than re-declaring them.
 func coreProjectTools() []Tool {
 	return []Tool{
 		{
 			Name:        "harness_inspect",
-			Description: "Inspect the agent-harness installation, shared skills, docs, and native Codex/Claude integration status.",
+			Description: "Inspect the issueops installation, shared skills, docs, and native Codex/Claude integration status.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{"repo": map[string]any{"type": "string", "description": "Optional target repository path."}}},
 		},
 		{
@@ -132,12 +132,12 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "docs_index",
-			Description: "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, .agent-harness markdown files, and self-* skill docs: relative path, title, headings, and byte size.",
+			Description: "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, .issueops markdown files, and self-* skill docs: relative path, title, headings, and byte size.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 		},
 		{
 			Name:        "project_docs_route",
-			Description: "Given a task, return the project AGENTS.md and .agent-harness documents an agent should read before working.",
+			Description: "Given a task, return the project AGENTS.md and .issueops documents an agent should read before working.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"repo": map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
 				"task": map[string]any{"type": "string", "description": "Task description such as commit, test, architecture, dependency, deploy, or general."},
@@ -145,23 +145,23 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "project_docs_bootstrap_plan",
-			Description: "Dry-run the project docs bootstrap that creates or updates AGENTS.md and .agent-harness/*.md from repository evidence. This tool never writes files.",
+			Description: "Dry-run the project docs bootstrap that creates or updates AGENTS.md and .issueops/*.md from repository evidence. This tool never writes files.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{"repo": map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."}}},
 		},
 		{
 			Name:        "project_docs_read",
-			Description: "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_revise so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+			Description: "Read one allowed .issueops project document and return its content plus SHA-256. Use before project_docs_revise so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"rel_path"}, "properties": map[string]any{
 				"repo":     map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
-				"rel_path": map[string]any{"type": "string", "description": "Allowed project doc path, for example .agent-harness/TESTING.md or TESTING.md."},
+				"rel_path": map[string]any{"type": "string", "description": "Allowed project doc path, for example .issueops/TESTING.md or TESTING.md."},
 			}},
 		},
 		{
 			Name:        "project_docs_revise",
-			Description: "Revise (fully replace) one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_append there.",
+			Description: "Revise (fully replace) one allowed .issueops project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_append there.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"rel_path", "content", "summary"}, "properties": map[string]any{
 				"repo":            map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
-				"rel_path":        map[string]any{"type": "string", "description": "Allowed project doc path under .agent-harness, for example .agent-harness/OPERATIONS.md."},
+				"rel_path":        map[string]any{"type": "string", "description": "Allowed project doc path under .issueops, for example .issueops/OPERATIONS.md."},
 				"content":         map[string]any{"type": "string", "description": "Full replacement content for the one document. Preserve stronger existing local guidance and user decisions."},
 				"expected_sha256": map[string]any{"type": "string", "description": "SHA-256 returned by project_docs_read. Required when the file exists."},
 				"summary":         map[string]any{"type": "string", "description": "Short reason for the update and how it maintains current consensus."},
@@ -171,7 +171,7 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "project_docs_append",
-			Description: "Append one dated record file under .agent-harness/cautions/ (kind=caution) or .agent-harness/adr/ (kind=adr) without modifying the family root index. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+			Description: "Append one dated record file under .issueops/cautions/ (kind=caution) or .issueops/adr/ (kind=adr) without modifying the family root index. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"kind", "title", "summary"}, "properties": map[string]any{
 				"repo":         map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
 				"kind":         map[string]any{"type": "string", "description": "caution for solved problems/false cases; adr for decisions."},
@@ -216,17 +216,17 @@ func selfLoopAdvertisedTools() []Tool {
 	return []Tool{
 		{
 			Name:        "self_augment",
-			Description: "Plan the self-augmentation loop: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
+			Description: "Plan the self-augmentation loop: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to issueops state for durable Reflexion-style memory.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"cycles":       map[string]any{"type": "integer", "description": "Number of autonomous improvement cycles to plan; defaults to 1."},
 				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
-				"save_state":   map[string]any{"type": "boolean", "description": "When true, save the selected self-augmentation plan to harness state."},
+				"save_state":   map[string]any{"type": "boolean", "description": "When true, save the selected self-augmentation plan to issueops state."},
 				"state_key":    map[string]any{"type": "string", "description": "State key for save_state; defaults to self-augment-latest."},
 			}},
 		},
 		{
 			Name:        "self_augment_lesson",
-			Description: "Store a Reflexion-style self-augmentation lesson in harness state for durable cross-session learning.",
+			Description: "Store a Reflexion-style self-augmentation lesson in issueops state for durable cross-session learning.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"lesson", "next_action"}, "properties": map[string]any{
 				"candidate_id": map[string]any{"type": "string", "description": "Candidate id this lesson belongs to; defaults to current selected open candidate."},
 				"lesson":       map[string]any{"type": "string", "description": "Lesson learned from failure, QA issue, or design concern."},
@@ -242,7 +242,7 @@ func selfLoopAdvertisedTools() []Tool {
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"seed":         map[string]any{"type": "integer", "description": "Seed for deterministic fuzz fixtures."},
 				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
-				"save_state":   map[string]any{"type": "boolean", "description": "When true, save compact summary to harness state after the run."},
+				"save_state":   map[string]any{"type": "boolean", "description": "When true, save compact summary to issueops state after the run."},
 				"state_key":    map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-latest."},
 			}},
 		},
@@ -250,13 +250,13 @@ func selfLoopAdvertisedTools() []Tool {
 			Name:        "self_verify_candidates",
 			Description: "Export the self-verification loop improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
-				"save_state": map[string]any{"type": "boolean", "description": "When true, save the candidate export snapshot to harness state."},
+				"save_state": map[string]any{"type": "boolean", "description": "When true, save the candidate export snapshot to issueops state."},
 				"state_key":  map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-candidates-latest."},
 			}},
 		},
 		{
 			Name:        "self_verify_history",
-			Description: "List saved self-verification loop summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+			Description: "List saved self-verification loop summary checkpoints from issueops state, sorted by snapshot generation time for quick baseline/candidate discovery.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"prefix":          map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys."},
 				"limit":           map[string]any{"type": "integer", "description": "Maximum entries to return; defaults to 20, 0 returns all."},
@@ -267,7 +267,7 @@ func selfLoopAdvertisedTools() []Tool {
 		},
 		{
 			Name:        "self_verify_compare",
-			Description: "Compare two saved self-verification loop summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
+			Description: "Compare two saved self-verification loop summary checkpoints from issueops state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"baseline_key", "candidate_key"}, "properties": map[string]any{
 				"baseline_key":               map[string]any{"type": "string", "description": "State key containing the baseline self-verification summary snapshot."},
 				"candidate_key":              map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot."},

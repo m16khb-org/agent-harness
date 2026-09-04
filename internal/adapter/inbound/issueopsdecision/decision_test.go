@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	issueopsdecisionapplication "agent-harness/internal/application/issueopsdecision"
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
+	issueopsdecisionapplication "issueops/internal/application/issueopsdecision"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
 )
 
 type fakeRepository struct {

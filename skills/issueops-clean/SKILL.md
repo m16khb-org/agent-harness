@@ -1,6 +1,6 @@
 ---
 name: issueops-clean
-description: Run the IssueOps ai-slop-clean stage on the canonical worktree. Confirm the phase, remove lazy agent residue from the task diff one pass at a time while preserving behavior, measure before and after with shannon, re-run the gate ledger and the focused verification, and record the cleanup evidence that seals the change fingerprint. Use when "issueops next" reports clean, or when the user says "AI slop 정리", "slop 치워줘", "정리 단계".
+description: Run the IssueOps ai-slop-clean stage on the canonical worktree. Confirm the phase, remove lazy agent residue from the task diff one pass at a time while preserving behavior, measure before and after with code-quality-metrics, re-run the gate ledger and the focused verification, and record the cleanup evidence that seals the change fingerprint. Use when "issueops next" reports clean, or when the user says "AI slop 정리", "slop 치워줘", "정리 단계".
 ---
 
 # IssueOps Clean
@@ -10,13 +10,13 @@ description: Run the IssueOps ai-slop-clean stage on the canonical worktree. Con
 
 - 전체 흐름과 단계 판별: [`issueops`](../issueops/SKILL.md)
 - 게이트 원장: [`gates-ledger`](../gates-ledger/SKILL.md)
-- 정리 전후 측정: [`shannon`](../shannon/SKILL.md)
+- 정리 전후 측정: [`code-quality-metrics`](../code-quality-metrics/SKILL.md)
 - 다음 단계: [`issueops-docs`](../issueops-docs/SKILL.md)
 
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `clean`이면 이 스킬이다. `implement`면 아직
@@ -100,7 +100,7 @@ Output:
 
 ## 측정
 
-[`shannon`](../shannon/SKILL.md)으로 정리 전후를 측정한다. 신호 대 잡음 비율, 중복
+[`code-quality-metrics`](../code-quality-metrics/SKILL.md)으로 정리 전후를 측정한다. 신호 대 잡음 비율, 중복
 비율, boilerplate 비율을 숫자로 남긴다.
 
 측정 없이 "더 깔끔해졌다"고 적지 않는다. 측정값이 없으면 그 주장은 검증할 수 없고,
@@ -111,19 +111,19 @@ Output:
 정리는 동작을 바꿀 수 있다. 마지막 pass 뒤에 다시 확인한다.
 
 ```bash
-agent-harness gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --write --json
+issueops gates check --file "$LEDGER" --cwd "$WORKTREE" --workspace-root "$WORKTREE" --write --json
 git -C "$WORKTREE" diff --check
 # 변경 범위의 focused 테스트를 다시 실행한다.
 ```
 
-turing report를 확정한다. report는 워크트리 **안**의 정규 파일이어야 하고, 형식은
-[`turing`](../turing/SKILL.md)의 보고 계약을 따른다. 이번 변경의 **side effect 목록**과
+verified-execution report를 확정한다. report는 워크트리 **안**의 정규 파일이어야 하고, 형식은
+[`verified-execution`](../verified-execution/SKILL.md)의 보고 계약을 따른다. 이번 변경의 **side effect 목록**과
 **성능 측정값**을 반드시 담는다. 링크나 임시 경로가 아니라 커밋될 파일이어야 한다.
 
 ## 기록
 
 ```bash
-agent-harness issueops ai-slop-clean record --id "$ISSUEOPS_ID" \
+issueops ai-slop-clean record --id "$ISSUEOPS_ID" \
   --category "dead-code" --category "duplication" \
   --verification "go test ./internal/... -count=1 → ok" \
   $RECORD_ACTOR_FLAGS --json
@@ -134,7 +134,7 @@ agent-harness issueops ai-slop-clean record --id "$ISSUEOPS_ID" \
 중 **실제로 제거한 것만** 쓴다. 하지 않은 정리를 적으면 그 기록이 다음 리뷰의 첫 공격
 대상이 된다.
 
-이 명령이 change fingerprint를 현재 diff로 봉인한다. fingerprint에는 gates.md, turing
+이 명령이 change fingerprint를 현재 diff로 봉인한다. fingerprint에는 gates.md, verified-execution
 report, 문서까지 **변경된 모든 파일과 untracked 파일**이 들어간다. 그래서 기록 뒤에
 어떤 파일이라도 고치면 `ai_slop_clean_stale`이 되어 pr 진입과 create-pr이 막힌다.
 
@@ -162,11 +162,11 @@ report, 문서까지 **변경된 모든 파일과 untracked 파일**이 들어�
 
 ## 검증
 
-- `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `docs`이거나
+- `issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `docs`이거나
   그 뒤 단계다. 여전히 `clean`이면 `missing`이 무엇이 남았는지 말한다.
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `ai_slop_clean_at`,
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `ai_slop_clean_at`,
   `ai_slop_clean_head`, `ai_slop_clean_fingerprint`가 채워져 있다.
 - `git -C "$WORKTREE" diff --check`가 통과하고, source checkout의
   `git status --short`가 비어 있다.
-- turing report가 워크트리 안 정규 파일로 존재하고 side effect 목록과 성능 측정값을
+- verified-execution report가 워크트리 안 정규 파일로 존재하고 side effect 목록과 성능 측정값을
   담고 있다.

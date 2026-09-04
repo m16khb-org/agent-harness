@@ -6,7 +6,7 @@ package upstream
 import (
 	"context"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 // PluginHost is the host CLI that owns plugin marketplaces and installs.

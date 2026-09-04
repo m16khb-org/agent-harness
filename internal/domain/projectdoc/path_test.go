@@ -9,7 +9,7 @@ func TestOptionalVCSProjectDocIsAllowedButNotRequired(t *testing.T) {
 	if !containsProjectDocName(AllowedProjectDocNames(), "VCS.md") {
 		t.Fatal("VCS.md must be readable and writable on demand")
 	}
-	if got, err := NormalizeRelPath(".agent-harness/VCS.md"); err != nil || got != ".agent-harness/VCS.md" {
+	if got, err := NormalizeRelPath(".issueops/VCS.md"); err != nil || got != ".issueops/VCS.md" {
 		t.Fatalf("NormalizeRelPath(VCS.md) = %q, %v", got, err)
 	}
 }
@@ -29,7 +29,7 @@ func TestNormalizeRelPathAllowsFamilyModuleDocs(t *testing.T) {
 		if err != nil {
 			t.Fatalf("family module path %q rejected: %v", rel, err)
 		}
-		if want := ".agent-harness/" + rel; got != want {
+		if want := ".issueops/" + rel; got != want {
 			t.Fatalf("NormalizeRelPath(%q) = %q, want %q", rel, got, want)
 		}
 	}

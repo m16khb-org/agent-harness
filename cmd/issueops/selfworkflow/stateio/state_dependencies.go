@@ -1,0 +1,15 @@
+package stateio
+
+import (
+	statecontract "issueops/internal/contract/state"
+)
+
+// issueops state 접근은 composition root가 설치한다. transport는 state를 어디에
+// 어떻게 저장하는지 알지 않는다.
+var (
+	NormalizeStateKey func(key string) (string, error)
+	StateDir          func() string
+	StateRead         func(key string) (statecontract.StateResult, error)
+	StateWrite        func(key, content string) (statecontract.StateResult, error)
+	WriteStateRecord  func(dir, key string, record statecontract.RecordEnvelope) (string, error)
+)

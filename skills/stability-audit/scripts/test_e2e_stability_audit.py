@@ -390,14 +390,14 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as live_td:
             live_root = Path(live_td)
-            live_db = live_root / "issueops" / "harness.db"
+            live_db = live_root / "issueops" / "issueops.db"
             live_db.parent.mkdir(parents=True)
             live_db.write_text("live-session-projection")
             live_env = {
-                "HARNESS_STATE_DIR": str(live_root),
-                "HARNESS_ROOT": str(live_root / "root"),
-                "HARNESS_DAEMON_DIR": str(live_root / "daemon"),
-                "HARNESS_WORKER_DIR": str(live_root / "worker"),
+                "ISSUEOPS_STATE_DIR": str(live_root),
+                "ISSUEOPS_ROOT": str(live_root / "root"),
+                "ISSUEOPS_DAEMON_DIR": str(live_root / "daemon"),
+                "ISSUEOPS_WORKER_DIR": str(live_root / "worker"),
             }
 
             def fake_run(cmd, *, env=None, **_kwargs):
@@ -405,7 +405,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
                 captured_env = dict(env) if env is not None else None
                 calls.append((call, captured_env))
                 if call[:2] == ["go", "test"]:
-                    isolated_db = Path(captured_env["HARNESS_STATE_DIR"]) / "issueops" / "harness.db"
+                    isolated_db = Path(captured_env["ISSUEOPS_STATE_DIR"]) / "issueops" / "issueops.db"
                     isolated_db.parent.mkdir(parents=True, exist_ok=True)
                     isolated_db.write_text("isolated-test-session")
                 stdout = '{"ok": true, "healthy": true, "issues": []}' if "doctor" in call else ""
@@ -434,8 +434,8 @@ class StabilityAuditScriptTest(unittest.TestCase):
         for isolated_env in go_test_envs:
             self.assertIsNotNone(isolated_env)
             self.assertEqual(set(isolated_env), set(live_env))
-            self.assertEqual(isolated_env["HARNESS_ROOT"], str(audit.ROOT))
-            for key in ("HARNESS_STATE_DIR", "HARNESS_DAEMON_DIR", "HARNESS_WORKER_DIR"):
+            self.assertEqual(isolated_env["ISSUEOPS_ROOT"], str(audit.ROOT))
+            for key in ("ISSUEOPS_STATE_DIR", "ISSUEOPS_DAEMON_DIR", "ISSUEOPS_WORKER_DIR"):
                 self.assertNotEqual(isolated_env[key], live_env[key])
         self.assertEqual(go_test_envs[0], go_test_envs[1])
 

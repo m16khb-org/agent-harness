@@ -3,8 +3,8 @@ package remote
 import (
 	"encoding/json"
 
-	"agent-harness/internal/domain/judgement"
-	"agent-harness/internal/domain/prompt"
+	"issueops/internal/domain/judgement"
+	"issueops/internal/domain/prompt"
 )
 
 func buildIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteScoringRequest) (string, error) {

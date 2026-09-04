@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	model "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestCloseChildrenRequiresMergeEvidence(t *testing.T) {

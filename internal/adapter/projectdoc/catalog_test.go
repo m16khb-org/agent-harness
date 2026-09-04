@@ -1,8 +1,8 @@
 package projectdoc
 
 import (
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"fmt"
+	projectdocdomain "issueops/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +13,7 @@ func TestDiscoverProjectDocsUsesFrontmatterThenCanonicalMeta(t *testing.T) {
 	repo := t.TempDir()
 	writeProjectDoc(t, repo, "CUSTOM.md", "---\nname: CUSTOM.md\ndescription: 이 레포 전용 메모를 담는다.\n---\n\n# 커스텀\n")
 	writeProjectDoc(t, repo, "ARCHITECTURE.md", "# 아키텍처\n\n## 경계\n")
-	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness", "state"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(repo, ".issueops", "state"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	writeProjectDoc(t, repo, "notes.txt", "ignored")
@@ -22,7 +22,7 @@ func TestDiscoverProjectDocsUsesFrontmatterThenCanonicalMeta(t *testing.T) {
 	if len(catalog) != 2 {
 		t.Fatalf("expected 2 project docs, got %d: %+v", len(catalog), catalog)
 	}
-	if catalog[0].RelPath != ".agent-harness/ARCHITECTURE.md" || catalog[1].RelPath != ".agent-harness/CUSTOM.md" {
+	if catalog[0].RelPath != ".issueops/ARCHITECTURE.md" || catalog[1].RelPath != ".issueops/CUSTOM.md" {
 		t.Fatalf("catalog not sorted by rel path: %+v", catalog)
 	}
 	canonical, _ := projectdocdomain.DocMetaDescription("ARCHITECTURE.md")
@@ -39,7 +39,7 @@ func TestDiscoverProjectDocsUsesFrontmatterThenCanonicalMeta(t *testing.T) {
 
 func TestDiscoverProjectDocsEmptyWhenNoAgentHarness(t *testing.T) {
 	if got := DiscoverProjectDocs(t.TempDir()); got != nil {
-		t.Fatalf("expected nil catalog for repo without .agent-harness, got %+v", got)
+		t.Fatalf("expected nil catalog for repo without .issueops, got %+v", got)
 	}
 	if got := DiscoverProjectDocs(""); got != nil {
 		t.Fatalf("expected nil catalog for empty repo root, got %+v", got)
@@ -52,7 +52,7 @@ func TestDiscoverProjectDocsSkipsSymlinkAndNonRegularMarkdown(t *testing.T) {
 	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(repo, ".agent-harness")
+	dir := filepath.Join(repo, ".issueops")
 	if err := os.MkdirAll(filepath.Join(dir, "directory.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestDiscoverProjectDocsSkipsSymlinkAndNonRegularMarkdown(t *testing.T) {
 	writeProjectDoc(t, repo, "inside.md", "# Inside\n")
 
 	catalog := DiscoverProjectDocs(repo)
-	if len(catalog) != 1 || catalog[0].RelPath != ".agent-harness/inside.md" {
+	if len(catalog) != 1 || catalog[0].RelPath != ".issueops/inside.md" {
 		t.Fatalf("catalog must exclude symlinked and non-regular markdown: %+v", catalog)
 	}
 }
@@ -73,12 +73,12 @@ func TestDiscoverProjectDocsRejectsSymlinkedAgentHarnessDirectory(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(outside, "outside.md"), []byte("# Outside\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, filepath.Join(repo, ".agent-harness")); err != nil {
+	if err := os.Symlink(outside, filepath.Join(repo, ".issueops")); err != nil {
 		t.Fatal(err)
 	}
 
 	if got := DiscoverProjectDocs(repo); got != nil {
-		t.Fatalf("symlinked .agent-harness directory must be ignored: %+v", got)
+		t.Fatalf("symlinked .issueops directory must be ignored: %+v", got)
 	}
 }
 
@@ -131,8 +131,8 @@ func TestReadProjectDocCatalogEntriesCapsRawDirectoryScan(t *testing.T) {
 
 func TestFormatProjectDocCatalogUsesDescription(t *testing.T) {
 	catalog := []projectdocdomain.ProjectDocCatalogEntry{
-		{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
-		{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
+		{RelPath: ".issueops/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
+		{RelPath: ".issueops/X.md", Title: "엑스", Description: ""},
 	}
 	got := FormatProjectDocCatalog(catalog)
 	if !strings.HasPrefix(got, "project docs (read what's relevant): ") {
@@ -154,7 +154,7 @@ func TestFormatProjectDocCatalogEmpty(t *testing.T) {
 
 func writeProjectDoc(t *testing.T, repo, name, content string) {
 	t.Helper()
-	dir := filepath.Join(repo, ".agent-harness")
+	dir := filepath.Join(repo, ".issueops")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 package codex
 
 import (
-	install "agent-harness/internal/adapter/install"
+	install "issueops/internal/adapter/install"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +11,7 @@ import (
 func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 		t.Fatalf("canonical semantic readback rejected formatting-only change: %v", err)
 	}
 	configPath := filepath.Join(req.CodexHome, "config.toml")
-	if err := os.WriteFile(configPath, []byte("[mcp_servers.agent_harness]\ncommand = \"/old/bin\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(configPath, []byte("[mcp_servers.issueops]\ncommand = \"/old/bin\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := VerifyActivation(req); err == nil {
@@ -52,7 +52,7 @@ func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 func TestVerifyActivationRejectsCodexWorktreeHookTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "issueops"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestVerifyActivationRejectsCodexWorktreeHookTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "agent-harness")
+	stale := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "issueops")
 	raw = []byte(strings.ReplaceAll(string(raw), req.BinPath, stale))
 	if err := os.WriteFile(hooksPath, raw, 0o600); err != nil {
 		t.Fatal(err)

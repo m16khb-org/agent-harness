@@ -21,21 +21,21 @@
               "kind": "agy_project_mcp_config",
               "path": "$ROOT/.agents/mcp_config.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "agy_project_mcp_template",
               "path": "$ROOT/configs/agy/mcp_config.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "agy_user_mcp_config",
               "path": "$HOME/.gemini/config/mcp_config.json",
               "written": true,
-              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content_sha256": "bcdba2cc145af1ad4fe8efd833b9c11317fa1a9781b50b35ba540e9ac064c400",
               "content": ""
             }
           ],
@@ -91,29 +91,29 @@
               "kind": "claude_hooks_template",
               "path": "$ROOT/configs/claude/hooks.settings.json",
               "written": true,
-              "content_sha256": "c591c85c85abc0c27ec0b30917f95922be3a2b9e667c5186418dff5dc790bb26",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "11902a6be568837ec98a082cb3fc7b46d1f3c8b96c7a98bd1bb65d74741aae2d",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/issueops' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_config",
               "path": "$ROOT/.mcp.json",
               "written": true,
-              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "3531f3ad3bb430cd560c224395c00c868320de0003202a112e0c70a4c9fc7581",
+              "content": "{\n  \"mcpServers\": {\n    \"issueops_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/issueops\",\n      \"env\": {\n        \"ISSUEOPS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "3531f3ad3bb430cd560c224395c00c868320de0003202a112e0c70a4c9fc7581",
+              "content": "{\n  \"mcpServers\": {\n    \"issueops_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/issueops\",\n      \"env\": {\n        \"ISSUEOPS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_mcp_config",
               "path": "$HOME/.claude.json",
               "written": true,
-              "content_sha256": "856dab549674100651b88005e3009e9c5de52b6a37ee7fc8295189829db869cc",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"HARNESS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "ffd6bca633bac6961183df3766af70460a5e7086f24db450fe014adc3d3767c6",
+              "content": "{\n  \"mcpServers\": {\n    \"issueops\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"ISSUEOPS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_settings",
@@ -175,15 +175,15 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "758acc516d1075d202e3a4806ad91d14da9ca9a1287ab3ff966a82016f211348",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "8059275c1747031c22d4c236f3803d705ca77ecfa0bfc152cef97ae376e0018f",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/issueops' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "409ba586de111e01c7a29196fc6f73fc9b587a3c77a2b1142a11bdd8ceaa73b6",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
+              "content_sha256": "8b9b30c53e86918b42b525e6fd202b96a79a3e608fece6ee5a1a6ef0bd9cab90",
+              "content": "[mcp_servers.issueops]\ncommand = \"./bin/issueops\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_hooks_config",
@@ -196,8 +196,8 @@
               "kind": "codex_user_mcp_config",
               "path": "$CODEX_HOME/config.toml",
               "written": true,
-              "content_sha256": "a2c0a91dc8dd967983100a4990b1b59ddb502a08367c83d4254debfb99bcec00",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\n"
+              "content_sha256": "3e89802a607d23b4828909a9f3ce29dae2f4f4bd74d154282d74db7038f783db",
+              "content": "[mcp_servers.issueops]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = \"$ROOT\"\n"
             }
           ],
           "links": [
@@ -232,37 +232,37 @@
           "files": [
             {
               "kind": "omo_lifecycle_extension_template",
-              "path": "$ROOT/configs/omo/agent-harness.js",
+              "path": "$ROOT/configs/omo/issueops.js",
               "written": true,
-              "content_sha256": "b447073f849b4c56003f474a1a6e59a18604ab1ed4de9759a8c26b6d6515e29c",
+              "content_sha256": "e106931220715cff460eb70240cde8bc28bf482c3f5b5b0dcaa8a122bc7c5c67",
               "content": ""
             },
             {
               "kind": "omo_project_mcp_config",
               "path": "$ROOT/.omo/mcp.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "omo_project_mcp_template",
               "path": "$ROOT/configs/omo/mcp.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "omo_user_lifecycle_extension",
-              "path": "$HOME/.omo/extensions/agent-harness.js",
+              "path": "$HOME/.omo/extensions/issueops.js",
               "written": true,
-              "content_sha256": "46ea3af4fc7bb0aa44902cc7e685cf7784e3a5a2a352ce6fe3c21b2173718a44",
+              "content_sha256": "a0d1bcfb7c68fce814b1561dd1023699fd3bcfd12ae2e50d303232595a887ff2",
               "content": ""
             },
             {
               "kind": "omo_user_mcp_config",
               "path": "$HOME/.omo/mcp.json",
               "written": true,
-              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content_sha256": "bcdba2cc145af1ad4fe8efd833b9c11317fa1a9781b50b35ba540e9ac064c400",
               "content": ""
             }
           ],
@@ -314,7 +314,7 @@
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
         "Codex, Claude, and Omo user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex, Claude, and Omo user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "Codex, Claude, and Omo user-level lifecycle hooks route through the same issueops hook CLI",
         "default install writes no repo-local .claude, .omo, or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]
@@ -340,14 +340,14 @@
               "kind": "agy_project_mcp_template",
               "path": "$ROOT/configs/agy/mcp_config.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "agy_user_mcp_config",
               "path": "$HOME/.gemini/config/mcp_config.json",
               "written": true,
-              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content_sha256": "bcdba2cc145af1ad4fe8efd833b9c11317fa1a9781b50b35ba540e9ac064c400",
               "content": ""
             }
           ],
@@ -385,22 +385,22 @@
               "kind": "claude_hooks_template",
               "path": "$ROOT/configs/claude/hooks.settings.json",
               "written": true,
-              "content_sha256": "c591c85c85abc0c27ec0b30917f95922be3a2b9e667c5186418dff5dc790bb26",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "11902a6be568837ec98a082cb3fc7b46d1f3c8b96c7a98bd1bb65d74741aae2d",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/issueops' hook session-start --host claude\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "3531f3ad3bb430cd560c224395c00c868320de0003202a112e0c70a4c9fc7581",
+              "content": "{\n  \"mcpServers\": {\n    \"issueops_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/issueops\",\n      \"env\": {\n        \"ISSUEOPS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_mcp_config",
               "path": "$HOME/.claude.json",
               "written": true,
-              "content_sha256": "856dab549674100651b88005e3009e9c5de52b6a37ee7fc8295189829db869cc",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"HARNESS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "ffd6bca633bac6961183df3766af70460a5e7086f24db450fe014adc3d3767c6",
+              "content": "{\n  \"mcpServers\": {\n    \"issueops\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"ISSUEOPS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_settings",
@@ -444,15 +444,15 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "758acc516d1075d202e3a4806ad91d14da9ca9a1287ab3ff966a82016f211348",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "8059275c1747031c22d4c236f3803d705ca77ecfa0bfc152cef97ae376e0018f",
+              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/issueops' hook session-start --host codex\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "409ba586de111e01c7a29196fc6f73fc9b587a3c77a2b1142a11bdd8ceaa73b6",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
+              "content_sha256": "8b9b30c53e86918b42b525e6fd202b96a79a3e608fece6ee5a1a6ef0bd9cab90",
+              "content": "[mcp_servers.issueops]\ncommand = \"./bin/issueops\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_hooks_config",
@@ -465,8 +465,8 @@
               "kind": "codex_user_mcp_config",
               "path": "$CODEX_HOME/config.toml",
               "written": true,
-              "content_sha256": "a2c0a91dc8dd967983100a4990b1b59ddb502a08367c83d4254debfb99bcec00",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\n"
+              "content_sha256": "3e89802a607d23b4828909a9f3ce29dae2f4f4bd74d154282d74db7038f783db",
+              "content": "[mcp_servers.issueops]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = \"$ROOT\"\n"
             }
           ],
           "links": [
@@ -501,30 +501,30 @@
           "files": [
             {
               "kind": "omo_lifecycle_extension_template",
-              "path": "$ROOT/configs/omo/agent-harness.js",
+              "path": "$ROOT/configs/omo/issueops.js",
               "written": true,
-              "content_sha256": "b447073f849b4c56003f474a1a6e59a18604ab1ed4de9759a8c26b6d6515e29c",
+              "content_sha256": "e106931220715cff460eb70240cde8bc28bf482c3f5b5b0dcaa8a122bc7c5c67",
               "content": ""
             },
             {
               "kind": "omo_project_mcp_template",
               "path": "$ROOT/configs/omo/mcp.json",
               "written": true,
-              "content_sha256": "e6c80af6ae454b4f3d5fbbd0b57ee1d092628d424489e253f108c32f6efe2485",
+              "content_sha256": "2bd21e72a9e160b7d4bd83a1fbe64e714502554488980e020e3936219cf961f5",
               "content": ""
             },
             {
               "kind": "omo_user_lifecycle_extension",
-              "path": "$HOME/.omo/extensions/agent-harness.js",
+              "path": "$HOME/.omo/extensions/issueops.js",
               "written": true,
-              "content_sha256": "46ea3af4fc7bb0aa44902cc7e685cf7784e3a5a2a352ce6fe3c21b2173718a44",
+              "content_sha256": "a0d1bcfb7c68fce814b1561dd1023699fd3bcfd12ae2e50d303232595a887ff2",
               "content": ""
             },
             {
               "kind": "omo_user_mcp_config",
               "path": "$HOME/.omo/mcp.json",
               "written": true,
-              "content_sha256": "4706b030d53cf38a63705b381097d617ed51e6114dcb7fdc1ac447eedee97743",
+              "content_sha256": "bcdba2cc145af1ad4fe8efd833b9c11317fa1a9781b50b35ba540e9ac064c400",
               "content": ""
             }
           ],
@@ -558,7 +558,7 @@
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
         "Codex, Claude, and Omo user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex, Claude, and Omo user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "Codex, Claude, and Omo user-level lifecycle hooks route through the same issueops hook CLI",
         "default install writes no repo-local .claude, .omo, or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]

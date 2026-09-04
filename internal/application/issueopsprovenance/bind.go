@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
+	commandparsecontract "issueops/internal/contract/commandparse"
+	provenanceport "issueops/internal/port/issueopsprovenance"
 )
 
 func Bind(ctx context.Context, command string, generation uint64, observer provenanceport.Observer) (string, error) {

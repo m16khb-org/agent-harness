@@ -1,10 +1,10 @@
 package doctor
 
 import (
-	lifecyclepkg "agent-harness/internal/adapter/lifecycle"
-	projectbootstrappkg "agent-harness/internal/adapter/projectbootstrap"
-	projectdocspkg "agent-harness/internal/adapter/projectdocs"
-	"agent-harness/internal/adapter/repopath"
+	lifecyclepkg "issueops/internal/adapter/lifecycle"
+	projectbootstrappkg "issueops/internal/adapter/projectbootstrap"
+	projectdocspkg "issueops/internal/adapter/projectdocs"
+	"issueops/internal/adapter/repopath"
 )
 
 // production wiring과 같은 repo path resolver를 설치한다. 이 package가 import

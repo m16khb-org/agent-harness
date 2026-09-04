@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // preview는 무엇을 할지 보여주는 것에 더해 지금 상태가 무엇인지도 관측한다.

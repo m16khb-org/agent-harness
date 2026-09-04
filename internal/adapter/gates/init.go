@@ -1,10 +1,10 @@
 package gates
 
 import (
-	gatescontract "agent-harness/internal/contract/gates"
-	gatesdomain "agent-harness/internal/domain/gates"
-	"agent-harness/internal/domain/shelltoken"
 	"fmt"
+	gatescontract "issueops/internal/contract/gates"
+	gatesdomain "issueops/internal/domain/gates"
+	"issueops/internal/domain/shelltoken"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +25,7 @@ func Init(req gatescontract.InitRequest) (gatescontract.InitResult, error) {
 		if slug == "" {
 			return result, fmt.Errorf("scope must contain a letter or number")
 		}
-		file = filepath.Join(".agent-harness", "gates", slug+".md")
+		file = filepath.Join(".issueops", "gates", slug+".md")
 	}
 	result.File = file
 	if len(req.Gates) == 0 {

@@ -7,11 +7,11 @@
 package gates
 
 import (
-	gatescontract "agent-harness/internal/contract/gates"
-	policycontract "agent-harness/internal/contract/policy"
-	gatesdomain "agent-harness/internal/domain/gates"
-	"agent-harness/internal/domain/shelltoken"
 	"fmt"
+	gatescontract "issueops/internal/contract/gates"
+	policycontract "issueops/internal/contract/policy"
+	gatesdomain "issueops/internal/domain/gates"
+	"issueops/internal/domain/shelltoken"
 	"os"
 	"path/filepath"
 	"sort"
@@ -214,11 +214,11 @@ func runGateCheck(root, cwd string, req gatescontract.CheckRequest, gate *gatesd
 
 // IssueFolderDir은 이슈 번호별 산출물 폴더의 상대 경로다(#480). 게이트
 // 원장은 그 안의 gates.md 하나다.
-const IssueFolderDir = ".agent-harness/issues"
+const IssueFolderDir = ".issueops/issues"
 
-// DiscoverGateFiles는 canonical .agent-harness/issues/<n>/gates.md를 먼저
+// DiscoverGateFiles는 canonical .issueops/issues/<n>/gates.md를 먼저
 // 찾고(번호 오름차순, 그다음 비숫자 폴더), 기존 root GATES.md,
-// .agent-harness/gates/*.md, gates/*.md도 읽기 호환 경로로 반환한다.
+// .issueops/gates/*.md, gates/*.md도 읽기 호환 경로로 반환한다.
 func DiscoverGateFiles(root string) ([]string, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, nil
@@ -227,7 +227,7 @@ func DiscoverGateFiles(root string) ([]string, error) {
 	if info, err := os.Stat(filepath.Join(root, "GATES.md")); err == nil && !info.IsDir() {
 		files = append(files, filepath.Join(root, "GATES.md"))
 	}
-	files = appendMarkdownGateFiles(files, filepath.Join(root, ".agent-harness", "gates"))
+	files = appendMarkdownGateFiles(files, filepath.Join(root, ".issueops", "gates"))
 	files = appendMarkdownGateFiles(files, filepath.Join(root, "gates"))
 	return files, nil
 }

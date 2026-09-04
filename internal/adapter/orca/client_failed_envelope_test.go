@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // #97: orca CLI가 비영 종료해도 stdout에 정상 ok:false envelope을 남기면

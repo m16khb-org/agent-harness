@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestExecRunnerBoundsStreamsWhileCommandRuns(t *testing.T) {
 	for _, stream := range []string{"stdout", "stderr"} {
 		t.Run(stream, func(t *testing.T) {
-			t.Setenv("AGENT_HARNESS_ORCA_STREAM_HELPER", stream)
+			t.Setenv("ISSUEOPS_ORCA_STREAM_HELPER", stream)
 			output, err := (ExecRunner{}).Run(context.Background(), "", 5*time.Second, []string{os.Args[0], "-test.run=^TestExecRunnerStreamHelper$"})
 			var orcaErr *port.OrcaError
 			if !errors.As(err, &orcaErr) || orcaErr.Code != "command_output_too_large" || !orcaErr.Invoked {
@@ -29,7 +29,7 @@ func TestExecRunnerBoundsStreamsWhileCommandRuns(t *testing.T) {
 }
 
 func TestExecRunnerIncludesBoundedStdoutInCommandFailureDiagnostic(t *testing.T) {
-	t.Setenv("AGENT_HARNESS_ORCA_STREAM_HELPER", "failure-json")
+	t.Setenv("ISSUEOPS_ORCA_STREAM_HELPER", "failure-json")
 	_, err := (ExecRunner{}).Run(context.Background(), "", 5*time.Second, []string{os.Args[0], "-test.run=^TestExecRunnerStreamHelper$"})
 	var orcaErr *port.OrcaError
 	if !errors.As(err, &orcaErr) || orcaErr.Code != "command_failed" || !orcaErr.Invoked || !strings.Contains(orcaErr.Detail, "stdout: {\"error\":\"launch_failed\"}") || !strings.Contains(orcaErr.Detail, "stderr: relay handshake") {
@@ -45,8 +45,8 @@ func TestExecRunnerRetriesOwnerlessInheritedRelayWithCurrentWrapper(t *testing.T
 	t.Setenv("ORCA_ENVIRONMENT", "remote-fixture")
 	t.Setenv("ORCA_PAIRING_CODE", "pairing-fixture")
 	attemptLog := filepath.Join(t.TempDir(), "attempts")
-	t.Setenv("AGENT_HARNESS_ORCA_ATTEMPT_LOG", attemptLog)
-	t.Setenv("AGENT_HARNESS_ORCA_STREAM_HELPER", "relay-retry")
+	t.Setenv("ISSUEOPS_ORCA_ATTEMPT_LOG", attemptLog)
+	t.Setenv("ISSUEOPS_ORCA_STREAM_HELPER", "relay-retry")
 
 	output, err := (ExecRunner{}).Run(context.Background(), "", 5*time.Second, []string{os.Args[0], "-test.run=^TestExecRunnerStreamHelper$"})
 	if err != nil {
@@ -76,8 +76,8 @@ func TestExecRunnerKeepsResponsiveInheritedRelay(t *testing.T) {
 	t.Setenv("ORCA_ENVIRONMENT", "")
 	t.Setenv("ORCA_PAIRING_CODE", "")
 	attemptLog := filepath.Join(t.TempDir(), "attempts")
-	t.Setenv("AGENT_HARNESS_ORCA_ATTEMPT_LOG", attemptLog)
-	t.Setenv("AGENT_HARNESS_ORCA_STREAM_HELPER", "relay-live")
+	t.Setenv("ISSUEOPS_ORCA_ATTEMPT_LOG", attemptLog)
+	t.Setenv("ISSUEOPS_ORCA_STREAM_HELPER", "relay-live")
 
 	output, err := (ExecRunner{}).Run(context.Background(), "", 5*time.Second, []string{os.Args[0], "-test.run=^TestExecRunnerStreamHelper$"})
 	if err != nil {
@@ -97,7 +97,7 @@ func TestExecRunnerKeepsResponsiveInheritedRelay(t *testing.T) {
 }
 
 func TestExecRunnerStreamHelper(t *testing.T) {
-	stream := os.Getenv("AGENT_HARNESS_ORCA_STREAM_HELPER")
+	stream := os.Getenv("ISSUEOPS_ORCA_STREAM_HELPER")
 	if stream == "" {
 		return
 	}
@@ -111,7 +111,7 @@ func TestExecRunnerStreamHelper(t *testing.T) {
 		if os.Getenv("ORCA_RELAY_DIR") != "" {
 			relay = "inherited"
 		}
-		attemptLog := os.Getenv("AGENT_HARNESS_ORCA_ATTEMPT_LOG")
+		attemptLog := os.Getenv("ISSUEOPS_ORCA_ATTEMPT_LOG")
 		file, err := os.OpenFile(attemptLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 		if err != nil {
 			os.Exit(2)

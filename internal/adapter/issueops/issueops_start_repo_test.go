@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestStartIssueOpsStoresAbsoluteRepoWhenRelativePathProvided(t *testing.T) {

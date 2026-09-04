@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func TestClaimContextPreflight(t *testing.T) {
@@ -26,7 +26,7 @@ func TestClaimContextPreflight(t *testing.T) {
 
 func TestClaimContextPreflightRejectsSealedArtifactDrift(t *testing.T) {
 	issueBody := "## acceptance criteria\n\n- [ ] AC-01: packet artifact\n"
-	fixture := newSealedClaimContext(t, "https://github.com/example/agent-harness/issues/197", issueBody, []byte("sealed plan\n"))
+	fixture := newSealedClaimContext(t, "https://github.com/example/issueops/issues/197", issueBody, []byte("sealed plan\n"))
 	if _, err := fixture.preflight.Preflight(context.Background(), fixture.request); err != nil {
 		t.Fatalf("sealed artifact preflight: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestClaimContextPreflightRejectsSealedArtifactDrift(t *testing.T) {
 
 func TestClaimContextPreflightAcceptsSealed98163ByteArtifact(t *testing.T) {
 	issueBody := "## acceptance criteria\n\n- [ ] AC-04: claim the sealed plan\n"
-	fixture := newSealedClaimContext(t, "https://github.com/example/agent-harness/issues/237", issueBody, make([]byte, 98_163))
+	fixture := newSealedClaimContext(t, "https://github.com/example/issueops/issues/237", issueBody, make([]byte, 98_163))
 	if _, err := fixture.preflight.Preflight(context.Background(), fixture.request); err != nil {
 		t.Fatalf("98,163-byte sealed artifact preflight: %v", err)
 	}
@@ -59,7 +59,7 @@ func newSealedClaimContext(t *testing.T, issueURL, issueBody string, artifact []
 	record.Execution.Workspace.SourceRoot = filepath.Dir(record.Execution.Workspace.Root)
 	record.Execution.Workspace.Driver = "orca"
 	record.IssueURL = issueURL
-	artifactPath := filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "artifact", "plan.md")
+	artifactPath := filepath.Join(record.Execution.Workspace.Root, ".issueops", "artifact", "plan.md")
 	if err := os.MkdirAll(filepath.Dir(artifactPath), 0o700); err != nil {
 		t.Fatal(err)
 	}

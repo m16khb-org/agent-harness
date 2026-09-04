@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 
-	publicationapp "agent-harness/internal/application/issueopspublication"
-	publicationcontract "agent-harness/internal/contract/issueopspublication"
+	publicationapp "issueops/internal/application/issueopspublication"
+	publicationcontract "issueops/internal/contract/issueopspublication"
 )
 
 type reconcileService interface {

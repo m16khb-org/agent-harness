@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/domain/auditid"
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/domain/auditid"
+	"issueops/internal/domain/policy"
 )
 
 const (
@@ -52,7 +52,7 @@ type ProcessExecutionRecord struct {
 	Diagnostic  string   `json:"diagnostic,omitempty"`
 }
 
-// AuditProcessExecution은 bounded process 기록 하나를 harness state audit log에
+// AuditProcessExecution은 bounded process 기록 하나를 issueops state audit log에
 // append한다. 호출자는 Name, EnvPolicy, Outcome에 고정된 값을 써야 한다.
 func AuditProcessExecution(req ProcessExecutionRequest) (ProcessExecutionRecord, error) {
 	if err := validateProcessExecutionRequest(req); err != nil {

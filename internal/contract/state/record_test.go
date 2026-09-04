@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agent-harness/internal/contract/state"
+	"issueops/internal/contract/state"
 )
 
 func TestRecordEnvelopeRequiresExplicitCurrentV1(t *testing.T) {

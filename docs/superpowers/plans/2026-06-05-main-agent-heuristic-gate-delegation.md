@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the external LLM Stop-hook gate disconnected. `UserPromptSubmit` injects the next-action policy up front. The Stop hook only detects that the final assistant message reached a review point, extracts inspectable facts such as the explicit `선택지:` section and recommended option text, and re-enters the main agent with those facts. It must not assign scores, thresholds, safety verdicts, or execution eligibility.
 
-**Tech Stack:** Go, existing `cmd/harness` hook CLI, `internal/core` lifecycle helpers, project docs in `.agent-harness`.
+**Tech Stack:** Go, existing `cmd/issueops` hook CLI, `internal/core` lifecycle helpers, project docs in `.issueops`.
 
 ---
 
@@ -16,10 +16,10 @@ Allowed APIs and source contracts:
 
 - `internal/core/lifecycle_state.go:1474`: `NextActionAutoProceedResult` currently contains judgement-shaped fields (`Threshold`, `TopScore`, `AgentJudgementRequired`) that should be replaced or compatibility-wrapped by a factual trigger result.
 - `internal/core/lifecycle_state.go:1489`: `EvaluateNextActionAutoProceed` currently scores choices and decides eligibility; this is the behavior to remove from the hook path.
-- `cmd/harness/hook_user_prompt.go:565`: `runHookStop` already says final proceed/ask judgement belongs to the main agent, but it still passes score/threshold language in the reason. That must be removed.
+- `cmd/issueops/hook_user_prompt.go:565`: `runHookStop` already says final proceed/ask judgement belongs to the main agent, but it still passes score/threshold language in the reason. That must be removed.
 - `internal/core/hook_prompt_test.go:10`: UserPromptSubmit policy injection already frames the main agent as the actor that prepares turn-ending choices.
-- `.agent-harness/ADR.md:279`: the active ADR index says the external LLM gate is disconnected because Stop-hook latency was too high. Refine this decision: not "static heuristic plus policy" as a new judge, but "hook trigger plus evidence relay to main agent."
-- `.agent-harness/CAUTIONS.md:215`: Stop hook must not claim candidate status by itself; it should tell the main agent to re-check its recommended choice and decide from context.
+- `.issueops/ADR.md:279`: the active ADR index says the external LLM gate is disconnected because Stop-hook latency was too high. Refine this decision: not "static heuristic plus policy" as a new judge, but "hook trigger plus evidence relay to main agent."
+- `.issueops/CAUTIONS.md:215`: Stop hook must not claim candidate status by itself; it should tell the main agent to re-check its recommended choice and decide from context.
 
 Anti-patterns to avoid:
 
@@ -34,9 +34,9 @@ Anti-patterns to avoid:
 
 - Modify `internal/core/lifecycle_state.go`: replace the hook-facing scoring/eligibility helper with a factual trigger helper that parses only explicit next-action sections and returns observed facts.
 - Modify `internal/core/lifecycle_state_test.go`: replace score/threshold expectations with factual trigger expectations: no choices, no recommendation, exactly one recommendation, multiple recommendations, and explanatory numbered-list false case.
-- Modify `cmd/harness/hook_user_prompt.go`: update flag help, JSON field labels, and Stop-hook reasons so they say "this review point was reached; here are the observed facts; main agent must judge."
-- Modify `cmd/harness/hook_user_prompt_test.go`: assert the Stop hook re-enters the agent with facts only and never emits score, threshold, candidate, eligibility, safety, or direct auto-execution wording.
-- Modify `.agent-harness/ADR.md` and `.agent-harness/CAUTIONS.md`: record the sharper policy: hook triggers and relays evidence; main agent judges everything.
+- Modify `cmd/issueops/hook_user_prompt.go`: update flag help, JSON field labels, and Stop-hook reasons so they say "this review point was reached; here are the observed facts; main agent must judge."
+- Modify `cmd/issueops/hook_user_prompt_test.go`: assert the Stop hook re-enters the agent with facts only and never emits score, threshold, candidate, eligibility, safety, or direct auto-execution wording.
+- Modify `.issueops/ADR.md` and `.issueops/CAUTIONS.md`: record the sharper policy: hook triggers and relays evidence; main agent judges everything.
 - Modify `skills/issueops/SKILL.md` only if its auto-proceed language still says a heuristic scores or decides; preserve IssueOps workflow semantics.
 
 ## Task 1: Replace Scoring With A Factual Trigger
@@ -129,8 +129,8 @@ Expected: PASS.
 ## Task 2: Make Stop-Hook Output Relay Evidence Only
 
 **Files:**
-- Modify: `cmd/harness/hook_user_prompt.go`
-- Test: `cmd/harness/hook_user_prompt_test.go`
+- Modify: `cmd/issueops/hook_user_prompt.go`
+- Test: `cmd/issueops/hook_user_prompt_test.go`
 
 - [ ] **Step 1: Strengthen hook tests**
 
@@ -174,7 +174,7 @@ No-op output must stay:
 Run:
 
 ```bash
-go test ./cmd/harness -run 'RunHookStop|HookStop|Golden' -count=1
+go test ./cmd/issueops -run 'RunHookStop|HookStop|Golden' -count=1
 ```
 
 Expected: PASS. If usage golden fails because help text changed, update only the relevant golden fixture.
@@ -182,8 +182,8 @@ Expected: PASS. If usage golden fails because help text changed, update only the
 ## Task 3: Align Project Docs And Skill Text
 
 **Files:**
-- Modify: `.agent-harness/ADR.md`
-- Modify: `.agent-harness/CAUTIONS.md`
+- Modify: `.issueops/ADR.md`
+- Modify: `.issueops/CAUTIONS.md`
 - Maybe modify: `skills/issueops/SKILL.md`
 
 - [ ] **Step 1: Update the ADR wording**
@@ -196,14 +196,14 @@ The next-action Stop hook is not a judge, scorer, classifier, or safety gate. It
 
 - [ ] **Step 2: Update caution language**
 
-Ensure `.agent-harness/CAUTIONS.md` says the Stop hook must not claim "자동진행 후보", score, threshold, destructive verdict, safety verdict, reversibility verdict, or equivalent direct execution authority; it must instruct the main agent to judge from the relayed facts.
+Ensure `.issueops/CAUTIONS.md` says the Stop hook must not claim "자동진행 후보", score, threshold, destructive verdict, safety verdict, reversibility verdict, or equivalent direct execution authority; it must instruct the main agent to judge from the relayed facts.
 
 - [ ] **Step 3: Search for stale wording**
 
 Run:
 
 ```bash
-rg -n "자동진행 후보|auto-proceed candidate|directly auto-proceed|auto-continue the recommended|heuristic.*verdict|hook.*decides|score|threshold|eligible|destructive_action" .agent-harness cmd internal skills docs --glob '!bin/**'
+rg -n "자동진행 후보|auto-proceed candidate|directly auto-proceed|auto-continue the recommended|heuristic.*verdict|hook.*decides|score|threshold|eligible|destructive_action" .issueops cmd internal skills docs --glob '!bin/**'
 ```
 
 Expected: remaining matches are either tests that prohibit stale wording, archived historical notes, or explicitly marked deprecated code.
@@ -219,7 +219,7 @@ Run:
 
 ```bash
 go test ./internal/core -run 'BuildNextActionJudgementTrigger|BuildUserPromptMCPHints' -count=1
-go test ./cmd/harness -run 'RunHookStop|Golden' -count=1
+go test ./cmd/issueops -run 'RunHookStop|Golden' -count=1
 ```
 
 Expected: PASS.
@@ -229,7 +229,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go test ./internal/core ./cmd/harness -count=1
+go test ./internal/core ./cmd/issueops -count=1
 ```
 
 Expected: PASS.
@@ -239,7 +239,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: exit code 0.
@@ -249,7 +249,7 @@ Expected: exit code 0.
 Run:
 
 ```bash
-printf '{"cwd":"%s","last_assistant_message":"선택지:\n1. 진행: 테스트를 추가하고 구현을 계속합니다. (추천)\n2. 축소 진행: 일부만 검증합니다.\n3. 보류: 멈춥니다."}' "$PWD" | ./bin/agent-harness hook stop --relay-next-action-judgement
+printf '{"cwd":"%s","last_assistant_message":"선택지:\n1. 진행: 테스트를 추가하고 구현을 계속합니다. (추천)\n2. 축소 진행: 일부만 검증합니다.\n3. 보류: 멈춥니다."}' "$PWD" | ./bin/issueops hook stop --relay-next-action-judgement
 ```
 
 Expected: JSON with `continue:true`, `decision:"block"`, and a Korean reason that lists observed facts and tells the main agent to judge from current context. The output must not include numeric score or threshold text.
@@ -259,7 +259,7 @@ Expected: JSON with `continue:true`, `decision:"block"`, and a Korean reason tha
 Run:
 
 ```bash
-./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+./bin/issueops self-verify --seed=100 --target-score=95 --json
 ```
 
 Expected: `summary.termination_eligible == true` and `summary.minimum_goal_score > 95`.

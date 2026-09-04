@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	executionissue "agent-harness/internal/contract/executionissue"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	executionissue "issueops/internal/contract/executionissue"
+	issueopscontract "issueops/internal/contract/issueops"
+	basesyncport "issueops/internal/port/issueopsbasesync"
 )
 
 // 실행 의존 묶음은 port 인터페이스를 필드로 갖는다. DTO가 아니라 주입 묶음이므로

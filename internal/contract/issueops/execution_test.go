@@ -139,7 +139,7 @@ func TestValidateExecutionAcceptsCompletionHistory(t *testing.T) {
 	execution.CompletionHistory = []ExecutionCompletionHistory{{
 		Generation: 1,
 		Completion: ExecutionCompletion{
-			Generation: 1, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+			Generation: 1, FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/report.json",
 			Verification: []string{"go test ./... -count=1"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
 		},
 		Reason: "new verified HEAD", ReopenedAt: "2026-08-04T00:00:00Z",
@@ -153,7 +153,7 @@ func TestValidateExecutionRejectsInvalidCompletionHistory(t *testing.T) {
 	valid := ExecutionCompletionHistory{
 		Generation: 1,
 		Completion: ExecutionCompletion{
-			Generation: 1, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+			Generation: 1, FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/report.json",
 			Verification: []string{"go test ./... -count=1"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
 		},
 		Reason: "new verified HEAD", ReopenedAt: "2026-08-04T00:00:00Z",

@@ -1,6 +1,6 @@
 package operationalhealth
 
-import operationalhealthcontract "agent-harness/internal/contract/operationalhealth"
+import operationalhealthcontract "issueops/internal/contract/operationalhealth"
 
 // 운영 건강 신호는 계약 DTO다. domain은 같은 이름으로 재노출만 한다.
 type (

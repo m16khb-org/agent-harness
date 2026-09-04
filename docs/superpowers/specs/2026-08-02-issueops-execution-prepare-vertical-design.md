@@ -134,8 +134,8 @@ adapter가 `internal/core/issueops` orchestration을 호출하는 wrapper가 되
 
 ### Composition root
 
-`cmd/harness/harnessapp`만 production service를 조립한다. 현재
-`cmd/harness/issueopscli`와 `cmd/harness/mcpcli`가 직접 만드는 Git worktree,
+`cmd/issueops/issueopsapp`만 production service를 조립한다. 현재
+`cmd/issueops/issueopscli`와 `cmd/issueops/mcpcli`가 직접 만드는 Git worktree,
 Orca와 provider reader를 preparation wiring으로 옮기고, 두 adapter의 dependency
 struct에는 같은 typed prepare handler만 전달한다. daemon은 SDK MCP server에
 동일 dependencies를 전달하므로 별도 preparation 구현을 갖지 않는다.
@@ -256,7 +256,7 @@ production cutover는 다음 순서를 지킨다.
 3. direct prepare를 service 뒤로 옮기고 record/index/hook parity를 통과시킨다.
 4. Orca stage를 shared codec과 service 뒤로 옮기고 existing reconcile recovery를
    다시 통과시킨다.
-5. CLI/MCP concrete dependencies를 harnessapp으로 옮긴다.
+5. CLI/MCP concrete dependencies를 issueopsapp으로 옮긴다.
 6. router를 handler-only로 전환하고 legacy production caller를 0으로 만든다.
 
 추가 gate는 다음과 같다.

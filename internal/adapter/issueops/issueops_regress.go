@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // RegressIssueOpsForReplan takes the IssueOps feedback loop backward when the
@@ -61,7 +61,7 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (issueops.Issu
 	}
 	rank := issueOpsPhaseRank(record.Phase)
 	if rank < issueOpsPhaseRank(IssueOpsPhasePlan) || rank > issueOpsPhaseRank(IssueOpsPhaseCompatibilityReview) {
-		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("brooks regression only applies from plan or compatibility-review phase, not %s", record.Phase)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("design-review regression only applies from plan or compatibility-review phase, not %s", record.Phase)
 	}
 	// A regress is the machine consequence of a devil's-advocate stop whose
 	// findings were reflected into the issue, so require both before rewinding.
@@ -100,7 +100,7 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (issueops.Issu
 
 	// Audit: record the devil's-advocate stop as a scope decision.
 	record.Decisions = append(record.Decisions, issueops.IssueOpsDecision{
-		Title:     "brooks devil's-advocate stop",
+		Title:     "design-review devil's-advocate stop",
 		Body:      reason,
 		Kind:      "scope",
 		Rationale: fmt.Sprintf("regressed from %s to grill for re-plan", priorPhase),
@@ -139,7 +139,7 @@ func markIssueOpsLedgerStale(ledger issueops.IssueOpsPhaseLedger, reason string,
 	if ledger == nil {
 		ledger = issueops.IssueOpsPhaseLedger{}
 	}
-	note := "stale: brooks regression (" + reason + ")"
+	note := "stale: design-review regression (" + reason + ")"
 	for _, phase := range phases {
 		entry := ledger[phase]
 		entry.Phase = phase

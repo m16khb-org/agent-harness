@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	preparationapp "agent-harness/internal/application/issueopspreparation"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	preparationdomain "agent-harness/internal/domain/issueopspreparation"
-	"agent-harness/internal/port"
+	preparationapp "issueops/internal/application/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	preparationdomain "issueops/internal/domain/issueopspreparation"
+	"issueops/internal/port"
 )
 
 func TestDirectRepositoryCommitWritesRecordAndHolderAtomically(t *testing.T) {

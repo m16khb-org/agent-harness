@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-const agyMCPCatalogSHA256Env = "HARNESS_MCP_CATALOG_SHA256"
+const agyMCPCatalogSHA256Env = "ISSUEOPS_MCP_CATALOG_SHA256"
 
 func writeAgyUserMCP(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: "agy_user_mcp_config"}
@@ -26,12 +26,11 @@ func writeAgyUserMCP(path string, req port.NativeInstallRequest) (port.InstallFi
 		servers = map[string]any{}
 		config["mcpServers"] = servers
 	}
-	delete(servers, "agent-harness")
 	server, err := agyUserMCPServer(req)
 	if err != nil {
 		return file, err
 	}
-	servers["agent_harness"] = server
+	servers["issueops"] = server
 	return WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
 }
 
@@ -49,13 +48,13 @@ func agyUserMCPServer(req port.NativeInstallRequest) (map[string]any, error) {
 }
 
 func agyProjectMCPConfig() (map[string]any, error) {
-	server, err := agyMCPServer("./bin/agent-harness", ".")
+	server, err := agyMCPServer("./bin/issueops", ".")
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
 		"mcpServers": map[string]any{
-			"agent_harness_project": server,
+			"issueops_project": server,
 		},
 	}, nil
 }
@@ -75,7 +74,7 @@ func agyMCPServer(command, root string) (map[string]any, error) {
 		"command": command,
 		"args":    []string{"mcp"},
 		"env": map[string]any{
-			"HARNESS_ROOT":         root,
+			"ISSUEOPS_ROOT":        root,
 			agyMCPCatalogSHA256Env: catalogSHA256,
 		},
 	}, nil

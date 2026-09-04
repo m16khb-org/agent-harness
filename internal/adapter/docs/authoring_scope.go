@@ -22,7 +22,7 @@ type authoringScope struct {
 func loadAuthoringScope(root string) authoringScope {
 	data, err := os.ReadFile(filepath.Join(
 		root,
-		".agent-harness",
+		".issueops",
 		"documentation",
 		"manifest.json",
 	))
@@ -46,11 +46,11 @@ func loadAuthoringScope(root string) authoringScope {
 
 func (scope authoringScope) includes(relativePath string) bool {
 	relativePath = filepath.ToSlash(filepath.Clean(relativePath))
-	if filepath.ToSlash(filepath.Dir(relativePath)) == ".agent-harness" &&
+	if filepath.ToSlash(filepath.Dir(relativePath)) == ".issueops" &&
 		filepath.Ext(relativePath) == ".md" {
 		return true
 	}
-	if strings.HasPrefix(relativePath, ".agent-harness/documentation/") {
+	if strings.HasPrefix(relativePath, ".issueops/documentation/") {
 		return true
 	}
 	for _, moduleDir := range scope.moduleDirs {
@@ -62,7 +62,7 @@ func (scope authoringScope) includes(relativePath string) bool {
 }
 
 func isAgentHarnessSubdirectory(path string) bool {
-	return strings.HasPrefix(path, ".agent-harness/") &&
+	return strings.HasPrefix(path, ".issueops/") &&
 		!strings.Contains(path, "/../") &&
-		path != ".agent-harness/.."
+		path != ".issueops/.."
 }

@@ -66,7 +66,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
     def test_user_prompt_compact_turn_hint_is_not_noisy(self) -> None:
         ctx = "\n".join(
             [
-                "[agent-harness]",
+                "[issueops]",
                 "- docs: use project docs only when repo-specific context matters",
                 "- profile: github/managed@github.com, Go, backend+cli",
                 "- rule: verify with repo/tool evidence before changing files",
@@ -76,12 +76,12 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
     def test_user_prompt_catalog_injection_is_noisy(self) -> None:
         self.assertTrue(audit.is_noisy_user_prompt_context("Required project docs:\n- ADR.md"))
-        self.assertTrue(audit.is_noisy_user_prompt_context("필수 프롬프트 주입중: .agent-harness/TESTING.md"))
+        self.assertTrue(audit.is_noisy_user_prompt_context("필수 프롬프트 주입중: .issueops/TESTING.md"))
 
     def test_mcp_smoke_env_forces_direct_stream_transport(self) -> None:
-        env = audit.mcp_smoke_env({"HARNESS_DAEMON_DIR": "/tmp/daemon"})
-        self.assertEqual(env["HARNESS_DAEMON_DIR"], "/tmp/daemon")
-        self.assertEqual(env["HARNESS_MCP_DIRECT"], "1")
+        env = audit.mcp_smoke_env({"ISSUEOPS_DAEMON_DIR": "/tmp/daemon"})
+        self.assertEqual(env["ISSUEOPS_DAEMON_DIR"], "/tmp/daemon")
+        self.assertEqual(env["ISSUEOPS_MCP_DIRECT"], "1")
 
 
 def _row(command: str, *, state: str = "S", pid: int = 100, ppid: int = 1, rss_kb: int = 1024) -> dict:
@@ -96,7 +96,7 @@ class ClassifyProcessesTest(unittest.TestCase):
     correct, only that the classifier routes a known command string to the expected bucket."""
 
     def test_current_daemon_matches_only_current_bucket(self) -> None:
-        result = audit.classify_processes([_row("/usr/local/bin/agent-harness daemon --internal --socket /tmp/x.sock")])
+        result = audit.classify_processes([_row("/usr/local/bin/issueops daemon --internal --socket /tmp/x.sock")])
         self.assertEqual(len(result["current_daemons"]), 1)
         self.assertEqual(result["legacy_harness"], [])
         self.assertEqual(result["temp_watchers"], [])
@@ -104,8 +104,8 @@ class ClassifyProcessesTest(unittest.TestCase):
 
     def test_legacy_bin_harness_daemon_and_mcp_match_legacy_bucket(self) -> None:
         rows = [
-            _row("/old/path/bin/harness daemon --internal"),
-            _row("/old/path/bin/harness mcp"),
+            _row("/old/path/bin/issueops daemon --internal"),
+            _row("/old/path/bin/issueops mcp"),
         ]
         result = audit.classify_processes(rows)
         self.assertEqual(len(result["legacy_harness"]), 2)
@@ -118,7 +118,7 @@ class ClassifyProcessesTest(unittest.TestCase):
 
     def test_zombie_requires_both_z_state_and_harness_command(self) -> None:
         rows = [
-            _row("/usr/local/bin/agent-harness daemon --internal", state="Z"),  # harness + Z -> zombie
+            _row("/usr/local/bin/issueops daemon --internal", state="Z"),  # harness + Z -> zombie
             _row("/usr/bin/python3 some_unrelated_script.py", state="Z"),       # Z but not harness -> not zombie
             _row("codegraph index", state="Z+"),                                # codegraph + Z -> zombie
         ]

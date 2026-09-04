@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	issueopscontract "issueops/internal/contract/issueops"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 // CleanupLinkedBranchDeps는 외부 표면 주입점이다.
@@ -102,7 +102,7 @@ func CleanupLinkedBranch(ctx context.Context, stateRoot string, req issueopscont
 
 	if !req.Apply {
 		result.NextCommand = fmt.Sprintf(
-			"agent-harness issueops cleanup linked-branch --id %s --apply --confirm --fingerprint %s --json", record.ID, fingerprint)
+			"issueops cleanup linked-branch --id %s --apply --confirm --fingerprint %s --json", record.ID, fingerprint)
 		return result, nil
 	}
 	if !req.Confirm {

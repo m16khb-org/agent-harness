@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Operations"
+  short_description: "Manage Git history, branches, conflicts, and recovery"
+  default_prompt: "Use $git-operations to perform this advanced Git operation with state checks, a recovery path, and verification."

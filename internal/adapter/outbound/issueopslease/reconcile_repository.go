@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 type ReconcileEffects interface {

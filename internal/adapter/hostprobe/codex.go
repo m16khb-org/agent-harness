@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-const codexProbeServer = "agent_harness_probe"
+const codexProbeServer = "issueops_probe"
 
 // CodexRunner runs one capture-only MCP episode in an isolated Codex session.
 type CodexRunner struct {
@@ -57,15 +57,15 @@ func (r CodexRunner) Run(ctx context.Context, request port.HostProbeRequest) por
 	defer func() { _ = os.RemoveAll(root) }()
 
 	resultPath := filepath.Join(root, "result.json")
-	hookSmoke := r.deps.Getenv("HARNESS_CHILD_SMOKE_HOOKS") == "1"
+	hookSmoke := r.deps.Getenv("ISSUEOPS_CHILD_SMOKE_HOOKS") == "1"
 	argv := codexArgvMode(executable, root, request, resultPath, hookSmoke)
 	envNames := []string{"CODEX_HOME"}
 	if hookSmoke {
-		envNames = append(envNames, "HARNESS_CHILD_SMOKE_HOOKS", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE")
+		envNames = append(envNames, "ISSUEOPS_CHILD_SMOKE_HOOKS", "ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE")
 	}
 	environment := isolatedHostEnv(r.deps, envNames...)
 	if hookSmoke {
-		runtimeCodexHome, err := prepareCodexSmokeHome(root, harnessBinary, r.deps.Getenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE"), r.deps)
+		runtimeCodexHome, err := prepareCodexSmokeHome(root, harnessBinary, r.deps.Getenv("ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"), r.deps)
 		if err != nil {
 			return failedResult(r.Name(), "", request, started, r.deps, "harness_environment", "codex_smoke_home_invalid")
 		}
@@ -198,7 +198,7 @@ func projectActivatedCodexSmokeHooks(sourcePath, harnessBinary, observationPath 
 	if err := json.Unmarshal(data, &source); err != nil {
 		return codexSmokeHookDocument{}, err
 	}
-	prefix := "/usr/bin/env HARNESS_CHILD_SMOKE_HOOKS=1 HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + shellSingleQuote(observationPath) + " "
+	prefix := "/usr/bin/env ISSUEOPS_CHILD_SMOKE_HOOKS=1 ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE=" + shellSingleQuote(observationPath) + " "
 	projected := codexSmokeHookDocument{Hooks: make(map[string][]codexSmokeHookGroup, 1)}
 	for _, contract := range []struct {
 		event      string

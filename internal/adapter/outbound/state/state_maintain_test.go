@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/outbound/sqlstore"
 )
 
 func seedMaintainStore(t *testing.T, dir, id, value string) {
@@ -23,8 +23,8 @@ func seedMaintainStore(t *testing.T, dir, id, value string) {
 
 func TestStateMaintainDiscoversLoopAndProjectStores(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	t.Setenv("HARNESS_WORKER_DIR", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", "")
 
 	loopDir := filepath.Join(stateDir, "loop")
 	projectA := filepath.Join(stateDir, "projects", "project-a")
@@ -53,8 +53,8 @@ func TestStateMaintainDiscoversLoopAndProjectStores(t *testing.T) {
 
 func TestStateMaintainDoesNotMaterializeLifecycleOnlyProjects(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	t.Setenv("HARNESS_WORKER_DIR", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", "")
 	projectsDir := filepath.Join(stateDir, "projects")
 	projectDir := filepath.Join(projectsDir, "profile-only")
 	if err := os.MkdirAll(projectDir, 0o700); err != nil {
@@ -73,7 +73,7 @@ func TestStateMaintainDoesNotMaterializeLifecycleOnlyProjects(t *testing.T) {
 	if len(result.Roots) != 1 || result.Roots[0].Dir != validDir {
 		t.Fatalf("maintained roots=%+v want only %s", result.Roots, validDir)
 	}
-	if _, err := os.Stat(filepath.Join(projectDir, "harness.db")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(projectDir, "issueops.db")); !os.IsNotExist(err) {
 		t.Fatalf("maintenance materialized project store: %v", err)
 	}
 }
@@ -83,8 +83,8 @@ func TestStateMaintainIgnoresSymlinkProjectNamespaces(t *testing.T) {
 		t.Skip("symlink creation requires additional privileges on Windows")
 	}
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	t.Setenv("HARNESS_WORKER_DIR", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", "")
 	projectsDir := filepath.Join(stateDir, "projects")
 	if err := os.MkdirAll(projectsDir, 0o700); err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestStateMaintainIgnoresSymlinkProjectNamespaces(t *testing.T) {
 	seedMaintainStore(t, validDir, "local", "value")
 	outside := t.TempDir()
 	seedMaintainStore(t, outside, "outside", "unchanged")
-	wal := filepath.Join(outside, "harness.db-wal")
+	wal := filepath.Join(outside, "issueops.db-wal")
 	before, err := os.Stat(wal)
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestStateMaintainIgnoresSymlinkProjectNamespaces(t *testing.T) {
 	if err := os.MkdirAll(fileLinked, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(outside, "harness.db"), filepath.Join(fileLinked, "harness.db")); err != nil {
+	if err := os.Symlink(filepath.Join(outside, "issueops.db"), filepath.Join(fileLinked, "issueops.db")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -132,8 +132,8 @@ func TestStateMaintainIgnoresSymlinkProjectNamespaces(t *testing.T) {
 
 func TestStateMaintainReportsProjectDiscoveryErrors(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	t.Setenv("HARNESS_WORKER_DIR", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", "")
 	if err := os.WriteFile(filepath.Join(stateDir, "projects"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}

@@ -50,8 +50,8 @@ const (
 // readily as a real tool signal: the burden of proof is on NAMING a concrete
 // external mechanism, not on dodging a forbidden-phrase denylist.
 var toolSignalMarkers = []string{
-	"go test", "go build", "go vet", "agent-harness", "harness ", "skill ",
-	"agent-harness install", "install tests", "npm ", "./",
+	"go test", "go build", "go vet", "issueops", "harness ", "skill ",
+	"issueops install", "install tests", "npm ", "./",
 	"_test", "test", "golden", "contract", "fixture", "smoke", "lint",
 	"coverage", "-cover", "-race", "-count", "--json", "roundtrip",
 	"benchmark", "schema", "self-verify", "self-augment", "quick_validate",
@@ -70,7 +70,7 @@ var docArtifactMarkers = []string{
 // a candidate's VerifyWith must NAME at least one external verification
 // mechanism appropriate to its kind, never model self-critique. This is catalog
 // hygiene (the string names a mechanism); whether the mechanism exists and
-// PASSES is the separate execution gate enforced by `agent-harness self-verify`
+// PASSES is the separate execution gate enforced by `issueops self-verify`
 // / CI.
 func VerifyWithGrounded(kind VerificationKind, verifyWith []string) error {
 	if len(verifyWith) == 0 {
@@ -143,7 +143,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 94, Feasibility: 92, Novelty: 78, Risk: 14,
 			WhyNow:       []string{"테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"},
 			ExpectedGain: []string{"coverage, branch complexity, audit risk를 한 JSON 계약으로 수집", "self-augment 후보 refill의 입력을 재현 가능하게 만든다"},
-			VerifyWith:   []string{"go test ./cmd/harness/qualitycli -count=1", "agent-harness quality inspect --json"},
+			VerifyWith:   []string{"go test ./cmd/issueops/qualitycli -count=1", "issueops quality inspect --json"},
 			Evidence:     []string{"quality inspect CLI", "coverage/complexity/audit signal output"},
 		},
 		{
@@ -151,7 +151,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 88, Feasibility: 90, Novelty: 64, Risk: 12,
 			WhyNow:       []string{"CollectSelfAugmentRepoSignals branch count is high for a read-only detector"},
 			ExpectedGain: []string{"signal additions become table rows", "branch count drops below the planned threshold"},
-			VerifyWith:   []string{"go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"},
+			VerifyWith:   []string{"go test ./cmd/issueops/selfworkflow/augmentcatalog -count=1"},
 			Evidence:     []string{"CollectSelfAugmentRepoSignals table-driven refactor"},
 		},
 		{
@@ -159,7 +159,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 80, Feasibility: 84, Novelty: 50, Risk: 12,
 			WhyNow:       []string{"MCP resource drift affects both Codex and Claude hosts"},
 			ExpectedGain: []string{"resource schema and lookup regressions fail in package tests"},
-			VerifyWith:   []string{"go test ./cmd/harness/mcpcli/resources -count=1", "go test -cover ./cmd/harness/mcpcli/resources"},
+			VerifyWith:   []string{"go test ./cmd/issueops/mcpcli/resources -count=1", "go test -cover ./cmd/issueops/mcpcli/resources"},
 			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{
@@ -197,23 +197,23 @@ func CandidateSpecs() []CandidateSpec {
 		{
 			ID: "daemon-connection-limit", Title: "Add daemon connection limit protection", Category: "audit-risk",
 			Impact: 90, Feasibility: 72, Novelty: 58, Risk: 26,
-			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"},
+			WhyNow:       []string{".issueops/PROJECT_AUDIT.md flags D1 P1 no connection limit"},
 			ExpectedGain: []string{"daemon resource exhaustion has an explicit guard and test"},
-			VerifyWith:   []string{"go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"},
+			VerifyWith:   []string{"go test ./cmd/issueops/daemoncli ./internal/adapter/worker -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT D1 P1"},
 		},
 		{
 			ID: "worker-stuck-running-detection", Title: "Detect worker jobs stuck running after process crash", Category: "audit-risk",
 			Impact: 88, Feasibility: 74, Novelty: 58, Risk: 24,
-			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"},
+			WhyNow:       []string{".issueops/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"},
 			ExpectedGain: []string{"worker status can classify stale running records"},
-			VerifyWith:   []string{"go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"},
+			VerifyWith:   []string{"go test ./internal/adapter/worker ./cmd/issueops/workercli -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT W1 P1"},
 		},
 		{
 			ID: "state-write-locking", Title: "Add write locking around state file updates", Category: "audit-risk",
 			Impact: 91, Feasibility: 76, Novelty: 56, Risk: 28,
-			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"},
+			WhyNow:       []string{".issueops/PROJECT_AUDIT.md flags S1 P1 no write locking"},
 			ExpectedGain: []string{"concurrent state writes stop risking lost updates"},
 			VerifyWith:   []string{"go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1", "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT S1 P1"},

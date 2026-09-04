@@ -1,0 +1,65 @@
+package issueopsapp
+
+import (
+	"context"
+
+	"issueops/cmd/issueops/issueopscli/feedbackcleanup"
+	issueopscore "issueops/internal/adapter/issueops"
+	orcaadapter "issueops/internal/adapter/orca"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
+)
+
+// cleanup CLI는 정리 구현과 의존 조립을 알지 않는다. 어댑터를 아는 곳은
+// composition root 하나뿐이다.
+func configureIssueOpsCleanup() {
+	feedbackcleanup.ConfigureCleanup(feedbackcleanup.CleanupDeps{
+		AddIssueOpsFeedbackWithActor: issueopscore.AddIssueOpsFeedbackWithActor,
+		CleanupAbandon: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupAbandonRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupAbandonResult, error) {
+			return issueopscore.CleanupAbandon(ctx, stateRoot, req, issueopscore.CleanupAbandonDeps{
+				Orca: d.OrcaIntent, OrcaOwner: d.OrcaOwner,
+				Processes:     issueopscore.CleanupProcessDeps{Observe: d.InspectCleanupProcesses},
+				OrcaTerminals: orcaadapter.New(),
+				Remote:        prov,
+			})
+		},
+		CleanupFinish: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupFinishRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupFinishResult, error) {
+			return issueopscore.CleanupFinish(ctx, stateRoot, req, issueopscore.CleanupFinishDeps{
+				Git:                d.CleanupFinishGit,
+				Processes:          issueopscore.CleanupProcessDeps{Observe: d.InspectCleanupProcesses},
+				OrcaTerminals:      orcaadapter.New(),
+				ObserveArtifact:    issueopscore.ObserveRemoteArtifact,
+				RemoveOrcaWorktree: d.RemoveOrcaWorktree,
+				ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
+					return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)
+				},
+			})
+		},
+		CleanupRemoteBranch: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupRemoteBranchRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupRemoteBranchResult, error) {
+			return issueopscore.CleanupRemoteBranch(ctx, stateRoot, req, issueopscore.CleanupRemoteBranchDeps{
+				VerifyMergedArtifact: d.VerifyMergedHead,
+				ObserveArtifact:      issueopscore.ObserveRemoteArtifact,
+				ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
+					return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)
+				},
+			})
+		},
+		CleanupLinkedBranch: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupLinkedBranchRequest) (issueopscontract.CleanupLinkedBranchResult, error) {
+			return issueopscore.CleanupLinkedBranch(ctx, stateRoot, req, issueopscore.CleanupLinkedBranchDeps{
+				ObserveLinkedBranches: issueopscore.ObserveGitHubLinkedBranches(issueopscore.LiveProviderCLI),
+				DeleteLinkedBranch:    issueopscore.DeleteGitHubLinkedBranch(issueopscore.LiveProviderCLI),
+			})
+		},
+		CloseIssueOpsChildren:                             issueopscore.CloseIssueOpsChildren,
+		FinalizeIssueOpsCleanupStatus:                     issueopscore.FinalizeIssueOpsCleanupStatus,
+		IssueOpsCleanupStatusForRecord:                    issueopscore.IssueOpsCleanupStatusForRecord,
+		IssueOpsRemoteArtifactMissing:                     issueopscore.IssueOpsRemoteArtifactMissing,
+		IssueOpsStateRoot:                                 issueopscore.IssueOpsStateRoot,
+		MarkIssueOpsContractFeedbackIssueUpdatedWithActor: issueopscore.MarkIssueOpsContractFeedbackIssueUpdatedWithActor,
+		ObserveNativeProcessAncestry:                      issueopscore.ObserveNativeProcessAncestry,
+		ReadIssueOps:                                      issueopscore.ReadIssueOps,
+		ReadRemoteIssueSnapshot:                           issueopscore.ReadRemoteIssueSnapshot,
+		ReflectCleanupAudit:                               issueopscore.ReflectCleanupAudit,
+		ResolveRecordProvider:                             issueopscore.ResolveRecordProvider,
+	})
+}

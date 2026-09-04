@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 const (

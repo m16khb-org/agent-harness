@@ -9,8 +9,8 @@ import (
 )
 
 func TestVerifyHookActivationRejectsWorktreeTargetWithExactDiagnostic(t *testing.T) {
-	expectedTarget := "/source/bin/agent-harness"
-	observedTarget := "/source.worktrees/completed/bin/agent-harness"
+	expectedTarget := "/source/bin/issueops"
+	observedTarget := "/source.worktrees/completed/bin/issueops"
 	expected := hookTargetTestConfig("'" + expectedTarget + "' hook pre-tool-use --host codex")
 	actual := hookTargetTestConfig("'" + observedTarget + "' hook pre-tool-use --host codex")
 	raw, err := json.Marshal(actual)

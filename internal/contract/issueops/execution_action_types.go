@@ -5,7 +5,7 @@ package issueops
 import (
 	"context"
 
-	executionissue "agent-harness/internal/contract/executionissue"
+	executionissue "issueops/internal/contract/executionissue"
 )
 
 // port 인터페이스를 필드나 시그니처로 갖는 선언은 계약이 아니라 어댑터가
@@ -38,7 +38,7 @@ type ExecutionActionRequest struct {
 	Preview                      bool                                           `json:"preview,omitempty"`
 	Confirm                      bool                                           `json:"confirm,omitempty"`
 	FinalHead                    string                                         `json:"final_head,omitempty"`
-	TuringReportPath             string                                         `json:"turing_report_path,omitempty"`
+	VerificationReportPath       string                                         `json:"verification_report_path,omitempty"`
 	Verification                 []string                                       `json:"verification,omitempty"`
 	RemoteArtifactURL            string                                         `json:"remote_artifact_url,omitempty"`
 	IssueSnapshot                *executionissue.ExecutionIssueSnapshotEvidence `json:"issue_snapshot,omitempty"`

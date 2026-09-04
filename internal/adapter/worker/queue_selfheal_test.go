@@ -1,8 +1,8 @@
 package worker
 
 import (
-	workercontract "agent-harness/internal/contract/worker"
 	"fmt"
+	workercontract "issueops/internal/contract/worker"
 	"testing"
 )
 
@@ -11,7 +11,7 @@ import (
 // the raw per-status counts alone do not surface.
 func TestListWorkerJobsReportsQueueDepth(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_WORKER_DIR", dir)
+	t.Setenv("ISSUEOPS_WORKER_DIR", dir)
 
 	statuses := []string{
 		workercontract.WorkerStatusQueued, workercontract.WorkerStatusQueued,

@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	processHelperModeEnv = "HARNESS_SQLSTORE_PROCESS_HELPER"
-	processHelperDirEnv  = "HARNESS_SQLSTORE_PROCESS_DIR"
+	processHelperModeEnv = "ISSUEOPS_SQLSTORE_PROCESS_HELPER"
+	processHelperDirEnv  = "ISSUEOPS_SQLSTORE_PROCESS_DIR"
 )
 
 type sqlstoreHelperProcess struct {

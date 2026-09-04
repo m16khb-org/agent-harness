@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	policydomain "agent-harness/internal/contract/policy"
+	policydomain "issueops/internal/contract/policy"
 )
 
 func withPreparedBaseBranch(t *testing.T, base string, found bool) {

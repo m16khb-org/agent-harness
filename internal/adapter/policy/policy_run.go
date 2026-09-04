@@ -1,11 +1,11 @@
 package policy
 
 import (
-	policycontract "agent-harness/internal/contract/policy"
-	policydomain "agent-harness/internal/domain/policy"
 	"bytes"
 	"context"
 	"fmt"
+	policycontract "issueops/internal/contract/policy"
+	policydomain "issueops/internal/domain/policy"
 	"os"
 	"os/exec"
 	"strings"

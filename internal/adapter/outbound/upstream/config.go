@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 // ReadConfig loads the upstream declaration. A missing file is not an error:

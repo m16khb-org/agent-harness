@@ -1,6 +1,6 @@
 package lifecycle
 
-import projectdoccontract "agent-harness/internal/contract/projectdoc"
+import projectdoccontract "issueops/internal/contract/projectdoc"
 
 type ProjectFingerprint struct {
 	RepoRoot      string `json:"repo_root"`

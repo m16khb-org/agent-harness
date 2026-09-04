@@ -14,17 +14,17 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // execution sync-base는 completion 이후에도 남는 typed 충돌 해소 표면이다
 // (이슈 #114). sealed git topology 가드 정책은 그대로 두고, lifecycle guard의
 // typed control plane 목록과 commandparse spec에만 이 명령을 가산 등록한다.
-// typed 등록은 훅의 mutation 가드 블록 전체를 스킵시키므로(brooks F14) lease와
+// typed 등록은 훅의 mutation 가드 블록 전체를 스킵시키므로(design-review F14) lease와
 // 권위 검사는 100% 이 파일의 책임이다 — 훅은 --id만 보고 통과시킨다.
 
 // executionSyncBaseGitTimeout은 fetch/push가 자격증명 프롬프트나 네트워크
-// 정지에 걸려 holder 세션을 무한정 붙잡는 것을 막는 상한이다(brooks F5 —
+// 정지에 걸려 holder 세션을 무한정 붙잡는 것을 막는 상한이다(design-review F5 —
 // issueops 프로덕션의 첫 push 표면).
 const executionSyncBaseGitTimeout = 120 * time.Second
 
@@ -142,7 +142,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 		}
 	}
 	// ④ pending_intent_absent: 열린 외부 intent 위에서는 어떤 변형도 금지한다
-	//    (brooks F13 — replace 선례 준용, reconcile로 안내).
+	//    (design-review F13 — replace 선례 준용, reconcile로 안내).
 	if execution.Pending != nil {
 		missing = append(missing, "pending_intent_absent")
 	}
@@ -163,7 +163,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	}
 	result.Branch, result.BaseBranch = inventory.Branch, inventory.BaseBranch
 	// ⑤ worktree_present + cwd_canonical: 소스 루트 호출의 훅 사각지대를
-	//    봉쇄한다(brooks F2 — complete/claim 선례 준용).
+	//    봉쇄한다(design-review F2 — complete/claim 선례 준용).
 	info, err := os.Lstat(inventory.Root)
 	if inventory.Root == "" || err != nil || !info.IsDir() {
 		return inventory, append(missing, "worktree_present")
@@ -173,12 +173,12 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	}
 	missing = append(missing, executionSyncBaseAuthorityMissing(execution, req, mode, actor)...)
 	// ⑥ head_on_recorded_branch: detached HEAD의 무증상 push 실패를 막는다
-	//    (brooks F3).
+	//    (design-review F3).
 	if code, head := deps.Git(ctx, inventory.Root, "branch", "--show-current"); code != 0 ||
 		inventory.Branch == "" || strings.TrimSpace(head) != inventory.Branch {
 		missing = append(missing, "head_on_recorded_branch")
 	}
-	// ③ remote_branch_present: 머지·삭제된 원격 브랜치 부활 방지(brooks F7).
+	// ③ remote_branch_present: 머지·삭제된 원격 브랜치 부활 방지(design-review F7).
 	if code, out := deps.Git(ctx, inventory.Root, "ls-remote", "--heads", "origin", "refs/heads/"+inventory.Branch); code != 0 {
 		missing = append(missing, "remote_branch_readable")
 	} else if fields := strings.Fields(strings.TrimSpace(out)); len(fields) > 0 {
@@ -190,7 +190,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	}
 	result.RemoteBranchPresent = inventory.RemoteBranchPresent
 	// ⑦ merge_state_clean / merge_in_progress: 중간 상태를 모드별로 갈라 본다
-	//    (brooks F11 — apply는 거부, finalize/abort는 필수 전제).
+	//    (design-review F11 — apply는 거부, finalize/abort는 필수 전제).
 	inventory.MergeInProgress = executionSyncBaseMergeInProgress(ctx, inventory.Root, deps)
 	result.MergeInProgress = inventory.MergeInProgress
 	switch mode {
@@ -199,7 +199,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 			missing = append(missing, "merge_state_clean")
 		}
 		// ⑧ worktree_clean: tracked 변경만 차단하고 untracked는 경고로
-		//    나열한다(brooks F10 — 상시 거부 방지).
+		//    나열한다(design-review F10 — 상시 거부 방지).
 		trackedDirty, untracked := executionSyncBaseWorktreeStatus(ctx, inventory.Root, deps)
 		result.UntrackedWarnings = untracked
 		if trackedDirty {
@@ -210,7 +210,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 			missing = append(missing, "merge_in_progress")
 		}
 	}
-	// fetch 선행(preview·apply): stale base 머지 방지(brooks F6 —
+	// fetch 선행(preview·apply): stale base 머지 방지(design-review F6 —
 	// pr-readiness strict 선례). base tip은 반드시 fetch 이후 값이어야 한다.
 	switch mode {
 	case ExecutionSyncBasePreview, ExecutionSyncBaseApply:
@@ -430,7 +430,7 @@ func pushExecutionSyncBase(ctx context.Context, stateRoot string, record issueop
 
 // appendExecutionSyncBaseEvent는 레코드 쓰기 락 안에서 이벤트만 append한다.
 // Completion.FinalHead는 여기서도 다른 어디서도 건드리지 않는다 — 완결 시점
-// 증거를 보존하고 merge OID는 이벤트가 담당한다는 정책이다(brooks F9).
+// 증거를 보존하고 merge OID는 이벤트가 담당한다는 정책이다(design-review F9).
 func appendExecutionSyncBaseEvent(ctx context.Context, stateRoot, id string, event issueops.ExecutionSyncBaseEvent) error {
 	return withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		rec, err := ReadIssueOps(stateRoot, id)
@@ -495,7 +495,7 @@ func executionSyncBaseFail(record issueops.IssueOpsRecord, result *ExecutionSync
 }
 
 // executionSyncBasePredictConflicts는 워크트리를 오염시키지 않고 병합 결과를
-// 시험한다(ODB에만 객체를 쓴다 — brooks F12). exit 0=무충돌, 1=충돌,
+// 시험한다(ODB에만 객체를 쓴다 — design-review F12). exit 0=무충돌, 1=충돌,
 // 그 외=미지원/오류로 갈라 fail-closed 처리한다(git 2.38 미만 포함).
 func executionSyncBasePredictConflicts(ctx context.Context, root, workOID, baseOID string, deps ExecutionSyncBaseDeps) ([]string, error) {
 	code, out := deps.Git(ctx, root, "merge-tree", "--write-tree", "--name-only", "-z", workOID, baseOID)
@@ -552,7 +552,7 @@ func executionSyncBaseUnmergedPaths(ctx context.Context, root string, deps Execu
 }
 
 // executionSyncBaseMergeInProgress는 MERGE_HEAD/CHERRY_PICK_HEAD/REBASE_HEAD와
-// rebase 디렉토리를 모두 본다(brooks F11). 경로 해석 실패는 진행 중으로 본다.
+// rebase 디렉토리를 모두 본다(design-review F11). 경로 해석 실패는 진행 중으로 본다.
 func executionSyncBaseMergeInProgress(ctx context.Context, root string, deps ExecutionSyncBaseDeps) bool {
 	for _, ref := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD"} {
 		if code, _ := deps.Git(ctx, root, "rev-parse", "--verify", "--quiet", ref); code == 0 {
@@ -660,7 +660,7 @@ func executionSyncBaseActorLabel(actor issueops.NativeActor) string {
 }
 
 func executionSyncBaseCommandPrefix(record issueops.IssueOpsRecord) string {
-	command := "agent-harness issueops execution sync-base --id " + quoteExecutionOwnerArg(record.ID)
+	command := "issueops execution sync-base --id " + quoteExecutionOwnerArg(record.ID)
 	if record.Execution != nil && record.Execution.Lease.Status == issueops.LeaseStatusReleased &&
 		record.Execution.Completion != nil && record.Execution.Completion.Generation != 0 {
 		command += " --completion-generation " + strconv.FormatUint(record.Execution.Completion.Generation, 10)
@@ -673,13 +673,13 @@ func executionSyncBasePreviewCommand(record issueops.IssueOpsRecord) string {
 }
 
 func executionStatusCommandForSyncBase(id string) string {
-	return fmt.Sprintf("agent-harness issueops execution status --id %s --json", id)
+	return fmt.Sprintf("issueops execution status --id %s --json", id)
 }
 
 // defaultExecutionSyncBaseGit은 push/fetch 계약을 강제한다: 자격증명 프롬프트
 // 금지(GIT_TERMINAL_PROMPT=0, GIT_ASKPASS 비움), ssh 비대화(BatchMode), 그리고
 // context timeout. 이 계약이 없으면 첫 프로덕션 push가 holder 세션을 붙잡는다
-// (brooks F5). preflight.GitCmd는 env/ctx를 받지 않아 여기서 직접 실행한다.
+// (design-review F5). preflight.GitCmd는 env/ctx를 받지 않아 여기서 직접 실행한다.
 func defaultExecutionSyncBaseGit(ctx context.Context, dir string, args ...string) (int, string) {
 	if ctx == nil {
 		ctx = context.Background()

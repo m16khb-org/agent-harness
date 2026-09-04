@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
-	issueopsauthorizationdomain "agent-harness/internal/domain/issueopsauthorization"
-	issueopsdecisiondomain "agent-harness/internal/domain/issueopsdecision"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
+	issueopsauthorizationdomain "issueops/internal/domain/issueopsauthorization"
+	issueopsdecisiondomain "issueops/internal/domain/issueopsdecision"
 )
 
 type Service struct {

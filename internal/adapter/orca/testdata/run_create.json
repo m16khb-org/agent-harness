@@ -4,7 +4,7 @@
   "result": {
     "run": {
       "id": "run_issueops_1",
-      "objective": "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test",
+      "objective": "issueops-v1 lifecycle=io-test generation=1 intent=op-test",
       "legacy": 0
     }
   },

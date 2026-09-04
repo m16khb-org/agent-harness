@@ -6,11 +6,11 @@ import (
 	"context"
 	"errors"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/port"
+	issueopscontract "issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	statecontract "issueops/internal/contract/state"
+	"issueops/internal/port"
 )
 
 type service interface {
@@ -119,7 +119,7 @@ func coreExecution(execution *leasecontract.Execution) *issueopscontract.Executi
 	if execution.Completion != nil {
 		completion := execution.Completion
 		result.Completion = &issueopscontract.ExecutionCompletion{
-			Generation: completion.Generation, FinalHead: completion.FinalHead, TuringReportPath: completion.TuringReportPath,
+			Generation: completion.Generation, FinalHead: completion.FinalHead, VerificationReportPath: completion.VerificationReportPath,
 			Verification: cloneStrings(completion.Verification), RemoteArtifactURL: completion.RemoteArtifactURL, CompletedAt: completion.CompletedAt,
 		}
 	}
@@ -128,7 +128,7 @@ func coreExecution(execution *leasecontract.Execution) *issueopscontract.Executi
 		for index, entry := range execution.CompletionHistory {
 			result.CompletionHistory[index] = issueopscontract.ExecutionCompletionHistory{
 				Generation: entry.Generation,
-				Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, TuringReportPath: entry.Completion.TuringReportPath, Verification: cloneStrings(entry.Completion.Verification), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
+				Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, VerificationReportPath: entry.Completion.VerificationReportPath, Verification: cloneStrings(entry.Completion.Verification), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
 				Reason:     entry.Reason,
 				ReopenedAt: entry.ReopenedAt,
 			}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // local readiness는 단계 분류처럼 자주 불리므로 원격을 때리면 안 된다.

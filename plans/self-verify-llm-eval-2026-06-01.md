@@ -1,7 +1,7 @@
 # Self-Verify Opt-In LLM Evaluation via Z.AI Coding Plan
 
 ## TL;DR
-> Summary:      Add opt-in LLM evaluation to `agent-harness self-verify` by invoking `Z.AI Coding Plan` after the deterministic loop, without changing default deterministic behavior.
+> Summary:      Add opt-in LLM evaluation to `issueops self-verify` by invoking `Z.AI Coding Plan` after the deterministic loop, without changing default deterministic behavior.
 > Deliverables:
 > - `--llm-eval`, `--llm-eval-mode=advisory|gate`, `--model`, and `internal default timeout` across CLI usage, tests, and MCP parity.
 > - Structured `llm_eval` JSON with bounded prompt/output/error handling and fake Z.AI tests/QA.
@@ -18,7 +18,7 @@
 - Support gate mode: LLM `ok=false`, score below target, blockers, command failure, timeout, or parse failure make the overall self-verify result not OK and return a gate error while still emitting structured JSON when `--json` is used.
 - Keep LLM evaluation once-after-deterministic-loop; do not add LLM calls inside the 10-iteration self-verify loop.
 - Keep CLI and MCP argument/result contracts aligned and update contract/golden fixtures.
-- Update `.agent-harness/` docs to describe this as a narrow opt-in exception, not a general harness-owned LLM-advisor surface.
+- Update `.issueops/` docs to describe this as a narrow opt-in exception, not a general harness-owned LLM-advisor surface.
 - Capture tmux QA artifacts under `evidence/`.
 
 ### Must NOT have (guardrails, anti-slop, scope boundaries)
@@ -27,7 +27,7 @@
 - Must not change deterministic scoring, minimum 10-iteration rule, candidate export, history, compare, or promote semantics except where the immediate `self-verify` result records opt-in `llm_eval`.
 - Must not persist raw LLM prompt/output or secrets in state, logs, docs, tests, fixtures, or MCP responses.
 - Must not make hooks, native install/update, daemon status, or default MCP tool calls invoke `zai`.
-- Must not overwrite or revert unrelated dirty worktree changes; current dirty files include code, goldens, adapters, docs plans, and untracked `cmd/harness/self_verify_llm_eval.go`.
+- Must not overwrite or revert unrelated dirty worktree changes; current dirty files include code, goldens, adapters, docs plans, and untracked `cmd/issueops/self_verify_llm_eval.go`.
 - Must not reimplement LLM Wiki or broader agent-advisor behavior.
 
 ## Verification strategy
@@ -41,7 +41,7 @@
 > Target 5-8 tasks per wave. <3 per wave (except final) = under-splitting.
 > Extract shared dependencies as Wave-1 tasks to maximize parallelism.
 
-This feature is centered on `cmd/harness/main.go` plus one untracked companion file, so implementation parallelism must favor file ownership over maximum worker count to avoid conflicts. Documentation can run in parallel after Task 1 records the agreed contract.
+This feature is centered on `cmd/issueops/main.go` plus one untracked companion file, so implementation parallelism must favor file ownership over maximum worker count to avoid conflicts. Documentation can run in parallel after Task 1 records the agreed contract.
 
 Wave 1 (no dependencies):
 - Task 1: Baseline worktree, schema/default-off contract, and TDD guard
@@ -75,31 +75,31 @@ Critical path: Task 1 -> Task 2 -> Task 3 -> Task 6
 
 - [ ] 1. Baseline worktree, schema/default-off contract, and TDD guard
 
-  What to do: Capture current dirty worktree status before touching anything; preserve existing partial uncommitted work instead of reverting it. Lock the result schema and default-off behavior with tests first. Treat the untracked `cmd/harness/self_verify_llm_eval.go` as current work-in-progress to review, not as a clean accepted implementation. Ensure `SelfAugmentResult.LLMEval` remains `omitempty` and no default JSON contains `llm_eval`.
+  What to do: Capture current dirty worktree status before touching anything; preserve existing partial uncommitted work instead of reverting it. Lock the result schema and default-off behavior with tests first. Treat the untracked `cmd/issueops/self_verify_llm_eval.go` as current work-in-progress to review, not as a clean accepted implementation. Ensure `SelfAugmentResult.LLMEval` remains `omitempty` and no default JSON contains `llm_eval`.
   Must NOT do: Do not run real `zai`; do not edit docs or MCP schema in this task; do not stage unrelated dirty files.
 
   Parallelization: Can parallel: NO | Wave 1 | Blocks: [2, 5] | Blocked by: []
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `cmd/harness/main.go:646-671` - current partial CLI flags call `applySelfVerifyLLMEval`; verify defaults are opt-in and no LLM path runs when `--llm-eval` is absent.
-  - API/Type: `cmd/harness/main.go:1030-1043` - `SelfAugmentResult` currently has `LLMEval *SelfVerifyLLMEvalResult` with `json:"llm_eval,omitempty"`.
-  - API/Type: `cmd/harness/self_verify_llm_eval.go:17-35` - current untracked option/result DTO definitions for the LLM eval surface.
-  - Test:     `cmd/harness/self_augment_summary_test.go:956-980` - existing partial default omission and advisory success tests; extend rather than duplicate.
-  - Test:     `cmd/harness/contract_golden_test.go:14-28` - golden helper and `-update` convention for usage goldens.
-  - Project:  `.agent-harness/TESTING.md:125-149` - deterministic/fake tests are required for process and model-like behavior.
+  - Pattern:  `cmd/issueops/main.go:646-671` - current partial CLI flags call `applySelfVerifyLLMEval`; verify defaults are opt-in and no LLM path runs when `--llm-eval` is absent.
+  - API/Type: `cmd/issueops/main.go:1030-1043` - `SelfAugmentResult` currently has `LLMEval *SelfVerifyLLMEvalResult` with `json:"llm_eval,omitempty"`.
+  - API/Type: `cmd/issueops/self_verify_llm_eval.go:17-35` - current untracked option/result DTO definitions for the LLM eval surface.
+  - Test:     `cmd/issueops/self_augment_summary_test.go:956-980` - existing partial default omission and advisory success tests; extend rather than duplicate.
+  - Test:     `cmd/issueops/contract_golden_test.go:14-28` - golden helper and `-update` convention for usage goldens.
+  - Project:  `.issueops/TESTING.md:125-149` - deterministic/fake tests are required for process and model-like behavior.
 
   Acceptance criteria (agent-executable only):
   - [ ] Baseline dirty state captured before edits:
-    `mkdir -p evidence && git status --short > evidence/task-1-self-verify-llm-eval-baseline-status.txt && git diff -- cmd/harness/main.go cmd/harness/self_verify_llm_eval.go cmd/harness/self_augment_summary_test.go > evidence/task-1-self-verify-llm-eval-baseline-diff.patch`
+    `mkdir -p evidence && git status --short > evidence/task-1-self-verify-llm-eval-baseline-status.txt && git diff -- cmd/issueops/main.go cmd/issueops/self_verify_llm_eval.go cmd/issueops/self_augment_summary_test.go > evidence/task-1-self-verify-llm-eval-baseline-diff.patch`
   - [ ] TDD RED captured by applying only the schema/default tests to a temporary clean `HEAD` worktree and running:
-    `go test ./cmd/harness -run 'TestSelfVerifyLLMEvalDefaultOmittedFromJSON|TestSelfVerifyLLMEvalAdvisorySuccess' -count=1`
+    `go test ./cmd/issueops -run 'TestSelfVerifyLLMEvalDefaultOmittedFromJSON|TestSelfVerifyLLMEvalAdvisorySuccess' -count=1`
     with failure output saved to `evidence/task-1-self-verify-llm-eval-red.txt`.
   - [ ] GREEN captured in the working tree:
-    `go test ./cmd/harness -run 'TestSelfVerifyLLMEvalDefaultOmittedFromJSON|TestSelfVerifyLLMEvalAdvisorySuccess' -count=1 | tee evidence/task-1-self-verify-llm-eval-green.txt`
+    `go test ./cmd/issueops -run 'TestSelfVerifyLLMEvalDefaultOmittedFromJSON|TestSelfVerifyLLMEvalAdvisorySuccess' -count=1 | tee evidence/task-1-self-verify-llm-eval-green.txt`
   - [ ] Static contract check passes:
     `python3 - <<'PY'
 from pathlib import Path
-main = Path('cmd/harness/main.go').read_text()
+main = Path('cmd/issueops/main.go').read_text()
 assert 'LLMEval             *SelfVerifyLLMEvalResult    `json:"llm_eval,omitempty"`' in main
 assert 'llm-eval' in main
 print('ok')
@@ -110,22 +110,22 @@ PY`
   ```
   Scenario: Default JSON omits llm_eval
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalDefaultOmittedFromJSON -count=1 | tee evidence/task-1-self-verify-llm-eval-default.txt
+    Steps:    go test ./cmd/issueops -run TestSelfVerifyLLMEvalDefaultOmittedFromJSON -count=1 | tee evidence/task-1-self-verify-llm-eval-default.txt
     Expected: command exits 0 and test output includes PASS; the test fails if marshalled default JSON contains llm_eval.
     Evidence: evidence/task-1-self-verify-llm-eval-default.txt
 
   Scenario: Advisory fake Z.AI result is structured
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalAdvisorySuccess -count=1 | tee evidence/task-1-self-verify-llm-eval-advisory.txt
+    Steps:    go test ./cmd/issueops -run TestSelfVerifyLLMEvalAdvisorySuccess -count=1 | tee evidence/task-1-self-verify-llm-eval-advisory.txt
     Expected: command exits 0; the fake reviewer score, risks, next actions, and evidence_packet_bytes are preserved in llm_eval.
     Evidence: evidence/task-1-self-verify-llm-eval-advisory.txt
   ```
 
-  Commit: YES | Message: `test(self-verify): lock llm eval contract` | Files: [`cmd/harness/main.go`, `cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `evidence/task-1-self-verify-llm-eval-*.txt`, `evidence/task-1-self-verify-llm-eval-baseline-diff.patch`]
+  Commit: YES | Message: `test(self-verify): lock llm eval contract` | Files: [`cmd/issueops/main.go`, `cmd/issueops/self_verify_llm_eval.go`, `cmd/issueops/self_augment_summary_test.go`, `evidence/task-1-self-verify-llm-eval-*.txt`, `evidence/task-1-self-verify-llm-eval-baseline-diff.patch`]
 
 - [ ] 2. Harden fake Z.AI execution, prompt budget, parser, and advisory/gate semantics
 
-  What to do: Make `cmd/harness/self_verify_llm_eval.go` execute `Z.AI Coding Plan` exactly, with `context.WithTimeout`, bounded evidence packet, strict single-JSON-object decoding, bounded error strings, and deterministic advisory/gate behavior. Update fake Z.AI tests so the first argument must be `-p`; remove the current `--dangerously-skip-permissions` expectation from `cmd/harness/self_augment_summary_test.go:1016-1024` and from execution at `cmd/harness/self_verify_llm_eval.go:91-94`. Add missing tests for command failure, timeout, extra JSON values, prompt budget, default timeout, empty command fallback, and gate failure on parse/command errors.
+  What to do: Make `cmd/issueops/self_verify_llm_eval.go` execute `Z.AI Coding Plan` exactly, with `context.WithTimeout`, bounded evidence packet, strict single-JSON-object decoding, bounded error strings, and deterministic advisory/gate behavior. Update fake Z.AI tests so the first argument must be `-p`; remove the current `--dangerously-skip-permissions` expectation from `cmd/issueops/self_augment_summary_test.go:1016-1024` and from execution at `cmd/issueops/self_verify_llm_eval.go:91-94`. Add missing tests for command failure, timeout, extra JSON values, prompt budget, default timeout, empty command fallback, and gate failure on parse/command errors.
   Must NOT do: Do not add unrequested prompt configurability; do not include raw full self-verify runs in the prompt; do not loosen JSON parsing to accept prose around JSON.
 
   Parallelization: Can parallel: YES | Wave 2 | Blocks: [3, 4] | Blocked by: [1]
@@ -133,23 +133,23 @@ PY`
   References (executor has NO interview context - be exhaustive):
   - Pattern:  `internal/core/draft_wiki_queue.go:218-223` - existing safe `exec.CommandContext(ctx, Z.AICommand, "-p", prompt).CombinedOutput()` pattern.
   - Pattern:  `internal/core/draft_wiki_test.go:244-319` - fake Z.AI script pattern that checks `$1 = -p` and records prompt content.
-  - API/Type: `cmd/harness/self_verify_llm_eval.go:14-35` - budget constants and result DTO fields.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:64-112` - current apply function; revise command argv, timeout, error, and gate handling here.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:115-140` - current bounded prompt builder; keep bounded and focused on summary/last run.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:143-155` - strict decoder rejects extra JSON values.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:168-188` - gate semantics currently flips OK and termination eligibility.
-  - Test:     `cmd/harness/self_augment_summary_test.go:982-1007` - malformed output and gate failure tests to expand.
+  - API/Type: `cmd/issueops/self_verify_llm_eval.go:14-35` - budget constants and result DTO fields.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:64-112` - current apply function; revise command argv, timeout, error, and gate handling here.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:115-140` - current bounded prompt builder; keep bounded and focused on summary/last run.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:143-155` - strict decoder rejects extra JSON values.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:168-188` - gate semantics currently flips OK and termination eligibility.
+  - Test:     `cmd/issueops/self_augment_summary_test.go:982-1007` - malformed output and gate failure tests to expand.
   - External: local `Z.AI --help` evidence from `$HOME/.local/bin/Z.AI` shows `-p, --print` and `--print-timeout`, so this feature should pass prompt via `-p` and keep timeout owned by harness.
 
   Acceptance criteria (agent-executable only):
   - [ ] RED tests captured before implementation changes for all new execution edge cases:
-    `go test ./cmd/harness -run 'TestSelfVerifyLLMEvalCommandFailureIsStructured|TestSelfVerifyLLMEvalRejectsExtraJSON|TestSelfVerifyLLMEvalTimeoutIsBounded|TestSelfVerifyLLMEvalPromptIsBounded|TestSelfVerifyLLMEvalGateFailsOnMalformedOutput|TestSelfVerifyLLMEvalUsesDashPOnly' -count=1 | tee evidence/task-2-self-verify-llm-eval-red.txt`
+    `go test ./cmd/issueops -run 'TestSelfVerifyLLMEvalCommandFailureIsStructured|TestSelfVerifyLLMEvalRejectsExtraJSON|TestSelfVerifyLLMEvalTimeoutIsBounded|TestSelfVerifyLLMEvalPromptIsBounded|TestSelfVerifyLLMEvalGateFailsOnMalformedOutput|TestSelfVerifyLLMEvalUsesDashPOnly' -count=1 | tee evidence/task-2-self-verify-llm-eval-red.txt`
   - [ ] GREEN tests pass after implementation:
-    `go test ./cmd/harness -run 'TestSelfVerifyLLMEvalMalformedOutputIsStructured|TestSelfVerifyLLMEvalGateFailsOnBlocker|TestSelfVerifyLLMEvalCommandFailureIsStructured|TestSelfVerifyLLMEvalRejectsExtraJSON|TestSelfVerifyLLMEvalTimeoutIsBounded|TestSelfVerifyLLMEvalPromptIsBounded|TestSelfVerifyLLMEvalGateFailsOnMalformedOutput|TestSelfVerifyLLMEvalUsesDashPOnly' -count=1 | tee evidence/task-2-self-verify-llm-eval-green.txt`
+    `go test ./cmd/issueops -run 'TestSelfVerifyLLMEvalMalformedOutputIsStructured|TestSelfVerifyLLMEvalGateFailsOnBlocker|TestSelfVerifyLLMEvalCommandFailureIsStructured|TestSelfVerifyLLMEvalRejectsExtraJSON|TestSelfVerifyLLMEvalTimeoutIsBounded|TestSelfVerifyLLMEvalPromptIsBounded|TestSelfVerifyLLMEvalGateFailsOnMalformedOutput|TestSelfVerifyLLMEvalUsesDashPOnly' -count=1 | tee evidence/task-2-self-verify-llm-eval-green.txt`
   - [ ] Static argv check proves no implicit permission bypass:
     `python3 - <<'PY'
 from pathlib import Path
-src = Path('cmd/harness/self_verify_llm_eval.go').read_text()
+src = Path('cmd/issueops/self_verify_llm_eval.go').read_text()
 assert 'exec.CommandContext(ctx, Z.AICommand, "-p", evidencePacket)' in src
 assert '--dangerously-skip-permissions' not in src
 print('ok')
@@ -157,7 +157,7 @@ PY`
   - [ ] Error and evidence budgets are asserted by tests and static constants remain present:
     `python3 - <<'PY'
 from pathlib import Path
-src = Path('cmd/harness/self_verify_llm_eval.go').read_text()
+src = Path('cmd/issueops/self_verify_llm_eval.go').read_text()
 assert 'selfVerifyLLMEvalEvidenceBudgetBytes' in src
 assert 'selfVerifyLLMEvalErrorBudgetBytes' in src
 assert 'decoder.Decode(&extra)' in src
@@ -168,18 +168,18 @@ PY`
   ```
   Scenario: Malformed fake Z.AI is advisory-only structured failure
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalMalformedOutputIsStructured -count=1 | tee evidence/task-2-self-verify-llm-eval-malformed.txt
+    Steps:    go test ./cmd/issueops -run TestSelfVerifyLLMEvalMalformedOutputIsStructured -count=1 | tee evidence/task-2-self-verify-llm-eval-malformed.txt
     Expected: command exits 0; result remains OK in advisory mode and llm_eval.ok=false with bounded parse error.
     Evidence: evidence/task-2-self-verify-llm-eval-malformed.txt
 
   Scenario: Gate mode converts fake Z.AI blocker into self-verify gate failure
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalGateFailsOnBlocker -count=1 | tee evidence/task-2-self-verify-llm-eval-gate.txt
+    Steps:    go test ./cmd/issueops -run TestSelfVerifyLLMEvalGateFailsOnBlocker -count=1 | tee evidence/task-2-self-verify-llm-eval-gate.txt
     Expected: command exits 0; test asserts overall OK=false, termination_eligible=false, and error contains LLM evaluation gate failed.
     Evidence: evidence/task-2-self-verify-llm-eval-gate.txt
   ```
 
-  Commit: YES | Message: `fix(self-verify): harden Z.AI eval execution` | Files: [`cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `evidence/task-2-self-verify-llm-eval-*.txt`]
+  Commit: YES | Message: `fix(self-verify): harden Z.AI eval execution` | Files: [`cmd/issueops/self_verify_llm_eval.go`, `cmd/issueops/self_augment_summary_test.go`, `evidence/task-2-self-verify-llm-eval-*.txt`]
 
 - [ ] 3. Finish CLI flags, usage, save-state boundary, and golden coverage
 
@@ -189,40 +189,40 @@ PY`
   Parallelization: Can parallel: YES | Wave 3 | Blocks: [6] | Blocked by: [2]
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `cmd/harness/main.go:628-687` - `runSelfVerify` flag parsing, mode validation, post-loop LLM eval call, save-state, JSON output ordering.
-  - Pattern:  `cmd/harness/main.go:1477-1479` - deterministic self-verify returns before LLM eval; preserve once-after-loop placement.
+  - Pattern:  `cmd/issueops/main.go:628-687` - `runSelfVerify` flag parsing, mode validation, post-loop LLM eval call, save-state, JSON output ordering.
+  - Pattern:  `cmd/issueops/main.go:1477-1479` - deterministic self-verify returns before LLM eval; preserve once-after-loop placement.
   - Pattern:  `internal/adapter/cli/usage.go:76-88` - current usage string includes LLM flags but omits `internal default timeout`.
-  - Test:     `cmd/harness/testdata/usage.golden.txt:38` - usage golden currently omits `internal default timeout`.
-  - Test:     `cmd/harness/contract_golden_test.go:14-28` - golden file comparison/update pattern.
-  - Test:     `cmd/harness/self_augment_summary_test.go:1009-1014` - current invalid mode test.
-  - Project:  `.agent-harness/CONVENTIONS.md:78-86` - CLI/MCP schemas and JSON outputs must stay host-neutral and golden-covered.
+  - Test:     `cmd/issueops/testdata/usage.golden.txt:38` - usage golden currently omits `internal default timeout`.
+  - Test:     `cmd/issueops/contract_golden_test.go:14-28` - golden file comparison/update pattern.
+  - Test:     `cmd/issueops/self_augment_summary_test.go:1009-1014` - current invalid mode test.
+  - Project:  `.issueops/CONVENTIONS.md:78-86` - CLI/MCP schemas and JSON outputs must stay host-neutral and golden-covered.
 
   Acceptance criteria (agent-executable only):
   - [ ] RED captured for CLI usage/flag behavior before fixes:
-    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-red.txt`
+    `go test ./cmd/issueops -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-red.txt`
   - [ ] GREEN captured after fixes:
-    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-green.txt`
+    `go test ./cmd/issueops -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-green.txt`
   - [ ] Usage source and golden both expose timeout:
     `python3 - <<'PY'
 from pathlib import Path
-for path in ['internal/adapter/cli/usage.go','cmd/harness/testdata/usage.golden.txt']:
+for path in ['internal/adapter/cli/usage.go','cmd/issueops/testdata/usage.golden.txt']:
     text = Path(path).read_text()
     assert 'internal default timeout' in text, path
 print('ok')
 PY`
   - [ ] Full command package still passes:
-    `go test ./cmd/harness -count=1 | tee evidence/task-3-self-verify-llm-eval-cmd-tests.txt`
+    `go test ./cmd/issueops -count=1 | tee evidence/task-3-self-verify-llm-eval-cmd-tests.txt`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
   Scenario: CLI advisory fake Z.AI emits llm_eval in JSON
     Tool:     bash
-    Steps:    go build -o bin/agent-harness ./cmd/harness && tmp="$(mktemp -d)" && cat > "$tmp/Z.AI" <<'SH'
+    Steps:    go build -o bin/issueops ./cmd/issueops && tmp="$(mktemp -d)" && cat > "$tmp/Z.AI" <<'SH'
 #!/bin/sh
 [ "$1" = "-p" ] || { echo "expected -p" >&2; exit 9; }
 printf '{"ok":true,"score":98,"summary":"fake advisory ok","blockers":[],"risks":[],"recommended_next_actions":[]}\n'
 SH
-chmod +x "$tmp/Z.AI" && ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model "$tmp/Z.AI" internal default timeout=2s --json > evidence/task-3-self-verify-llm-eval-cli.json && python3 - <<'PY'
+chmod +x "$tmp/Z.AI" && ./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model "$tmp/Z.AI" internal default timeout=2s --json > evidence/task-3-self-verify-llm-eval-cli.json && python3 - <<'PY'
 import json
 from pathlib import Path
 obj = json.loads(Path('evidence/task-3-self-verify-llm-eval-cli.json').read_text())
@@ -236,7 +236,7 @@ PY
 
   Scenario: CLI invalid mode fails before fake Z.AI is needed
     Tool:     bash
-    Steps:    set +e; ./bin/agent-harness self-verify --llm-eval --llm-eval-mode=unknown --json > evidence/task-3-self-verify-llm-eval-invalid.out 2>&1; code=$?; set -e; python3 - "$code" <<'PY'
+    Steps:    set +e; ./bin/issueops self-verify --llm-eval --llm-eval-mode=unknown --json > evidence/task-3-self-verify-llm-eval-invalid.out 2>&1; code=$?; set -e; python3 - "$code" <<'PY'
 import sys
 from pathlib import Path
 code = int(sys.argv[1])
@@ -249,7 +249,7 @@ PY
     Evidence: evidence/task-3-self-verify-llm-eval-invalid.out
   ```
 
-  Commit: YES | Message: `feat(cli): expose self-verify llm eval flags` | Files: [`cmd/harness/main.go`, `cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `internal/adapter/cli/usage.go`, `cmd/harness/testdata/usage.golden.txt`, `evidence/task-3-self-verify-llm-eval-*`]
+  Commit: YES | Message: `feat(cli): expose self-verify llm eval flags` | Files: [`cmd/issueops/main.go`, `cmd/issueops/self_verify_llm_eval.go`, `cmd/issueops/self_augment_summary_test.go`, `internal/adapter/cli/usage.go`, `cmd/issueops/testdata/usage.golden.txt`, `evidence/task-3-self-verify-llm-eval-*`]
 
 - [ ] 4. Add MCP `self_verify` LLM-eval parity and contract coverage
 
@@ -259,26 +259,26 @@ PY
   Parallelization: Can parallel: YES | Wave 3 | Blocks: [6] | Blocked by: [2]
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `cmd/harness/main.go:4803-4811` - current MCP `self_verify` tool schema lacks LLM args.
-  - Pattern:  `cmd/harness/main.go:5120-5135` - current MCP handler calls deterministic `selfVerify` and saves compact summary.
-  - Pattern:  `cmd/harness/main.go:646-671` - CLI LLM eval option parsing to mirror.
-  - Pattern:  `cmd/harness/main.go:4580-4595` - MCP tool schema list is serialized into goldens.
-  - Test:     `cmd/harness/response_contract_golden_test.go:18-207` - response contract and MCP tool golden assertions.
-  - Test:     `cmd/harness/testdata/mcp_tools.golden.json` - update to include new self_verify arguments.
-  - Test:     `cmd/harness/testdata/response_contracts.golden.json` - update if `llm_eval` changes response contracts.
-  - Project:  `.agent-harness/CAUTIONS.md:78-85` - avoid CLI/MCP schema drift.
-  - Project:  `.agent-harness/ADR.md:290-307` - CLI/MCP/worker DTOs should remain shared and host-neutral.
+  - Pattern:  `cmd/issueops/main.go:4803-4811` - current MCP `self_verify` tool schema lacks LLM args.
+  - Pattern:  `cmd/issueops/main.go:5120-5135` - current MCP handler calls deterministic `selfVerify` and saves compact summary.
+  - Pattern:  `cmd/issueops/main.go:646-671` - CLI LLM eval option parsing to mirror.
+  - Pattern:  `cmd/issueops/main.go:4580-4595` - MCP tool schema list is serialized into goldens.
+  - Test:     `cmd/issueops/response_contract_golden_test.go:18-207` - response contract and MCP tool golden assertions.
+  - Test:     `cmd/issueops/testdata/mcp_tools.golden.json` - update to include new self_verify arguments.
+  - Test:     `cmd/issueops/testdata/response_contracts.golden.json` - update if `llm_eval` changes response contracts.
+  - Project:  `.issueops/CAUTIONS.md:78-85` - avoid CLI/MCP schema drift.
+  - Project:  `.issueops/ADR.md:290-307` - CLI/MCP/worker DTOs should remain shared and host-neutral.
 
   Acceptance criteria (agent-executable only):
   - [ ] RED captured for MCP schema/handler tests:
-    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-red.txt`
+    `go test ./cmd/issueops -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-red.txt`
   - [ ] GREEN captured after implementation:
-    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-green.txt`
+    `go test ./cmd/issueops -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-green.txt`
   - [ ] MCP golden contains all new inputs:
     `python3 - <<'PY'
 import json
 from pathlib import Path
-tools = json.loads(Path('cmd/harness/testdata/mcp_tools.golden.json').read_text())
+tools = json.loads(Path('cmd/issueops/testdata/mcp_tools.golden.json').read_text())
 self_verify = next(t for t in tools if t['name'] == 'self_verify')
 props = self_verify['inputSchema']['properties']
 for key in ['llm_eval','llm_eval_mode','model','llm_eval_timeout']:
@@ -286,24 +286,24 @@ for key in ['llm_eval','llm_eval_mode','model','llm_eval_timeout']:
 print('ok')
 PY`
   - [ ] Full command package still passes after golden updates:
-    `go test ./cmd/harness -count=1 | tee evidence/task-4-self-verify-llm-eval-cmd-tests.txt`
+    `go test ./cmd/issueops -count=1 | tee evidence/task-4-self-verify-llm-eval-cmd-tests.txt`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
   Scenario: MCP self_verify default remains deterministic
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestMCPSelfVerifyLLMEvalDefaultOmitted -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-default.txt
+    Steps:    go test ./cmd/issueops -run TestMCPSelfVerifyLLMEvalDefaultOmitted -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-default.txt
     Expected: command exits 0; MCP payload omits llm_eval when llm_eval argument is absent.
     Evidence: evidence/task-4-self-verify-llm-eval-mcp-default.txt
 
   Scenario: MCP self_verify advisory fake Z.AI returns structured llm_eval
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
+    Steps:    go test ./cmd/issueops -run TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
     Expected: command exits 0; MCP payload contains llm_eval.mode=advisory and fake score.
     Evidence: evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
   ```
 
-  Commit: YES | Message: `feat(mcp): mirror self-verify llm eval options` | Files: [`cmd/harness/main.go`, `cmd/harness/self_verify_llm_eval.go`, `cmd/harness/response_contract_golden_test.go`, `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`, `evidence/task-4-self-verify-llm-eval-*`]
+  Commit: YES | Message: `feat(mcp): mirror self-verify llm eval options` | Files: [`cmd/issueops/main.go`, `cmd/issueops/self_verify_llm_eval.go`, `cmd/issueops/response_contract_golden_test.go`, `cmd/issueops/testdata/mcp_tools.golden.json`, `cmd/issueops/testdata/response_contracts.golden.json`, `evidence/task-4-self-verify-llm-eval-*`]
 
 - [ ] 5. Document narrow opt-in architecture exception
 
@@ -313,25 +313,25 @@ PY`
   Parallelization: Can parallel: YES | Wave 2 | Blocks: [6] | Blocked by: [1]
 
   References (executor has NO interview context - be exhaustive):
-  - Project:  `.agent-harness/ADR.md:332-350` - current ADR says the harness does not call models; add a narrow exception rather than contradicting it.
-  - Project:  `.agent-harness/ARCHITECTURE.md:110-116` - current architecture lists existing `Z.AI Coding Plan` surfaces; add self-verify opt-in post-loop as bounded exception.
-  - Project:  `.agent-harness/OPERATIONS.md:176-185` - self-verify CLI examples; add advisory/gate examples with fake/test caution.
-  - Project:  `.agent-harness/OPERATIONS.md:227-231` - progress/save-state/history/compare behavior; clarify `llm_eval` immediate JSON vs compact state boundary.
-  - Project:  `.agent-harness/CAUTIONS.md:101-108` - self-verify drift cautions; add no LLM inside the loop and no lower iteration minimum.
-  - Project:  `.agent-harness/CAUTIONS.md:122-132` - no LLM Wiki reimplementation and hook critical path caution; preserve this boundary.
-  - Project:  `.agent-harness/TESTING.md:125-149` - fake tests policy; add fake Z.AI requirement for self-verify LLM eval.
-  - Project:  `.agent-harness/CONVENTIONS.md:78-86` - schema/golden drift rule; mention CLI/MCP LLM eval parity if needed.
+  - Project:  `.issueops/ADR.md:332-350` - current ADR says the harness does not call models; add a narrow exception rather than contradicting it.
+  - Project:  `.issueops/ARCHITECTURE.md:110-116` - current architecture lists existing `Z.AI Coding Plan` surfaces; add self-verify opt-in post-loop as bounded exception.
+  - Project:  `.issueops/OPERATIONS.md:176-185` - self-verify CLI examples; add advisory/gate examples with fake/test caution.
+  - Project:  `.issueops/OPERATIONS.md:227-231` - progress/save-state/history/compare behavior; clarify `llm_eval` immediate JSON vs compact state boundary.
+  - Project:  `.issueops/CAUTIONS.md:101-108` - self-verify drift cautions; add no LLM inside the loop and no lower iteration minimum.
+  - Project:  `.issueops/CAUTIONS.md:122-132` - no LLM Wiki reimplementation and hook critical path caution; preserve this boundary.
+  - Project:  `.issueops/TESTING.md:125-149` - fake tests policy; add fake Z.AI requirement for self-verify LLM eval.
+  - Project:  `.issueops/CONVENTIONS.md:78-86` - schema/golden drift rule; mention CLI/MCP LLM eval parity if needed.
 
   Acceptance criteria (agent-executable only):
   - [ ] Documentation token check passes:
     `python3 - <<'PY'
 from pathlib import Path
 checks = {
-  '.agent-harness/ADR.md': ['self-verify --llm-eval', 'opt-in', 'Z.AI Coding Plan'],
-  '.agent-harness/ARCHITECTURE.md': ['self-verify --llm-eval', 'post-loop'],
-  '.agent-harness/OPERATIONS.md': ['--llm-eval', '--llm-eval-mode=gate', 'internal default timeout'],
-  '.agent-harness/CAUTIONS.md': ['self-verify --llm-eval', 'hook', 'fake Z.AI'],
-  '.agent-harness/TESTING.md': ['fake Z.AI', 'llm_eval'],
+  '.issueops/ADR.md': ['self-verify --llm-eval', 'opt-in', 'Z.AI Coding Plan'],
+  '.issueops/ARCHITECTURE.md': ['self-verify --llm-eval', 'post-loop'],
+  '.issueops/OPERATIONS.md': ['--llm-eval', '--llm-eval-mode=gate', 'internal default timeout'],
+  '.issueops/CAUTIONS.md': ['self-verify --llm-eval', 'hook', 'fake Z.AI'],
+  '.issueops/TESTING.md': ['fake Z.AI', 'llm_eval'],
 }
 for path, needles in checks.items():
     text = Path(path).read_text()
@@ -340,11 +340,11 @@ for path, needles in checks.items():
 print('ok')
 PY`
   - [ ] Docs diff contains only LLM-eval boundary updates and no unrelated cleanup:
-    `git diff -- .agent-harness/ADR.md .agent-harness/ARCHITECTURE.md .agent-harness/OPERATIONS.md .agent-harness/CAUTIONS.md .agent-harness/TESTING.md > evidence/task-5-self-verify-llm-eval-docs.diff`
+    `git diff -- .issueops/ADR.md .issueops/ARCHITECTURE.md .issueops/OPERATIONS.md .issueops/CAUTIONS.md .issueops/TESTING.md > evidence/task-5-self-verify-llm-eval-docs.diff`
   - [ ] No docs mention default self-verify calling `zai`:
     `python3 - <<'PY'
 from pathlib import Path
-for path in ['.agent-harness/ADR.md','.agent-harness/ARCHITECTURE.md','.agent-harness/OPERATIONS.md','.agent-harness/CAUTIONS.md','.agent-harness/TESTING.md']:
+for path in ['.issueops/ADR.md','.issueops/ARCHITECTURE.md','.issueops/OPERATIONS.md','.issueops/CAUTIONS.md','.issueops/TESTING.md']:
     text = Path(path).read_text().lower()
     assert 'default self-verify calls Z.AI' not in text
 print('ok')
@@ -356,8 +356,8 @@ PY`
     Tool:     bash
     Steps:    python3 - <<'PY' | tee evidence/task-5-self-verify-llm-eval-operations-docs.txt
 from pathlib import Path
-text = Path('.agent-harness/OPERATIONS.md').read_text()
-for needle in ['agent-harness self-verify --llm-eval', '--llm-eval-mode=gate', '--model', 'internal default timeout']:
+text = Path('.issueops/OPERATIONS.md').read_text()
+for needle in ['issueops self-verify --llm-eval', '--llm-eval-mode=gate', '--model', 'internal default timeout']:
     assert needle in text, needle
 print('ok')
 PY
@@ -368,17 +368,17 @@ PY
     Tool:     bash
     Steps:    python3 - <<'PY' | tee evidence/task-5-self-verify-llm-eval-boundary-docs.txt
 from pathlib import Path
-text = Path('.agent-harness/ARCHITECTURE.md').read_text().lower()
+text = Path('.issueops/ARCHITECTURE.md').read_text().lower()
 assert 'opt-in' in text
 assert 'post-loop' in text
-assert 'hook' in Path('.agent-harness/CAUTIONS.md').read_text().lower()
+assert 'hook' in Path('.issueops/CAUTIONS.md').read_text().lower()
 print('ok')
 PY
     Expected: command exits 0 and prints ok.
     Evidence: evidence/task-5-self-verify-llm-eval-boundary-docs.txt
   ```
 
-  Commit: YES | Message: `docs(self-verify): document opt-in llm eval boundary` | Files: [`.agent-harness/ADR.md`, `.agent-harness/ARCHITECTURE.md`, `.agent-harness/OPERATIONS.md`, `.agent-harness/CAUTIONS.md`, `.agent-harness/TESTING.md`, `.agent-harness/CONVENTIONS.md`, `evidence/task-5-self-verify-llm-eval-*`]
+  Commit: YES | Message: `docs(self-verify): document opt-in llm eval boundary` | Files: [`.issueops/ADR.md`, `.issueops/ARCHITECTURE.md`, `.issueops/OPERATIONS.md`, `.issueops/CAUTIONS.md`, `.issueops/TESTING.md`, `.issueops/CONVENTIONS.md`, `evidence/task-5-self-verify-llm-eval-*`]
 
 - [ ] 6. Run fake Z.AI tmux QA and cleanup receipts
 
@@ -388,16 +388,16 @@ PY
   Parallelization: Can parallel: NO | Wave 4 | Blocks: [final] | Blocked by: [3, 4, 5]
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `cmd/harness/main.go:646-671` - CLI flag behavior to exercise.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:91-112` - fake Z.AI process execution path to exercise.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:168-188` - gate failure path to exercise.
-  - Test:     `cmd/harness/self_augment_summary_test.go:1016-1024` - fake Z.AI helper behavior to mirror after Task 2 updates it to `-p` only.
-  - Project:  `.agent-harness/TESTING.md:193-205` - completion evidence and QA requirements.
+  - Pattern:  `cmd/issueops/main.go:646-671` - CLI flag behavior to exercise.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:91-112` - fake Z.AI process execution path to exercise.
+  - Pattern:  `cmd/issueops/self_verify_llm_eval.go:168-188` - gate failure path to exercise.
+  - Test:     `cmd/issueops/self_augment_summary_test.go:1016-1024` - fake Z.AI helper behavior to mirror after Task 2 updates it to `-p` only.
+  - Project:  `.issueops/TESTING.md:193-205` - completion evidence and QA requirements.
   - External: local `Z.AI --help` evidence says `-p, --print`; QA fake must reject any argv shape other than `-p <prompt>`.
 
   Acceptance criteria (agent-executable only):
   - [ ] Build succeeds:
-    `go build -o bin/agent-harness ./cmd/harness | tee evidence/task-6-self-verify-llm-eval-build.txt`
+    `go build -o bin/issueops ./cmd/issueops | tee evidence/task-6-self-verify-llm-eval-build.txt`
   - [ ] Fake-`zai` tmux script exits 0 and writes all expected artifacts:
     `bash evidence/run-task-6-self-verify-llm-eval-tmux.sh | tee evidence/task-6-self-verify-llm-eval-tmux-run.txt`
   - [ ] Artifact JSON checks pass:
@@ -418,8 +418,8 @@ assert malformed['llm_eval']['ok'] is False
 assert 'parse' in malformed['llm_eval']['error'].lower()
 print('ok')
 PY`
-  - [ ] Cleanup proof has no remaining `ah-sv-llm-*` sessions:
-    `tmux ls 2>/dev/null | python3 -c "import sys; data=sys.stdin.read(); assert 'ah-sv-llm-' not in data; print('ok')" | tee evidence/task-6-self-verify-llm-eval-tmux-cleanup.txt`
+  - [ ] Cleanup proof has no remaining `io-sv-llm-*` sessions:
+    `tmux ls 2>/dev/null | python3 -c "import sys; data=sys.stdin.read(); assert 'io-sv-llm-' not in data; print('ok')" | tee evidence/task-6-self-verify-llm-eval-tmux-cleanup.txt`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
@@ -446,11 +446,11 @@ run_session() {
   tmux wait-for "${session}-done"
   tmux kill-session -t "$session" 2>/dev/null || true
 }
-run_session ah-sv-llm-default "./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json > evidence/task-6-self-verify-llm-eval-default.json 2> evidence/task-6-self-verify-llm-eval-default.err"
-run_session ah-sv-llm-advisory "ZAI_MODE=advisory ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-advisory.json 2> evidence/task-6-self-verify-llm-eval-advisory.err"
-run_session ah-sv-llm-malformed "ZAI_MODE=malformed ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-malformed.json 2> evidence/task-6-self-verify-llm-eval-malformed.err"
+run_session io-sv-llm-default "./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --json > evidence/task-6-self-verify-llm-eval-default.json 2> evidence/task-6-self-verify-llm-eval-default.err"
+run_session io-sv-llm-advisory "ZAI_MODE=advisory ./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-advisory.json 2> evidence/task-6-self-verify-llm-eval-advisory.err"
+run_session io-sv-llm-malformed "ZAI_MODE=malformed ./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-malformed.json 2> evidence/task-6-self-verify-llm-eval-malformed.err"
 set +e
-run_session ah-sv-llm-gate "ZAI_MODE=gate ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --llm-eval-mode=gate --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-gate.json 2> evidence/task-6-self-verify-llm-eval-gate.err"
+run_session io-sv-llm-gate "ZAI_MODE=gate ./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --llm-eval-mode=gate --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-gate.json 2> evidence/task-6-self-verify-llm-eval-gate.err"
 set -e
 SH
 bash evidence/run-task-6-self-verify-llm-eval-tmux.sh
@@ -459,7 +459,7 @@ bash evidence/run-task-6-self-verify-llm-eval-tmux.sh
 
   Scenario: tmux cleanup proof
     Tool:     bash
-    Steps:    tmux ls 2>/dev/null | python3 -c "import sys; data=sys.stdin.read(); assert 'ah-sv-llm-' not in data; print('ok')" | tee evidence/task-6-self-verify-llm-eval-cleanup.txt
+    Steps:    tmux ls 2>/dev/null | python3 -c "import sys; data=sys.stdin.read(); assert 'io-sv-llm-' not in data; print('ok')" | tee evidence/task-6-self-verify-llm-eval-cleanup.txt
     Expected: command exits 0 and prints ok.
     Evidence: evidence/task-6-self-verify-llm-eval-cleanup.txt
   ```

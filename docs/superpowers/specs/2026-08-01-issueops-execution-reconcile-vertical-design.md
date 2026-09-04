@@ -4,7 +4,7 @@
 
 `execution reconcile`의 `worktree_create`, `owner_launch`, `dispatch` confirm만 기존 core orchestration에서 capability-local vertical로 이전한다. `remote_pr_create`, preview, no-pending, unsupported kind는 기존 경로를 유지한다.
 
-공개 `ExecutionReconcileResult`, JSON/text/error, CLI/MCP 입력, schema v1, record와 external-intent raw bytes는 변경하지 않는다. 새 계층은 기존 raw-byte CAS와 receipt primitive를 harnessapp compatibility bridge 뒤에서 재사용한다.
+공개 `ExecutionReconcileResult`, JSON/text/error, CLI/MCP 입력, schema v1, record와 external-intent raw bytes는 변경하지 않는다. 새 계층은 기존 raw-byte CAS와 receipt primitive를 issueopsapp compatibility bridge 뒤에서 재사용한다.
 
 ## 구조
 
@@ -13,7 +13,7 @@
 - `internal/application/issueopslease`: 호출당 현재 stage 하나만 조정하는 service
 - inbound adapter: core request/result mapping과 request-scoped issue reader 전달
 - outbound adapter: `ReconcileEffects` port와 Orca inspect/invoke projection. core import 금지
-- harnessapp: SQLite, `coreReconcileEffects`, Orca adapter composition
+- issueopsapp: SQLite, `coreReconcileEffects`, Orca adapter composition
 - core API: confirm+세 kind만 injected handler로 보내는 compatibility router. nil handler는 fail-closed
 
 새 wiring은 `reconcileOrcaExecutionIntent`와 `executeOrcaIntentStage`를 호출하지 않는다. 전자는 production caller 0 뒤 제거하고, 후자는 prepare/resume shared caller 때문에 보존한다. core compatibility wrapper는 canonicalize/read/request/mark-invoking/record-failure/apply-receipt처럼 purpose-bound surface만 노출한다.

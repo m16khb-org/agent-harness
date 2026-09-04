@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
+	"issueops/internal/port"
 )
 
 func TestResumeRepositoryLoadsExactGenerationSnapshot(t *testing.T) {
@@ -62,7 +62,7 @@ func resumeRepositoryMutation(t *testing.T, record leasecontract.Record) port.Re
 
 func resumeRepositoryRecord(t *testing.T, generation uint64) leasecontract.Record {
 	t.Helper()
-	return leasecontract.Record{OK: true, SchemaVersion: leasecontract.SchemaVersion, ID: "io-resume-repository", Repo: "m16khb/agent-harness", IssueURL: "https://github.com/m16khb/agent-harness/issues/193", Phase: "implement", CreatedAt: "2026-07-31T00:00:00Z", UpdatedAt: "2026-07-31T00:00:00Z", Execution: &leasecontract.Execution{
+	return leasecontract.Record{OK: true, SchemaVersion: leasecontract.SchemaVersion, ID: "io-resume-repository", Repo: "m16khb/issueops", IssueURL: "https://github.com/m16khb/issueops/issues/193", Phase: "implement", CreatedAt: "2026-07-31T00:00:00Z", UpdatedAt: "2026-07-31T00:00:00Z", Execution: &leasecontract.Execution{
 		Mode: "orca", Workspace: leasecontract.Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "193-resume", BaseHead: "c30fb6761a24eae102f9e79e043306e60525207d", Driver: "orca", LinkedAt: "2026-07-31T00:00:00Z"},
 		Lease: leasecontract.Lease{Generation: generation, Status: "claimable", ClaimTokenSHA256: strings.Repeat("b", 64)},
 		Orca:  &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh", TaskID: "task", DispatchID: "dispatch", TerminalPTYID: "pty", LeaseGeneration: generation},

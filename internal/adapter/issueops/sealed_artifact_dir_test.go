@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestSealedArtifactDirUsesRecordFieldOrLegacy(t *testing.T) {
@@ -19,17 +19,17 @@ func TestSealedArtifactDirUsesRecordFieldOrLegacy(t *testing.T) {
 	if got := sealedArtifactDir(empty); got != IssueOpsArtifactDir {
 		t.Fatalf("empty artifact_dir must resolve to legacy dir even with an issue number (old records), got %s", got)
 	}
-	filled := issueops.IssueOpsRecord{Execution: &issueops.Execution{Workspace: issueops.Workspace{ArtifactDir: ".agent-harness/issues/21/artifact"}}}
-	if got := sealedArtifactPath(filled, "/wt", "plan"); got != filepath.Join("/wt", ".agent-harness", "issues", "21", "artifact", "plan.md") {
+	filled := issueops.IssueOpsRecord{Execution: &issueops.Execution{Workspace: issueops.Workspace{ArtifactDir: ".issueops/issues/21/artifact"}}}
+	if got := sealedArtifactPath(filled, "/wt", "plan"); got != filepath.Join("/wt", ".issueops", "issues", "21", "artifact", "plan.md") {
 		t.Fatalf("artifact_dir must drive the sealed path, got %s", got)
 	}
 }
 
 func TestIssueArtifactDirForUsesLinkedIssueNumber(t *testing.T) {
-	if got := issueArtifactDirFor(issueops.IssueOpsRecord{IssueURL: "https://github.com/acme/repo/issues/21"}); got != ".agent-harness/issues/21/artifact" {
+	if got := issueArtifactDirFor(issueops.IssueOpsRecord{IssueURL: "https://github.com/acme/repo/issues/21"}); got != ".issueops/issues/21/artifact" {
 		t.Fatalf("linked issue must pick the issue folder, got %q", got)
 	}
-	if got := issueArtifactDirFor(issueops.IssueOpsRecord{BranchPrepare: &issueops.IssueOpsBranchPrepare{IssueURL: "https://gitlab.example.com/g/p/-/work_items/7"}}); got != ".agent-harness/issues/7/artifact" {
+	if got := issueArtifactDirFor(issueops.IssueOpsRecord{BranchPrepare: &issueops.IssueOpsBranchPrepare{IssueURL: "https://gitlab.example.com/g/p/-/work_items/7"}}); got != ".issueops/issues/7/artifact" {
 		t.Fatalf("branch prepare issue URL must be a fallback, got %q", got)
 	}
 	if got := issueArtifactDirFor(issueops.IssueOpsRecord{}); got != "" {
@@ -40,7 +40,7 @@ func TestIssueArtifactDirForUsesLinkedIssueNumber(t *testing.T) {
 func TestWorkspaceFromReceiptRecordsArtifactDir(t *testing.T) {
 	record := issueops.IssueOpsRecord{IssueURL: "https://github.com/acme/repo/issues/480"}
 	ws := workspaceFromReceipt(record, port.ExecutionWorkspaceReceipt{Root: "/wt", Branch: "b", Driver: "orca"}, "2026-08-27T00:00:00Z")
-	if ws.ArtifactDir != ".agent-harness/issues/480/artifact" || ws.Root != "/wt" {
+	if ws.ArtifactDir != ".issueops/issues/480/artifact" || ws.Root != "/wt" {
 		t.Fatalf("workspace must carry artifact_dir: %+v", ws)
 	}
 }
@@ -55,7 +55,7 @@ func TestMaterializeStagedArtifactsWritesIntoRecordedArtifactDir(t *testing.T) {
 	record.Execution.Workspace.Branch = record.Branch
 	record.Execution.Workspace.BaseHead = record.BranchPrepare.BaseSHA
 	record.Execution.Workspace.LinkedAt = "2026-08-27T00:00:00Z"
-	record.Execution.Workspace.ArtifactDir = ".agent-harness/issues/480/artifact"
+	record.Execution.Workspace.ArtifactDir = ".issueops/issues/480/artifact"
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestMaterializeStagedArtifactsWritesIntoRecordedArtifactDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
-	path := filepath.Join(root, ".agent-harness", "issues", "480", "artifact", "plan.md")
+	path := filepath.Join(root, ".issueops", "issues", "480", "artifact", "plan.md")
 	info, err := os.Lstat(path)
 	if err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("plan must be sealed 0600 at the recorded dir: %v %v", err, info)
@@ -74,7 +74,7 @@ func TestMaterializeStagedArtifactsWritesIntoRecordedArtifactDir(t *testing.T) {
 	if _, ok := manifest["plan"]; !ok {
 		t.Fatalf("manifest must carry plan: %+v", manifest)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".agent-harness", "artifact")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, ".issueops", "artifact")); !os.IsNotExist(err) {
 		t.Fatalf("legacy dir must not be created when artifact_dir is recorded")
 	}
 	// 재-materialize는 같은 내용이면 통과하고(불변 계약), 파일은 그대로다.
@@ -85,12 +85,12 @@ func TestMaterializeStagedArtifactsWritesIntoRecordedArtifactDir(t *testing.T) {
 
 func TestGatherCompletionSectionReportsMissingPlan(t *testing.T) {
 	root := t.TempDir()
-	record := issueops.IssueOpsRecord{Repo: root, Execution: &issueops.Execution{Workspace: issueops.Workspace{Root: root, ArtifactDir: ".agent-harness/issues/480/artifact"}}}
+	record := issueops.IssueOpsRecord{Repo: root, Execution: &issueops.Execution{Workspace: issueops.Workspace{Root: root, ArtifactDir: ".issueops/issues/480/artifact"}}}
 	completion := gatherCompletionSection(record)
 	if strings.Join(completion.MissingArtifacts, ",") != "plan" {
 		t.Fatalf("absent sealed plan must be reported, got %+v", completion.MissingArtifacts)
 	}
-	dir := filepath.Join(root, ".agent-harness", "issues", "480", "artifact")
+	dir := filepath.Join(root, ".issueops", "issues", "480", "artifact")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}

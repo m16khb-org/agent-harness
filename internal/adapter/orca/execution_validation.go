@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func validateExecutionIntentRequest(req port.ExecutionOrcaIntentRequest) error {

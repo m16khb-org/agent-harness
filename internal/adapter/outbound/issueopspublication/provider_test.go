@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/port"
+	contract "issueops/internal/contract/issueopspublication"
+	"issueops/internal/port"
 )
 
 func TestProviderGatewayClassifiesInvocation(t *testing.T) {

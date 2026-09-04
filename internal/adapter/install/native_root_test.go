@@ -80,12 +80,12 @@ func TestResolveStableNativeRoot(t *testing.T) {
 func TestValidateStableNativeRuntime(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "source")
 	mustMkdir(t, filepath.Join(root, ".git"))
-	canonical := filepath.Join(root, "bin", "agent-harness")
+	canonical := filepath.Join(root, "bin", "issueops")
 	if err := ValidateStableNativeRuntime(root, canonical); err != nil {
 		t.Fatalf("canonical runtime rejected: %v", err)
 	}
 
-	external := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "agent-harness")
+	external := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "issueops")
 	if err := ValidateStableNativeRuntime(root, external); err == nil || !strings.Contains(err.Error(), canonical) {
 		t.Fatalf("error = %v, want expected canonical runtime %q", err, canonical)
 	}
@@ -106,7 +106,7 @@ func TestDefaultNativeInstallRequestMapsLinkedWorktree(t *testing.T) {
 	if req.Root != source {
 		t.Fatalf("root = %q, want %q", req.Root, source)
 	}
-	wantBin := filepath.Join(source, "bin", "agent-harness")
+	wantBin := filepath.Join(source, "bin", "issueops")
 	if req.BinPath != wantBin {
 		t.Fatalf("bin path = %q, want %q", req.BinPath, wantBin)
 	}

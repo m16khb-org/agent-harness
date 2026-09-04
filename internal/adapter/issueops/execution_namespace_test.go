@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestIssueOpsUsesOnlySchemaOneAndDedicatedNamespace(t *testing.T) {
@@ -130,7 +130,7 @@ func TestIssueOpsRejectsLegacyExecutionAuthorityPayload(t *testing.T) {
 }
 
 func TestIssueOpsDefaultStateRootIsSchemaSpecific(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if filepath.Base(IssueOpsStateRoot()) != "issueops_v1" {
 		t.Fatalf("default state root is not the dedicated v1 namespace: %s", IssueOpsStateRoot())
 	}

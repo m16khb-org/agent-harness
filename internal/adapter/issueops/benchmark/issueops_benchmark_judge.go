@@ -3,7 +3,7 @@ package benchmark
 import (
 	"fmt"
 
-	"agent-harness/internal/domain/judgement"
+	"issueops/internal/domain/judgement"
 )
 
 func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {

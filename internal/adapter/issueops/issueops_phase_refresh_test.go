@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/contract/issueops"
 )
 
 func TestIssueOpsRefreshesAISlopCleanEvidenceFromFeedback(t *testing.T) {

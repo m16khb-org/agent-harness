@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "design-review",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a0027c",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "57c8ed2fe2abb757aa98db7ed0dc7700f6c5bfa12b5cd011f4686b7c75cd4231",
+      "receipt_bytes": 7520
+    },
+    {
+      "task_id": "st_01a002c8",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "116114588d63ace499b23cc5c4d771796e53cb8af496e01bb24986e41c6129e3",
+      "receipt_bytes": 10951
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "design-review/TASK.md",
+      "fixture_sha256": "95c2c12d3a556c5071ceca23eafc78cbeddb35ae74a86520a155b6c45f13095e",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "five_gate_no_go",
+        "smaller_plan"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "design-review/BOUNDARY.md",
+      "fixture_sha256": "73691d2df752d8415d72884ebf16c3db0263f7a08c8b4ad9adabd362aa3f8f0f",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "proportional_go",
+        "reviewer_overengineering_refusal"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "design-review/OPERATIONAL.md",
+      "fixture_sha256": "c1497a323096e32ca4bd4a71ddaa7435bb5170632c8d933879c497eb15277d74",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "serial_critical_path",
+        "falsification_experiment"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

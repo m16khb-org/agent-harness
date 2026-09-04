@@ -4,13 +4,13 @@
 
 **Goal:** Move `remote_pr_create` creation and durable recovery into one capability-local hexagonal vertical without changing public CLI/MCP behavior, schema v1 bytes, provider semantics, or retry authority.
 
-**Architecture:** Add `issueopspublication` contract, domain, application, inbound, and outbound packages. `CreateService` and `ReconcileService` share application-owned repository, provider, and verifier ports; `cmd/harness/harnessapp` is the only production composition root and bridges the new vertical to purpose-bound legacy raw CAS primitives. Core retains public DTO/facade routing and #194 Orca routing, but migrated `remote_pr_create` handlers fail closed instead of falling back to the legacy orchestration.
+**Architecture:** Add `issueopspublication` contract, domain, application, inbound, and outbound packages. `CreateService` and `ReconcileService` share application-owned repository, provider, and verifier ports; `cmd/issueops/issueopsapp` is the only production composition root and bridges the new vertical to purpose-bound legacy raw CAS primitives. Core retains public DTO/facade routing and #194 Orca routing, but migrated `remote_pr_create` handlers fail closed instead of falling back to the legacy orchestration.
 
 **Tech Stack:** Go 1.26.3, standard library, existing SQLite-backed IssueOps store, existing GitHub/GitLab provider adapters, table-driven Go tests, contract goldens, architecture dependency tests.
 
 ## Global Constraints
 
-- Work only in `/Users/m16khb/Workspace/agent-harness.worktrees/195-issueops-remote-pr-publication-vertical` on branch `195-issueops-remote-pr-publication-vertical`.
+- Work only in `/Users/m16khb/Workspace/issueops.worktrees/195-issueops-remote-pr-publication-vertical` on branch `195-issueops-remote-pr-publication-vertical`.
 - The sealed base is `667e5d15b0773e2550cfbf5bc2780506e9eb2896`; do not rebase, merge, reset, or change the base without the IssueOps sync-base protocol.
 - Preserve `RemotePullRequestRequest`, provider create result, `ExecutionReconcileRequest/Result`, CLI text, MCP `isError`, and all existing error/code meanings.
 - Preserve schema v1 `IssueOpsRecord`, bucket `external_intent_v1`, `externalRemotePRPayload` field order/tags/omitempty/bytes, and `RemoteArtifact` bytes.
@@ -26,11 +26,11 @@
 
 ## Source of Truth
 
-- Issue: `https://github.com/m16khb/agent-harness/issues/195`
+- Issue: `https://github.com/m16khb-org/issueops/issues/195`
 - Design: `docs/superpowers/specs/2026-08-01-issueops-remote-pr-publication-design.md`
 - Legacy create oracle: `internal/core/issueops/execution_remote.go`
 - Legacy reconcile oracle: `internal/core/issueops/execution_reconcile.go`
-- #194 vertical pattern: `internal/{contract,domain,application,adapter}/.../issueopslease` and `cmd/harness/harnessapp/issueops_reconcile_wiring.go`
+- #194 vertical pattern: `internal/{contract,domain,application,adapter}/.../issueopslease` and `cmd/issueops/issueopsapp/issueops_reconcile_wiring.go`
 
 ## File Structure
 
@@ -51,13 +51,13 @@
 | `internal/core/issueops/execution_remote_legacy_oracle_test.go` | Frozen, test-only snapshot of the base create/reconcile orchestration for final differential tests |
 | `internal/core/issueops/execution_reconcile.go` | Public kind router; preserve #194 paths and forward `remote_pr_create` |
 | `internal/core/issueops/execution_api.go` | Handler types, fail-closed errors, dependency slots |
-| `cmd/harness/harnessapp/issueops_publication_wiring.go` | Only production composition root for both services |
-| `cmd/harness/issueopscli/remotecmd/remote.go` | CLI initial-create handler injection; preserve output formatting |
-| `cmd/harness/issueopscli/issueops_execution_cli.go` | CLI reconcile dependency injection without concrete provider closure |
-| `cmd/harness/mcpcli/mcp_tool_issueops_execution.go` | MCP reconcile dependency injection without concrete provider closure |
-| `cmd/harness/harnessapp/{issueops_policy_facade.go,mcp_facade.go}` | Pass publication handlers into CLI/MCP adapters |
+| `cmd/issueops/issueopsapp/issueops_publication_wiring.go` | Only production composition root for both services |
+| `cmd/issueops/issueopscli/remotecmd/remote.go` | CLI initial-create handler injection; preserve output formatting |
+| `cmd/issueops/issueopscli/issueops_execution_cli.go` | CLI reconcile dependency injection without concrete provider closure |
+| `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go` | MCP reconcile dependency injection without concrete provider closure |
+| `cmd/issueops/issueopsapp/{issueops_policy_facade.go,mcp_facade.go}` | Pass publication handlers into CLI/MCP adapters |
 | `internal/architecture/dependency_test.go` | Forbidden dependency, composition, zero-fallback, caller-zero ratchets |
-| `.agent-harness/turing/issue195-report.md` | Final focused verification and CI evidence |
+| `.issueops/verified-execution/issue195-report.md` | Final focused verification and CI evidence |
 
 ---
 
@@ -789,27 +789,27 @@ git commit -m "refactor(issueops): add publication handler seams" -m "Lore:
 ### Task 6: Compose both services in one module and route every production caller
 
 **Files:**
-- Create: `cmd/harness/harnessapp/issueops_publication_wiring.go`
-- Create: `cmd/harness/harnessapp/issueops_publication_wiring_test.go`
-- Modify: `cmd/harness/issueopscli/remotecmd/remote.go`
-- Modify: `cmd/harness/issueopscli/remotecmd/remote_test.go`
-- Modify: `cmd/harness/issueopscli/exports.go`
-- Modify: `cmd/harness/issueopscli/issueops.go`
-- Modify: `cmd/harness/issueopscli/issueops_execution_cli.go`
-- Modify: `cmd/harness/issueopscli/issueops_execution_cli_test.go`
-- Modify: `cmd/harness/issueopscli/executioncmd/execution.go`
-- Create: `cmd/harness/issueopscli/executioncmd/execution_publication_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_tools.go`
-- Modify: `cmd/harness/mcpcli/mcp_sdk_server.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_sdk_server_test.go`
-- Modify: `cmd/harness/mcpcli/mcp_stream_test.go`
-- Modify: `cmd/harness/harnessapp/issueops_policy_facade.go`
-- Modify: `cmd/harness/harnessapp/mcp_facade.go`
-- Modify: `cmd/harness/harnessapp/issueops_reconcile_wiring.go`
-- Modify: `cmd/harness/harnessapp/issueops_reconcile_wiring_test.go`
+- Create: `cmd/issueops/issueopsapp/issueops_publication_wiring.go`
+- Create: `cmd/issueops/issueopsapp/issueops_publication_wiring_test.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote.go`
+- Modify: `cmd/issueops/issueopscli/remotecmd/remote_test.go`
+- Modify: `cmd/issueops/issueopscli/exports.go`
+- Modify: `cmd/issueops/issueopscli/issueops.go`
+- Modify: `cmd/issueops/issueopscli/issueops_execution_cli.go`
+- Modify: `cmd/issueops/issueopscli/issueops_execution_cli_test.go`
+- Modify: `cmd/issueops/issueopscli/executioncmd/execution.go`
+- Create: `cmd/issueops/issueopscli/executioncmd/execution_publication_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tools.go`
+- Modify: `cmd/issueops/mcpcli/mcp_sdk_server.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_sdk_server_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_stream_test.go`
+- Modify: `cmd/issueops/issueopsapp/issueops_policy_facade.go`
+- Modify: `cmd/issueops/issueopsapp/mcp_facade.go`
+- Modify: `cmd/issueops/issueopsapp/issueops_reconcile_wiring.go`
+- Modify: `cmd/issueops/issueopsapp/issueops_reconcile_wiring_test.go`
 - Modify: `internal/core/issueops/execution_api_reconcile_test.go`
 - Modify: `internal/core/issueops/execution_remote.go`
 - Modify: `internal/core/issueops/execution_reconcile.go`
@@ -818,13 +818,13 @@ git commit -m "refactor(issueops): add publication handler seams" -m "Lore:
 
 **Interfaces:**
 - Consumes: Tasks 2-5 services, adapters, handlers, existing `provider.Resolve`, `CreateRemotePullRequest`, `ReconcileRemotePullRequest`, and live verifier functions.
-- Produces: `issueOpsPublicationCreateHandler` and `issueOpsPublicationReconcileHandler` used by CLI/MCP; zero concrete provider closures outside harnessapp.
+- Produces: `issueOpsPublicationCreateHandler` and `issueOpsPublicationReconcileHandler` used by CLI/MCP; zero concrete provider closures outside issueopsapp.
 
 - [ ] **Step 1: Write the composition and CLI-create RED tests**
 
 Inject a fake provider resolver and live verifier through `issueOpsPublicationCompositionDeps`. Add tests for service construction, CLI `remote create-pr` preview/confirm output, create-handler call count one, nil-handler fail-closed, and legacy-create call count zero. Confirm that the existing zero-dependency `issueopscli.RunIssueOps` wrapper fails closed for publication create; it remains a compatibility/test helper, not a production composition root.
 
-Run: `go test ./cmd/harness/harnessapp ./cmd/harness/issueopscli ./internal/core/issueops -run 'Publication|RemotePullRequest|CreatePR' -count=1`
+Run: `go test ./cmd/issueops/issueopsapp ./cmd/issueops/issueopscli ./internal/core/issueops -run 'Publication|RemotePullRequest|CreatePR' -count=1`
 
 Expected: FAIL because the composition module and create handler routing do not exist.
 
@@ -860,61 +860,61 @@ type RemotePublicationHandlers struct {
 }
 ```
 
-In `issueopscli/exports.go`, add one aggregate dependency struct containing the existing claim/release/reseed/resume/Orca-reconcile handlers plus `Publication issueops.RemotePublicationHandlers`, and add `RunIssueOpsWithDependencies`. Keep existing wrappers by delegating with zero values. Route `issueops remote create-pr` through `Publication.Create` and inject it from `harnessapp/issueops_policy_facade.go`.
+In `issueopscli/exports.go`, add one aggregate dependency struct containing the existing claim/release/reseed/resume/Orca-reconcile handlers plus `Publication issueops.RemotePublicationHandlers`, and add `RunIssueOpsWithDependencies`. Keep existing wrappers by delegating with zero values. Route `issueops remote create-pr` through `Publication.Create` and inject it from `issueopsapp/issueops_policy_facade.go`.
 
 Switch only public create in this step. Preserve current ordering: confirmed mutation gate, handler availability, actor normalization, then handler call; preview skips mutation/actor checks but still requires the handler. Missing handler fails closed with the existing provider-unavailable text and never calls legacy orchestration. Reconcile remains untouched and green.
 
-Run: `go test ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/harnessapp -run 'Publication|RemotePullRequest|CreatePR' -count=1`
+Run: `go test ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/issueopsapp -run 'Publication|RemotePullRequest|CreatePR' -count=1`
 
-Run: `go test -race ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/harnessapp -run 'Publication|RemotePullRequest|CreatePR' -count=1`
+Run: `go test -race ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/issueopsapp -run 'Publication|RemotePullRequest|CreatePR' -count=1`
 
 - [ ] **Step 3: Commit the create surface**
 
 ```bash
-git add cmd/harness/harnessapp/issueops_publication_wiring.go cmd/harness/harnessapp/issueops_publication_wiring_test.go cmd/harness/harnessapp/issueops_policy_facade.go cmd/harness/issueopscli/exports.go cmd/harness/issueopscli/issueops.go cmd/harness/issueopscli/remotecmd/remote.go cmd/harness/issueopscli/remotecmd/remote_test.go internal/core/issueops/execution_remote.go internal/core/issueops_remote_facade.go
+git add cmd/issueops/issueopsapp/issueops_publication_wiring.go cmd/issueops/issueopsapp/issueops_publication_wiring_test.go cmd/issueops/issueopsapp/issueops_policy_facade.go cmd/issueops/issueopscli/exports.go cmd/issueops/issueopscli/issueops.go cmd/issueops/issueopscli/remotecmd/remote.go cmd/issueops/issueopscli/remotecmd/remote_test.go internal/core/issueops/execution_remote.go internal/core/issueops_remote_facade.go
 git commit -m "refactor(issueops): route publication create" -m "Lore:
-- Intent: Route only CLI initial publication through the harnessapp-composed CreateService.
+- Intent: Route only CLI initial publication through the issueopsapp-composed CreateService.
 - Why: The create surface can switch atomically without coupling the reconcile rollout.
 - Changes:
   - Add request-scoped publication composition.
   - Inject the CLI create handler and fail closed without legacy fallback.
-- Verify: focused core/CLI/harnessapp tests and race.
+- Verify: focused core/CLI/issueopsapp tests and race.
 - Risk: Medium; public create output and errors remain differential-gated."
 ```
 
 - [ ] **Step 4: Propagate CLI reconcile handler without switching the core router**
 
-Add `Publication.Reconcile` to `executioncmd.Deps` and the aggregate issueopscli dependencies. Pass it from `harnessapp/issueops_policy_facade.go` through CLI execution construction to a new remote reconcile slot in `ExecutionActionDependencies`. Keep the current legacy `RemotePR` closures temporarily because the core router has not switched; add a propagation test that captures the new handler without invoking it.
+Add `Publication.Reconcile` to `executioncmd.Deps` and the aggregate issueopscli dependencies. Pass it from `issueopsapp/issueops_policy_facade.go` through CLI execution construction to a new remote reconcile slot in `ExecutionActionDependencies`. Keep the current legacy `RemotePR` closures temporarily because the core router has not switched; add a propagation test that captures the new handler without invoking it.
 
-Run: `go test ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/harnessapp -run 'Publication|Reconcile|ExecutionHandler' -count=1`
+Run: `go test ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopsapp -run 'Publication|Reconcile|ExecutionHandler' -count=1`
 
 ```bash
-git add cmd/harness/issueopscli/exports.go cmd/harness/issueopscli/issueops_execution_cli.go cmd/harness/issueopscli/issueops_execution_cli_test.go cmd/harness/issueopscli/executioncmd/execution.go cmd/harness/issueopscli/executioncmd/execution_publication_test.go cmd/harness/harnessapp/issueops_policy_facade.go
+git add cmd/issueops/issueopscli/exports.go cmd/issueops/issueopscli/issueops_execution_cli.go cmd/issueops/issueopscli/issueops_execution_cli_test.go cmd/issueops/issueopscli/executioncmd/execution.go cmd/issueops/issueopscli/executioncmd/execution_publication_test.go cmd/issueops/issueopsapp/issueops_policy_facade.go
 git commit -m "refactor(issueops): propagate cli publication reconcile" -m "Lore:
 - Intent: Carry the publication reconcile handler through the CLI dependency graph.
 - Why: Every caller must be wired before the core router can switch without fallback.
 - Changes:
   - Add typed CLI handler propagation and capture tests.
   - Keep runtime remote reconcile on the legacy path for this commit.
-- Verify: focused CLI/harnessapp propagation tests.
+- Verify: focused CLI/issueopsapp propagation tests.
 - Risk: Low; router behavior is intentionally unchanged."
 ```
 
 - [ ] **Step 5: Propagate MCP reconcile handler without switching the core router**
 
-Add `Publication issueops.RemotePublicationHandlers` to `mcpcli.MCPDependencies` and propagate it through `mcp_tools.go`, `mcp_sdk_server.go`, `mcp_tool_issueops.go`, and `mcp_tool_issueops_execution.go`. Every constructor in `harnessapp/mcp_facade.go` supplies the production pair. Only reconcile is consumed because no MCP initial-create action exists. Keep the current legacy MCP `RemotePR` closures temporarily; add stream, SDK-server, and direct-tool propagation tests.
+Add `Publication issueops.RemotePublicationHandlers` to `mcpcli.MCPDependencies` and propagate it through `mcp_tools.go`, `mcp_sdk_server.go`, `mcp_tool_issueops.go`, and `mcp_tool_issueops_execution.go`. Every constructor in `issueopsapp/mcp_facade.go` supplies the production pair. Only reconcile is consumed because no MCP initial-create action exists. Keep the current legacy MCP `RemotePR` closures temporarily; add stream, SDK-server, and direct-tool propagation tests.
 
-Run: `go test ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Publication|RemoteReconcile|ExecutionHandler|MCP' -count=1`
+Run: `go test ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Publication|RemoteReconcile|ExecutionHandler|MCP' -count=1`
 
 ```bash
-git add cmd/harness/mcpcli/mcp_tools.go cmd/harness/mcpcli/mcp_sdk_server.go cmd/harness/mcpcli/mcp_sdk_server_test.go cmd/harness/mcpcli/mcp_stream_test.go cmd/harness/mcpcli/mcp_tool_issueops.go cmd/harness/mcpcli/mcp_tool_issueops_execution.go cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go cmd/harness/harnessapp/mcp_facade.go
+git add cmd/issueops/mcpcli/mcp_tools.go cmd/issueops/mcpcli/mcp_sdk_server.go cmd/issueops/mcpcli/mcp_sdk_server_test.go cmd/issueops/mcpcli/mcp_stream_test.go cmd/issueops/mcpcli/mcp_tool_issueops.go cmd/issueops/mcpcli/mcp_tool_issueops_execution.go cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go cmd/issueops/issueopsapp/mcp_facade.go
 git commit -m "refactor(issueops): propagate mcp publication reconcile" -m "Lore:
 - Intent: Carry the publication reconcile handler through every MCP transport.
 - Why: Stream, SDK, and direct tool paths must be wired before the core switch.
 - Changes:
   - Add immutable MCP publication dependencies.
   - Add transport-level capture tests without changing router behavior.
-- Verify: focused MCP/harnessapp propagation tests.
+- Verify: focused MCP/issueopsapp propagation tests.
 - Risk: Low; router behavior is intentionally unchanged."
 ```
 
@@ -922,19 +922,19 @@ git commit -m "refactor(issueops): propagate mcp publication reconcile" -m "Lore
 
 Now switch the core public reconcile router. Preserve request-shape, mutation, actor, record, execution, CWD, preview/no-pending/Orca/unsupported ordering; send only confirmed `remote_pr_create` to `Publication.Reconcile`. Missing handler returns `remote_reconcile_unavailable` with the existing provider-unavailable error and never falls back. Keep `issueOpsReconcileHandler` as the Orca kind handler and assert each handler's call count is zero for the other's kind. Preserve `TestExecutionActionReconcilePreviewDoesNotCallInjectedHandler` and add the corresponding remote assertion.
 
-Run: `go test ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Publication|RemoteReconcile|Reconcile|ExecutionHandler' -count=1`
+Run: `go test ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Publication|RemoteReconcile|Reconcile|ExecutionHandler' -count=1`
 
-Run: `go test -race ./internal/core/issueops ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Publication|RemoteReconcile|Reconcile|ExecutionHandler' -count=1`
+Run: `go test -race ./internal/core/issueops ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Publication|RemoteReconcile|Reconcile|ExecutionHandler' -count=1`
 
 ```bash
-git add internal/core/issueops/execution_api_reconcile_test.go internal/core/issueops/execution_reconcile.go internal/core/issueops_remote_facade.go cmd/harness/harnessapp/issueops_reconcile_wiring.go cmd/harness/harnessapp/issueops_reconcile_wiring_test.go cmd/harness/issueopscli/issueops_execution_cli_test.go cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go
+git add internal/core/issueops/execution_api_reconcile_test.go internal/core/issueops/execution_reconcile.go internal/core/issueops_remote_facade.go cmd/issueops/issueopsapp/issueops_reconcile_wiring.go cmd/issueops/issueopsapp/issueops_reconcile_wiring_test.go cmd/issueops/issueopscli/issueops_execution_cli_test.go cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go
 git commit -m "refactor(issueops): route publication reconcile" -m "Lore:
 - Intent: Switch confirmed remote_pr_create recovery to ReconcileService.
 - Why: CLI and MCP handlers are now present on every production path.
 - Changes:
   - Fail closed when the publication handler is absent.
   - Preserve preview/no-pending/unsupported and #194 Orca routing.
-- Verify: focused core/CLI/MCP/harnessapp tests and race.
+- Verify: focused core/CLI/MCP/issueopsapp tests and race.
 - Risk: Medium; exact codes, errors, and cross-kind call counts are gated."
 ```
 
@@ -946,27 +946,27 @@ Run: `go test ./internal/architecture -run 'Publication.*Resolver|Publication.*C
 
 Expected before cleanup: FAIL and name only the caller-zero publication closures. Expected after cleanup: PASS.
 
-Run: `go test ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Publication|RemotePullRequest|CreatePR|Reconcile|ExecutionHandler|ResponseContractsGolden' -count=1`
+Run: `go test ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Publication|RemotePullRequest|CreatePR|Reconcile|ExecutionHandler|ResponseContractsGolden' -count=1`
 
-Run: `go test -race ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Publication|RemotePullRequest|CreatePR|Reconcile|ExecutionHandler' -count=1`
+Run: `go test -race ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'Publication|RemotePullRequest|CreatePR|Reconcile|ExecutionHandler' -count=1`
 
-Expected: PASS; publication-scoped AST checks find no concrete provider resolver outside harnessapp.
+Expected: PASS; publication-scoped AST checks find no concrete provider resolver outside issueopsapp.
 
 - [ ] **Step 8: Commit the caller-zero cleanup**
 
 ```bash
-git add cmd/harness/issueopscli/issueops_execution_cli.go cmd/harness/issueopscli/issueops_execution_cli_test.go cmd/harness/mcpcli/mcp_tool_issueops_execution.go cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go internal/architecture/dependency_test.go
+git add cmd/issueops/issueopscli/issueops_execution_cli.go cmd/issueops/issueopscli/issueops_execution_cli_test.go cmd/issueops/mcpcli/mcp_tool_issueops_execution.go cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go internal/architecture/dependency_test.go
 git commit -m "refactor(issueops): remove publication caller wiring" -m "Lore:
-- Intent: Make harnessapp the only concrete provider composition root for migrated publication paths.
+- Intent: Make issueopsapp the only concrete provider composition root for migrated publication paths.
 - Why: All CLI/MCP publication callers now use injected create/reconcile handlers.
 - Changes:
   - Remove caller-zero CLI/MCP provider closures.
   - Retain unrelated remote operations and reset-legacy provider resolution.
-- Verify: focused CLI/MCP/harnessapp tests and race.
+- Verify: focused CLI/MCP/issueopsapp tests and race.
 - Risk: Low; routing switched and passed in the prior commits."
 ```
 
-Production entrypoint evidence is explicit: `cmd/harness` uses `harnessapp` facades that supply both handlers. Zero-dependency CLI/MCP wrappers remain for compatibility and isolated tests; migrated publication actions through those wrappers intentionally fail closed. Add tests for both facts so no future caller mistakes an uncomposed wrapper for production.
+Production entrypoint evidence is explicit: `cmd/issueops` uses `issueopsapp` facades that supply both handlers. Zero-dependency CLI/MCP wrappers remain for compatibility and isolated tests; migrated publication actions through those wrappers intentionally fail closed. Add tests for both facts so no future caller mistakes an uncomposed wrapper for production.
 
 ---
 
@@ -981,13 +981,13 @@ Production entrypoint evidence is explicit: `cmd/harness` uses `harnessapp` faca
 - Modify: `internal/core/issueops/execution_remote.go`
 - Modify: `internal/architecture/dependency_test.go`
 - Modify: `internal/architecture/testdata/legacy_imports.txt` only if the verified dependency graph changes
-- Modify: `cmd/harness/contractgolden/contract_golden_test.go` only if test coverage needs a new stable projection; do not approve golden churn caused by behavior drift
-- Modify: `cmd/harness/harnessapp/response_contract_golden_test.go` and `cmd/harness/testdata/response_contracts.golden.json` only when regenerated output is byte-identical or the new internal handler inventory is intentionally represented
-- Modify: `.agent-harness/ARCHITECTURE.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/TESTING.md`
-- Review without mandatory edit: `.agent-harness/CONVENTIONS.md`
-- Create: `.agent-harness/turing/issue195-report.md`
+- Modify: `cmd/issueops/contractgolden/contract_golden_test.go` only if test coverage needs a new stable projection; do not approve golden churn caused by behavior drift
+- Modify: `cmd/issueops/issueopsapp/response_contract_golden_test.go` and `cmd/issueops/testdata/response_contracts.golden.json` only when regenerated output is byte-identical or the new internal handler inventory is intentionally represented
+- Modify: `.issueops/ARCHITECTURE.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/TESTING.md`
+- Review without mandatory edit: `.issueops/CONVENTIONS.md`
+- Create: `.issueops/verified-execution/issue195-report.md`
 
 **Interfaces:**
 - Consumes: All prior tasks and AC-195-01 through AC-195-05.
@@ -1005,7 +1005,7 @@ Add tests that reject:
 non-test internal/contract/issueopspublication -> internal/core|internal/port|internal/adapter|database/sql
 non-test internal/domain/issueopspublication -> internal/core|internal/port|internal/adapter|database/sql|net|os
 non-test internal/application/issueopspublication -> internal/core|internal/port|internal/adapter|database/sql
-publication functions in cmd/harness/issueopscli or cmd/harness/mcpcli -> provider.Resolve
+publication functions in cmd/issueops/issueopscli or cmd/issueops/mcpcli -> provider.Resolve
 non-test core -> legacy full-flow create/reconcile orchestration definitions or calls
 ```
 
@@ -1021,7 +1021,7 @@ Delete the production full-flow legacy `reconcileRemotePullRequest` and any reta
 
 - [ ] **Step 4: Review and update project docs from implementation evidence**
 
-Update `.agent-harness/ARCHITECTURE.md` with the completed `issueopspublication` vertical and harnessapp-only composition. Update `.agent-harness/OPERATIONS.md` to state that CLI create and CLI/MCP reconcile share the publication handler. Update `.agent-harness/TESTING.md` with raw byte differential and lock-free external-call tests. Inspect `.agent-harness/CONVENTIONS.md`; edit it only if the implementation introduced a reusable convention not already stated, otherwise record “reviewed; existing capability-local/consumer-owned port rules already cover #195” in the Turing report.
+Update `.issueops/ARCHITECTURE.md` with the completed `issueopspublication` vertical and issueopsapp-only composition. Update `.issueops/OPERATIONS.md` to state that CLI create and CLI/MCP reconcile share the publication handler. Update `.issueops/TESTING.md` with raw byte differential and lock-free external-call tests. Inspect `.issueops/CONVENTIONS.md`; edit it only if the implementation introduced a reusable convention not already stated, otherwise record “reviewed; existing capability-local/consumer-owned port rules already cover #195” in the Turing report.
 
 - [ ] **Step 5: Run the complete focused verification matrix**
 
@@ -1030,13 +1030,13 @@ go test ./internal/contract/issueopspublication ./internal/domain/issueopspublic
 go test -race ./internal/contract/issueopspublication ./internal/domain/issueopspublication ./internal/application/issueopspublication ./internal/adapter/inbound/issueopspublication ./internal/adapter/outbound/issueopspublication -count=1
 go test ./internal/core/issueops -run 'RemotePullRequest|RemoteReconcile|Publication' -count=1
 go test ./internal/adapter/provider/github ./internal/adapter/provider/gitlab -run 'CreatePullRequest|ReconcilePullRequest' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'RemotePullRequest|CreatePR|Reconcile|Publication|ExecutionHandler' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'RemotePullRequest|CreatePR|Reconcile|Publication|ExecutionHandler' -count=1
 go test ./internal/architecture -run Dependency -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go vet ./internal/contract/issueopspublication/... ./internal/domain/issueopspublication/... ./internal/application/issueopspublication/... ./internal/adapter/inbound/issueopspublication/... ./internal/adapter/outbound/issueopspublication/... ./internal/core/issueops ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli/... ./cmd/harness/harnessapp/...
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness contract check --json
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go vet ./internal/contract/issueopspublication/... ./internal/domain/issueopspublication/... ./internal/application/issueopspublication/... ./internal/adapter/inbound/issueopspublication/... ./internal/adapter/outbound/issueopspublication/... ./internal/core/issueops ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli/... ./cmd/issueops/issueopsapp/...
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops contract check --json
 git diff --check
 ```
 
@@ -1049,7 +1049,7 @@ For every command record UTC timestamp, command, exit code, test count or key `o
 - [ ] **Step 7: Commit Task 7**
 
 ```bash
-git add internal/core/issueops internal/architecture cmd/harness/contractgolden cmd/harness/harnessapp/response_contract_golden_test.go cmd/harness/testdata/response_contracts.golden.json .agent-harness/ARCHITECTURE.md .agent-harness/OPERATIONS.md .agent-harness/TESTING.md .agent-harness/CONVENTIONS.md .agent-harness/turing/issue195-report.md
+git add internal/core/issueops internal/architecture cmd/issueops/contractgolden cmd/issueops/issueopsapp/response_contract_golden_test.go cmd/issueops/testdata/response_contracts.golden.json .issueops/ARCHITECTURE.md .issueops/OPERATIONS.md .issueops/TESTING.md .issueops/CONVENTIONS.md .issueops/verified-execution/issue195-report.md
 git diff --cached --name-only
 git commit -m "refactor(issueops): complete publication vertical" -m "Lore:
 - Intent: Finish the #195 remote publication migration with compatibility and caller-zero proof.

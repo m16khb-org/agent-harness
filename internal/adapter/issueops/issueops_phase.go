@@ -7,10 +7,10 @@ import (
 
 	"context"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 func knownIssueOpsPhase(phase issueops.IssueOpsPhase) bool {

@@ -11,7 +11,7 @@ import (
 
 func TestResolveProjectLifecycleNamespaceIsProjectScoped(t *testing.T) {
 	stateRoot := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	t.Setenv("ISSUEOPS_STATE_DIR", stateRoot)
 	repoA := t.TempDir()
 	repoB := t.TempDir()
 	mustWrite(t, filepath.Join(repoA, ".git", "config"), "[remote \"origin\"]\n\turl = git@example.com:a/repo.git\n")
@@ -37,7 +37,7 @@ func TestResolveProjectLifecycleNamespaceIsProjectScoped(t *testing.T) {
 }
 
 func TestInitProjectLifecycleStateWritesProjectJSONOnlyWhenConfirmed(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 
 	dry, err := InitProjectLifecycleState(repo, false)
@@ -64,7 +64,7 @@ func TestInitProjectLifecycleStateWritesProjectJSONOnlyWhenConfirmed(t *testing.
 }
 
 func TestValidateProjectLifecycleStateDetectsNamespaceMismatch(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	written, err := InitProjectLifecycleState(repo, true)
 	if err != nil {
@@ -97,7 +97,7 @@ func TestValidateProjectLifecycleStateDetectsNamespaceMismatch(t *testing.T) {
 }
 
 func TestInitProjectLifecycleStateConcurrentNoDuplicates(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 
 	const n = 5
@@ -167,7 +167,7 @@ func containsString(items []string, want string) bool {
 }
 
 func TestInitProjectLifecycleStateUpdatesExistingWithMetadata(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 
 	initial, err := InitProjectLifecycleState(repo, true)
@@ -194,7 +194,7 @@ func TestInitProjectLifecycleStateUpdatesExistingWithMetadata(t *testing.T) {
 }
 
 func TestInitProjectLifecycleStateWithInvalidNamespaceDoesNotOverwrite(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	written, err := InitProjectLifecycleState(repo, true)
 	if err != nil {
@@ -227,7 +227,7 @@ func TestInitProjectLifecycleStateWithInvalidNamespaceDoesNotOverwrite(t *testin
 }
 
 func TestResolveProjectLifecycleStateCorruptedJSON(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	written, err := InitProjectLifecycleState(repo, true)
 	if err != nil {

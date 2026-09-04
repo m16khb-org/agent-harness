@@ -1,6 +1,6 @@
 ---
 name: self-augment
-description: "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement."
+description: "Run the self-augmentation loop for issueops or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement."
 ---
 
 # Self-augmentation loop
@@ -11,7 +11,7 @@ Autonomously identify, select, implement, and verify one improvement that makes 
 
 ## Required distinction
 
-- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Deterministic gate: `./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json`; collect-all evidence pass: add `--collect-all-steps --progress=jsonl`.
+- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Deterministic gate: `./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json`; collect-all evidence pass: add `--collect-all-steps --progress=jsonl`.
 - **Self-augmentation loop**: directly implements one needed feature, performance improvement, quality improvement, or documentation improvement, then verifies it with the self-verification loop.
 
 ## Exit criteria
@@ -27,10 +27,10 @@ Completion requires all goals below to exceed `target_score`. The default target
 
 1. **Baseline**
    - Read the nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `skills/self-augment/SELF_AUGMENTATION.md` when present.
-   - Run or inspect `./bin/agent-harness self-augment --json` for the current candidate curriculum.
-   - Use `./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
-   - Use `./bin/agent-harness self-augment --cycles 3 --json` to plan multiple improvement cycles at once (default 1).
-   - Use `./bin/agent-harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
+   - Run or inspect `./bin/issueops self-augment --json` for the current candidate curriculum.
+   - Use `./bin/issueops self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
+   - Use `./bin/issueops self-augment --cycles 3 --json` to plan multiple improvement cycles at once (default 1).
+   - Use `./bin/issueops self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
    - Run a baseline self-verification loop when feasible; otherwise capture why it cannot run.
 
 2. **Candidate curriculum**
@@ -52,10 +52,10 @@ Completion requires all goals below to exceed `target_score`. The default target
 5. **Verify**
    - Run targeted tests for the changed behavior.
    - Run `go test ./... -count=1`, relevant golden tests, risk-tier QA checks (`go vet ./...` / `go test -race ./... -count=1` when Go risk is present), skill validation, and build checks as applicable.
-   - Finish with `./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json` when practical; add `--collect-all-steps --progress=jsonl` when every deterministic step must run after an earlier failure.
+   - Finish with `./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json` when practical; add `--collect-all-steps --progress=jsonl` when every deterministic step must run after an earlier failure.
 
 6. **Capture**
-   - Store durable lessons only when reusable: `harness state`, `.agent-harness/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
+   - Store durable lessons only when reusable: `issueops state`, `.issueops/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
    - Final report includes selected candidate, implemented diff, goal scores, verification evidence, and remaining risk.
 
 ## Reference

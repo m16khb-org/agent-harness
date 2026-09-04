@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // Managed section kinds. Each kind owns one delimited block; merging one kind
@@ -54,13 +54,13 @@ func RenderDevilsAdvocateSection(findings []string, ts string) string {
 	return b.String()
 }
 
-const completionTruncationNotice = "> 본문 한도 초과로 일부 블록이 절단되었습니다(우선순위: 검증 요약 > turing 요약 > spec > plan)."
+const completionTruncationNotice = "> 본문 한도 초과로 일부 블록이 절단되었습니다(우선순위: 검증 요약 > verified-execution 요약 > spec > plan)."
 
 const completionEmptyPlaceholder = "(없음)"
 
 // RenderCompletionSection builds the delimited completion section with the
 // seven mandatory block headings. When the rendered section would exceed limit bytes, the
-// lowest-priority collapsible bodies (plan, then spec, then turing summary)
+// lowest-priority collapsible bodies (plan, then spec, then verified-execution summary)
 // are dropped to a placeholder and a truncation notice is included; the block
 // headings themselves always remain so the section shape stays checkable.
 func RenderCompletionSection(c port.IssueProviderCompletionSection, ts string, limit int) string {
@@ -104,7 +104,7 @@ func RenderCompletionSection(c port.IssueProviderCompletionSection, ts string, l
 		return b.String()
 	}
 	section := render()
-	// 우선순위 절단: plan → spec → turing 순으로 본문을 placeholder로 낮춘다.
+	// 우선순위 절단: plan → spec → verified-execution 순으로 본문을 placeholder로 낮춘다.
 	for _, drop := range []*string{&planBody, &specBody, &turingBody} {
 		if limit <= 0 || len(section) <= limit {
 			break

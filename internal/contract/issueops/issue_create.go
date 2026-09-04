@@ -122,7 +122,7 @@ func ValidateIssueCreateIntent(intent IssueOpsIssueCreateIntent) error {
 	if err := validateIssueCreateValues("assignees", intent.Assignees); err != nil {
 		return err
 	}
-	if intent.Marker != "<!-- agent-harness:issue-create:"+intent.OperationID+" -->" {
+	if intent.Marker != "<!-- issueops:issue-create:"+intent.OperationID+" -->" {
 		return fmt.Errorf("issue create intent marker does not match operation_id")
 	}
 	if intent.Attempt < 1 {

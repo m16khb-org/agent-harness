@@ -2,13 +2,13 @@
 
 > Date: 2026-07-01
 > Status: design (spec-only; implementation gated on separate approval)
-> Scope: close two gaps so the brooks devil's-advocate becomes real loop
+> Scope: close two gaps so the design-review devil's-advocate becomes real loop
 > engineering — a fail-closed gate (Gap A) whose surfaced problems are reflected
 > into the remote issue (Gap B) before the cycle re-runs.
 
 ## 1. Problem
 
-Today the brooks devil's-advocate is only *skill-mandated*, and its output stays
+Today the design-review devil's-advocate is only *skill-mandated*, and its output stays
 local:
 
 - **Gap A — not a machine gate.** `skills/issueops/SKILL.md` says Brooks "MUST
@@ -29,7 +29,7 @@ local:
 Target loop:
 
 ```
-grill → (plan authored) → brooks devil's-advocate [REQUIRED, verdict recorded]
+grill → (plan authored) → design-review devil's-advocate [REQUIRED, verdict recorded]
    ├─ pass   → compatibility-review → implement → …
    ├─ revise → resolved in plan, or explicitly waived (rationale) → proceed
    └─ stop   → findings reflected into remote issue body → regress → grill (re-plan)
@@ -40,7 +40,7 @@ grill → (plan authored) → brooks devil's-advocate [REQUIRED, verdict recorde
 - The harness does **not** auto-run Brooks. The agent still spawns the
   devil's-advocate sub-agent (pattern #4); the harness only records the verdict
   and gates on it. (Consistent with how design/compatibility reviews work.)
-- No change to the `turing` PR-phase adversarial reviewer.
+- No change to the `verified-execution` PR-phase adversarial reviewer.
 - Reflection-to-issue is required only on the `stop` → regress path; a `revise`
   verdict is resolved/waived in place and issue reflection is optional there.
 - Waiver stays available (with mandatory rationale) so the gate is strict, not
@@ -166,25 +166,25 @@ duplicate:
 ### 4.4 Enforced order
 
 ```
-1. agent spawns brooks (sub-agent) on the plan
+1. agent spawns design-review (sub-agent) on the plan
 2. issueops devils-advocate review --verdict stop --finding …     (Gate A recorded)
 3. issueops remote reflect-devils-advocate --confirm              (writes issue body; stamps IssueReflectedAt)
 4. issueops regress                                              (fail-closed unless verdict=stop AND IssueReflectedAt set) → grill
-5. re-plan → fresh brooks review required again before implement (Gate A re-fires)
+5. re-plan → fresh design-review review required again before implement (Gate A re-fires)
 ```
 
 ## 5. Contract / golden / catalog impact
 
-- New record field → regenerate `cmd/harness/testdata/response_contracts.golden.json`.
+- New record field → regenerate `cmd/issueops/testdata/response_contracts.golden.json`.
 - New CLI subcommands + 2 new MCP tools → update `internal/adapter/mcp`
-  catalog + regenerate `cmd/harness/testdata/mcp_tools.golden.json` and any
+  catalog + regenerate `cmd/issueops/testdata/mcp_tools.golden.json` and any
   usage golden (per CAUTIONS §7 / §27, CONVENTIONS §4).
 - New `port.IssueProvider` method → implement in **both** github and gitlab
   adapters (interface change breaks compile until both satisfy it).
 - ADR: record the "devil's-advocate is a first-class fail-closed gate + issue
-  reflection" decision in `.agent-harness/ADR.md`.
+  reflection" decision in `.issueops/ADR.md`.
 - SKILL: update `skills/issueops/SKILL.md` plan/compatibility-review rows and the
-  brooks routing row so the prose matches the now-enforced contract, including
+  design-review routing row so the prose matches the now-enforced contract, including
   the new commands.
 
 ## 6. Test matrix

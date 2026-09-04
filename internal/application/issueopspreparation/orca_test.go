@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	preparationdomain "agent-harness/internal/domain/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	preparationdomain "issueops/internal/domain/issueopspreparation"
 )
 
 func TestOrcaPreviewAndAutoFallback(t *testing.T) {

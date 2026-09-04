@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // ancestryRemoteBranchGit은 base 조상 관계까지 흉내낸다. 실제 게이트는
@@ -108,7 +108,7 @@ func TestRemoteBranchDeleteFailsClosedWhenAncestryIsUnobservable(t *testing.T) {
 
 // OID가 일치하는 기존 경로는 ancestry를 조회하지 않는다. squash 머지에서 원본
 // 커밋은 base의 조상이 아니므로, 그 경로가 ancestry에 의존하게 되면 squash된
-// 브랜치를 영구히 못 지운다 — 주석의 brooks B3 기각이 지키려던 것이다.
+// 브랜치를 영구히 못 지운다 — 주석의 design-review B3 기각이 지키려던 것이다.
 func TestRemoteBranchDeleteKeepsOIDPathIndependentOfAncestry(t *testing.T) {
 	stateRoot, record := remoteBranchTestRecord(t)
 	git := ancestryGit()

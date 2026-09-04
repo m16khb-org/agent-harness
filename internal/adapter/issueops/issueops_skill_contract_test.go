@@ -15,16 +15,16 @@ func TestIssueOpsSkillKeepsCoreWorkflowContract(t *testing.T) {
 	for _, want := range []string{
 		"problem", "grill", "issue", "plan", "compatibility-review", "implement",
 		"ai-slop-clean", "feedback", "pr", "cleanup", "RED→GREEN→SURFACE→CLEAN",
-		"agent-harness issueops next --json",
+		"issueops next --json",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("IssueOps router missing current workflow contract %q", want)
 		}
 	}
 	stages := map[string]string{
-		"agent-harness issueops intent record":                                       readIssueOpsContractFile(t, "skills", "issueops-create-issue", "SKILL.md"),
-		"agent-harness issueops design review":                                       readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
-		"agent-harness issueops execution prepare --id \"$ISSUEOPS_ID\" --mode auto": readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
+		"issueops intent record": readIssueOpsContractFile(t, "skills", "issueops-create-issue", "SKILL.md"),
+		"issueops design review": readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
+		"issueops execution prepare --id \"$ISSUEOPS_ID\" --mode auto": readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
 	}
 	for want, document := range stages {
 		if !strings.Contains(document, want) {
@@ -39,10 +39,10 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 		"execution":    readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"cleanup":      readIssueOpsContractFile(t, "skills", "issueops", "references", "cleanup-state.md"),
 		"plan":         readIssueOpsContractFile(t, "skills", "issueops-plan", "SKILL.md"),
-		"providers":    readIssueOpsContractFile(t, ".agent-harness", "operations", "guides", "issueops-providers.md"),
-		"workflow":     readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
-		"operations":   readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md"),
-		"architecture": readIssueOpsContractFile(t, ".agent-harness", "ARCHITECTURE.md"),
+		"providers":    readIssueOpsContractFile(t, ".issueops", "operations", "guides", "issueops-providers.md"),
+		"workflow":     readIssueOpsContractFile(t, ".issueops", "AGENT_WORKFLOW.md"),
+		"operations":   readIssueOpsContractFile(t, ".issueops", "OPERATIONS.md"),
+		"architecture": readIssueOpsContractFile(t, ".issueops", "ARCHITECTURE.md"),
 	}
 	all := joinIssueOpsContractDocuments(documents)
 	for _, want := range []string{
@@ -66,13 +66,13 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 			}
 		}
 	}
-	if count := strings.Count(documents["execution"], "agent-harness issueops execution prepare \\"); count != 1 {
+	if count := strings.Count(documents["execution"], "issueops execution prepare \\"); count != 1 {
 		t.Fatalf("execution reference must show one preview command and delegate confirm to next_command, count=%d", count)
 	}
 }
 
 func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
-	operationsIndex := readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md")
+	operationsIndex := readIssueOpsContractFile(t, ".issueops", "OPERATIONS.md")
 	if !strings.Contains(operationsIndex, "operations/guides/issueops-providers.md") {
 		t.Fatal("OPERATIONS.md must route provider ordering to operations/guides/issueops-providers.md")
 	}
@@ -80,7 +80,7 @@ func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
 	// 단계 스킬은 그 둘을 링크하고 순서를 복사하지 않는다.
 	documents := map[string]string{
 		"execution":  readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
-		"operations": readIssueOpsContractFile(t, ".agent-harness", "operations", "guides", "issueops-providers.md"),
+		"operations": readIssueOpsContractFile(t, ".issueops", "operations", "guides", "issueops-providers.md"),
 	}
 	const want = "`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`"
 	for name, document := range documents {
@@ -97,7 +97,7 @@ func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
 		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"router":    readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
-		"workflow":  readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
+		"workflow":  readIssueOpsContractFile(t, ".issueops", "AGENT_WORKFLOW.md"),
 	}))
 	for _, want := range []string{
 		"exact lifecycle id",
@@ -115,7 +115,7 @@ func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.
 func TestIssueOpsOrchestrationBindsOmoAgentsToCanonicalWorktrees(t *testing.T) {
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
 		"orchestration": readIssueOpsContractFile(t, "skills", "issueops", "references", "orchestration.md"),
-		"host-testing":  readIssueOpsContractFile(t, ".agent-harness", "testing", "cli-mcp-and-hosts.md"),
+		"host-testing":  readIssueOpsContractFile(t, ".issueops", "testing", "cli-mcp-and-hosts.md"),
 	}))
 	for _, want := range []string{
 		"team_create.members[].worktreepath",
@@ -134,7 +134,7 @@ func TestIssueOpsOrchestrationBindsOmoAgentsToCanonicalWorktrees(t *testing.T) {
 func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	for _, parts := range [][]string{
 		{"internal", "domain", "cli", "usage.go"},
-		{"cmd", "harness", "issueopscli", "issueops_cli_support.go"},
+		{"cmd", "issueops", "issueopscli", "issueops_cli_support.go"},
 		{"internal", "domain", "commandparse", "issueops.go"},
 		{"internal", "domain", "mcp", "issueops_catalog.go"},
 	} {
@@ -147,14 +147,14 @@ func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	}
 }
 
-// .agent-harness/SUB_AGENT_PATTERNS.md is routed from the issueops skill as the
+// .issueops/SUB_AGENT_PATTERNS.md is routed from the issueops skill as the
 // sub-agent decision contract, so it must not resurrect removed decision
 // commands or MCP tools either.
 func TestSubAgentPatternsDocDoesNotNameRemovedIssueOpsSurfaces(t *testing.T) {
-	content := strings.ToLower(readIssueOpsContractFile(t, ".agent-harness", "SUB_AGENT_PATTERNS.md"))
+	content := strings.ToLower(readIssueOpsContractFile(t, ".issueops", "SUB_AGENT_PATTERNS.md"))
 	for _, removed := range removedIssueOpsExecutionTerms() {
 		if strings.Contains(content, removed) {
-			t.Fatalf(".agent-harness/SUB_AGENT_PATTERNS.md retains removed surface %q", removed)
+			t.Fatalf(".issueops/SUB_AGENT_PATTERNS.md retains removed surface %q", removed)
 		}
 	}
 }

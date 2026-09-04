@@ -4,7 +4,7 @@
 // 알 필요가 없다.
 package worker
 
-import policycontract "agent-harness/internal/contract/policy"
+import policycontract "issueops/internal/contract/policy"
 
 type WorkerJob struct {
 	OK           bool                             `json:"ok"`

@@ -3,7 +3,7 @@ package issueopsretention
 import (
 	"time"
 
-	issueopsretentioncontract "agent-harness/internal/contract/issueopsretention"
+	issueopsretentioncontract "issueops/internal/contract/issueopsretention"
 )
 
 func IsPrunable(record issueopsretentioncontract.Record, cutoff time.Time) bool {

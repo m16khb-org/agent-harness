@@ -4,7 +4,7 @@ const SchemaVersion = 1
 
 type Request struct {
 	StateRoot    string `json:"state_root"`
-	HarnessRoot  string `json:"harness_root"`
+	IssueOpsRoot string `json:"issueops_root"`
 	TargetBinary string `json:"target_binary"`
 	TransitionID string `json:"transition_id,omitempty"`
 }
@@ -24,7 +24,7 @@ type Evidence struct {
 type Receipt struct {
 	SchemaVersion int        `json:"schema_version"`
 	StateRoot     string     `json:"state_root"`
-	HarnessRoot   string     `json:"harness_root"`
+	IssueOpsRoot  string     `json:"issueops_root"`
 	TargetBinary  string     `json:"target_binary"`
 	BinarySHA256  string     `json:"binary_sha256"`
 	TransitionID  string     `json:"transition_id"`
@@ -36,7 +36,7 @@ type Receipt struct {
 type Result struct {
 	OK           bool     `json:"ok"`
 	StateRoot    string   `json:"state_root"`
-	HarnessRoot  string   `json:"harness_root"`
+	IssueOpsRoot string   `json:"issueops_root"`
 	TargetBinary string   `json:"target_binary"`
 	BinarySHA256 string   `json:"binary_sha256,omitempty"`
 	TransitionID string   `json:"transition_id"`

@@ -1,8 +1,8 @@
 package gatesgate
 
 import (
-	"agent-harness/internal/adapter/issueops/loopgate"
-	looprunadapter "agent-harness/internal/adapter/looprun"
+	"issueops/internal/adapter/issueops/loopgate"
+	looprunadapter "issueops/internal/adapter/looprun"
 )
 
 // production wiring과 같은 구현을 설치한다. loopgate가 의존하는 RepoGateMissing

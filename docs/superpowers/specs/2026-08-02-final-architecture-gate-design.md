@@ -17,7 +17,7 @@ The production-only Go import graph contradicts that assumption:
 | `internal/core` | 41 |
 | `internal/core/issueops` | 15 |
 | `internal/port` | 28 |
-| `cmd/harness/issueopscli` | 1 |
+| `cmd/issueops/issueopscli` | 1 |
 
 The normalized inventory digest is
 `bf3e95dded1a56286d43cb2b39aaf0607f0fd959053a3fb3c380e53cbe9fa2a1`
@@ -26,59 +26,59 @@ decision, not an optional summary:
 
 <details><summary><code>internal/core</code> importers (41)</summary>
 
-- `cmd/harness/apidoc/reviewfiles`
-- `cmd/harness/apidoc/reviewprompt`
-- `cmd/harness/basiccli`
-- `cmd/harness/draftwikicli`
-- `cmd/harness/harnessapp`
-- `cmd/harness/hookcli`
-- `cmd/harness/hookcli/hookcatalog`
-- `cmd/harness/hookcli/hookfailure`
-- `cmd/harness/installcli`
-- `cmd/harness/issueopscli`
-- `cmd/harness/issueopscli/benchmarkartifact`
-- `cmd/harness/issueopscli/benchmarkcmd`
-- `cmd/harness/issueopscli/feedbackcleanup`
-- `cmd/harness/issueopscli/remotecmd`
-- `cmd/harness/issueopscli/remoteverify`
-- `cmd/harness/loopcli`
-- `cmd/harness/mcpcli`
-- `cmd/harness/mcpcli/resources`
-- `cmd/harness/pathutil`
-- `cmd/harness/policycli`
-- `cmd/harness/projectcli`
-- `cmd/harness/qualitycli`
-- `cmd/harness/selfworkflow/augmentcatalog`
-- `cmd/harness/selfworkflow/augmentlesson`
-- `cmd/harness/selfworkflow/augmentplan`
-- `cmd/harness/selfworkflow/candidateexport`
-- `cmd/harness/selfworkflow/historycompare`
-- `cmd/harness/selfworkflow/llmeval`
-- `cmd/harness/selfworkflow/stateio`
-- `cmd/harness/statecli`
-- `cmd/harness/statuscli`
-- `cmd/harness/validationcli/candidateexport`
-- `cmd/harness/validationcli/commandpolicy`
-- `cmd/harness/validationcli/contractauditworker`
-- `cmd/harness/validationcli/nativeintegration`
-- `cmd/harness/validationcli/parallelisolation`
-- `cmd/harness/validationcli/preflightfuzz`
-- `cmd/harness/validationcli/qagate`
-- `cmd/harness/validationcli/smoke`
-- `cmd/harness/validationcli/stateroundtrip`
-- `cmd/harness/workercli`
+- `cmd/issueops/apidoc/reviewfiles`
+- `cmd/issueops/apidoc/reviewprompt`
+- `cmd/issueops/basiccli`
+- `cmd/issueops/draftwikicli`
+- `cmd/issueops/issueopsapp`
+- `cmd/issueops/hookcli`
+- `cmd/issueops/hookcli/hookcatalog`
+- `cmd/issueops/hookcli/hookfailure`
+- `cmd/issueops/installcli`
+- `cmd/issueops/issueopscli`
+- `cmd/issueops/issueopscli/benchmarkartifact`
+- `cmd/issueops/issueopscli/benchmarkcmd`
+- `cmd/issueops/issueopscli/feedbackcleanup`
+- `cmd/issueops/issueopscli/remotecmd`
+- `cmd/issueops/issueopscli/remoteverify`
+- `cmd/issueops/loopcli`
+- `cmd/issueops/mcpcli`
+- `cmd/issueops/mcpcli/resources`
+- `cmd/issueops/pathutil`
+- `cmd/issueops/policycli`
+- `cmd/issueops/projectcli`
+- `cmd/issueops/qualitycli`
+- `cmd/issueops/selfworkflow/augmentcatalog`
+- `cmd/issueops/selfworkflow/augmentlesson`
+- `cmd/issueops/selfworkflow/augmentplan`
+- `cmd/issueops/selfworkflow/candidateexport`
+- `cmd/issueops/selfworkflow/historycompare`
+- `cmd/issueops/selfworkflow/llmeval`
+- `cmd/issueops/selfworkflow/stateio`
+- `cmd/issueops/statecli`
+- `cmd/issueops/statuscli`
+- `cmd/issueops/validationcli/candidateexport`
+- `cmd/issueops/validationcli/commandpolicy`
+- `cmd/issueops/validationcli/contractauditworker`
+- `cmd/issueops/validationcli/nativeintegration`
+- `cmd/issueops/validationcli/parallelisolation`
+- `cmd/issueops/validationcli/preflightfuzz`
+- `cmd/issueops/validationcli/qagate`
+- `cmd/issueops/validationcli/smoke`
+- `cmd/issueops/validationcli/stateroundtrip`
+- `cmd/issueops/workercli`
 
 </details>
 
 <details><summary><code>internal/core/issueops</code> importers (15)</summary>
 
-- `cmd/harness/harnessapp`
-- `cmd/harness/hookcli`
-- `cmd/harness/issueopscli`
-- `cmd/harness/issueopscli/executioncmd`
-- `cmd/harness/issueopscli/feedbackcleanup`
-- `cmd/harness/issueopscli/remotecmd`
-- `cmd/harness/mcpcli`
+- `cmd/issueops/issueopsapp`
+- `cmd/issueops/hookcli`
+- `cmd/issueops/issueopscli`
+- `cmd/issueops/issueopscli/executioncmd`
+- `cmd/issueops/issueopscli/feedbackcleanup`
+- `cmd/issueops/issueopscli/remotecmd`
+- `cmd/issueops/mcpcli`
 - `internal/adapter/inbound/issueopscompletion`
 - `internal/adapter/inbound/issueopslease`
 - `internal/adapter/inbound/issueopspreparation`
@@ -92,11 +92,11 @@ decision, not an optional summary:
 
 <details><summary><code>internal/port</code> importers (28)</summary>
 
-- `cmd/harness/harnessapp`
-- `cmd/harness/installcli`
-- `cmd/harness/issueopscli`
-- `cmd/harness/issueopscli/executioncmd`
-- `cmd/harness/mcpcli`
+- `cmd/issueops/issueopsapp`
+- `cmd/issueops/installcli`
+- `cmd/issueops/issueopscli`
+- `cmd/issueops/issueopscli/executioncmd`
+- `cmd/issueops/mcpcli`
 - `internal/adapter/claude`
 - `internal/adapter/codex`
 - `internal/adapter/gitworktree`
@@ -123,9 +123,9 @@ decision, not an optional summary:
 
 </details>
 
-<details><summary><code>cmd/harness/issueopscli</code> importers (1)</summary>
+<details><summary><code>cmd/issueops/issueopscli</code> importers (1)</summary>
 
-- `cmd/harness/harnessapp`
+- `cmd/issueops/issueopsapp`
 
 </details>
 
@@ -179,7 +179,7 @@ binary:
    instructed to attempt one mutation-shaped sentinel command; the hook must
    be observed and the sentinel must remain absent.
 
-No host-runtime probe uses an isolated `HARNESS_STATE_DIR`: native hook child
+No host-runtime probe uses an isolated `ISSUEOPS_STATE_DIR`: native hook child
 processes do not inherit such state unless explicitly propagated. No probe uses
 `--disable hooks`, Claude `--safe-mode`, or Claude `--bare`.
 

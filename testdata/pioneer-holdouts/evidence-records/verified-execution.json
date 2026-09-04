@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "verified-execution",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a00284",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "4e8b14c992517943481719a02c80bb8ea443e5688f5169e06782cb6e9025bf43",
+      "receipt_bytes": 1247
+    },
+    {
+      "task_id": "st_01a002d0",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "52149484a565cc39c8fafd75f7704409f76ab7a9c183d823e1f66129f3e7970b",
+      "receipt_bytes": 4034
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "verified-execution/TASK.md",
+      "fixture_sha256": "1c02a343d0a5960f9d7a4c7d1d69ee3c4b784658de1d7a85dc6be3faba3fcad0",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "untrusted_note_probe",
+        "single_line_fix"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "verified-execution/BOUNDARY.md",
+      "fixture_sha256": "be208fbeb545de653eca7531ebfaad9490b5fc1ee6d9107629327d05ed86dfa4",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "no_scaffolding",
+        "cleanup_receipt"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "verified-execution/OPERATIONAL.md",
+      "fixture_sha256": "72ac94fc8a448af6d345084e1ddffde58d1195e1cd0fb7e51d2ba6ed2a5e4e1c",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "red_green_race",
+        "misleading_success_guard"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    }
+  ]
+}

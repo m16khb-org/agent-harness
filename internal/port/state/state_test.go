@@ -3,7 +3,7 @@ package state_test
 import (
 	"testing"
 
-	stateport "agent-harness/internal/port/state"
+	stateport "issueops/internal/port/state"
 )
 
 type memoryStore struct{}

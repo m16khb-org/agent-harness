@@ -2,12 +2,12 @@
 
 Issue: #17
 Branch: `feature/17-self-verify-quick-full-gate-routing`
-Worktree: `$HOME/Workspace/agent-harness.worktrees/feature-17-self-verify-quick-full-gate-routing`
+Worktree: `$HOME/Workspace/issueops.worktrees/feature-17-self-verify-quick-full-gate-routing`
 
 ## Success Criteria
 
-- `agent-harness self-verify` defaults to quick one-iteration mode.
-- `agent-harness self-verify --full` runs the full gate with at least 10 iterations.
+- `issueops self-verify` defaults to quick one-iteration mode.
+- `issueops self-verify --full` runs the full gate with at least 10 iterations.
 - `--iterations` without `--full` is rejected.
 - The final self-verify LLM gate remains a single foreground blocking gate after deterministic evidence collection.
 - External LLM judge prompts explicitly require read-only judgment and forbid file, git, workspace, issue, label, PR, MR, and state mutation.
@@ -18,7 +18,7 @@ Worktree: `$HOME/Workspace/agent-harness.worktrees/feature-17-self-verify-quick-
 ## Implementation Plan
 
 1. Add resolver tests and CLI/MCP mode handling for quick/default versus full ten-plus-iteration self-verification.
-   Verify with focused `go test ./cmd/harness`.
+   Verify with focused `go test ./cmd/issueops`.
 2. Update self-verify loop contract, usage, MCP schema, skills, README, and project docs.
    Verify with golden tests and exact-string search.
 3. Add LLM gate classification fields and read-only prompt rules for self-verify and IssueOps remote scoring.

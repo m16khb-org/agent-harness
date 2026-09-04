@@ -13,7 +13,7 @@ import (
 // 항목을 추가할 때는 왜 런타임에서 도달할 필요가 없는지 함께 적는다.
 var orphanPackageAllowlist = map[string]string{
 	"internal/adapter/skillcontract": "skill 텍스트 계약 테스트만 담는 doc-only 패키지",
-	"cmd/harness/apidoc/dogfood":     "api-doc 테스트가 쓰는 dogfood fixture",
+	"cmd/issueops/apidoc/dogfood":    "api-doc 테스트가 쓰는 dogfood fixture",
 }
 
 // TestProductionPackagesHaveImporters는 프로덕션 코드를 가진 패키지가 모듈
@@ -104,7 +104,7 @@ func TestOrphanPackageAllowlistHasNoStaleEntries(t *testing.T) {
 	}
 }
 
-const modulePrefix = "agent-harness/"
+const modulePrefix = "issueops/"
 
 type modulePackage struct {
 	ImportPath   string

@@ -18,7 +18,7 @@ func TestExecuteExecutionCompleteRequiresHandler(t *testing.T) {
 }
 
 func TestExecuteExecutionCompleteDelegatesExactRequest(t *testing.T) {
-	request := ExecutionActionRequest{Action: ExecutionActionComplete, ID: "io-complete", Generation: 7, CWD: "/canonical", FinalHead: "head", TuringReportPath: "/canonical/report", Verification: []string{"test"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/7", Confirm: true}
+	request := ExecutionActionRequest{Action: ExecutionActionComplete, ID: "io-complete", Generation: 7, CWD: "/canonical", FinalHead: "head", VerificationReportPath: "/canonical/report", Verification: []string{"test"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/7", Confirm: true}
 	var gotRoot string
 	var got ExecutionCompleteRequest
 	result, err := ExecuteExecution(context.Background(), t.TempDir(), request, ExecutionActionDependencies{Complete: func(_ context.Context, stateRoot string, req ExecutionCompleteRequest) (ExecutionResult, error) {
@@ -31,7 +31,7 @@ func TestExecuteExecutionCompleteDelegatesExactRequest(t *testing.T) {
 	if gotRoot == "" {
 		t.Fatal("state root was not delegated")
 	}
-	want := ExecutionCompleteRequest{ID: request.ID, Generation: request.Generation, Actor: request.Actor, CWD: request.CWD, FinalHead: request.FinalHead, TuringReportPath: request.TuringReportPath, Verification: request.Verification, RemoteArtifactURL: request.RemoteArtifactURL, Confirm: request.Confirm}
+	want := ExecutionCompleteRequest{ID: request.ID, Generation: request.Generation, Actor: request.Actor, CWD: request.CWD, FinalHead: request.FinalHead, VerificationReportPath: request.VerificationReportPath, Verification: request.Verification, RemoteArtifactURL: request.RemoteArtifactURL, Confirm: request.Confirm}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("request = %+v, want %+v", got, want)
 	}

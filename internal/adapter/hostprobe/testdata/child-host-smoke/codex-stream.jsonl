@@ -1,2 +1,2 @@
 {"type":"thread.started","thread_id":"thread-probe"}
-{"type":"item.completed","item":{"type":"mcp_tool_call","server":"agent_harness_probe","status":"completed","result":{"content":"captured"}}}
+{"type":"item.completed","item":{"type":"mcp_tool_call","server":"issueops_probe","status":"completed","result":{"content":"captured"}}}

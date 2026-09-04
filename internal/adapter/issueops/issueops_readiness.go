@@ -3,12 +3,12 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/delegation"
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/adapter/issueops/intentdesign"
-	"agent-harness/internal/adapter/issueops/readinesspaths"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/stringlist"
+	"issueops/internal/adapter/issueops/delegation"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/adapter/issueops/intentdesign"
+	"issueops/internal/adapter/issueops/readinesspaths"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/domain/stringlist"
 )
 
 func IssueOpsPlanReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
@@ -153,7 +153,7 @@ func issueOpsImplementationReadiness(record issueops.IssueOpsRecord, checkPlanBi
 }
 
 // issueOpsDevilsAdvocateReviewMissing is the fail-closed implement-entry gate for
-// the brooks devil's advocate: a review must be recorded, a stop/revise verdict
+// the design-review devil's advocate: a review must be recorded, a stop/revise verdict
 // must be explicitly waived, and (when checkPlanBinding) the verdict must have
 // been recorded against the plan content that is about to be implemented —
 // otherwise `devils_advocate_review_stale` blocks entry until a fresh review is

@@ -23,7 +23,7 @@ const (
 	IssueOpsImplementerEffortOmo    = "max"
 
 	// IssueOps planner(계획/리뷰 세션)의 host별 기본 모델. 하위 세션이 구현
-	// diff의 brooks 적대 리뷰 서브에이전트를 띄울 때 사용한다(설계 v5 WS5).
+	// diff의 design-review 적대 리뷰 서브에이전트를 띄울 때 사용한다(설계 v5 WS5).
 	IssueOpsPlannerModelCodex   = "gpt-5.6-sol"
 	IssueOpsPlannerEffortCodex  = "xhigh"
 	IssueOpsPlannerModelClaude  = "claude-opus-5"
@@ -297,7 +297,7 @@ type OrcaWorkerDoneResult struct {
 // 후자는 dispatch protocol의 완료 메시지다. 이 adapter는 capability와 응답 검증을
 // 보존하지만 IssueOps completion path에는 배선하지 않는다.
 //
-// 어떤 조건에서 배선되는가: Orca dispatch 프로토콜의 메시지 채널이 agent-harness
+// 어떤 조건에서 배선되는가: Orca dispatch 프로토콜의 메시지 채널이 issueops
 // 계약에 편입될 때다. 그런 요구가 생기기 전까지 이 인터페이스는 adapter가 이미
 // 구현한 능력의 선언으로 남는다.
 type OrcaWorkerDoneClient interface {

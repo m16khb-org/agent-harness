@@ -10,8 +10,8 @@ func TestHookGroupContainsAgentHarnessDoesNotMatchThirdPartyHarnessHook(t *testi
 }
 
 func TestHookGroupContainsAgentHarnessRecognizesQuotedPathWithSpaces(t *testing.T) {
-	group := map[string]any{"hooks": []any{map[string]any{"command": "'/source with spaces/bin/agent-harness' hook session-start --host codex"}}}
+	group := map[string]any{"hooks": []any{map[string]any{"command": "'/source with spaces/bin/issueops' hook session-start --host codex"}}}
 	if !HookGroupContainsAgentHarness(group) {
-		t.Fatalf("quoted agent-harness command was not classified as managed: %#v", group)
+		t.Fatalf("quoted issueops command was not classified as managed: %#v", group)
 	}
 }

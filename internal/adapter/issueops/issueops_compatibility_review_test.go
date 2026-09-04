@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T) {

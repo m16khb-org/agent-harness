@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // finish는 remote_artifact_merged를 요구하고 abandon은 artifact 부재를 요구했다.
@@ -74,7 +74,7 @@ func abandonRetirementRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	record.Phase = IssueOpsPhaseDone
 	record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
 		Provider: "github", Kind: "pr",
-		URL:        "https://github.com/example/agent-harness/pull/241",
+		URL:        "https://github.com/example/issueops/pull/241",
 		VerifiedAt: "2026-08-02T15:54:07Z",
 	}
 	written, err := writeIssueOps(stateRoot, record)

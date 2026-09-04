@@ -43,7 +43,7 @@ func issueOpsExecutionSchema() map[string]any {
 			"preview":                        map[string]any{"type": "boolean"},
 			"confirm":                        map[string]any{"type": "boolean"},
 			"final_head":                     map[string]any{"type": "string"},
-			"turing_report_path":             map[string]any{"type": "string"},
+			"verification_report_path":       map[string]any{"type": "string"},
 			"verification":                   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"remote_artifact_url":            map[string]any{"type": "string"},
 			"issue_snapshot": map[string]any{

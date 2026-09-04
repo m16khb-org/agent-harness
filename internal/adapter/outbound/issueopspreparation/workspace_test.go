@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 func TestDirectWorkspaceMapsPrepareAndAccess(t *testing.T) {

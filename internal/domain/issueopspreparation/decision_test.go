@@ -3,8 +3,8 @@ package issueopspreparation
 import (
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	leasecontract "issueops/internal/contract/issueopslease"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
 )
 
 func TestDecisionMatrix(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/commandparse"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/domain/commandparse"
 )
 
 const (
@@ -174,12 +174,12 @@ func newReleasedSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
 	record.Execution.Lease.ClaimTokenSHA256 = ""
 	record.Execution.Lease.ReleasedAt = "2026-07-25T00:00:00Z"
 	record.Execution.Completion = &issueops.ExecutionCompletion{
-		Generation:        record.Execution.Lease.Generation,
-		FinalHead:         syncBaseFinalHead,
-		TuringReportPath:  filepath.Join(claimable.worktree, "turing-report.json"),
-		Verification:      []string{"go test ./... -count=1"},
-		RemoteArtifactURL: "https://github.com/example/agent-harness/pull/69",
-		CompletedAt:       "2026-07-25T00:00:00Z",
+		Generation:             record.Execution.Lease.Generation,
+		FinalHead:              syncBaseFinalHead,
+		VerificationReportPath: filepath.Join(claimable.worktree, "verified-execution-report.json"),
+		Verification:           []string{"go test ./... -count=1"},
+		RemoteArtifactURL:      "https://github.com/example/issueops/pull/69",
+		CompletedAt:            "2026-07-25T00:00:00Z",
 	}
 	record, err = writeIssueOps(stateRoot, record)
 	if err != nil {

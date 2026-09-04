@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	publicationcontract "agent-harness/internal/contract/issueopspublication"
+	"issueops/internal/adapter/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
+	publicationcontract "issueops/internal/contract/issueopspublication"
 )
 
 type fakeCreateService struct {
@@ -99,7 +99,7 @@ func publicationRecordRaw(t *testing.T) []byte {
 			Lease: issueopscontract.WriteLease{Generation: 9, Status: issueopscontract.LeaseStatusActive},
 			Pending: &issueopscontract.ExternalIntent{
 				OperationID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Kind: "remote_pr_create",
-				Marker:    "<!-- agent-harness:issueops-v1 operation=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->",
+				Marker:    "<!-- issueops:issueops-v1 operation=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->",
 				StartedAt: "2026-08-01T01:00:00Z",
 			},
 		},

@@ -8,21 +8,21 @@ import (
 	"slices"
 	"strings"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
-	completiondomain "agent-harness/internal/domain/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
+	completiondomain "issueops/internal/domain/issueopscompletion"
 )
 
 type Request struct {
-	ID                string
-	Generation        uint64
-	Actor             completioncontract.Actor
-	Ancestry          []completioncontract.ProcessReceipt
-	CWD               string
-	FinalHead         string
-	TuringReportPath  string
-	Verification      []string
-	RemoteArtifactURL string
-	Confirm           bool
+	ID                     string
+	Generation             uint64
+	Actor                  completioncontract.Actor
+	Ancestry               []completioncontract.ProcessReceipt
+	CWD                    string
+	FinalHead              string
+	VerificationReportPath string
+	Verification           []string
+	RemoteArtifactURL      string
+	Confirm                bool
 }
 
 type Result struct {
@@ -62,7 +62,7 @@ func (s *Service) Complete(ctx context.Context, request Request) (Result, error)
 	}
 	command := completioncontract.Command{
 		Generation: request.Generation, Actor: actor, FinalHead: request.FinalHead,
-		TuringReportPath: request.TuringReportPath, Verification: verification,
+		VerificationReportPath: request.VerificationReportPath, Verification: verification,
 		RemoteArtifactURL: request.RemoteArtifactURL,
 	}
 	persisted, err := s.repository.Update(ctx, request.ID, func(before completioncontract.RecordSnapshot) (completioncontract.RecordSnapshot, bool, error) {
@@ -92,7 +92,7 @@ func (s *Service) Complete(ctx context.Context, request Request) (Result, error)
 		if !validFullCommitSHA(request.FinalHead) || !strings.EqualFold(strings.TrimSpace(request.FinalHead), head) {
 			return before, false, fmt.Errorf("final_head must match canonical worktree HEAD")
 		}
-		report, err := s.environment.VerifyReport(before.CanonicalRoot, request.TuringReportPath)
+		report, err := s.environment.VerifyReport(before.CanonicalRoot, request.VerificationReportPath)
 		if err != nil {
 			return before, false, err
 		}
@@ -188,7 +188,7 @@ func terminalCompletionMatches(record completioncontract.RecordSnapshot, command
 		completion != nil && strings.TrimSpace(completion.CompletedAt) != "" &&
 		(completion.Generation == 0 || completion.Generation == command.Generation) &&
 		strings.EqualFold(completion.FinalHead, strings.TrimSpace(command.FinalHead)) &&
-		environment.PathsMatch(completion.TuringReportPath, command.TuringReportPath) &&
+		environment.PathsMatch(completion.VerificationReportPath, command.VerificationReportPath) &&
 		slices.Equal(completion.Verification, command.Verification) &&
 		completion.RemoteArtifactURL == strings.TrimSpace(command.RemoteArtifactURL)
 }

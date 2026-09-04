@@ -1,8 +1,8 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsroutingdomain "agent-harness/internal/domain/issueopsrouting"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsroutingdomain "issueops/internal/domain/issueopsrouting"
 )
 
 // issueOpsSkillRoutingFidelityComplete reports whether the artifact's recorded

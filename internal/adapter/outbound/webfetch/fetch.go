@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	webfetchapplication "agent-harness/internal/application/webfetch"
-	webfetchcontract "agent-harness/internal/contract/webfetch"
-	webfetchport "agent-harness/internal/port/webfetch"
+	webfetchapplication "issueops/internal/application/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
+	webfetchport "issueops/internal/port/webfetch"
 )
 
 type Options struct {

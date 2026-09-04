@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // DefaultNativeInstallRequest normalizes common installation inputs while keeping

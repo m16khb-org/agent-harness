@@ -29,7 +29,7 @@ expanding the execution-v1 command surface or mutating the wedged live record.
 The creation title is:
 
 ```text
-agent-harness issueops-v1 lifecycle=<id> intent=<16 hex chars>
+issueops-v1 lifecycle=<id> intent=<16 hex chars>
 ```
 
 The intent digest is the first 16 lowercase hex characters of SHA-256 over the
@@ -52,7 +52,7 @@ into an empty ancestry.
 ### Activation ordering
 
 `scripts/install-native.sh` keeps glab synchronization best-effort, but performs
-it before `agent-harness install-native`. The Go installer therefore reads and
+it before `issueops install-native`. The Go installer therefore reads and
 seals the final Codex and Claude configuration bytes.
 
 ### Hook recovery guidance
@@ -62,7 +62,7 @@ it does not own the current native process receipt. Claimable, revoking, and
 released lease denials therefore return only:
 
 ```text
-agent-harness issueops execution status --id <id> --json
+issueops execution status --id <id> --json
 ```
 
 Status remains actor-free and is the documented entry point for obtaining the
@@ -76,4 +76,4 @@ next generation-fenced command.
 - Install contract tests prove glab synchronization precedes activation seal.
 - Lifecycle matrix tests prove every writerless lease state returns status.
 - Run targeted packages, `go test ./... -count=1`,
-  `go test -race ./... -count=1`, and `go build ./cmd/harness`.
+  `go test -race ./... -count=1`, and `go build ./cmd/issueops`.

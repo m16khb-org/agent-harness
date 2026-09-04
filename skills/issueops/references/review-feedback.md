@@ -19,7 +19,7 @@ Subagent reviews must be bounded work items, not broad unscoped diff sweeps. Bef
 - `bounded_subagent`: specific files or areas; include a time budget, excluded paths, and concise expected output shape.
 - `split_required`: golden files, generated fixtures, vendored data, response snapshots, or broad docs/code diffs; split into separate review prompts or verify generated files with tests instead of asking a subagent to read them.
 
-Every review subagent prompt must name the expected worktree path, branch, and `HEAD`; forbid edits; list included paths or concerns; list excluded large/generated paths such as `cmd/harness/testdata/*.golden.*`; and state the fallback if the reviewer does not respond in time. If a review subagent does not return by the chosen wait budget, do not treat that as approval or failure. Record the timeout, continue with direct verification evidence, and either retry with a narrower prompt or close the subagent before final reporting.
+Every review subagent prompt must name the expected worktree path, branch, and `HEAD`; forbid edits; list included paths or concerns; list excluded large/generated paths such as `cmd/issueops/testdata/*.golden.*`; and state the fallback if the reviewer does not respond in time. If a review subagent does not return by the chosen wait budget, do not treat that as approval or failure. Record the timeout, continue with direct verification evidence, and either retry with a narrower prompt or close the subagent before final reporting.
 
 ## Remote Review Feedback
 
@@ -34,7 +34,7 @@ The remote issue is the source of truth for IssueOps scope. If user feedback, re
 After the remote issue body is updated for `contract_change` feedback, record that join point in IssueOps state:
 
 ```bash
-agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
+issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 ```
 
 Until this is recorded, `issueops pr-readiness --strict` must remain blocked with `contract_feedback_issue_update`.

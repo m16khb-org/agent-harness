@@ -5,15 +5,15 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
-	completionapp "agent-harness/internal/application/issueopscompletion"
-	model "agent-harness/internal/contract/issueops"
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	"issueops/internal/adapter/issueops"
+	completionapp "issueops/internal/application/issueopscompletion"
+	model "issueops/internal/contract/issueops"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func TestHandlerMapsCoreRequestAndResult(t *testing.T) {
 	receipt := model.NativeProcessReceipt{PID: 198, StartedAt: "2026-08-02T00:00:00Z", Executable: "/bin/codex"}
-	request := issueops.ExecutionCompleteRequest{ID: "io-198", Generation: 2, Actor: model.NativeActor{Host: "codex", SessionID: "session", SessionProcess: &receipt, ProcessAncestry: []model.NativeProcessReceipt{receipt}}, CWD: "/worktree", FinalHead: "head", TuringReportPath: "/worktree/report", Verification: []string{"test"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", Confirm: true}
+	request := issueops.ExecutionCompleteRequest{ID: "io-198", Generation: 2, Actor: model.NativeActor{Host: "codex", SessionID: "session", SessionProcess: &receipt, ProcessAncestry: []model.NativeProcessReceipt{receipt}}, CWD: "/worktree", FinalHead: "head", VerificationReportPath: "/worktree/report", Verification: []string{"test"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", Confirm: true}
 	service := &serviceFake{result: completionapp.Result{OK: true, ID: request.ID, Execution: leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "198", BaseHead: "base", Driver: "git", LinkedAt: "now"}, Lease: leasecontract.Lease{Generation: 2, Status: "released"}, CompletionHistory: []leasecontract.CompletionHistoryEntry{{Generation: 1, Completion: leasecontract.Completion{Verification: []string{"old verification"}}, Reason: "reseed", ReopenedAt: "now"}}}}}
 
 	result, err := NewHandler(service)(context.Background(), t.TempDir(), request)

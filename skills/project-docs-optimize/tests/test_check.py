@@ -62,7 +62,7 @@ class DocumentationCheckTest(unittest.TestCase):
         )
 
     def _write_fixture(self, root: Path, *, broken: bool) -> None:
-        docs = root / ".agent-harness"
+        docs = root / ".issueops"
         modules = docs / "testing"
         modules.mkdir(parents=True)
         root_link = "testing/unit.md"
@@ -90,8 +90,8 @@ class DocumentationCheckTest(unittest.TestCase):
             "max_module_lines": 5,
             "families": [
                 {
-                    "root": ".agent-harness/TESTING.md",
-                    "module_dir": ".agent-harness/testing",
+                    "root": ".issueops/TESTING.md",
+                    "module_dir": ".issueops/testing",
                     "responsibility": "testing",
                 }
             ],

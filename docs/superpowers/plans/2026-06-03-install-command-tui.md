@@ -2,24 +2,24 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the public `install-native` UX with a first-run `./install.sh` and `agent-harness install` flow that explains and applies PATH, Codex, Claude, MCP, and optional upstream tool settings without requiring manual environment exports.
+**Goal:** Replace the public `install-native` UX with a first-run `./install.sh` and `issueops install` flow that explains and applies PATH, Codex, Claude, MCP, and optional upstream tool settings without requiring manual environment exports.
 
-**Architecture:** Keep install policy in the existing Go install path and host adapters. Use `./install.sh` only as the binary-missing first-run entrypoint, then delegate to `bin/agent-harness install`. Keep `bootstrap`/`update` as refresh surfaces that reuse the same installer instead of duplicating host config logic in shell.
+**Architecture:** Keep install policy in the existing Go install path and host adapters. Use `./install.sh` only as the binary-missing first-run entrypoint, then delegate to `bin/issueops install`. Keep `bootstrap`/`update` as refresh surfaces that reuse the same installer instead of duplicating host config logic in shell.
 
-**Tech Stack:** Go standard library CLI in `cmd/harness`, existing install core in `internal/core` and `internal/adapter/{codex,claude}`, POSIX shell for `./install.sh`, existing golden and adapter contract tests.
+**Tech Stack:** Go standard library CLI in `cmd/issueops`, existing install core in `internal/core` and `internal/adapter/{codex,claude}`, POSIX shell for `./install.sh`, existing golden and adapter contract tests.
 
 ---
 
 ## File Map
 
-- Create: `install.sh` — first-run entrypoint that works before `agent-harness` is on PATH.
-- Modify: `scripts/install-native.sh` — either rename internally or turn into a thin compatibility wrapper that calls `install.sh` or `agent-harness install`.
-- Modify: `cmd/harness/main.go` — dispatch `install`, remove or deprecate `install-native`, and preserve compatibility only if intentionally chosen.
-- Modify: `cmd/harness/install_native.go` — rename user-facing command implementation to install, add interactive/dry-run flags, and keep host-neutral request construction.
-- Modify: `cmd/harness/update_bootstrap.go` — make `bootstrap`/`update` call the unified install script or install command with explicit mode semantics.
-- Modify: `internal/adapter/cli/usage.go` and `cmd/harness/testdata/usage.golden.txt` — update public usage text.
+- Create: `install.sh` — first-run entrypoint that works before `issueops` is on PATH.
+- Modify: `scripts/install-native.sh` — either rename internally or turn into a thin compatibility wrapper that calls `install.sh` or `issueops install`.
+- Modify: `cmd/issueops/main.go` — dispatch `install`, remove or deprecate `install-native`, and preserve compatibility only if intentionally chosen.
+- Modify: `cmd/issueops/install_native.go` — rename user-facing command implementation to install, add interactive/dry-run flags, and keep host-neutral request construction.
+- Modify: `cmd/issueops/update_bootstrap.go` — make `bootstrap`/`update` call the unified install script or install command with explicit mode semantics.
+- Modify: `internal/adapter/cli/usage.go` and `cmd/issueops/testdata/usage.golden.txt` — update public usage text.
 - Modify: `internal/adapter/install_contract_matrix_test.go` and `internal/adapter/testdata/native_install_contract_matrix.golden.json` only if install output contract changes.
-- Modify: `.agent-harness/operations/install.md`, `.agent-harness/OPERATIONS.md`, `.agent-harness/TECH_STACK.md`, `.agent-harness/TESTING.md`, `README.md` — document first-run and installed-update paths.
+- Modify: `.issueops/operations/install.md`, `.issueops/OPERATIONS.md`, `.issueops/TECH_STACK.md`, `.issueops/TESTING.md`, `README.md` — document first-run and installed-update paths.
 
 ## Domain Contract
 
@@ -27,22 +27,22 @@ Use these command meanings throughout the implementation:
 
 ```text
 ./install.sh
-  First-run source checkout installer. It builds bin/agent-harness if needed and invokes bin/agent-harness install.
+  First-run source checkout installer. It builds bin/issueops if needed and invokes bin/issueops install.
 
-agent-harness install
-  Public installer. It owns PATH shim setup, shell rc PATH guidance/write, Codex/Claude skills/hooks/MCP config, and HARNESS_ROOT injection into host configs.
+issueops install
+  Public installer. It owns PATH shim setup, shell rc PATH guidance/write, Codex/Claude skills/hooks/MCP config, and ISSUEOPS_ROOT injection into host configs.
 
-agent-harness bootstrap
+issueops bootstrap
   Compatibility refresh command for user-level harness integration. It must not be documented as the first command a new user can run before the binary exists.
 
-agent-harness update
+issueops update
   Already-installed checkout refresh. It rebuilds and refreshes host integration.
 ```
 
 Environment rules:
 
 ```text
-HARNESS_ROOT
+ISSUEOPS_ROOT
   Installer writes this into Codex/Claude MCP config. Users should not need to export it manually for normal installation.
 
 CODEX_HOME
@@ -55,9 +55,9 @@ PATH
 ### Task 1: Lock Current Install Contract With Tests
 
 **Files:**
-- Modify: `cmd/harness/install_native.go`
-- Modify: `cmd/harness/main_test.go` or create `cmd/harness/install_test.go`
-- Test: `go test ./cmd/harness -run Install -count=1`
+- Modify: `cmd/issueops/install_native.go`
+- Modify: `cmd/issueops/main_test.go` or create `cmd/issueops/install_test.go`
+- Test: `go test ./cmd/issueops -run Install -count=1`
 
 - [ ] **Step 1: Write a failing CLI test for the new command name**
 
@@ -66,7 +66,7 @@ Add a test that invokes the command dispatcher with `install --dry-run --json` o
 Expected behavior:
 
 ```text
-agent-harness install --dry-run --json
+issueops install --dry-run --json
   exits 0
   returns the same native integration plan currently returned by install-native
 ```
@@ -76,14 +76,14 @@ agent-harness install --dry-run --json
 Run:
 
 ```bash
-go test ./cmd/harness -run Install -count=1
+go test ./cmd/issueops -run Install -count=1
 ```
 
 Expected: FAIL because `install` is not yet a top-level command.
 
 - [ ] **Step 3: Add `install` dispatch**
 
-In `cmd/harness/main.go`, add `case "install":` that calls the renamed/shared install runner. Keep `install-native` only as a compatibility alias if the issue owner chooses a deprecation window.
+In `cmd/issueops/main.go`, add `case "install":` that calls the renamed/shared install runner. Keep `install-native` only as a compatibility alias if the issue owner chooses a deprecation window.
 
 The dispatch shape should be equivalent to:
 
@@ -105,7 +105,7 @@ case "install-native":
 Rename `runInstallNative` to `runInstall`, and keep all current request construction intact:
 
 ```go
-req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "agent-harness"))
+req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "issueops"))
 req.ProjectLocal = *projectLocal
 req.DryRun = *dryRun
 ```
@@ -115,8 +115,8 @@ req.DryRun = *dryRun
 Run:
 
 ```bash
-go test ./cmd/harness -run Install -count=1
-./bin/agent-harness install --dry-run --json
+go test ./cmd/issueops -run Install -count=1
+./bin/issueops install --dry-run --json
 ```
 
 Expected: tests pass, and the dry-run JSON contains Codex/Claude install plan data.
@@ -130,7 +130,7 @@ Expected: tests pass, and the dry-run JSON contains Codex/Claude install plan da
 
 - [ ] **Step 1: Write the first-run script**
 
-Create `install.sh` as a thin entrypoint. It must compute repo root from its own path, build `bin/agent-harness` unless `--skip-build` is provided, and call `bin/agent-harness install`.
+Create `install.sh` as a thin entrypoint. It must compute repo root from its own path, build `bin/issueops` unless `--skip-build` is provided, and call `bin/issueops install`.
 
 The implementation should follow this shape:
 
@@ -139,7 +139,7 @@ The implementation should follow this shape:
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN="$ROOT/bin/agent-harness"
+BIN="$ROOT/bin/issueops"
 SKIP_BUILD=0
 ARGS=()
 
@@ -151,7 +151,7 @@ for arg in "$@"; do
 done
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
-  (cd "$ROOT" && go build -o bin/agent-harness ./cmd/harness)
+  (cd "$ROOT" && go build -o bin/issueops ./cmd/issueops)
 fi
 
 exec "$BIN" install "${ARGS[@]}"
@@ -167,7 +167,7 @@ chmod +x install.sh
 
 - [ ] **Step 3: Convert `scripts/install-native.sh` into compatibility**
 
-Keep `scripts/install-native.sh` working for existing automation, but make it clearly call the new path. If the existing script still owns upstream tool setup, move that logic behind `agent-harness install` first instead of preserving two installers.
+Keep `scripts/install-native.sh` working for existing automation, but make it clearly call the new path. If the existing script still owns upstream tool setup, move that logic behind `issueops install` first instead of preserving two installers.
 
 Minimum acceptable compatibility behavior:
 
@@ -183,14 +183,14 @@ Run:
 ./install.sh --dry-run
 ```
 
-Expected: it builds or confirms `bin/agent-harness`, then prints a dry-run install plan without writing host files.
+Expected: it builds or confirms `bin/issueops`, then prints a dry-run install plan without writing host files.
 
 ### Task 3: Move PATH Shim And Shell RC Decisions Into `install`
 
 **Files:**
-- Modify: `cmd/harness/install_native.go`
-- Modify: `internal/core/install.go` or add focused install helper in `cmd/harness` if the behavior is CLI-only
-- Test: `go test ./cmd/harness -run Install -count=1`
+- Modify: `cmd/issueops/install_native.go`
+- Modify: `internal/core/install.go` or add focused install helper in `cmd/issueops` if the behavior is CLI-only
+- Test: `go test ./cmd/issueops -run Install -count=1`
 
 - [ ] **Step 1: Write tests for PATH decision planning**
 
@@ -212,7 +212,7 @@ Add tests for three modes:
 Run:
 
 ```bash
-go test ./cmd/harness -run Install -count=1
+go test ./cmd/issueops -run Install -count=1
 ```
 
 Expected: FAIL because `install` does not yet own PATH shim planning.
@@ -237,12 +237,12 @@ default:
 
 - [ ] **Step 4: Preserve current symlink behavior**
 
-Move the behavior currently in `ensure_agent_harness_command` into Go or call a narrowly scoped helper from `install.sh`. Preferred direction is Go-owned planning and writing so dry-run JSON can report the same changes.
+Move the behavior currently in `ensure_issueops_command` into Go or call a narrowly scoped helper from `install.sh`. Preferred direction is Go-owned planning and writing so dry-run JSON can report the same changes.
 
 The plan output must mention:
 
 ```text
-~/.local/bin/agent-harness -> <repo>/bin/agent-harness
+~/.local/bin/issueops -> <repo>/bin/issueops
 shell rc file considered: ~/.zshrc, ~/.bashrc, or ~/.profile
 PATH line: export PATH="$HOME/.local/bin:$PATH"
 ```
@@ -252,9 +252,9 @@ PATH line: export PATH="$HOME/.local/bin:$PATH"
 Run:
 
 ```bash
-./bin/agent-harness install --dry-run --path-mode=auto
-./bin/agent-harness install --dry-run --path-mode=manual
-./bin/agent-harness install --dry-run --path-mode=skip
+./bin/issueops install --dry-run --path-mode=auto
+./bin/issueops install --dry-run --path-mode=manual
+./bin/issueops install --dry-run --path-mode=skip
 ```
 
 Expected: each mode prints a distinct plan and does not write files.
@@ -262,8 +262,8 @@ Expected: each mode prints a distinct plan and does not write files.
 ### Task 4: Add Interactive Install Flow
 
 **Files:**
-- Modify: `cmd/harness/install_native.go`
-- Test: `go test ./cmd/harness -run Install -count=1`
+- Modify: `cmd/issueops/install_native.go`
+- Test: `go test ./cmd/issueops -run Install -count=1`
 
 - [ ] **Step 1: Add non-interactive flags before TUI behavior**
 
@@ -289,7 +289,7 @@ Verify that explicit flags produce the same request fields as interactive defaul
 Run:
 
 ```bash
-go test ./cmd/harness -run Install -count=1
+go test ./cmd/issueops -run Install -count=1
 ```
 
 Expected: tests fail before flag parsing exists.
@@ -299,9 +299,9 @@ Expected: tests fail before flag parsing exists.
 When `--interactive` is set and stdin is a terminal, show concise explanations before each decision:
 
 ```text
-PATH 설정: ~/.local/bin에 agent-harness command shim을 둡니다.
-Codex 설정: CODEX_HOME이 없으면 ~/.codex를 사용하고 MCP env에 HARNESS_ROOT를 기록합니다.
-Claude 설정: user-scope MCP에 HARNESS_ROOT와 binary path를 등록합니다.
+PATH 설정: ~/.local/bin에 issueops command shim을 둡니다.
+Codex 설정: CODEX_HOME이 없으면 ~/.codex를 사용하고 MCP env에 ISSUEOPS_ROOT를 기록합니다.
+Claude 설정: user-scope MCP에 ISSUEOPS_ROOT와 binary path를 등록합니다.
 Upstream tools: llm-wiki, CodeGraph, claude-mem은 opt-in companion입니다.
 ```
 
@@ -320,7 +320,7 @@ install: --interactive requires a terminal; use explicit flags for automation
 Run in a terminal:
 
 ```bash
-./bin/agent-harness install --interactive --dry-run
+./bin/issueops install --interactive --dry-run
 ```
 
 Expected: prompts appear, then dry-run summary shows planned PATH, Codex, Claude, MCP, and upstream choices.
@@ -328,10 +328,10 @@ Expected: prompts appear, then dry-run summary shows planned PATH, Codex, Claude
 ### Task 5: Update Bootstrap And Update Semantics
 
 **Files:**
-- Modify: `cmd/harness/update_bootstrap.go`
+- Modify: `cmd/issueops/update_bootstrap.go`
 - Modify: `internal/adapter/cli/usage.go`
-- Modify: `cmd/harness/testdata/usage.golden.txt`
-- Test: `go test ./cmd/harness -run Golden -count=1`
+- Modify: `cmd/issueops/testdata/usage.golden.txt`
+- Test: `go test ./cmd/issueops -run Golden -count=1`
 
 - [ ] **Step 1: Decide compatibility behavior in code**
 
@@ -350,17 +350,17 @@ update
 Change usage from:
 
 ```text
-agent-harness install-native [--project-local] [--dry-run] [--json]
-agent-harness update [--dry-run] [--json]
-agent-harness bootstrap [--sync] [--dry-run] [--json]
+issueops install-native [--project-local] [--dry-run] [--json]
+issueops update [--dry-run] [--json]
+issueops bootstrap [--sync] [--dry-run] [--json]
 ```
 
 to:
 
 ```text
-agent-harness install [--interactive] [--project-local] [--dry-run] [--json]
-agent-harness update [--dry-run] [--json]
-agent-harness bootstrap [--sync] [--dry-run] [--json]
+issueops install [--interactive] [--project-local] [--dry-run] [--json]
+issueops update [--dry-run] [--json]
+issueops bootstrap [--sync] [--dry-run] [--json]
 ```
 
 - [ ] **Step 3: Regenerate golden usage if intended**
@@ -368,7 +368,7 @@ agent-harness bootstrap [--sync] [--dry-run] [--json]
 Run:
 
 ```bash
-go test ./cmd/harness -run Golden -update -count=1
+go test ./cmd/issueops -run Golden -update -count=1
 ```
 
 Expected: golden usage changes only for intended command naming and flags.
@@ -378,8 +378,8 @@ Expected: golden usage changes only for intended command naming and flags.
 Run:
 
 ```bash
-./bin/agent-harness bootstrap --dry-run --json
-./bin/agent-harness update --dry-run --json
+./bin/issueops bootstrap --dry-run --json
+./bin/issueops update --dry-run --json
 ```
 
 Expected: both still produce valid install plans.
@@ -388,10 +388,10 @@ Expected: both still produce valid install plans.
 
 **Files:**
 - Modify: `README.md`
-- Modify: `.agent-harness/operations/install.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/TECH_STACK.md`
-- Modify: `.agent-harness/TESTING.md`
+- Modify: `.issueops/operations/install.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/TECH_STACK.md`
+- Modify: `.issueops/TESTING.md`
 - Modify: `docs/superpowers/plans/2026-06-03-install-command-tui.md`
 - Test: grep and command smoke
 
@@ -400,8 +400,8 @@ Expected: both still produce valid install plans.
 Document first install as:
 
 ```bash
-git clone git@github.com:m16khb/agent-harness.git
-cd agent-harness
+git clone git@github.com:m16khb/issueops.git
+cd issueops
 ./install.sh
 ```
 
@@ -413,14 +413,14 @@ Document dry-run first install as:
 
 - [ ] **Step 2: Replace public command name**
 
-Use `agent-harness install` in public docs. Mention `install-native` only if the code keeps it as a deprecated compatibility alias.
+Use `issueops install` in public docs. Mention `install-native` only if the code keeps it as a deprecated compatibility alias.
 
 - [ ] **Step 3: Clarify env ownership**
 
 Add a concise note:
 
 ```text
-Normal users should not export HARNESS_ROOT manually. The installer records HARNESS_ROOT in Codex/Claude MCP config. CODEX_HOME is read only when already set; otherwise ~/.codex is used.
+Normal users should not export ISSUEOPS_ROOT manually. The installer records ISSUEOPS_ROOT in Codex/Claude MCP config. CODEX_HOME is read only when already set; otherwise ~/.codex is used.
 ```
 
 - [ ] **Step 4: Link the plan in IssueOps state**
@@ -428,7 +428,7 @@ Normal users should not export HARNESS_ROOT manually. The installer records HARN
 Run:
 
 ```bash
-./bin/agent-harness issueops link-plan --id io-87747efaf5c8 --plan-path docs/superpowers/plans/2026-06-03-install-command-tui.md --json
+./bin/issueops link-plan --id io-87747efaf5c8 --plan-path docs/superpowers/plans/2026-06-03-install-command-tui.md --json
 ```
 
 Expected: state includes issue #32 and this plan path.
@@ -438,7 +438,7 @@ Expected: state includes issue #32 and this plan path.
 Run:
 
 ```bash
-rg -n "install-native|agent-harness bootstrap|./scripts/install-native.sh|HARNESS_ROOT|CODEX_HOME" README.md .agent-harness docs/superpowers/plans/2026-06-03-install-command-tui.md
+rg -n "install-native|issueops bootstrap|./scripts/install-native.sh|ISSUEOPS_ROOT|CODEX_HOME" README.md .issueops docs/superpowers/plans/2026-06-03-install-command-tui.md
 ```
 
 Expected: remaining `install-native` references are either compatibility notes or test names that intentionally preserve legacy behavior.
@@ -453,7 +453,7 @@ Expected: remaining `install-native` references are either compatibility notes o
 Run:
 
 ```bash
-go test ./cmd/harness -run Install -count=1
+go test ./cmd/issueops -run Install -count=1
 go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1
 ```
 
@@ -464,7 +464,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/issueops -run Golden -count=1
 ```
 
 Expected: PASS.
@@ -484,7 +484,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: PASS.
@@ -495,8 +495,8 @@ Run:
 
 ```bash
 ./install.sh --dry-run
-./bin/agent-harness install --dry-run --json
-./bin/agent-harness bootstrap --dry-run --json
+./bin/issueops install --dry-run --json
+./bin/issueops bootstrap --dry-run --json
 git diff --check
 ```
 
@@ -504,6 +504,6 @@ Expected: PASS, no unexpected writes from dry-run commands.
 
 ## Self-Review
 
-- Spec coverage: The plan covers first-run `./install.sh`, `agent-harness install`, PATH/HARNESS_ROOT/CODEX_HOME ownership, optional upstream tools, non-interactive automation, docs, and compatibility verification.
+- Spec coverage: The plan covers first-run `./install.sh`, `issueops install`, PATH/ISSUEOPS_ROOT/CODEX_HOME ownership, optional upstream tools, non-interactive automation, docs, and compatibility verification.
 - Placeholder scan: No placeholder markers or undefined follow-up placeholders remain.
 - Type consistency: The plan consistently uses `install`, `install-native` only as a compatibility alias, and `io-87747efaf5c8` for IssueOps state linkage.

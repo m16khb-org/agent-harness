@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
 )
 
 func TestFinalizeResultPreservesBoundedRouteContract(t *testing.T) {

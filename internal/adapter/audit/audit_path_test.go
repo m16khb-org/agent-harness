@@ -7,8 +7,8 @@ import (
 
 func TestCommandAuditLogPathUsesExplicitEnvPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
-	t.Setenv("HARNESS_AUDIT_LOG", path)
-	t.Setenv("HARNESS_STATE_DIR", filepath.Join(t.TempDir(), "state"))
+	t.Setenv("ISSUEOPS_AUDIT_LOG", path)
+	t.Setenv("ISSUEOPS_STATE_DIR", filepath.Join(t.TempDir(), "state"))
 
 	got, err := commandAuditLogPath()
 	if err != nil {
@@ -21,8 +21,8 @@ func TestCommandAuditLogPathUsesExplicitEnvPath(t *testing.T) {
 
 func TestCommandAuditLogPathUsesStateDirFallback(t *testing.T) {
 	stateDir := t.TempDir()
-	t.Setenv("HARNESS_AUDIT_LOG", "")
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("ISSUEOPS_AUDIT_LOG", "")
+	t.Setenv("ISSUEOPS_STATE_DIR", stateDir)
 
 	got, err := commandAuditLogPath()
 	if err != nil {

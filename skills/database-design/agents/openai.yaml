@@ -1,0 +1,4 @@
+interface:
+  display_name: "Database Design"
+  short_description: "Design relational schemas and optimize SQL queries"
+  default_prompt: "Use $database-design to assess this schema or SQL query and recommend improvements with measured plans and index tradeoffs."

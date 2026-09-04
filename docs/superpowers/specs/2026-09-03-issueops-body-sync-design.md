@@ -23,10 +23,10 @@
 ### CLI 표면
 
 ```
-agent-harness issueops remote sync-issue --id ID [--provider github|gitlab] [--url CHILD_URL]
+issueops remote sync-issue --id ID [--provider github|gitlab] [--url CHILD_URL]
   --body-file PATH [--expected-body-sha256 SHA] [--confirm] [--json]
 
-agent-harness issueops remote sync-pr --id ID --expected-generation N [--provider github|gitlab]
+issueops remote sync-pr --id ID --expected-generation N [--provider github|gitlab]
   --body-file PATH [--expected-body-sha256 SHA]
   --host codex|claude|omo --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]
 ```
@@ -40,7 +40,7 @@ agent-harness issueops remote sync-pr --id ID --expected-generation N [--provide
 | `internal/domain/issueopsbodysync` | 본문 정규화, 관리 블록 보존 병합, drift 분류, CAS 판정 |
 | `internal/adapter/issueops` | 대상 해석·게이트·CAS·readback·기록 오케스트레이션 |
 | `internal/adapter/provider/{github,gitlab}` | 세 인터페이스 구현 |
-| `cmd/harness/issueopscli/remotecmd` | 플래그·dispatch·usage |
+| `cmd/issueops/issueopscli/remotecmd` | 플래그·dispatch·usage |
 
 오케스트레이션은 별도 application vertical을 만들지 않고
 `internal/adapter/issueops`에 둔다. 나머지 `remote` 동사(`reflect-devils-advocate`,
@@ -59,7 +59,7 @@ readiness가 그 마커를 readback 조건으로 쓴다(`port.IssueBodyCompletio
 따라서 병합 규칙을 도메인에 고정한다.
 
 1. 원격 본문에서 `issueops:devils-advocate` 블록, `issueops:completion` 블록,
-   `agent-harness:issue-create:<op>` 마커를 추출한다.
+   `issueops:issue-create:<op>` 마커를 추출한다.
 2. 제안 본문 뒤에 원래 등장 순서대로 재부착한다.
 3. 제안 본문이 이 마커를 이미 품고 있으면 거부한다. 관리 영역은 저작 대상이 아니다.
 

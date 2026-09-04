@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	basesyncport "issueops/internal/port/issueopsbasesync"
 )
 
 const (

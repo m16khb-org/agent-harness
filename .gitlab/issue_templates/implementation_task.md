@@ -47,6 +47,6 @@
 ## 가이드라인 참조
 
 - `skills/issueops-create-issue/SKILL.md`
-- `.agent-harness/operations/guides/issueops-providers.md`
+- `.issueops/operations/guides/issueops-providers.md`
 
 /label ~"enhancement"

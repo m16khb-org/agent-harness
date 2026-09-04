@@ -1,6 +1,6 @@
 package issueops
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 func KnownIssueOpsPhase(phase issueopscontract.IssueOpsPhase) bool {
 	return IssueOpsPhaseRank(phase) != 0

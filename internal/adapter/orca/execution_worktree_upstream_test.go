@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // IssueOps는 Orca 준비 전에 BaseHead를 봉인하고 대상 브랜치가 로컬과 원격에

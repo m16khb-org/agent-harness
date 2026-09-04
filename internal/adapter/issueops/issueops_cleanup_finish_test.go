@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 type portCompletionSection = port.IssueProviderCompletionSection
@@ -501,7 +501,7 @@ func TestCleanupFinishBranchDeleteFailureAndGates(t *testing.T) {
 // 뒤에도 보존 본문(plan/spec)이 빈 값으로 덮이지 않는다.
 func TestCleanupFinishAuditUsesPreDestructionSnapshot(t *testing.T) {
 	stateRoot, record, worktree := finishTestRecord(t, true)
-	artifactDir := filepath.Join(worktree, ".agent-harness", "artifact")
+	artifactDir := filepath.Join(worktree, ".issueops", "artifact")
 	if err := os.MkdirAll(artifactDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -560,7 +560,7 @@ func TestCleanupFinishAuditUsesPreDestructionSnapshot(t *testing.T) {
 	}
 }
 
-// brooks H8: remote-branch를 건너뛴 finish가 레코드를 지우면 typed 원격 삭제
+// design-review H8: remote-branch를 건너뛴 finish가 레코드를 지우면 typed 원격 삭제
 // 경로가 그 브랜치에 영원히 닿지 못한다. 잔존과 관측 불가 모두 차단한다.
 func TestCleanupFinishBlocksWhileRemoteBranchStillExists(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)

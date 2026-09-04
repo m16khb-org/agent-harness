@@ -1,8 +1,8 @@
 package projectbootstrap
 
 import (
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	projectdoccontract "agent-harness/internal/contract/projectdoc"
+	lifecyclecontract "issueops/internal/contract/lifecycle"
+	projectdoccontract "issueops/internal/contract/projectdoc"
 )
 
 // lifecycle state 초기화는 파일시스템에 쓰는 I/O다. bootstrap은 그 구현을 모르고

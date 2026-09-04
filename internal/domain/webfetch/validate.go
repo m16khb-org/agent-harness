@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
 )
 
 var tagRE = regexp.MustCompile(`(?s)<[^>]+>`)

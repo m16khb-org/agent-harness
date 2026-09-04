@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 const (
@@ -15,9 +15,9 @@ const (
 	digestA            = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	digestB            = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
-	prepareIntentJSON = `{"schema_version":1,"purpose":"prepare","operation_id":"0123456789abcdef0123456789abcdef","lifecycle_id":"io-codec-prepare","generation":1,"stage":"worktree_create","marker":"agent-harness issueops-v1 lifecycle=io-codec-prepare operation=0123456789abcdef0123456789abcdef provider=github issue=199","started_at":"2026-08-02T00:00:00Z","invocation_state":"not_invoked_proven","invocation_attempts":0,"workspace":{"lifecycle_id":"io-codec-prepare","source_root":"/repo","root":"/repo.worktrees/199-prepare","branch":"199-prepare","base_branch":"117-parent","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","confirm":true},"probe":{"repo":"/repo","host":"codex","model":"gpt-5.6","effort":"high","provider":"github","issue":199,"marker":"agent-harness issueops-v1 lifecycle=io-codec-prepare operation=0123456789abcdef0123456789abcdef provider=github issue=199"},"issue_body_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`
+	prepareIntentJSON = `{"schema_version":1,"purpose":"prepare","operation_id":"0123456789abcdef0123456789abcdef","lifecycle_id":"io-codec-prepare","generation":1,"stage":"worktree_create","marker":"issueops-v1 lifecycle=io-codec-prepare operation=0123456789abcdef0123456789abcdef provider=github issue=199","started_at":"2026-08-02T00:00:00Z","invocation_state":"not_invoked_proven","invocation_attempts":0,"workspace":{"lifecycle_id":"io-codec-prepare","source_root":"/repo","root":"/repo.worktrees/199-prepare","branch":"199-prepare","base_branch":"117-parent","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","confirm":true},"probe":{"repo":"/repo","host":"codex","model":"gpt-5.6","effort":"high","provider":"github","issue":199,"marker":"issueops-v1 lifecycle=io-codec-prepare operation=0123456789abcdef0123456789abcdef provider=github issue=199"},"issue_body_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`
 
-	resumeIntentJSON = `{"schema_version":1,"purpose":"resume","operation_id":"fedcba9876543210fedcba9876543210","lifecycle_id":"io-codec-resume","generation":2,"stage":"terminal_create","marker":"agent-harness issueops-v1 resume lifecycle=io-codec-resume generation=2 operation=fedcba9876543210fedcba9876543210 provider=github issue=199","started_at":"2026-08-02T00:01:00Z","invocation_state":"not_invoked_proven","invocation_attempts":0,"workspace":{"lifecycle_id":"io-codec-resume","source_root":"/repo","root":"/repo.worktrees/199-resume","branch":"199-resume","base_branch":"117-parent","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","confirm":true},"probe":{"repo":"/repo","host":"claude","model":"claude-opus-4-1","effort":"high","provider":"github","issue":199,"marker":"agent-harness issueops-v1 resume lifecycle=io-codec-resume generation=2 operation=fedcba9876543210fedcba9876543210 provider=github issue=199"},"prepared":{"workspace":{"source_root":"/repo","root":"/repo.worktrees/199-resume","branch":"199-resume","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","driver":"orca"},"runtime_id":"runtime","repo_id":"repo","worktree_id":"worktree","worktree_instance_id":"instance"},"launch":{"prompt_path":"/repo.worktrees/199-resume/.agent-harness/owner.md","prompt_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","context_packet_path":"/repo.worktrees/199-resume/.agent-harness/context.json","context_packet_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"issue_body_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","claim_token_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","prior_binding":{"runtime_id":"runtime","repo_id":"repo","worktree_id":"worktree","worktree_instance_id":"instance","lease_generation":1,"owner_host":"claude","owner_model":"claude-opus-4-1","owner_effort":"high","run_id":"run-old","task_id":"task-old","dispatch_id":"dispatch-old","terminal_pty_id":"terminal-old"},"resume_lease":{"generation":2,"status":"claimable","claim_token_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}`
+	resumeIntentJSON = `{"schema_version":1,"purpose":"resume","operation_id":"fedcba9876543210fedcba9876543210","lifecycle_id":"io-codec-resume","generation":2,"stage":"terminal_create","marker":"issueops-v1 resume lifecycle=io-codec-resume generation=2 operation=fedcba9876543210fedcba9876543210 provider=github issue=199","started_at":"2026-08-02T00:01:00Z","invocation_state":"not_invoked_proven","invocation_attempts":0,"workspace":{"lifecycle_id":"io-codec-resume","source_root":"/repo","root":"/repo.worktrees/199-resume","branch":"199-resume","base_branch":"117-parent","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","confirm":true},"probe":{"repo":"/repo","host":"claude","model":"claude-opus-4-1","effort":"high","provider":"github","issue":199,"marker":"issueops-v1 resume lifecycle=io-codec-resume generation=2 operation=fedcba9876543210fedcba9876543210 provider=github issue=199"},"prepared":{"workspace":{"source_root":"/repo","root":"/repo.worktrees/199-resume","branch":"199-resume","base_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","driver":"orca"},"runtime_id":"runtime","repo_id":"repo","worktree_id":"worktree","worktree_instance_id":"instance"},"launch":{"prompt_path":"/repo.worktrees/199-resume/.issueops/owner.md","prompt_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","context_packet_path":"/repo.worktrees/199-resume/.issueops/context.json","context_packet_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"issue_body_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","claim_token_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","prior_binding":{"runtime_id":"runtime","repo_id":"repo","worktree_id":"worktree","worktree_instance_id":"instance","lease_generation":1,"owner_host":"claude","owner_model":"claude-opus-4-1","owner_effort":"high","run_id":"run-old","task_id":"task-old","dispatch_id":"dispatch-old","terminal_pty_id":"terminal-old"},"resume_lease":{"generation":2,"status":"claimable","claim_token_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}`
 )
 
 func TestIntentCodecRoundTripsPrepareAndResumeBytes(t *testing.T) {
@@ -98,7 +98,7 @@ func TestIntentCodecRejectsNonCanonicalMarkerTokensAndPrepareGeneration(t *testi
 func TestIntentCodecCanonicalizeRejectsRetiredMarkerWithoutMutation(t *testing.T) {
 	codec := IntentCodec{}
 	raw := retiredPrepareIntentBytes(t)
-	record := prepareIntentRecord(t, "github", "https://github.com/m16khb/agent-harness/issues/199", raw)
+	record := prepareIntentRecord(t, "github", "https://github.com/m16khb/issueops/issues/199", raw)
 	beforeRaw := append([]byte(nil), raw...)
 	beforeRecord, err := json.Marshal(record)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestPrepareIssueIdentityAndReadinessMarker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if marker != "agent-harness issueops-v1 lifecycle=io-prepare provider=github issue=199" {
+	if marker != "issueops-v1 lifecycle=io-prepare provider=github issue=199" {
 		t.Fatalf("marker=%q", marker)
 	}
 
@@ -151,8 +151,8 @@ func TestPrepareIssueIdentityAndReadinessMarker(t *testing.T) {
 
 func retiredPrepareIntentBytes(t *testing.T) []byte {
 	t.Helper()
-	canonical := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID + " provider=github issue=199"
-	retired := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID
+	canonical := "issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID + " provider=github issue=199"
+	retired := "issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID
 	return []byte(strings.ReplaceAll(prepareIntentJSON, canonical, retired))
 }
 

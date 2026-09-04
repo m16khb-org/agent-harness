@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	bodysynccontract "agent-harness/internal/contract/issueopsbodysync"
-	bodysync "agent-harness/internal/domain/issueopsbodysync"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	bodysynccontract "issueops/internal/contract/issueopsbodysync"
+	bodysync "issueops/internal/domain/issueopsbodysync"
+	"issueops/internal/port"
 )
 
 const syncCompletionBlock = "<!-- issueops:completion:start -->\n## 완료 기록\n<!-- issueops:completion:end -->"
@@ -83,7 +83,7 @@ func bodySyncCreateIntent(url, sha string) *issueops.IssueOpsIssueCreateIntent {
 	const operationID = "0123456789abcdef0123456789abcdef"
 	return &issueops.IssueOpsIssueCreateIntent{
 		OperationID:      operationID,
-		Marker:           "<!-- agent-harness:issue-create:" + operationID + " -->",
+		Marker:           "<!-- issueops:issue-create:" + operationID + " -->",
 		Provider:         "github",
 		ProjectAuthority: "github.com/acme/repo",
 		Title:            "[enhancement] 본문 동기화",

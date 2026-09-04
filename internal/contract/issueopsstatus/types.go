@@ -1,6 +1,6 @@
 package issueopsstatus
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 type Record = issueopscontract.IssueOpsRecord
 type Phase = issueopscontract.IssueOpsPhase

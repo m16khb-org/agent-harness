@@ -2,7 +2,7 @@
 // invariant: the committed pioneer holdout fixtures under
 // testdata/pioneer-holdouts/ contain INPUTS ONLY, never the recorded answer
 // (scores, root cause, fix, provenance), and the raw answer tree under
-// .agent-harness/evidence/ stays untracked. See testdata/pioneer-holdouts/README.md.
+// .issueops/evidence/ stays untracked. See testdata/pioneer-holdouts/README.md.
 package holdoutdeleak
 
 import (
@@ -81,7 +81,7 @@ func TestHoldoutFixturesContainInputsOnly(t *testing.T) {
 }
 
 func TestEvidenceAnswerTreeStaysUntracked(t *testing.T) {
-	// The raw result.yaml answers live under .agent-harness/evidence, which is
+	// The raw result.yaml answers live under .issueops/evidence, which is
 	// blanket-gitignored by the bare "evidence" line in .gitignore. This guards
 	// that A6's testdata route did not weaken that ignore and start tracking the
 	// answer tree.
@@ -108,13 +108,13 @@ func TestEvidenceAnswerFilesNotForceTracked(t *testing.T) {
 	if err != nil {
 		t.Skip("git not available")
 	}
-	cmd := exec.Command(git, "ls-files", "--", ".agent-harness/evidence")
+	cmd := exec.Command(git, "ls-files", "--", ".issueops/evidence")
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
 		t.Skipf("git ls-files unavailable (not a work tree?): %v", err)
 	}
 	if tracked := strings.TrimSpace(string(out)); tracked != "" {
-		t.Errorf("answer tree .agent-harness/evidence is git-tracked (force-added?); holdout answers (result.yaml/baselines) must stay untracked:\n%s", tracked)
+		t.Errorf("answer tree .issueops/evidence is git-tracked (force-added?); holdout answers (result.yaml/baselines) must stay untracked:\n%s", tracked)
 	}
 }

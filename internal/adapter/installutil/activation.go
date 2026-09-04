@@ -11,10 +11,10 @@ import (
 	"reflect"
 	"syscall"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
-// VerifyHookActivation performs semantic readback of only agent-harness hook
+// VerifyHookActivation performs semantic readback of only issueops hook
 // groups while permitting unrelated co-resident hooks to remain untouched.
 func VerifyHookActivation(path string, expected map[string]any) (string, error) {
 	raw, err := os.ReadFile(path)
@@ -57,13 +57,13 @@ func VerifyHookConfigActivation(actual, expected map[string]any) (string, error)
 		expectedGroupsValue, expectedEvent := expectedHooks[event]
 		if !expectedEvent {
 			if len(harnessGroups) != 0 {
-				return "", fmt.Errorf("installed hook event %s contains an unexpected agent-harness group", event)
+				return "", fmt.Errorf("installed hook event %s contains an unexpected issueops group", event)
 			}
 			continue
 		}
 		expectedGroups, ok := expectedGroupsValue.([]any)
 		if !ok || len(expectedGroups) != 1 || len(harnessGroups) != 1 || !canonicalJSONEqual(harnessGroups[0], expectedGroups[0]) {
-			return "", fmt.Errorf("installed hook event %s does not contain exactly one canonical agent-harness group", event)
+			return "", fmt.Errorf("installed hook event %s does not contain exactly one canonical issueops group", event)
 		}
 	}
 	for event := range expectedHooks {

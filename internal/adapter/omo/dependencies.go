@@ -3,7 +3,7 @@ package omo
 import (
 	"os"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type InstallPlan = port.InstallPlan

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate agent-harness skill metadata without relying on host-managed system
+Validate issueops skill metadata without relying on host-managed system
 skill copies or optional PyYAML installation.
 """
 

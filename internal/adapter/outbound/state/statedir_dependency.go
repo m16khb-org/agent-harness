@@ -17,7 +17,7 @@ func ConfigureStateDir(resolve func() string) {
 }
 
 func defaultStateDir() string {
-	if env := os.Getenv("HARNESS_STATE_DIR"); env != "" {
+	if env := os.Getenv("ISSUEOPS_STATE_DIR"); env != "" {
 		if abs, err := filepath.Abs(env); err == nil {
 			return abs
 		}
@@ -25,7 +25,7 @@ func defaultStateDir() string {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
-		return filepath.Join(os.TempDir(), "agent-harness-state")
+		return filepath.Join(os.TempDir(), "issueops-state")
 	}
-	return filepath.Join(home, ".local", "state", "agent-harness")
+	return filepath.Join(home, ".local", "state", "issueops")
 }

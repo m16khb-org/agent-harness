@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	policy "agent-harness/internal/contract/policy"
+	policy "issueops/internal/contract/policy"
 )
 
 func TestAuditCommandPolicyWritesRedactedJSONL(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_AUDIT_LOG", filepath.Join(dir, "audit.jsonl"))
+	t.Setenv("ISSUEOPS_AUDIT_LOG", filepath.Join(dir, "audit.jsonl"))
 	record, err := AuditCommandPolicy(policy.CommandPolicyRequest{WorkspaceRoot: dir, CWD: dir, Argv: []string{"echo", "token=secret-value"}, Timeout: "30s"})
 	if err != nil {
 		t.Fatalf("audit policy: %v", err)

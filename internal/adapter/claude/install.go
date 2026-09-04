@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type Installer struct{}
@@ -30,7 +30,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	plan.File(WriteJSONPlan(filepath.Join(req.Root, "configs", "claude", "mcp.project.json"), "claude_project_mcp_template", mcpConfig, 0o644, req.DryRun))
 
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "claude", "hooks.settings.json")
-	plan.File(WriteJSONPlan(hooksTemplatePath, "claude_hooks_template", claudeSettingsConfig("./bin/agent-harness"), 0o644, req.DryRun))
+	plan.File(WriteJSONPlan(hooksTemplatePath, "claude_hooks_template", claudeSettingsConfig("./bin/issueops"), 0o644, req.DryRun))
 
 	if req.ProjectLocal {
 		for _, skillName := range enabledSkills {
@@ -49,12 +49,12 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 func claudeProjectMCPConfig() map[string]any {
 	return map[string]any{
 		"mcpServers": map[string]any{
-			"agent_harness_project": map[string]any{
+			"issueops_project": map[string]any{
 				"type":    "stdio",
-				"command": "./bin/agent-harness",
+				"command": "./bin/issueops",
 				"args":    []string{"mcp"},
 				"env": map[string]any{
-					"HARNESS_ROOT": ".",
+					"ISSUEOPS_ROOT": ".",
 				},
 			},
 		},

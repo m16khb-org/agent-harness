@@ -3,7 +3,7 @@ package issueopspreparation
 import (
 	"encoding/json"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 const (

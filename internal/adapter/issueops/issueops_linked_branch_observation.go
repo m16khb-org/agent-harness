@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 // githubLinkedBranchListQuery는 이슈의 linked branch를 읽는다. branch prepare의

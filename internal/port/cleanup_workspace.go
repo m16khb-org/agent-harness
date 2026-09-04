@@ -1,6 +1,6 @@
 package port
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 // CleanupWorkspaceOccupancy는 cleanup finish/abandon이 한 번의 관측으로 얻는
 // 워크트리 점유 상태다. 점유자와 요청자(현재 프로세스)의 계보를 같은 프로세스

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops"
+	"issueops/internal/adapter/issueops"
 )
 
 func TestReseedHandlerRequiresService(t *testing.T) {

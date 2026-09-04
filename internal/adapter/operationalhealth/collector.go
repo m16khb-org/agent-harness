@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/domain/operationalhealth"
-	"agent-harness/internal/port"
 	"golang.org/x/sync/errgroup"
+	issueopscontract "issueops/internal/contract/issueops"
+	corehealth "issueops/internal/domain/operationalhealth"
+	"issueops/internal/port"
 )
 
 type OrcaInventory interface {

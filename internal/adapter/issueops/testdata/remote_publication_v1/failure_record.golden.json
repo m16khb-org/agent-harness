@@ -2,15 +2,15 @@
   "ok": true,
   "schema_version": 1,
   "id": "io-publication-oracle",
-  "repo": "/fixture/agent-harness",
+  "repo": "/fixture/issueops",
   "branch": "195-publication-oracle",
   "phase": "pr",
-  "worktree_path": "/fixture/agent-harness.worktrees/195-publication-oracle",
+  "worktree_path": "/fixture/issueops.worktrees/195-publication-oracle",
   "execution": {
     "mode": "direct",
     "workspace": {
-      "source_root": "/fixture/agent-harness",
-      "root": "/fixture/agent-harness.worktrees/195-publication-oracle",
+      "source_root": "/fixture/issueops",
+      "root": "/fixture/issueops.worktrees/195-publication-oracle",
       "branch": "195-publication-oracle",
       "base_head": "667e5d15b0773e2550cfbf5bc2780506e9eb2896",
       "driver": "git",
@@ -34,7 +34,7 @@
     "pending": {
       "operation_id": "0123456789abcdef0123456789abcdef",
       "kind": "remote_pr_create",
-      "marker": "\u003c!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef --\u003e",
+      "marker": "\u003c!-- issueops:issueops-v1 operation=0123456789abcdef0123456789abcdef --\u003e",
       "started_at": "2026-08-01T00:00:00Z"
     },
     "failure": {

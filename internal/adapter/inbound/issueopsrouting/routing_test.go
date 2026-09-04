@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	issueopsroutingapplication "agent-harness/internal/application/issueopsrouting"
-	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
+	issueopsroutingapplication "issueops/internal/application/issueopsrouting"
+	issueopsroutingcontract "issueops/internal/contract/issueopsrouting"
 )
 
 type fakeRoutingStore struct {
@@ -52,7 +52,7 @@ func TestRoutingHandlersDelegateRecordAndScore(t *testing.T) {
 	))
 
 	actor := issueopsroutingcontract.Actor{Host: "codex"}
-	record, err := handlers.Record("/state", "io-3", "plan", "turing", actor)
+	record, err := handlers.Record("/state", "io-3", "plan", "verified-execution", actor)
 	if err != nil {
 		t.Fatalf("record failed: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestScorePropagatesReadState(t *testing.T) {
 
 func TestNilServiceFailsClosed(t *testing.T) {
 	handlers := NewHandlers(nil)
-	if _, err := handlers.Record("/state", "io-4", "plan", "turing", issueopsroutingcontract.Actor{}); err == nil {
+	if _, err := handlers.Record("/state", "io-4", "plan", "verified-execution", issueopsroutingcontract.Actor{}); err == nil {
 		t.Fatal("nil service must fail closed on record")
 	}
 	if _, _, err := handlers.Score("/state", "io-4", nil); err == nil {

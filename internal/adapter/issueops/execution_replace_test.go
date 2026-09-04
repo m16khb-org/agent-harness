@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestReplacementResealRequiresExistingPlanIdentity(t *testing.T) {

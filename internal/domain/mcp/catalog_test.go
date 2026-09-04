@@ -124,7 +124,7 @@ func collectAllCatalogTools() []Tool {
 func TestResourceMapsPreserveDescriptorShape(t *testing.T) {
 	resources := ResourceMaps([]Resource{
 		{
-			URI:         "harness://example",
+			URI:         "issueops://example",
 			Name:        "Example",
 			Description: "Example resource.",
 			MimeType:    "text/plain",
@@ -135,7 +135,7 @@ func TestResourceMapsPreserveDescriptorShape(t *testing.T) {
 		t.Fatalf("expected one mapped resource, got %d", len(resources))
 	}
 	resource := resources[0]
-	if resource["uri"] != "harness://example" {
+	if resource["uri"] != "issueops://example" {
 		t.Fatalf("unexpected uri: %#v", resource["uri"])
 	}
 	if resource["name"] != "Example" {

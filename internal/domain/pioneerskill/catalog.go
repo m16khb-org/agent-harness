@@ -1,18 +1,18 @@
 package pioneerskill
 
 var canonicalNames = []string{
-	"berners-lee",
-	"boehm",
-	"brooks",
-	"codd",
-	"dijkstra",
-	"engelbart",
-	"hopper",
-	"karpathy",
-	"shannon",
-	"torvalds",
-	"turing",
-	"von-neumann",
+	"web-research",
+	"requirements-analysis",
+	"design-review",
+	"database-design",
+	"algorithm-optimization",
+	"meeting-notes",
+	"debugging",
+	"prompt-engineering",
+	"code-quality-metrics",
+	"git-operations",
+	"verified-execution",
+	"implementation-planning",
 }
 
 func Names() []string {

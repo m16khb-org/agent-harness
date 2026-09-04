@@ -3,8 +3,8 @@ package issueopsdecision
 import (
 	"context"
 
-	issueopsdecisionapplication "agent-harness/internal/application/issueopsdecision"
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
+	issueopsdecisionapplication "issueops/internal/application/issueopsdecision"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
 )
 
 type Handlers struct {

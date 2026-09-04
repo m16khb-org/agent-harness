@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type childSmokeSurfaceDigest struct {
@@ -119,7 +119,7 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 		t.Fatal(err)
 	}
 	coResidentSentinel := filepath.Join(root, "co-resident-executed")
-	harnessBinary, err := filepath.Abs("harness")
+	harnessBinary, err := filepath.Abs("issueops")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,8 +163,8 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 		}
 		wantEnv := []string{
 			"CODEX_HOME=" + runtimeCodexHome,
-			"HARNESS_CHILD_SMOKE_HOOKS=1",
-			"HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath,
+			"ISSUEOPS_CHILD_SMOKE_HOOKS=1",
+			"ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath,
 			"PATH=/opt/bin",
 		}
 		if !reflect.DeepEqual(request.Env, wantEnv) {
@@ -175,17 +175,17 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 		return CommandOutput{Stdout: mcpOnlyHostStream(t, stream)}, nil
 	}}
 	environment := map[string]string{
-		"HARNESS_CHILD_SMOKE_HOOKS":            "1",
-		"HARNESS_CHILD_SMOKE_OBSERVATION_FILE": observationPath,
-		"CODEX_HOME":                           sourceCodexHome,
-		"HOME":                                 root,
+		"ISSUEOPS_CHILD_SMOKE_HOOKS":            "1",
+		"ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE": observationPath,
+		"CODEX_HOME":                            sourceCodexHome,
+		"HOME":                                  root,
 	}
-	runner := NewCodexRunner("harness", Dependencies{
+	runner := NewCodexRunner("issueops", Dependencies{
 		Process:  process,
 		LookPath: func(string) (string, error) { return "/opt/bin/codex", nil },
 		Getenv:   func(name string) string { return environment[name] },
 		Environ: func() []string {
-			return []string{"PATH=/opt/bin", "CODEX_HOME=" + sourceCodexHome, "HARNESS_CHILD_SMOKE_HOOKS=1", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
+			return []string{"PATH=/opt/bin", "CODEX_HOME=" + sourceCodexHome, "ISSUEOPS_CHILD_SMOKE_HOOKS=1", "ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
 		},
 	})
 	result := runner.Run(context.Background(), codexRequest("default"))
@@ -233,7 +233,7 @@ func assertProjectedCodexSmokeHooks(t *testing.T, path, observationPath, harness
 			t.Fatalf("%s groups=%+v", event, groups)
 		}
 		hook := groups[0].Hooks[0]
-		if hook.Type != "command" || hook.Timeout != 5 || !strings.Contains(hook.Command, "HARNESS_CHILD_SMOKE_HOOKS=1") || !strings.Contains(hook.Command, observationPath) || !strings.HasSuffix(hook.Command, testCodexManagedHookCommand(harnessBinary, event)) {
+		if hook.Type != "command" || hook.Timeout != 5 || !strings.Contains(hook.Command, "ISSUEOPS_CHILD_SMOKE_HOOKS=1") || !strings.Contains(hook.Command, observationPath) || !strings.HasSuffix(hook.Command, testCodexManagedHookCommand(harnessBinary, event)) {
 			t.Fatalf("%s hook=%+v", event, hook)
 		}
 	}
@@ -248,7 +248,7 @@ func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T
 	if err := os.Mkdir(sourceCodexHome, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	harnessBinary := filepath.Join(root, "bin", "agent-harness")
+	harnessBinary := filepath.Join(root, "bin", "issueops")
 	document := codexSmokeHookDocument{Hooks: map[string][]codexSmokeHookGroup{
 		"SessionStart": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart") + " && printf drift", Timeout: 5}}}},
 	}}
@@ -293,10 +293,10 @@ func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
 	}
 	request := claudeProbeRequest()
 	environment := map[string]string{
-		"HARNESS_CHILD_SMOKE_HOOKS":            "1",
-		"HARNESS_CHILD_SMOKE_OBSERVATION_FILE": observationPath,
+		"ISSUEOPS_CHILD_SMOKE_HOOKS":            "1",
+		"ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE": observationPath,
 	}
-	runner := NewClaudeRunner("harness", Dependencies{
+	runner := NewClaudeRunner("issueops", Dependencies{
 		Process: claudeCommandRunner{run: func(_ context.Context, command CommandRequest) (CommandOutput, error) {
 			if got := argumentValue(t, command.Argv, "--setting-sources"); got != "user" {
 				t.Fatalf("setting sources=%q want user", got)
@@ -308,7 +308,7 @@ func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
 		LookPath: func(string) (string, error) { return "/opt/bin/claude", nil },
 		Getenv:   func(name string) string { return environment[name] },
 		Environ: func() []string {
-			return []string{"PATH=/opt/bin", "HARNESS_CHILD_SMOKE_HOOKS=1", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
+			return []string{"PATH=/opt/bin", "ISSUEOPS_CHILD_SMOKE_HOOKS=1", "ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
 		},
 	})
 	result := runner.Run(context.Background(), request)
@@ -328,7 +328,7 @@ func TestChildHostSmokeRejectsSymlinkedHookMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := observeRecordedHookEvents(Dependencies{Getenv: func(name string) string {
-		if name == "HARNESS_CHILD_SMOKE_OBSERVATION_FILE" {
+		if name == "ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE" {
 			return observationPath
 		}
 		return ""
@@ -388,7 +388,7 @@ func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path
 	if !observation.SessionStartObserved || observation.PreToolUseObserved || observation.MCPCallCount != 1 || observation.ResponseSHA256 != result.ResponseSHA256 {
 		t.Fatalf("observation=%+v", observation)
 	}
-	if strings.Contains(string(data), "captured") || strings.Contains(string(data), "agent_harness_probe") {
+	if strings.Contains(string(data), "captured") || strings.Contains(string(data), "issueops_probe") {
 		t.Fatalf("observation retained native transcript: %s", data)
 	}
 	info, err := os.Stat(path)
@@ -578,20 +578,20 @@ func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmok
 	if fixture.scenario == "source-activation-mismatch" {
 		writeManagedSurfaceFixture(t, home, codexHome, sourceRoot+"x")
 	}
-	writeExecutable(t, filepath.Join(sourceRoot, "bin", "agent-harness"), "#!/usr/bin/env bash\nprintf 'source-version\\n'\n")
+	writeExecutable(t, filepath.Join(sourceRoot, "bin", "issueops"), "#!/usr/bin/env bash\nprintf 'source-version\\n'\n")
 	if err := os.MkdirAll(filepath.Join(home, ".local", "bin"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	commandPath := filepath.Join(home, ".local", "bin", "agent-harness")
+	commandPath := filepath.Join(home, ".local", "bin", "issueops")
 	if fixture.regularCommand {
-		body, err := os.ReadFile(filepath.Join(sourceRoot, "bin", "agent-harness"))
+		body, err := os.ReadFile(filepath.Join(sourceRoot, "bin", "issueops"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(commandPath, body, 0o700); err != nil {
 			t.Fatal(err)
 		}
-	} else if err := os.Symlink(filepath.Join(sourceRoot, "bin", "agent-harness"), commandPath); err != nil {
+	} else if err := os.Symlink(filepath.Join(sourceRoot, "bin", "issueops"), commandPath); err != nil {
 		t.Fatal(err)
 	}
 	template := filepath.Join(root, "child-binary-template")
@@ -634,7 +634,7 @@ func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmok
 		"PATH="+fakeBin+":"+os.Getenv("PATH"),
 		"HOME="+home,
 		"CODEX_HOME="+codexHome,
-		"HARNESS_STATE_DIR="+stateRoot,
+		"ISSUEOPS_STATE_DIR="+stateRoot,
 		"FAKE_CHILD_BINARY_TEMPLATE="+template,
 		"FAKE_SOURCE_ROOT="+sourceRoot,
 		"FAKE_CHILD_ROOT="+childRoot,
@@ -709,12 +709,12 @@ func findHostSmokeRepoRoot(t *testing.T) string {
 
 func writeManagedSurfaceFixture(t *testing.T, home, codexHome, root string) {
 	t.Helper()
-	binary := filepath.Join(root, "bin", "agent-harness")
+	binary := filepath.Join(root, "bin", "issueops")
 	files := map[string]string{
-		filepath.Join(codexHome, "config.toml"): fmt.Sprintf("[mcp_servers.agent_harness]\ncommand = %q\nargs = [\"mcp\"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = %q\n", binary, root),
+		filepath.Join(codexHome, "config.toml"): fmt.Sprintf("[mcp_servers.issueops]\ncommand = %q\nargs = [\"mcp\"]\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = %q\n", binary, root),
 		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
 `, "'"+binary+"' hook session-start --host codex"),
-		filepath.Join(home, ".claude.json"): fmt.Sprintf(`{"mcpServers":{"agent_harness":{"type":"stdio","command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}
+		filepath.Join(home, ".claude.json"): fmt.Sprintf(`{"mcpServers":{"issueops":{"type":"stdio","command":%q,"args":["mcp"],"env":{"ISSUEOPS_ROOT":%q}}}}
 `, binary, root),
 		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
 `, "'"+binary+"' hook session-start --host claude"),
@@ -743,7 +743,7 @@ identity=%q
 if [[ "$identity" == source && "${FAKE_SCENARIO:-}" == source-installer-retired-cli ]]; then
   exit 21
 fi
-if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" ]]; then
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_SOURCE_ROOT" ]]; then
   printf 'source_restore\n' >>"$FAKE_CALL_LOG"
   if [[ "${FAKE_SCENARIO:-}" == signal-during-restore ]]; then kill -TERM "$PPID"; fi
   [[ "${FAKE_SCENARIO:-}" != restore-failure ]] || exit 19
@@ -753,16 +753,16 @@ else
 fi
 mkdir -p "$CODEX_HOME" "$HOME/.claude"
 mkdir -p "$HOME/.local/bin"
-ln -sfn "$HARNESS_ROOT/bin/agent-harness" "$HOME/.local/bin/agent-harness"
-python3 - "$HARNESS_ROOT" "$HOME" "$CODEX_HOME" <<'PY'
+ln -sfn "$ISSUEOPS_ROOT/bin/issueops" "$HOME/.local/bin/issueops"
+python3 - "$ISSUEOPS_ROOT" "$HOME" "$CODEX_HOME" <<'PY'
 import json
 import os
 import sys
 
 root, home, codex_home = sys.argv[1:]
-binary = os.path.join(root, "bin", "agent-harness")
+binary = os.path.join(root, "bin", "issueops")
 with open(os.path.join(codex_home, "config.toml"), "w", encoding="utf-8") as handle:
-    handle.write(f'[mcp_servers.agent_harness]\ncommand = "{binary}"\nargs = ["mcp"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = "{root}"\n')
+    handle.write(f'[mcp_servers.issueops]\ncommand = "{binary}"\nargs = ["mcp"]\n[mcp_servers.issueops.env]\nISSUEOPS_ROOT = "{root}"\n')
 hooks = {"hooks": {
     "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host codex", "timeout": 5}]}],
 }}
@@ -770,7 +770,7 @@ with open(os.path.join(codex_home, "hooks.json"), "w", encoding="utf-8") as hand
     json.dump(hooks, handle, separators=(",", ":"))
     handle.write("\n")
 with open(os.path.join(home, ".claude.json"), "w", encoding="utf-8") as handle:
-    json.dump({"mcpServers": {"agent_harness": {"type": "stdio", "command": binary, "args": ["mcp"], "env": {"HARNESS_ROOT": root}}}}, handle, separators=(",", ":"))
+    json.dump({"mcpServers": {"issueops": {"type": "stdio", "command": binary, "args": ["mcp"], "env": {"ISSUEOPS_ROOT": root}}}}, handle, separators=(",", ":"))
     handle.write("\n")
 claude_hooks = {"hooks": {
     "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host claude", "timeout": 5}]}],
@@ -779,7 +779,7 @@ with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8")
     json.dump(claude_hooks, handle, separators=(",", ":"))
     handle.write("\n")
 PY
-if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-codex-hook-drift ]]; then
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-codex-hook-drift ]]; then
   "$REAL_PYTHON" - "$CODEX_HOME/hooks.json" <<'PY'
 import json
 import sys
@@ -794,18 +794,18 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 fi
 chmod 0600 "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" "$HOME/.claude.json" "$HOME/.claude/settings.json"
-if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
   rm "$CODEX_HOME/hooks.json"
   exit 20
 fi
-if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-raw-digest-drift ]]; then
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-raw-digest-drift ]]; then
   printf ' ' >>"$CODEX_HOME/config.toml"
 fi
-if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-digest-missing ]]; then
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-digest-missing ]]; then
   rm -f "$CODEX_HOME/hooks.json"
 fi
-if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
-  printf 'drift\n' >>"$HARNESS_ROOT/bin/agent-harness"
+if [[ "$ISSUEOPS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
+  printf 'drift\n' >>"$ISSUEOPS_ROOT/bin/issueops"
 fi
 printf '{"ok":true}\n'
 `, identity)
@@ -828,8 +828,8 @@ if [[ "${1:-}" == --version ]]; then
   fi
   exit 0
 fi
-if [[ "${1:-}" == mcp && "${2:-}" == get && "${3:-}" == agent_harness ]]; then
-  root="$HARNESS_ROOT"
+if [[ "${1:-}" == mcp && "${2:-}" == get && "${3:-}" == issueops ]]; then
+  root="$ISSUEOPS_ROOT"
   if [[ "${FAKE_SCENARIO:-}" == "$host-mcp-output-over-limit" && "$root" == */child ]]; then
     "$REAL_PYTHON" -c 'import sys; sys.stdout.write("x" * 70000)'
     exit 0
@@ -838,9 +838,9 @@ if [[ "${1:-}" == mcp && "${2:-}" == get && "${3:-}" == agent_harness ]]; then
     root="${root}x"
   fi
   if [[ "$host" == codex ]]; then
-    printf '{"name":"agent_harness","enabled":true,"transport":{"type":"stdio","command":"%%s/bin/agent-harness","args":["mcp"],"env":{"HARNESS_ROOT":"%%s"}}}\n' "$root" "$root"
+    printf '{"name":"issueops","enabled":true,"transport":{"type":"stdio","command":"%%s/bin/issueops","args":["mcp"],"env":{"ISSUEOPS_ROOT":"%%s"}}}\n' "$root" "$root"
   else
-    printf 'agent_harness:\n  Scope: User config (available in all your projects)\n  Status: ✔ Connected\n  Type: stdio\n  Command: %%s/bin/agent-harness\n  Args: mcp\n  Environment:\n    HARNESS_ROOT=%%s\n' "$root" "$root"
+    printf 'issueops:\n  Scope: User config (available in all your projects)\n  Status: ✔ Connected\n  Type: stdio\n  Command: %%s/bin/issueops\n  Args: mcp\n  Environment:\n    ISSUEOPS_ROOT=%%s\n' "$root" "$root"
   fi
   exit 0
 fi
@@ -914,7 +914,7 @@ case "${1:-}" in
     printf 'child-version\n'
     ;;
   install)
-    printf '{"ok":true,"root":"%s","dry_run":true,"project_local":true,"hosts":[{"host":"codex","ok":true,"dry_run":true},{"host":"claude","ok":true,"dry_run":true}],"files":[],"links":[]}\n' "$HARNESS_ROOT"
+    printf '{"ok":true,"root":"%s","dry_run":true,"project_local":true,"hosts":[{"host":"codex","ok":true,"dry_run":true},{"host":"claude","ok":true,"dry_run":true}],"files":[],"links":[]}\n' "$ISSUEOPS_ROOT"
     ;;
   contract)
     [[ "$PWD" == "$FAKE_CHILD_ROOT" ]] || exit 23
@@ -924,11 +924,11 @@ case "${1:-}" in
       if [[ "$previous" == --hosts ]]; then host="$arg"; fi
       previous="$arg"
     done
-    [[ -n "$host" && -n "${HARNESS_CHILD_SMOKE_OBSERVATION_FILE:-}" ]]
+    [[ -n "$host" && -n "${ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE:-}" ]]
     if [[ "$host" == claude ]]; then
       hook_config="$HOME/.claude/settings.json"
-      grep -Fq 'HARNESS_CHILD_SMOKE_HOOKS=1' "$hook_config"
-      grep -Fq "$HARNESS_CHILD_SMOKE_OBSERVATION_FILE" "$hook_config"
+      grep -Fq 'ISSUEOPS_CHILD_SMOKE_HOOKS=1' "$hook_config"
+      grep -Fq "$ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE" "$hook_config"
     fi
     [[ "${FAKE_SCENARIO:-}" != "$host-session-failure" ]] || exit 9
     if [[ "${FAKE_SCENARIO:-}" == signal-during-codex && "$host" == codex ]]; then
@@ -943,11 +943,11 @@ case "${1:-}" in
     [[ "${FAKE_SCENARIO:-}" != "$host-mcp-zero" ]] || calls=0
     [[ "${FAKE_SCENARIO:-}" != "$host-mcp-two" ]] || calls=2
     if [[ "${FAKE_SCENARIO:-}" == "$host-observation-extra-field" ]]; then
-      printf '{"session_start_observed":%s,"pre_tool_use_observed":%s,"mcp_call_count":%s,"response_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","exit_code":0,"duration_ms":1,"transcript":"secret-material"}\n' "$session" "$pretool" "$calls" >"$HARNESS_CHILD_SMOKE_OBSERVATION_FILE"
+      printf '{"session_start_observed":%s,"pre_tool_use_observed":%s,"mcp_call_count":%s,"response_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","exit_code":0,"duration_ms":1,"transcript":"secret-material"}\n' "$session" "$pretool" "$calls" >"$ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"
     else
-      printf '{"session_start_observed":%s,"pre_tool_use_observed":%s,"mcp_call_count":%s,"response_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","exit_code":0,"duration_ms":1}\n' "$session" "$pretool" "$calls" >"$HARNESS_CHILD_SMOKE_OBSERVATION_FILE"
+      printf '{"session_start_observed":%s,"pre_tool_use_observed":%s,"mcp_call_count":%s,"response_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","exit_code":0,"duration_ms":1}\n' "$session" "$pretool" "$calls" >"$ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"
     fi
-    chmod 0600 "$HARNESS_CHILD_SMOKE_OBSERVATION_FILE"
+    chmod 0600 "$ISSUEOPS_CHILD_SMOKE_OBSERVATION_FILE"
     printf '{"ok":true}\n'
     ;;
   *)

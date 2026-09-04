@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	issueopsauthorizationcontract "agent-harness/internal/contract/issueopsauthorization"
+	issueopsauthorizationcontract "issueops/internal/contract/issueopsauthorization"
 )
 
 type SamePath func(string, string) bool

@@ -236,7 +236,7 @@ type IssueOpsCompatibilityReviewRequest struct {
 	Approved              bool
 }
 
-// IssueOpsDevilsAdvocateReview captures the brooks devil's-advocate verdict on
+// IssueOpsDevilsAdvocateReview captures the design-review devil's-advocate verdict on
 // the completed plan/design. A pass (or a stop/revise explicitly waived with
 // rationale) is a fail-closed precondition of implement entry; a stop's findings
 // are reflected into the remote issue before the cycle regresses.
@@ -447,7 +447,7 @@ type IssueOpsRecord struct {
 	UpdatedAt               string                              `json:"updated_at"`
 }
 
-// IssueOpsImplementationReview captures the brooks adversarial verdict on the
+// IssueOpsImplementationReview captures the design-review adversarial verdict on the
 // implementation diff, recorded by the execution owner before publication.
 // reviewer_* 필드는 감사 기록이며 게이트 조건이 아니다 — 하네스는 모델
 // 자기신고를 검증할 수 없으므로 verdict와 실질 내용만 게이트한다(설계 v5 WS5).

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/provider/issuebody"
-	"agent-harness/internal/adapter/provider/providerutil"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/issuebody"
+	"issueops/internal/adapter/provider/providerutil"
+	"issueops/internal/port"
 )
 
 // Provider adapts GitHub via the `gh` CLI.

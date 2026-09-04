@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/installutil"
-	mcpdomain "agent-harness/internal/domain/mcp"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/installutil"
+	mcpdomain "issueops/internal/domain/mcp"
+	"issueops/internal/port"
 )
 
 func init() {
@@ -32,8 +32,7 @@ func TestInstallerWritesNativeAgySurfaces(t *testing.T) {
 	req.ProjectLocal = true
 	writeAgyTestJSON(t, filepath.Join(req.Home, ".gemini", "config", "mcp_config.json"), map[string]any{
 		"mcpServers": map[string]any{
-			"other":         map[string]any{"command": "other"},
-			"agent-harness": map[string]any{"command": "obsolete"},
+			"other": map[string]any{"command": "other"},
 		},
 	})
 
@@ -49,17 +48,14 @@ func TestInstallerWritesNativeAgySurfaces(t *testing.T) {
 	assertAgyTestSkillLink(t, filepath.Join(req.Root, ".agents", "skills", "alpha"), filepath.Join(req.Root, "skills", "alpha"))
 
 	globalMCP := readAgyTestJSON(t, filepath.Join(req.Home, ".gemini", "config", "mcp_config.json"))
-	assertAgyTestMCPServer(t, globalMCP, "agent_harness", req.BinPath, req.Root)
+	assertAgyTestMCPServer(t, globalMCP, "issueops", req.BinPath, req.Root)
 	servers := globalMCP["mcpServers"].(map[string]any)
 	if _, ok := servers["other"]; !ok {
 		t.Fatal("agy MCP merge removed unrelated server")
 	}
-	if _, ok := servers["agent-harness"]; ok {
-		t.Fatal("agy MCP merge retained obsolete alias")
-	}
 
 	projectMCP := readAgyTestJSON(t, filepath.Join(req.Root, ".agents", "mcp_config.json"))
-	assertAgyTestMCPServer(t, projectMCP, "agent_harness_project", "./bin/agent-harness", ".")
+	assertAgyTestMCPServer(t, projectMCP, "issueops_project", "./bin/issueops", ".")
 
 	templatePath := filepath.Join(req.Root, "configs", "agy", "mcp_config.json")
 	if _, err := os.Stat(templatePath); err != nil {
@@ -106,7 +102,7 @@ func TestVerifyActivationRejectsTamperedMCP(t *testing.T) {
 	mcpPath := filepath.Join(req.Home, ".gemini", "config", "mcp_config.json")
 	writeAgyTestJSON(t, mcpPath, map[string]any{
 		"mcpServers": map[string]any{
-			"agent_harness": map[string]any{"command": "tampered"},
+			"issueops": map[string]any{"command": "tampered"},
 		},
 	})
 	if _, err := VerifyActivation(req); err == nil || !strings.Contains(err.Error(), "canonical binary") {
@@ -128,7 +124,7 @@ func agyTestRequest(t *testing.T) port.NativeInstallRequest {
 	return port.NativeInstallRequest{
 		Root:       root,
 		Home:       home,
-		BinPath:    filepath.Join(root, "bin", "agent-harness"),
+		BinPath:    filepath.Join(root, "bin", "issueops"),
 		SkillNames: []string{"alpha"},
 	}
 }
@@ -199,8 +195,8 @@ func assertAgyTestMCPServer(t *testing.T, config map[string]any, serverName, com
 		t.Fatalf("server command mismatch: got %v, want %v", server["command"], command)
 	}
 	env, ok := server["env"].(map[string]any)
-	if !ok || env["HARNESS_ROOT"] != root {
-		t.Fatalf("server HARNESS_ROOT mismatch: got %v, want %v", env, root)
+	if !ok || env["ISSUEOPS_ROOT"] != root {
+		t.Fatalf("server ISSUEOPS_ROOT mismatch: got %v, want %v", env, root)
 	}
 }
 

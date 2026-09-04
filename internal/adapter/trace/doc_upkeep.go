@@ -1,11 +1,11 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
+	tracecontract "issueops/internal/contract/trace"
 	"strings"
 
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/domain/policy"
 )
 
 type docUpkeepEvent struct {

@@ -8,16 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 
-	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/looprun"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	loopruncontract "agent-harness/internal/contract/looprun"
+	"issueops/internal/adapter/issueops"
+	"issueops/internal/adapter/looprun"
+	"issueops/internal/adapter/outbound/sqlstore"
+	loopruncontract "issueops/internal/contract/looprun"
 )
 
 func TestIssueOpsStrictPRReadinessBlocksActiveLoop(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	loop := startCoreLoopGateLoop(t, record.Repo, "active-loop", 3)
@@ -28,7 +28,7 @@ func TestIssueOpsStrictPRReadinessBlocksActiveLoop(t *testing.T) {
 }
 
 func TestIssueOpsStrictPRReadinessIgnoresOtherRepoLoop(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	startCoreLoopGateLoop(t, filepath.Join(t.TempDir(), "other-repo"), "other-loop", 3)
@@ -39,10 +39,10 @@ func TestIssueOpsStrictPRReadinessIgnoresOtherRepoLoop(t *testing.T) {
 }
 
 func TestIssueOpsStrictPRReadinessIgnoresStaleRetiredPoolState(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
-	root := filepath.Join(os.Getenv("HARNESS_STATE_DIR"), strings.Join([]string{"work", "pool"}, ""))
+	root := filepath.Join(os.Getenv("ISSUEOPS_STATE_DIR"), strings.Join([]string{"work", "pool"}, ""))
 	db, err := sqlstore.Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestIssueOpsStrictPRReadinessIgnoresStaleRetiredPoolState(t *testing.T) {
 }
 
 func TestIssueOpsStrictPRReadinessBlocksExhaustedLoop(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	loop := startCoreLoopGateLoop(t, record.Repo, "exhausted-loop", 1)
@@ -81,7 +81,7 @@ func TestIssueOpsStrictPRReadinessBlocksExhaustedLoop(t *testing.T) {
 }
 
 func TestIssueOpsStrictPRReadinessClearsAfterLoopStop(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	loop := startCoreLoopGateLoop(t, record.Repo, "stopped-loop", 3)
@@ -213,7 +213,7 @@ func containsLoopGateString(values []string, target string) bool {
 // AdvancePhase는 pr 진입 시 strict readiness를 강제하고, pr 재진입(이미 pr)과
 // pr 외 전환은 통과시킨다. dogfooding에서 확인한 그 gate를 잠근다.
 func TestAdvancePhaseGuardsPRTransition(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 	stateRoot := issueops.IssueOpsStateRoot()
 	written, err := issueops.WriteIssueOps(stateRoot, record)
@@ -254,14 +254,14 @@ func TestAdvancePhaseGuardsPRTransition(t *testing.T) {
 }
 
 func TestAdvancePhaseRejectsUnknownRecord(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	if _, err := AdvancePhase(issueops.IssueOpsStateRoot(), "io-missing", "pr"); err == nil {
 		t.Fatal("unknown record must fail before any transition")
 	}
 }
 
 func TestStrictPRReadinessWithStateAppliesLoopGate(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	record := readyIssueOpsRecordForLoopGateTest(t)
 	startCoreLoopGateLoop(t, record.Repo, "state-loop", 3)
 	ready := StrictPRReadinessWithState(issueops.IssueOpsStateRoot(), record)

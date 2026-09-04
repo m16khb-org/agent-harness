@@ -3,8 +3,8 @@ package webfetch
 import (
 	"time"
 
-	webfetchcontract "agent-harness/internal/contract/webfetch"
-	webfetchdomain "agent-harness/internal/domain/webfetch"
+	webfetchcontract "issueops/internal/contract/webfetch"
+	webfetchdomain "issueops/internal/domain/webfetch"
 )
 
 var scheduledRoutes = [...]string{"direct_http", "jina_reader", "mobile_variant", "feed_variant"}

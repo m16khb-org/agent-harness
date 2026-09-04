@@ -7,7 +7,7 @@ func TestHarnessDoctorReportsPipeCapacityCheck(t *testing.T) {
 	measurePipeCapacity = func() (int, error) { return pipeCapacityWarningThreshold, nil }
 	t.Cleanup(func() { measurePipeCapacity = oldMeasure })
 
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestHarnessDoctorWarnsOnDegradedPipeCapacity(t *testing.T) {
 	measurePipeCapacity = func() (int, error) { return 512, nil }
 	t.Cleanup(func() { measurePipeCapacity = oldMeasure })
 
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestClientRunInventoryReaderUsesExactPerRunQueries(t *testing.T) {

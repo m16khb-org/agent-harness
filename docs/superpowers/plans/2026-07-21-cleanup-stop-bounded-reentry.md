@@ -8,7 +8,7 @@
 
 **Architecture:** Keep the lifecycle cleanup gate read-only and reuse the Stop-episode signals already computed by `runHookStop`. Add direct hook-level regression coverage, constrain only the cleanup block condition, and document the finite-exit invariant.
 
-**Tech Stack:** Go 1.26, standard `testing`, agent-harness Stop hook adapter, Markdown project contracts.
+**Tech Stack:** Go 1.26, standard `testing`, issueops Stop hook adapter, Markdown project contracts.
 
 ## Global Constraints
 
@@ -23,7 +23,7 @@
 ### Task 1: Reproduce the cleanup Stop re-entry
 
 **Files:**
-- Modify: `cmd/harness/hookcli/hook_stop_test.go`
+- Modify: `cmd/issueops/hookcli/hook_stop_test.go`
 
 **Interfaces:**
 - Consumes: `runHookStop`, `runHookCapture`, `issueops.WriteIssueOps`, `issueops.ReadIssueOpsExisting`.
@@ -34,7 +34,7 @@
 ```go
 func seedPendingOwnershipCleanupForStop(t *testing.T) (string, string, []byte) {
     t.Helper()
-    t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+    t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
     repo := t.TempDir()
     now := "2026-07-21T00:00:00Z"
     record := issueops.IssueOpsRecord{
@@ -68,14 +68,14 @@ Create `TestRunHookStopBoundsOwnershipCleanupRelay` which:
 
 - [x] **Step 3: Verify RED**
 
-Run: `go test ./cmd/harness/hookcli -run TestRunHookStopBoundsOwnershipCleanupRelay -count=1`
+Run: `go test ./cmd/issueops/hookcli -run TestRunHookStopBoundsOwnershipCleanupRelay -count=1`
 
 Expected: FAIL because the continuation still returns the cleanup `decision=block`.
 
 ### Task 2: Bound the cleanup block
 
 **Files:**
-- Modify: `cmd/harness/hookcli/hook_stop.go`
+- Modify: `cmd/issueops/hookcli/hook_stop.go`
 
 **Interfaces:**
 - Consumes: existing `cleanupPending`, `stopHookActive`, and `noAutoProceedJudgement` booleans.
@@ -95,15 +95,15 @@ if cleanupPending {
 
 - [x] **Step 2: Verify GREEN**
 
-Run: `go test ./cmd/harness/hookcli -run 'TestRunHookStopBoundsOwnershipCleanupRelay|TestRunHookStopAllowsStopWhenStopHookActiveMissingChoices|TestRunHookStopAllowsNoAutoProceedJudgementWithoutChoices' -count=1`
+Run: `go test ./cmd/issueops/hookcli -run 'TestRunHookStopBoundsOwnershipCleanupRelay|TestRunHookStopAllowsStopWhenStopHookActiveMissingChoices|TestRunHookStopAllowsNoAutoProceedJudgementWithoutChoices' -count=1`
 
 Expected: PASS.
 
 ### Task 3: Codify the finite-exit invariant
 
 **Files:**
-- Modify: `.agent-harness/CONSTITUTION.md`
-- Modify: `.agent-harness/CAUTIONS.md`
+- Modify: `.issueops/CONSTITUTION.md`
+- Modify: `.issueops/CAUTIONS.md`
 
 **Interfaces:**
 - Produces: repository-wide rules forbidding unbounded agent/hook/relay loops and documenting the gate-ordering failure.
@@ -123,7 +123,7 @@ continuation no-op, no-auto no-op, and later independent reminder.
 
 - [x] **Step 3: Verify docs-sensitive packages**
 
-Run: `go test ./cmd/harness/hookcli ./internal/core/skillcontract -count=1`
+Run: `go test ./cmd/issueops/hookcli ./internal/core/skillcontract -count=1`
 
 Expected: PASS.
 
@@ -135,10 +135,10 @@ Expected: PASS.
 **Interfaces:**
 - Produces: focused, full, race, build, and diff evidence.
 
-- [x] Run `gofmt -w cmd/harness/hookcli/hook_stop.go cmd/harness/hookcli/hook_stop_test.go`.
+- [x] Run `gofmt -w cmd/issueops/hookcli/hook_stop.go cmd/issueops/hookcli/hook_stop_test.go`.
 - [x] Run `git diff --check`; expect no output.
-- [x] Run `go test ./cmd/harness/hookcli ./internal/core/lifecycle ./internal/core/skillcontract -count=1`; expect PASS.
+- [x] Run `go test ./cmd/issueops/hookcli ./internal/core/lifecycle ./internal/core/skillcontract -count=1`; expect PASS.
 - [x] Run `go test ./... -count=1`; expect PASS.
 - [x] Run `go test -race ./... -count=1`; expect PASS.
-- [x] Run `go build -o /tmp/agent-harness-issue65 ./cmd/harness`; expect exit 0.
+- [x] Run `go build -o /tmp/issueops-issue65 ./cmd/issueops`; expect exit 0.
 - [x] Review `git diff --stat` and the exact hook/test/constitution/caution diff; expect no unrelated changes.

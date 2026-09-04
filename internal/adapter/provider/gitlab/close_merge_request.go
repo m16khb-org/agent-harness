@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // ClosePullRequest closes an open merge request and verifies the final state by

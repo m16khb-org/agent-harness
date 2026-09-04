@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
 )
 
 // RecordIssueOpsProjectDocsReview는 publication 직전 project-doc 반영 판정을

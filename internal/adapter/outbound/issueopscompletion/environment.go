@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
-	completiondomain "agent-harness/internal/domain/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
+	completiondomain "issueops/internal/domain/issueopscompletion"
 )
 
 type Environment struct{}
@@ -61,15 +61,15 @@ func (Environment) VerifyReport(root, path string) (string, error) {
 	}
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return "", fmt.Errorf("Turing report must exist in the canonical worktree")
+		return "", fmt.Errorf("verification report must exist in the canonical worktree")
 	}
 	relative, err := filepath.Rel(root, resolved)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("Turing report must be inside the canonical worktree")
+		return "", fmt.Errorf("verification report must be inside the canonical worktree")
 	}
 	info, err := os.Lstat(resolved)
 	if err != nil || !info.Mode().IsRegular() {
-		return "", fmt.Errorf("Turing report must be a regular file")
+		return "", fmt.Errorf("verification report must be a regular file")
 	}
 	return resolved, nil
 }

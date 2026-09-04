@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	issueopsstatusapplication "agent-harness/internal/application/issueopsstatus"
-	issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+	issueopsstatusapplication "issueops/internal/application/issueopsstatus"
+	issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 )
 
 type fakeReader struct {

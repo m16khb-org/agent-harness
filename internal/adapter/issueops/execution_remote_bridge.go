@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 type RemotePublicationBridgeDependencies struct {

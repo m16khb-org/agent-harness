@@ -2,7 +2,7 @@
 // 합성한다.
 //
 // loopgate가 loop run 상태를 readiness에 더하는 것과 같은 조립 구조다.
-// 게이트 파일(worktree의 .agent-harness/gates/*.md 또는 호환 경로)이 존재하면 미충족 게이트가
+// 게이트 파일(worktree의 .issueops/gates/*.md 또는 호환 경로)이 존재하면 미충족 게이트가
 // PR 진입을 막고, 파일이 없으면 게이트가 적용되지 않는다 — unlazy와 같은
 // opt-in: 게이트를 만드는 순간 완료가 구조적으로 강제된다.
 package gatesgate
@@ -14,11 +14,11 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/loopgate"
-	gatescontract "agent-harness/internal/contract/gates"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsremote "agent-harness/internal/domain/issueopsremote"
+	"issueops/internal/adapter/issueops"
+	"issueops/internal/adapter/issueops/loopgate"
+	gatescontract "issueops/internal/contract/gates"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsremote "issueops/internal/domain/issueopsremote"
 )
 
 // gates ledger 조회·평가는 composition root가 설치한다. gatesgate는 gates
@@ -51,7 +51,7 @@ func linkedIssueNumber(record issueopscontract.IssueOpsRecord) string {
 }
 
 // withDuplicateIssueArtifactGate는 현재 사이클의 이슈 원장이 canonical
-// `.agent-harness/issues/<n>/gates.md`와 호환 경로 `.agent-harness/gates/`
+// `.issueops/issues/<n>/gates.md`와 호환 경로 `.issueops/gates/`
 // (`issue-<n>*`, `<n>-*`) 양쪽에 있으면 `duplicate_issue_artifact:<n>`으로
 // fail-closed한다(#480). 다른 이슈의 중복은 이 사이클을 막지 않으며, 번호를
 // 모르면 판정하지 않는다.
@@ -60,11 +60,11 @@ func withDuplicateIssueArtifactGate(ready issueopscontract.IssueOpsReadiness, ro
 	if root == "" || issueNumber == "" {
 		return ready
 	}
-	canonical := filepath.Join(root, ".agent-harness", "issues", issueNumber, "gates.md")
+	canonical := filepath.Join(root, ".issueops", "issues", issueNumber, "gates.md")
 	if info, err := os.Stat(canonical); err != nil || info.IsDir() {
 		return ready
 	}
-	entries, err := os.ReadDir(filepath.Join(root, ".agent-harness", "gates"))
+	entries, err := os.ReadDir(filepath.Join(root, ".issueops", "gates"))
 	if err != nil {
 		return ready
 	}
@@ -84,16 +84,16 @@ func withDuplicateIssueArtifactGate(ready issueopscontract.IssueOpsReadiness, ro
 // scopeLedgers는 발견된 원장을 현재 사이클이 판정할 것(judged)과 다른 이슈의
 // 것(skipped)으로 가른다(#483). issueNumber가 비면 전부 판정한다(fail-closed).
 // 판정: issues/<issueNumber>/gates.md(폴더명 문자열 완전일치 — `021`·`210`은
-// `21`이 아니다), 전부 숫자가 아닌 폴더(소유자 불명), `.agent-harness/gates/`의
+// `21`이 아니다), 전부 숫자가 아닌 폴더(소유자 불명), `.issueops/gates/`의
 // 같은 번호 또는 번호 없는 파일, 그 밖의 호환 원장(root GATES.md, gates/*.md).
-// 제외: 다른 숫자 폴더의 gates.md와 다른 번호 접두의 `.agent-harness/gates/` 파일.
+// 제외: 다른 숫자 폴더의 gates.md와 다른 번호 접두의 `.issueops/gates/` 파일.
 func scopeLedgers(root string, files []string, issueNumber string) (judged, skipped []string) {
 	issueNumber = strings.TrimSpace(issueNumber)
 	if issueNumber == "" {
 		return files, nil
 	}
-	issuesDir := filepath.Join(root, ".agent-harness", "issues") + string(filepath.Separator)
-	legacyDir := filepath.Join(root, ".agent-harness", "gates") + string(filepath.Separator)
+	issuesDir := filepath.Join(root, ".issueops", "issues") + string(filepath.Separator)
+	legacyDir := filepath.Join(root, ".issueops", "gates") + string(filepath.Separator)
 	for _, file := range files {
 		switch {
 		case strings.HasPrefix(file, issuesDir):

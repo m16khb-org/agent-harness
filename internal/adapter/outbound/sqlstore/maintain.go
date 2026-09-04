@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 // Maintain runs the store's periodic maintenance: it truncates the data

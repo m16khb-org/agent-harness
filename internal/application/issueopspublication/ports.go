@@ -3,7 +3,7 @@ package issueopspublication
 import (
 	"context"
 
-	contract "agent-harness/internal/contract/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 type Repository interface {

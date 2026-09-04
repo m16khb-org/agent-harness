@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/port"
 )
 
 // Prepare의 실제 계약을 잠근다: dry-run은 생성하지 않고, confirm은 형제

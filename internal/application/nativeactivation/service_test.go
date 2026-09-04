@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	activationapp "agent-harness/internal/application/nativeactivation"
-	activationcontract "agent-harness/internal/contract/nativeactivation"
-	activationport "agent-harness/internal/port/nativeactivation"
+	activationapp "issueops/internal/application/nativeactivation"
+	activationcontract "issueops/internal/contract/nativeactivation"
+	activationport "issueops/internal/port/nativeactivation"
 )
 
 const validTimestamp = "2000-01-01T00:00:00.123456789Z"
@@ -31,13 +31,13 @@ func (spy *backendSpy) Begin(_ context.Context, request activationport.BeginRequ
 	if spy.beginResult != nil {
 		return *spy.beginResult, nil
 	}
-	return activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: validTransitionID, Pending: true, UpdatedAt: validTimestamp}, nil
+	return activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: validTransitionID, Pending: true, UpdatedAt: validTimestamp}, nil
 }
 
 func TestServiceNeverReportsOKWhenBeginPersistenceFails(t *testing.T) {
 	backend := &backendSpy{beginErr: errors.New("persist failed")}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
-	result, err := service.Begin(context.Background(), activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness"})
+	result, err := service.Begin(context.Background(), activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops"})
 	if err == nil || result.OK {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
@@ -48,12 +48,12 @@ func (spy *backendSpy) Seal(_ context.Context, request activationport.SealReques
 	if spy.sealResult != nil {
 		return *spy.sealResult, nil
 	}
-	return activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: validTransitionID, Sealed: true, UpdatedAt: validTimestamp}, nil
+	return activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: validTransitionID, Sealed: true, UpdatedAt: validTimestamp}, nil
 }
 
 func (spy *backendSpy) Abort(_ context.Context, request activationport.AbortRequest) (activationport.Result, error) {
 	spy.calls = append(spy.calls, "abort")
-	return activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: request.TransitionID, Aborted: true, UpdatedAt: validTimestamp}, nil
+	return activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), TransitionID: request.TransitionID, Aborted: true, UpdatedAt: validTimestamp}, nil
 }
 
 type readbackSpy struct {
@@ -75,60 +75,60 @@ func (spy readbackSpy) Verify(context.Context, string, string) (activationport.R
 }
 
 func TestServiceRejectsUnconfirmedBackendTransitions(t *testing.T) {
-	request := activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness"}
+	request := activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops"}
 	sealRequest := request
 	sealRequest.TransitionID = validTransitionID
 	t.Run("begin not pending", func(t *testing.T) {
-		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary}}
+		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Begin(context.Background(), request); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("begin without binary digest", func(t *testing.T) {
-		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, Pending: true, UpdatedAt: validTimestamp}}
+		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, Pending: true, UpdatedAt: validTimestamp}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Begin(context.Background(), request); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("begin with noncanonical transition timestamp", func(t *testing.T) {
-		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Pending: true, UpdatedAt: "now"}}
+		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Pending: true, UpdatedAt: "now"}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Begin(context.Background(), request); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("begin without transition timestamp", func(t *testing.T) {
-		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Pending: true}}
+		backend := &backendSpy{beginResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Pending: true}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Begin(context.Background(), request); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("seal with noncanonical transition timestamp", func(t *testing.T) {
-		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Sealed: true, UpdatedAt: "now"}}
+		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Sealed: true, UpdatedAt: "now"}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Seal(context.Background(), sealRequest); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("seal not sealed", func(t *testing.T) {
-		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary}}
+		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Seal(context.Background(), sealRequest); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("seal without transition timestamp", func(t *testing.T) {
-		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Sealed: true}}
+		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: request.StateRoot, IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, BinarySHA256: hash64('c'), Sealed: true}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Seal(context.Background(), sealRequest); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
 		}
 	})
 	t.Run("identity mismatch", func(t *testing.T) {
-		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: "/other", HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, Sealed: true}}
+		backend := &backendSpy{sealResult: &activationport.Result{StateRoot: "/other", IssueOpsRoot: request.IssueOpsRoot, TargetBinary: request.TargetBinary, Sealed: true}}
 		service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 		if result, err := service.Seal(context.Background(), sealRequest); err == nil || result.OK {
 			t.Fatalf("result=%+v err=%v", result, err)
@@ -142,7 +142,7 @@ func TestServiceRejectsNoncanonicalReadbackIdentity(t *testing.T) {
 	evidence[0].Host = " codex"
 	readback := activationport.Readback{CatalogSHA256: hash64('d'), Evidence: evidence}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls, readback: &readback})
-	request := activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness", TransitionID: validTransitionID}
+	request := activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops", TransitionID: validTransitionID}
 	if result, err := service.Seal(context.Background(), request); err == nil || result.OK {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
@@ -151,7 +151,7 @@ func TestServiceRejectsNoncanonicalReadbackIdentity(t *testing.T) {
 func TestServiceBeginOmitsUnsealedReceipt(t *testing.T) {
 	backend := &backendSpy{}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
-	result, err := service.Begin(context.Background(), activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness"})
+	result, err := service.Begin(context.Background(), activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestServiceAbortUsesExactTransitionWithoutReadback(t *testing.T) {
 	backend := &backendSpy{}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
 	request := activationcontract.Request{
-		StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness", TransitionID: validTransitionID,
+		StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops", TransitionID: validTransitionID,
 	}
 	result, err := service.Abort(context.Background(), request)
 	if err != nil || !result.Aborted || result.Pending || result.TransitionID != validTransitionID || !reflect.DeepEqual(backend.calls, []string{"abort"}) {
@@ -180,7 +180,7 @@ func TestServiceSealDoesNotMutateReadbackEvidence(t *testing.T) {
 	backend := &backendSpy{}
 	var evidence []activationport.Evidence
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls, evidence: &evidence})
-	request := activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness", TransitionID: validTransitionID}
+	request := activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops", TransitionID: validTransitionID}
 	if _, err := service.Seal(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestServiceSealDoesNotMutateReadbackEvidence(t *testing.T) {
 func TestServiceSealsOnlyAfterEveryFirstPartySurfaceReadback(t *testing.T) {
 	backend := &backendSpy{}
 	service := activationapp.NewService(backend, readbackSpy{calls: &backend.calls})
-	request := activationcontract.Request{StateRoot: "/state", HarnessRoot: "/harness", TargetBinary: "/harness/bin/agent-harness"}
+	request := activationcontract.Request{StateRoot: "/state", IssueOpsRoot: "/harness", TargetBinary: "/harness/bin/issueops"}
 	if _, err := service.Begin(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}

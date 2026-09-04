@@ -11,7 +11,7 @@ import (
 func TestPrepareManagedCommandPathRefusesRegularFileWithoutApproval(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 
 	_, plan, err := prepareManagedCommandPathWithDeps(target, command, false, false, validCommandDeps())
 	if err == nil || !strings.Contains(err.Error(), "refusing to adopt regular command file without --adopt-command-file") {
@@ -23,7 +23,7 @@ func TestPrepareManagedCommandPathRefusesRegularFileWithoutApproval(t *testing.T
 func TestPrepareManagedCommandPathDryRunReportsAdoptionWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 
 	transaction, plan, err := prepareManagedCommandPathWithDeps(target, command, true, true, validCommandDeps())
 	if err != nil {
@@ -41,7 +41,7 @@ func TestPrepareManagedCommandPathDryRunReportsAdoptionWithoutWriting(t *testing
 func TestManagedCommandPathApplyFinalizeAtomicallyAdoptsRegularFile(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 
 	transaction, _, err := prepareManagedCommandPathWithDeps(target, command, true, false, validCommandDeps())
 	if err != nil {
@@ -74,7 +74,7 @@ func TestManagedCommandPathApplyFinalizeAtomicallyAdoptsRegularFile(t *testing.T
 func TestManagedCommandPathRollbackRestoresOriginalBytesAndMode(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 
 	transaction, _, err := prepareManagedCommandPathWithDeps(target, command, true, false, validCommandDeps())
 	if err != nil {
@@ -96,7 +96,7 @@ func TestManagedCommandPathRollbackRestoresOriginalBytesAndMode(t *testing.T) {
 func TestPrepareManagedCommandPathRejectsInvalidIdentityBeforeMutation(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 
 	invalidBuild := validCommandDeps()
 	invalidBuild.readBuildInfo = func(path string) (managedBuildInfo, error) {
@@ -105,14 +105,14 @@ func TestPrepareManagedCommandPathRejectsInvalidIdentityBeforeMutation(t *testin
 		}
 		return managedBuildInfo{MainPath: managedCommandMainPath, ModulePath: managedCommandModulePath}, nil
 	}
-	if _, _, err := prepareManagedCommandPathWithDeps(target, command, true, false, invalidBuild); err == nil || !strings.Contains(err.Error(), "managed agent-harness build identity") {
+	if _, _, err := prepareManagedCommandPathWithDeps(target, command, true, false, invalidBuild); err == nil || !strings.Contains(err.Error(), "managed issueops build identity") {
 		t.Fatalf("wrong build identity error = %v", err)
 	}
 	assertRegularCommand(t, command, "old", 0o751)
 	invalidCandidate := validCommandDeps()
 	invalidCandidate.readBuildInfo = func(path string) (managedBuildInfo, error) {
 		if path == target {
-			return managedBuildInfo{MainPath: "agent-harness/cmd/other", ModulePath: managedCommandModulePath}, nil
+			return managedBuildInfo{MainPath: "issueops/cmd/other", ModulePath: managedCommandModulePath}, nil
 		}
 		return managedBuildInfo{MainPath: managedCommandMainPath, ModulePath: managedCommandModulePath}, nil
 	}
@@ -145,7 +145,7 @@ func TestPrepareManagedCommandPathRejectsUnmanagedBinaryAndInvalidFileMatrix(t *
 	if err := os.WriteFile(echoCopy, body, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := PrepareManagedCommandPath(target, echoCopy, true, true); err == nil || !strings.Contains(err.Error(), "managed agent-harness build identity") {
+	if _, _, err := PrepareManagedCommandPath(target, echoCopy, true, true); err == nil || !strings.Contains(err.Error(), "managed issueops build identity") {
 		t.Fatalf("/bin/echo copy error = %v", err)
 	}
 
@@ -192,7 +192,7 @@ func TestPrepareManagedCommandPathEnforcesExactSizeBoundary(t *testing.T) {
 func TestManagedCommandPathApplyRejectsIdentityDrift(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	transaction, plan, err := prepareManagedCommandPathWithDeps(target, command, true, false, validCommandDeps())
 	if err != nil {
 		t.Fatal(err)
@@ -211,7 +211,7 @@ func TestManagedCommandPathApplyRejectsIdentityDrift(t *testing.T) {
 func TestManagedCommandPathApplyRejectsCandidateIdentityDrift(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	transaction, plan, err := prepareManagedCommandPathWithDeps(target, command, true, false, validCommandDeps())
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +230,7 @@ func TestManagedCommandPathApplyRejectsCandidateIdentityDrift(t *testing.T) {
 func TestManagedCommandPathApplyDoesNotOverwriteReplacementAtExchange(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	concurrent := writeCommandFixture(t, root, "concurrent", "concurrent", 0o755)
 	deps := validCommandDeps()
 	exchangePaths := deps.exchangePaths
@@ -262,7 +262,7 @@ func TestManagedCommandPathApplyDoesNotOverwriteReplacementAtExchange(t *testing
 func TestManagedCommandPathRollbackDoesNotOverwriteReplacementAtExchange(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	concurrent := writeCommandFixture(t, root, "concurrent", "concurrent", 0o755)
 	deps := validCommandDeps()
 	exchangePaths := deps.exchangePaths
@@ -297,7 +297,7 @@ func TestManagedCommandPathRollbackDoesNotOverwriteReplacementAtExchange(t *test
 func TestManagedCommandPathApplyKeepsRecoveryBackupWhenDirectorySyncFails(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	deps := validCommandDeps()
 	syncCalls := 0
 	deps.syncDir = func(string) error {
@@ -324,7 +324,7 @@ func TestManagedCommandPathApplyKeepsRecoveryBackupWhenDirectorySyncFails(t *tes
 func TestManagedCommandPathFinalizeKeepsCommittedRecoveryBackupOnCleanupFailure(t *testing.T) {
 	root := t.TempDir()
 	target := writeCommandFixture(t, root, "target", "new", 0o755)
-	command := writeCommandFixture(t, root, "agent-harness", "old", 0o751)
+	command := writeCommandFixture(t, root, "issueops", "old", 0o751)
 	transaction, _, err := prepareManagedCommandPathWithDeps(target, command, true, false, validCommandDeps())
 	if err != nil {
 		t.Fatal(err)

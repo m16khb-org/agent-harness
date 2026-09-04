@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 const (
@@ -406,7 +406,7 @@ func validateSidecars(execution Execution) error {
 }
 
 func validateCompletion(completion Completion) error {
-	if !validHexDigest(completion.FinalHead, 40, 64) || strings.TrimSpace(completion.TuringReportPath) == "" || len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
+	if !validHexDigest(completion.FinalHead, 40, 64) || strings.TrimSpace(completion.VerificationReportPath) == "" || len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
 		return fmt.Errorf("execution completion is incomplete")
 	}
 	for _, evidence := range completion.Verification {

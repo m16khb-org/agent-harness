@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 func TestReseedArtifactsPrepareAndRollbackOnlyTargetGeneration(t *testing.T) {
@@ -200,7 +200,7 @@ func TestReseedArtifactsCleanupSupersededRejectsAncestorSymlink(t *testing.T) {
 
 func reseedReplaceArtifactDirectoryWithSymlink(t *testing.T, root, outside string, targets []string) []string {
 	t.Helper()
-	artifactDir := filepath.Join(root, ".agent-harness")
+	artifactDir := filepath.Join(root, ".issueops")
 	if err := os.RemoveAll(artifactDir); err != nil {
 		t.Fatalf("remove artifact directory: %v", err)
 	}

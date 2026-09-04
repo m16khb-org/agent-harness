@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdoccontract "agent-harness/internal/contract/projectdoc"
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdoccontract "issueops/internal/contract/projectdoc"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"net/url"
 	"os"
 	"path/filepath"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	application "agent-harness/internal/application/issueopspublication"
-	contract "agent-harness/internal/contract/issueopspublication"
+	application "issueops/internal/application/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 type VerifyCandidateFunc func(context.Context, contract.Intent, contract.Candidate) error

@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	"agent-harness/internal/adapter/issueops/readinesspaths"
-	model "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/pathutil"
+	"issueops/internal/adapter/issueops/readinesspaths"
+	model "issueops/internal/contract/issueops"
 )
 
 func HasEvidence(record model.IssueOpsRecord) bool {

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
-	"agent-harness/internal/port"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
+	"issueops/internal/port"
 )
 
 type ResumeRequest struct {

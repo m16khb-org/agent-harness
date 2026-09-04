@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // cleanup의 요청자·종료 대상 판정은 Orca app pid와 런타임 상태를 같은 status
@@ -25,7 +25,7 @@ func TestClientStatusReportsAppPID(t *testing.T) {
 }
 
 // 비등록 워크트리의 터미널 목록은 구조화된 selector_not_found다(실측). 그 코드는
-// "터미널 없음"이고, 다른 오류만 관측 실패다(#477 brooks 2차 finding 3).
+// "터미널 없음"이고, 다른 오류만 관측 실패다(#477 design-review 2차 finding 3).
 func TestClientListWorktreeTerminalsByPathTreatsSelectorNotFoundAsEmpty(t *testing.T) {
 	runner := newFakeRunner(t)
 	key := "orca terminal list --worktree path:/tmp/wt-477 --limit " + strconv.Itoa(port.OrcaMaxBaselineIDs) + " --json"

@@ -8,9 +8,9 @@ import (
 	"context"
 	"fmt"
 
-	"agent-harness/internal/adapter/provider/github"
-	"agent-harness/internal/adapter/provider/gitlab"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/github"
+	"issueops/internal/adapter/provider/gitlab"
+	"issueops/internal/port"
 )
 
 // Resolve returns the issue provider registered under name, or an error naming

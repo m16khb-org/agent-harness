@@ -1,11 +1,12 @@
 package commandparse
 
 import (
+	clidomain "issueops/internal/domain/cli"
 	"path/filepath"
 	"strings"
 
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	"agent-harness/internal/domain/shelltoken"
+	commandparsecontract "issueops/internal/contract/commandparse"
+	"issueops/internal/domain/shelltoken"
 )
 
 // 셸 토큰 판정은 도메인 규칙이므로 shelltoken이 소유한다. 아래 별칭은 이 파일이
@@ -25,7 +26,7 @@ var (
 	HasActivePathnameExpansion         = shelltoken.HasActivePathnameExpansion
 )
 
-// ExactIssueOpsCommand은 파싱된 정확한 `agent-harness issueops …` 명령이다.
+// ExactIssueOpsCommand은 파싱된 정확한 `issueops …` 명령이다.
 // subcommand path, 전체 token slice, 그리고 flag가 시작되는 인덱스를 담는다.
 type ExactIssueOpsCommand struct {
 	Path   string
@@ -35,7 +36,7 @@ type ExactIssueOpsCommand struct {
 
 // ParseExactIssueOpsCommand은 명령을 ExactIssueOpsCommand으로 파싱하며, 활성
 // shell control/expansion을 담은 명령은 모두 거부한다(fail closed). bare
-// `agent-harness`, `bin/agent-harness`, `./bin/agent-harness issueops …`
+// `issueops`, `bin/issueops`, `./bin/issueops …`
 // 호출과 provenance envelope의 executable과 exact 일치하는 absolute 호출만
 // 파싱되고, 지원되는 두 단어 subcommand는 Path로 합쳐진다.
 func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
@@ -43,34 +44,37 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return ExactIssueOpsCommand{}, false
 	}
-	return parseExactIssueOpsTokens(SplitCommandTokens(command))
+	tokens := SplitCommandTokens(command)
+	if len(tokens) < 2 || !clidomain.IsLifecycleCommand(tokens[1]) {
+		return ExactIssueOpsCommand{}, false
+	}
+	return parseExactIssueOpsTokens(tokens)
 }
 
 // ParseExactIssueOpsArgs parses the argv slice received after the top-level
 // `issueops` command. Unlike ParseExactIssueOpsCommand, argv values are already
 // separated by the operating system and therefore do not need shell quoting.
 func ParseExactIssueOpsArgs(args []string) (ExactIssueOpsCommand, bool) {
-	tokens := make([]string, 0, len(args)+2)
-	tokens = append(tokens, "agent-harness", "issueops")
+	tokens := make([]string, 0, len(args)+1)
+	tokens = append(tokens, "issueops")
 	tokens = append(tokens, args...)
 	return parseExactIssueOpsTokens(tokens)
 }
 
 func parseExactIssueOpsTokens(tokens []string) (ExactIssueOpsCommand, bool) {
-	if len(tokens) < 3 || !exactIssueOpsExecutable(tokens) || tokens[1] != "issueops" {
+	if len(tokens) < 2 || !exactIssueOpsExecutable(tokens) {
 		return ExactIssueOpsCommand{}, false
 	}
-	parts := []string{tokens[2]}
-	start := 3
-	if len(tokens) > 3 {
-		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision", "child",
-			"intent", "domain-review", "design", "plan-prep", "project-docs-review", "schema-evidence":
-			if strings.HasPrefix(tokens[3], "--") {
+	parts := []string{tokens[1]}
+	start := 2
+	if len(tokens) > 2 {
+		switch tokens[1] {
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision", "child", "intent", "domain-review", "design", "plan-prep", "project-docs-review", "schema-evidence":
+			if strings.HasPrefix(tokens[2], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
-			parts = append(parts, tokens[3])
-			start = 4
+			parts = append(parts, tokens[2])
+			start = 3
 		}
 	}
 	return ExactIssueOpsCommand{Path: strings.Join(parts, " "), Tokens: tokens, Start: start}, true
@@ -129,7 +133,7 @@ func exactIssueOpsExecutable(tokens []string) bool {
 		return false
 	}
 	switch tokens[0] {
-	case "agent-harness", "bin/agent-harness", "./bin/agent-harness":
+	case "issueops", "bin/issueops", "./bin/issueops", "io", "bin/io", "./bin/io":
 		return true
 	}
 	if !filepath.IsAbs(tokens[0]) {
@@ -302,7 +306,7 @@ var issueOpsCommandSpecs = map[string]issueOpsSpec{
 		booleans: []string{"--preview", "--confirm", "--json"},
 	},
 	"execution complete": {
-		values:     []string{"--id", "--generation", "--final-head", "--turing-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
+		values:     []string{"--id", "--generation", "--final-head", "--verification-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"},
 		repeatable: []string{"--verification"},
 		booleans:   []string{"--confirm", "--json"},
 	},

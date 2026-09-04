@@ -27,14 +27,14 @@ flowchart LR
   c -->|위임| e["child start → rubric → verdict"]
   d --> f["focused verification 증거"]
   e --> f
-  f --> g["turing report 초안"]
+  f --> g["verified-execution report 초안"]
   g --> h["phase --to ai-slop-clean"]
 ```
 
 ## 시작 게이트
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `implement.enter`나 `implement`면 이 스킬이다.
@@ -51,7 +51,7 @@ agent-harness issueops next --id "$ISSUEOPS_ID" --json
 진행하기 전에 편집 대상이 맞는지 실측한다.
 
 ```bash
-agent-harness issueops execution whoami --json
+issueops execution whoami --json
 git -C "$WORKTREE" rev-parse --abbrev-ref HEAD
 git -C "$WORKTREE" status --porcelain
 ```
@@ -66,19 +66,19 @@ worktree의 branch·HEAD가 record와 다르거나 무관한 dirty 변경이 있
 
 ```bash
 # prepare가 스테이징한 계획을 워크트리에 풀어 두고 plan_path를 채웠으면 생략한다.
-agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$WORKTREE_PLAN" \
+issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$WORKTREE_PLAN" \
   $RECORD_ACTOR_FLAGS --json
 
-agent-harness issueops compatibility review --id "$ISSUEOPS_ID" \
+issueops compatibility review --id "$ISSUEOPS_ID" \
   --backward-compatibility "<기존 호출자에게 무엇이 그대로인가>" \
   --side-effect "<파일·원격·상태에 남는 변화>" --rollback-plan "<되돌리는 방법>" \
   --verification "<무엇으로 확인하는가>" --approved $RECORD_ACTOR_FLAGS --json
 
 # 계획의 수용 기준을 게이트 원장 파일로 만든다(gates-ledger).
-agent-harness gates init --file "$WORKTREE/.agent-harness/issues/$ISSUE/gates.md" --scope "$ISSUE" \
+issueops gates init --file "$WORKTREE/.issueops/issues/$ISSUE/gates.md" --scope "$ISSUE" \
   --gate "G1: <결과> | CHECK: <명령> | EXPECT: <문자열>" --json
 
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to implement $RECORD_ACTOR_FLAGS --json
+issueops phase --id "$ISSUEOPS_ID" --to implement $RECORD_ACTOR_FLAGS --json
 ```
 
 blocker가 하나라도 있으면 compatibility review는 승인되지 않는다. blocker를 먼저 없앤다.
@@ -95,9 +95,9 @@ blocker가 하나라도 있으면 compatibility review는 승인되지 않는다
   실행하지 않은 검증을 `pass`로 적지 않는다.
 - commit·push는 사용자 지시가 있을 때만 [`atomic-commit-push`](../atomic-commit-push/SKILL.md)로
   한다. 해석이 필요한 지시("PR 올려줘")는 해석을 밝힌 뒤 진행한다.
-- API/DTO/OpenAPI 변경은 `.agent-harness/OPEN_API_SPEC.md` gate를 적용한다.
+- API/DTO/OpenAPI 변경은 `.issueops/OPEN_API_SPEC.md` gate를 적용한다.
 - RED/GREEN 증거는 [`gates-ledger`](../gates-ledger/SKILL.md)로
-  `.agent-harness/issues/<n>/gates.md`에 `gates check --write`로 채운다.
+  `.issueops/issues/<n>/gates.md`에 `gates check --write`로 채운다.
 
 기존 코드베이스를 존중하는 네 규칙이다. 계획이 이미 정한 것을 구현에서 다시 뒤집지
 않기 위한 것이다.
@@ -109,7 +109,7 @@ blocker가 하나라도 있으면 compatibility review는 승인되지 않는다
    적힌 것만 한다.
 3. **hot path를 건드리면 전후를 측정한다.** 측정값을 evidence로 남긴다. 측정 없이
    성능이 나아졌다고 적지 않는다.
-4. **side effect를 목록으로 적는다.** 파일·원격·durable state에 남는 변화를 turing
+4. **side effect를 목록으로 적는다.** 파일·원격·durable state에 남는 변화를 verified-execution
    report에 적는다.
 
 ## Lease fencing
@@ -151,11 +151,11 @@ approved 또는 waive다, plan이 sub-agent pattern·scope·acceptance·verifica
 fallback·tradeoff를 기록한다.
 
 ```bash
-agent-harness issueops child start --parent "$ISSUEOPS_ID" \
+issueops child start --parent "$ISSUEOPS_ID" \
   --branch "$CHILD_BRANCH" --title "$TITLE" \
   --scope "$SCOPE" --acceptance "$CRITERION" \
   --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
-agent-harness issueops child status --parent "$ISSUEOPS_ID" \
+issueops child status --parent "$ISSUEOPS_ID" \
   --host claude --session-id "$SESSION_ID" --cwd "$WORKER_PATH" --json
 ```
 
@@ -181,15 +181,15 @@ implement 단계의 출구는 ai-slop-clean 전이다.
 
 1. focused verification 증거가 명령·결과로 남아 있고, 위임한 child가 전부 accepted
    또는 dropped다. `child_incomplete`·`child_unvalidated`가 남으면 전이가 거부된다.
-2. turing report 초안을 워크트리 **안**에 쓴다. 경로는
+2. verified-execution report 초안을 워크트리 **안**에 쓴다. 경로는
    [`issueops-complete`](../issueops-complete/SKILL.md)가 요구하는 워크트리 내부 상대
    경로다. 최종 확정은 5단계 정리가 한다.
-3. `agent-harness issueops phase --id ID --to ai-slop-clean $RECORD_ACTOR_FLAGS --json`
+3. `issueops phase --id ID --to ai-slop-clean $RECORD_ACTOR_FLAGS --json`
    으로 전이한다. 다음은 [`issueops-clean`](../issueops-clean/SKILL.md)이다.
 4. 이 단계에서는 커밋·푸시하지 않는다. 커밋은 8단계다.
 
 `execution complete`는 이 단계의 명령이 아니다. complete는 pr phase에서 검증된 remote
-artifact URL·final head·turing report를 요구하며 그 전 호출은 거부된다. "구현 끝났으니
+artifact URL·final head·verified-execution report를 요구하며 그 전 호출은 거부된다. "구현 끝났으니
 완료 처리해줘"가 뜻하는 것은 phase 전이지 complete가 아니다.
 
 ## 나쁜 예

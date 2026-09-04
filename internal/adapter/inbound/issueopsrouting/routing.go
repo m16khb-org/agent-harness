@@ -3,8 +3,8 @@ package issueopsrouting
 import (
 	"context"
 
-	issueopsroutingapplication "agent-harness/internal/application/issueopsrouting"
-	issueopsroutingcontract "agent-harness/internal/contract/issueopsrouting"
+	issueopsroutingapplication "issueops/internal/application/issueopsrouting"
+	issueopsroutingcontract "issueops/internal/contract/issueopsrouting"
 )
 
 type Handlers struct {

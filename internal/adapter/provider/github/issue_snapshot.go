@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/adapter/provider/providerutil"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/providerutil"
+	"issueops/internal/port"
 )
 
 func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {

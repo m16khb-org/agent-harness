@@ -90,12 +90,12 @@ repository failure 전후 snapshot이 같아야 한다. settler 실패는 durabl
 
 inbound adapter는 기존 `ExecutionCompleteRequest`와 `ExecutionResult`를 보존한다.
 outbound persistence adapter는 기존 raw model과 SQLite CAS primitive를 재사용하되
-application/domain에 core model을 노출하지 않는다. harnessapp만 concrete repository,
+application/domain에 core model을 노출하지 않는다. issueopsapp만 concrete repository,
 filesystem/Git verifier, clock, Orca gateway를 조립한다.
 
 `ExecutionActionDependencies`에는 complete handler를 추가한다. production complete
 분기는 handler가 없으면 typed unavailable error로 fail-closed하며 legacy orchestration에
-fallback하지 않는다. CLI와 MCP는 동일 harnessapp handler를 소비한다.
+fallback하지 않는다. CLI와 MCP는 동일 issueopsapp handler를 소비한다.
 
 ## 호환성 oracle
 

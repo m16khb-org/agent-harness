@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const nativeBinaryName = "agent-harness"
+const nativeBinaryName = "issueops"
 
 // ResolveStableNativeRoot maps a linked Git worktree to the source checkout
 // that owns the common .git directory. Normal checkouts remain unchanged.

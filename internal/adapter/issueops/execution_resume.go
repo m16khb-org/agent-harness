@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 type executionResumeArtifacts struct {
@@ -261,7 +261,7 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record issu
 }
 
 func ExecutionResumeNextCommand(id string, generation uint64, _ string, issueBodySHA256, contextPacketSHA256 string) string {
-	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
+	return "issueops execution claim --id " + quoteExecutionOwnerArg(id) +
 		" --generation " + strconv.FormatUint(generation, 10) +
 		" --claim-current-token" +
 		" --issue-body-sha256 " + issueBodySHA256 +
@@ -269,6 +269,6 @@ func ExecutionResumeNextCommand(id string, generation uint64, _ string, issueBod
 }
 
 func ExecutionResumeRecoveryCommand(id string, generation uint64) string {
-	return "agent-harness issueops execution resume --id " + quoteExecutionOwnerArg(id) +
+	return "issueops execution resume --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) + " --confirm"
 }

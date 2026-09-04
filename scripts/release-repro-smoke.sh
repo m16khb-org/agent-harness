@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-BIN="${AGENT_HARNESS_BIN:-$ROOT/bin/agent-harness}"
-SKIP_BUILD="${HARNESS_RELEASE_SKIP_BUILD:-0}"
-KEEP_TMP="${HARNESS_RELEASE_KEEP_TMP:-0}"
+ROOT="${ISSUEOPS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BIN="${ISSUEOPS_BIN:-$ROOT/bin/issueops}"
+SKIP_BUILD="${ISSUEOPS_RELEASE_SKIP_BUILD:-0}"
+KEEP_TMP="${ISSUEOPS_RELEASE_KEEP_TMP:-0}"
 
 usage() {
   cat <<'EOF'
@@ -14,9 +14,9 @@ Build and smoke-test the release install path in temporary clean-machine
 directories. The smoke never writes to the operator's real HOME/CODEX_HOME.
 
 Environment:
-  AGENT_HARNESS_BIN=/path/to/agent-harness  Use an existing binary.
-  HARNESS_RELEASE_SKIP_BUILD=1              Skip `go build`.
-  HARNESS_RELEASE_KEEP_TMP=1                Keep temp files for inspection.
+  ISSUEOPS_BIN=/path/to/issueops  Use an existing binary.
+  ISSUEOPS_RELEASE_SKIP_BUILD=1              Skip `go build`.
+  ISSUEOPS_RELEASE_KEEP_TMP=1                Keep temp files for inspection.
 EOF
 }
 
@@ -54,7 +54,7 @@ require_command() {
 require_command go
 require_command python3
 
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-release-repro.XXXXXX")"
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/issueops-release-repro.XXXXXX")"
 cleanup() {
   if is_truthy "$KEEP_TMP"; then
     log "kept temp directory: $tmp"
@@ -78,12 +78,12 @@ description: Release reproducibility smoke fixture.
 # Release Smoke Fixture
 
 This minimal skill exists only to verify install dry-run planning in a clean
-temporary HARNESS_ROOT.
+temporary ISSUEOPS_ROOT.
 EOF
 
 if ! is_truthy "$SKIP_BUILD"; then
   log "building $BIN"
-  (cd "$ROOT" && go build -o "$BIN" ./cmd/harness)
+  (cd "$ROOT" && go build -o "$BIN" ./cmd/issueops)
 fi
 
 install_json="$tmp/install-dry-run.json"
@@ -92,11 +92,11 @@ docs_json="$tmp/docs.json"
 state_write_json="$tmp/state-write.json"
 state_read_json="$tmp/state-read.json"
 
-log "checking project-local install dry-run in temp HOME/CODEX_HOME/HARNESS_ROOT"
+log "checking project-local install dry-run in temp HOME/CODEX_HOME/ISSUEOPS_ROOT"
 HOME="$home" \
 CODEX_HOME="$home/.codex" \
-HARNESS_STATE_DIR="$state" \
-HARNESS_ROOT="$fixture_root" \
+ISSUEOPS_STATE_DIR="$state" \
+ISSUEOPS_ROOT="$fixture_root" \
   "$BIN" install --dry-run --project-local --json > "$install_json"
 
 python3 - "$install_json" <<'PY'
@@ -133,13 +133,13 @@ if errors:
 PY
 
 log "checking inspect/docs/state workflow under temp HOME/CODEX_HOME"
-HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
+HOME="$home" CODEX_HOME="$home/.codex" ISSUEOPS_STATE_DIR="$state" \
   "$BIN" inspect --json > "$inspect_json"
-HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
+HOME="$home" CODEX_HOME="$home/.codex" ISSUEOPS_STATE_DIR="$state" \
   "$BIN" docs --json > "$docs_json"
-HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
+HOME="$home" CODEX_HOME="$home/.codex" ISSUEOPS_STATE_DIR="$state" \
   "$BIN" state write --key release-repro-smoke --value current-v1 --json > "$state_write_json"
-HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
+HOME="$home" CODEX_HOME="$home/.codex" ISSUEOPS_STATE_DIR="$state" \
   "$BIN" state read --key release-repro-smoke --json > "$state_read_json"
 
 python3 - "$inspect_json" "$docs_json" "$state_write_json" "$state_read_json" <<'PY'

@@ -1,21 +1,21 @@
 ---
 name: project-docs-optimize
-description: Audit and modularize oversized agent-harness operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.agent-harness` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.
+description: Audit and modularize oversized issueops operating documents into canonical root indexes and focused folders without losing constraints, breaking project-doc contracts, or duplicating normative ownership. Use when asked to optimize, split, reorganize, or validate `.issueops` documentation, ADRs, testing guides, cautions, conventions, operations, or architecture docs.
 ---
 
 # Project Docs Optimize
 
 ## Goal
 
-Turn oversized `.agent-harness` operating documents into a navigable,
+Turn oversized `.issueops` operating documents into a navigable,
 single-owner documentation system while preserving every actionable constraint
 and every required project-doc entrypoint.
 
 ## Inputs
 
 - repository root;
-- `.agent-harness/documentation/manifest.json`;
-- required root documents under `.agent-harness/`;
+- `.issueops/documentation/manifest.json`;
+- required root documents under `.issueops/`;
 - the nearest `AGENTS.md` and project documentation rules.
 
 Resolve script paths relative to this skill directory.
@@ -73,12 +73,12 @@ uv run --directory skills/project-docs-optimize python -m scripts.check \
 
 Read every violating document. Classify each section by responsibility,
 normative owner, historical status, and consumer. Record the measured inventory
-in `.agent-harness/documentation/AUDIT.md`.
+in `.issueops/documentation/AUDIT.md`.
 
 ### Design
 
-Update `.agent-harness/documentation/manifest.json` and
-`.agent-harness/documentation/README.md` before moving content.
+Update `.issueops/documentation/manifest.json` and
+`.issueops/documentation/README.md` before moving content.
 
 For each family:
 
@@ -114,7 +114,7 @@ Then verify the real project surfaces:
 
 ```bash
 python3 scripts/validate-skill.py skills/project-docs-optimize
-./bin/agent-harness docs --json
+./bin/issueops docs --json
 go test ./internal/adapter/projectdocs ./internal/domain/projectdoc -count=1
 git diff --check
 ```

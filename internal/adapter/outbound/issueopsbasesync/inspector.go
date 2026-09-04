@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	basesyncport "issueops/internal/port/issueopsbasesync"
 )
 
 var ErrGitRunnerRequired = errors.New("base sync git runner is required")

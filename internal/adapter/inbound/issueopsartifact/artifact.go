@@ -3,8 +3,8 @@ package issueopsartifact
 import (
 	"context"
 
-	issueopsartifactapplication "agent-harness/internal/application/issueopsartifact"
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
+	issueopsartifactapplication "issueops/internal/application/issueopsartifact"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
 )
 
 type Handlers struct {

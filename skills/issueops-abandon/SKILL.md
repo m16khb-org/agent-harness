@@ -15,7 +15,7 @@ description: Leave an IssueOps cycle safely from any stage. Pause by releasing t
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 어느 stage에서든 들어올 수 있다. 읽어야 하는 것은 두 곳이다.
@@ -39,9 +39,9 @@ agent-harness issueops next --id "$ISSUEOPS_ID" --json
 ## 일시 중단
 
 ```bash
-agent-harness issueops execution status --id "$ISSUEOPS_ID" --json   # generation 확인
+issueops execution status --id "$ISSUEOPS_ID" --json   # generation 확인
 # WIP 처리: atomic-commit-push로 커밋·푸시하거나, 사용자가 명시하면 변경을 버린다.
-cd "$WORKTREE" && agent-harness issueops execution release --id "$ISSUEOPS_ID" \
+cd "$WORKTREE" && issueops execution release --id "$ISSUEOPS_ID" \
   --generation "$GENERATION" $ACTOR_FLAGS --json
 ```
 
@@ -57,9 +57,9 @@ cwd가 canonical worktree와 **정확히** 같아야 한다. 다른 디렉터리
 
 - 사용자의 "그 세션은 껐다"는 quiescence 증거가 아니다. 인수는 관측된 상태 위에서만
   진행하며, 각 단계가 돌려준 명령만 실행한다.
-- 호스트가 달라도 명령은 같다. `agent-harness issueops execution whoami --json`의
+- 호스트가 달라도 명령은 같다. `issueops execution whoami --json`의
   `claim_actor_flags`를 그대로 쓴다.
-- 체인의 시작만 적어 둔다. 홀더가 죽었으면 `agent-harness issueops execution replace
+- 체인의 시작만 적어 둔다. 홀더가 죽었으면 `issueops execution replace
   --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" --preview`이고, 그 다음부터는
   직전 명령이 돌려준 `next_command`만 실행한다. 중간 명령을 여기서 외워 쓰지 않는다.
 
@@ -72,12 +72,12 @@ cwd가 canonical worktree와 **정확히** 같아야 한다. 다른 디렉터리
 넣는다.
 
 ```bash
-agent-harness issueops cleanup abandon --id "$ISSUEOPS_ID" --reason "$REASON" \
+issueops cleanup abandon --id "$ISSUEOPS_ID" --reason "$REASON" \
   --close-pr --close-issue --delete-remote-branch --preview --json
 
 # preview의 remote_effects, worktree, branch, fingerprint를 사용자에게 확인한 뒤
 # 돌려준 next_command 그대로 실행한다.
-agent-harness issueops cleanup abandon --id "$ISSUEOPS_ID" --reason "$REASON" \
+issueops cleanup abandon --id "$ISSUEOPS_ID" --reason "$REASON" \
   --close-pr --close-issue --delete-remote-branch --apply --confirm --fingerprint "$FP" --json
 ```
 
@@ -135,7 +135,7 @@ preview 전에 번호로 묻는다. 고른 것만 플래그로 넣는다. 묻지
 3. **원격 브랜치를 삭제한다**(`--delete-remote-branch`) 또는 유지한다. 삭제는 관측한
    OID에 대한 lease로 실행되므로, 그 사이에 누가 push했으면 거부된다.
 
-`agent-harness issueops remote close-issue`와 `agent-harness issueops cleanup
+`issueops remote close-issue`와 `issueops cleanup
 remote-branch`는 여기서 쓰지 않는다. 두 명령 모두 머지 증적을 요구하므로 미머지
 사이클에서는 각각 아티팩트 검증 실패와 `phase_done` 미충족으로 막힌다(2026-09-04 실측).
 
@@ -152,9 +152,9 @@ remote-branch`는 여기서 쓰지 않는다. 두 명령 모두 머지 증적을
 
 ## 검증
 
-- 일시 중단: `agent-harness issueops execution status --id "$ISSUEOPS_ID" --json`의
+- 일시 중단: `issueops execution status --id "$ISSUEOPS_ID" --json`의
   `lease.status`가 `released`이고 holder가 없다. 워크트리와 record는 그대로 있다.
-- 폐기: `agent-harness issueops status --id "$ISSUEOPS_ID" --json`이 record 없음을
+- 폐기: `issueops status --id "$ISSUEOPS_ID" --json`이 record 없음을
   돌려준다. `git worktree list`에 그 경로가 없고 `git show-ref --verify
   refs/heads/<branch>`가 실패한다.
 - 원격 효과를 골랐다면 apply 결과의 `remote_effects`, `pr_closed`, `issue_closed`,

@@ -42,7 +42,7 @@ type Execution struct {
 	// SyncBaseEvents는 completion 이후 base 재동기화(merge+push)의 durable
 	// 감사 기록이다. append-only이며 Completion.FinalHead는 불변으로 남는다
 	// — 완결 시점 증거를 보존하고, PR head는 provider가 관측하며, merge OID는
-	// 이 이벤트가 담당한다(설계 v2 brooks F9). 기존 레코드는 nil이므로
+	// 이 이벤트가 담당한다(설계 v2 design-review F9). 기존 레코드는 nil이므로
 	// 스키마는 additive다.
 	SyncBaseEvents []ExecutionSyncBaseEvent `json:"sync_base_events,omitempty"`
 }
@@ -68,9 +68,9 @@ type Workspace struct {
 	ParentWorktree string `json:"parent_worktree,omitempty"`
 	Driver         string `json:"driver"`
 	LinkedAt       string `json:"linked_at"`
-	// ArtifactDir은 봉인 아티팩트(plan/spec/turing-loop)를 materialize·재검증·
+	// ArtifactDir은 봉인 아티팩트(plan/spec/verified-execution-loop)를 materialize·재검증·
 	// 게시할 워크트리 상대 디렉터리다(slash 구분, #482). 비어 있으면 legacy
-	// `.agent-harness/artifact`를 뜻한다.
+	// `.issueops/artifact`를 뜻한다.
 	ArtifactDir string `json:"artifact_dir,omitempty"`
 }
 
@@ -128,12 +128,12 @@ type ExternalIntent struct {
 }
 
 type ExecutionCompletion struct {
-	Generation        uint64   `json:"generation,omitempty"`
-	FinalHead         string   `json:"final_head"`
-	TuringReportPath  string   `json:"turing_report_path"`
-	Verification      []string `json:"verification"`
-	RemoteArtifactURL string   `json:"remote_artifact_url"`
-	CompletedAt       string   `json:"completed_at"`
+	Generation             uint64   `json:"generation,omitempty"`
+	FinalHead              string   `json:"final_head"`
+	VerificationReportPath string   `json:"verification_report_path"`
+	Verification           []string `json:"verification"`
+	RemoteArtifactURL      string   `json:"remote_artifact_url"`
+	CompletedAt            string   `json:"completed_at"`
 }
 
 type ExecutionCompletionHistory struct {
@@ -273,7 +273,7 @@ func validateExecutionSyncBaseResolution(execution Execution, resolution Executi
 }
 
 func validateExecutionCompletion(completion ExecutionCompletion) error {
-	if !validCommitSHA(completion.FinalHead) || strings.TrimSpace(completion.TuringReportPath) == "" ||
+	if !validCommitSHA(completion.FinalHead) || strings.TrimSpace(completion.VerificationReportPath) == "" ||
 		len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
 		return fmt.Errorf("execution completion is incomplete")
 	}

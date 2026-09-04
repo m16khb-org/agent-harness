@@ -1,0 +1,299 @@
+package installcli
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	installcontract "issueops/internal/contract/install"
+	"issueops/internal/port"
+)
+
+const shellPathRCMarker = "# issueops: add user-local bin to PATH"
+
+type installPathTransaction struct {
+	req             port.NativeInstallRequest
+	command         ManagedCommandPathTransaction
+	managed         bool
+	applied         bool
+	commandCreated  bool
+	commandExisted  bool
+	commandTarget   string
+	shortCreated    bool
+	binDirExisted   bool
+	localDirExisted bool
+	path            string
+	shortPath       string
+}
+
+func prepareInstallPathPlan(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) (*installPathTransaction, error) {
+	return prepareInstallPathPlanForCandidate(result, req, req.BinPath, mode)
+}
+
+func prepareInstallPathPlanForCandidate(result *port.NativeInstallResult, req port.NativeInstallRequest, candidatePath, mode string) (*installPathTransaction, error) {
+	userBin := filepath.Join(req.Home, ".local", "bin")
+	commandPath := filepath.Join(userBin, "issueops")
+	shortCommandPath := filepath.Join(userBin, "io")
+	transaction := &installPathTransaction{
+		req:             req,
+		path:            commandPath,
+		shortPath:       shortCommandPath,
+		binDirExisted:   installPathDirectoryExists(userBin),
+		localDirExisted: installPathDirectoryExists(filepath.Dir(userBin)),
+	}
+	info, statErr := os.Lstat(commandPath)
+	if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		transaction.commandExisted = true
+		transaction.commandTarget, statErr = os.Readlink(commandPath)
+		if statErr != nil {
+			return nil, statErr
+		}
+	}
+	if statErr == nil && info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+		managed, plan, err := PrepareManagedCommandPathCandidate(req.BinPath, candidatePath, commandPath, req.AdoptCommandFile, req.DryRun)
+		result.CommandPath = managedCommandPathResult(plan)
+		result.Links = append(result.Links, port.InstallLink{Path: commandPath, Target: req.BinPath, WouldCreate: plan.WouldAdopt})
+		if err != nil {
+			return nil, err
+		}
+		transaction.command = managed
+		transaction.managed = true
+	} else {
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return nil, statErr
+		}
+		link, err := EnsureSymlinkPlan(req.BinPath, commandPath, true)
+		if req.DryRun {
+			result.Links = append(result.Links, link)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	shortLink, err := ensureShortCommandShimPlan(commandPath, shortCommandPath, true)
+	if req.DryRun {
+		result.Links = append(result.Links, shortLink)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if req.DryRun {
+		if err := planShellPath(result, req, mode); err != nil {
+			return nil, err
+		}
+	}
+	return transaction, nil
+}
+
+func (transaction *installPathTransaction) apply(result *port.NativeInstallResult) error {
+	if transaction.managed {
+		plan, err := transaction.command.Apply()
+		result.CommandPath = managedCommandPathResult(plan)
+		transaction.applied = plan.Adopted
+		if err != nil {
+			return err
+		}
+		result.Links = append(result.Links, port.InstallLink{Path: transaction.path, Target: transaction.req.BinPath, Created: true})
+	} else {
+		link, err := EnsureSymlinkPlan(transaction.req.BinPath, transaction.path, false)
+		result.Links = append(result.Links, link)
+		if err != nil {
+			return err
+		}
+		transaction.commandCreated = link.Created
+	}
+	shortLink, err := ensureShortCommandShimPlan(transaction.path, transaction.shortPath, false)
+	result.Links = append(result.Links, shortLink)
+	transaction.shortCreated = shortLink.Created
+	return err
+}
+
+func (transaction *installPathTransaction) rollback(result *port.NativeInstallResult) error {
+	var errs []error
+	if transaction.shortCreated {
+		if err := os.Remove(transaction.shortPath); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.shortCreated = false
+		}
+	}
+	if transaction.commandExisted && !transaction.managed {
+		if err := os.Remove(transaction.path); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.commandCreated = false
+			if err := os.Symlink(transaction.commandTarget, transaction.path); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	} else if transaction.commandCreated {
+		if err := os.Remove(transaction.path); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		} else {
+			transaction.commandCreated = false
+		}
+	}
+	if transaction.managed && transaction.command != nil && transaction.applied {
+		plan, err := transaction.command.Rollback()
+		if err == nil {
+			transaction.applied = false
+		}
+		result.CommandPath = managedCommandPathResult(plan)
+		errs = append(errs, err)
+	}
+	if !transaction.commandCreated && !transaction.shortCreated {
+		type cleanupPath struct {
+			path    string
+			existed bool
+		}
+		for _, item := range []cleanupPath{
+			{path: filepath.Dir(transaction.path), existed: transaction.binDirExisted},
+			{path: filepath.Dir(filepath.Dir(transaction.path)), existed: transaction.localDirExisted},
+		} {
+			if item.existed {
+				continue
+			}
+			if err := removeInstallDirectoryIfEmpty(item.path); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func installPathDirectoryExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func (transaction *installPathTransaction) finalize(result *port.NativeInstallResult) error {
+	if !transaction.managed || transaction.command == nil {
+		return nil
+	}
+	plan, err := transaction.command.Finalize()
+	result.CommandPath = managedCommandPathResult(plan)
+	return err
+}
+
+func managedCommandPathResult(plan installcontract.ManagedCommandPathPlan) *port.ManagedCommandPathResult {
+	return &port.ManagedCommandPathResult{
+		Path: plan.Path, Target: plan.Target, BackupPath: plan.BackupPath, AdoptionApproved: plan.AdoptionApproved,
+		WouldAdopt: plan.WouldAdopt, Adopted: plan.Adopted, Committed: plan.Committed, RolledBack: plan.RolledBack,
+		RollbackAvailable: plan.RollbackAvailable, BackupRetained: plan.BackupRetained,
+	}
+}
+
+func planShellPath(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) error {
+	commandPath := filepath.Join(req.Home, ".local", "bin", "issueops")
+	shortCommandPath := filepath.Join(req.Home, ".local", "bin", "io")
+	if mode == "manual" {
+		result.Messages = append(result.Messages, `path-mode=manual: command shims are planned at `+commandPath+` and `+shortCommandPath+`; run export PATH="$HOME/.local/bin:$PATH" for this shell or add it to your shell rc`)
+		return nil
+	}
+	if mode == "skip" {
+		result.Messages = append(result.Messages, "path-mode=skip: shell rc PATH update skipped; command shims still use "+commandPath+" and "+shortCommandPath)
+		return nil
+	}
+	if localBinInPath(req.Home) {
+		return nil
+	}
+	rcPath := preferredShellRC(req.Home)
+	if shellRCAlreadyAddsLocalBin(rcPath, req.Home) {
+		return nil
+	}
+	file, err := appendShellPathLinePlan(rcPath, req.DryRun)
+	if file.Path != "" && (file.WouldWrite || file.Written) {
+		result.Files = append(result.Files, file)
+	}
+	if err != nil {
+		return err
+	}
+	if file.WouldWrite {
+		result.Messages = append(result.Messages, "dry-run: would add ~/.local/bin to PATH in "+rcPath)
+	} else if file.Written {
+		result.Messages = append(result.Messages, `added ~/.local/bin to PATH in `+rcPath+`; restart shell or run: export PATH="$HOME/.local/bin:$PATH"`)
+	}
+	return nil
+}
+
+func ensureShortCommandShimPlan(target, path string, dryRun bool) (port.InstallLink, error) {
+	link := port.InstallLink{Path: path, Target: target}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return EnsureSymlinkPlan(target, path, dryRun)
+	}
+	if err != nil {
+		return link, err
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return link, fmt.Errorf("refusing to replace existing io command: %s", path)
+	}
+	current, err := os.Readlink(path)
+	if err != nil {
+		return link, err
+	}
+	if current != target {
+		return link, fmt.Errorf("refusing to replace existing io command symlink %s -> %s", path, current)
+	}
+	return link, nil
+}
+
+func preferredShellRC(home string) string {
+	switch filepath.Base(os.Getenv("SHELL")) {
+	case "zsh":
+		return filepath.Join(home, ".zshrc")
+	case "bash":
+		return filepath.Join(home, ".bashrc")
+	}
+	for _, name := range []string{".zshrc", ".bashrc"} {
+		path := filepath.Join(home, name)
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return filepath.Join(home, ".profile")
+}
+
+func localBinInPath(home string) bool {
+	localBin := filepath.Clean(filepath.Join(home, ".local", "bin"))
+	for _, entry := range filepath.SplitList(os.Getenv("PATH")) {
+		if filepath.Clean(entry) == localBin {
+			return true
+		}
+	}
+	return false
+}
+
+func shellRCAlreadyAddsLocalBin(path, home string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	text := string(b)
+	return strings.Contains(text, shellPathRCMarker) ||
+		strings.Contains(text, `export PATH="$HOME/.local/bin:$PATH"`) ||
+		strings.Contains(text, `export PATH="`+filepath.Join(home, ".local", "bin")+`:$PATH"`)
+}
+
+func appendShellPathLinePlan(path string, dryRun bool) (port.InstallFile, error) {
+	file := port.InstallFile{Path: path, Kind: "shell_path_rc"}
+	if dryRun {
+		file.WouldWrite = true
+		return file, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return file, err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return file, err
+	}
+	defer f.Close()
+	if _, err := fmt.Fprintf(f, "\n%s\n%s\n", shellPathRCMarker, `export PATH="$HOME/.local/bin:$PATH"`); err != nil {
+		return file, err
+	}
+	file.Written = true
+	return file, nil
+}

@@ -1,7 +1,7 @@
 package docs
 
 import (
-	docscontract "agent-harness/internal/contract/docs"
+	docscontract "issueops/internal/contract/docs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +10,7 @@ import (
 
 // In a real git repo, an UNTRACKED .md (e.g. a session research artifact) must
 // be excluded from the hermetic docs index while TRACKED docs — including ones
-// under .agent-harness/research — stay. t.TempDir() sits under macOS
+// under .issueops/research — stay. t.TempDir() sits under macOS
 // /var -> /private/var, so this also guards the symlink-divergence case where
 // git's resolved root differs from WalkDir's literal root.
 func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
@@ -27,19 +27,19 @@ func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
 	}
 	gitRun("init")
 	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Agents\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "CONVENTIONS.md"), "# Conventions\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "tracked-note.md"), "# Tracked research\n")
-	gitRun("add", "AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md")
+	mustWrite(t, filepath.Join(root, ".issueops", "CONVENTIONS.md"), "# Conventions\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "research", "tracked-note.md"), "# Tracked research\n")
+	gitRun("add", "AGENTS.md", ".issueops/CONVENTIONS.md", ".issueops/research/tracked-note.md")
 	gitRun("commit", "-m", "seed")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "untracked-research.md"), "# Untracked\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "research", "untracked-research.md"), "# Untracked\n")
 
 	index := DocsIndex(root, "test")
-	for _, want := range []string{"AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md"} {
+	for _, want := range []string{"AGENTS.md", ".issueops/CONVENTIONS.md", ".issueops/research/tracked-note.md"} {
 		if !docIndexContains(index.Docs, want) {
 			t.Fatalf("tracked doc %s must stay in the hermetic index: %+v", want, index.Docs)
 		}
 	}
-	if docIndexContains(index.Docs, ".agent-harness/research/untracked-research.md") {
+	if docIndexContains(index.Docs, ".issueops/research/untracked-research.md") {
 		t.Fatalf("untracked research artifact must be excluded from the hermetic index: %+v", index.Docs)
 	}
 }
@@ -61,25 +61,25 @@ func TestListDocsIncludesUntrackedCanonicalProjectDocs(t *testing.T) {
 	gitRun("add", "AGENTS.md")
 	gitRun("commit", "-m", "seed")
 
-	mustWrite(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "# Testing\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "testing", "unit.md"), "# Unit\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "scratch.md"), "# Scratch\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "TESTING.md"), "# Testing\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "testing", "unit.md"), "# Unit\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "research", "scratch.md"), "# Scratch\n")
 	mustWrite(
 		t,
-		filepath.Join(root, ".agent-harness", "documentation", "manifest.json"),
-		`{"schema_version":1,"families":[{"root":".agent-harness/TESTING.md","module_dir":".agent-harness/testing","responsibility":"testing"}]}`,
+		filepath.Join(root, ".issueops", "documentation", "manifest.json"),
+		`{"schema_version":1,"families":[{"root":".issueops/TESTING.md","module_dir":".issueops/testing","responsibility":"testing"}]}`,
 	)
 
 	index := DocsIndex(root, "test")
 	for _, want := range []string{
-		".agent-harness/TESTING.md",
-		".agent-harness/testing/unit.md",
+		".issueops/TESTING.md",
+		".issueops/testing/unit.md",
 	} {
 		if !docIndexContains(index.Docs, want) {
 			t.Fatalf("canonical untracked doc %s must be discoverable: %+v", want, index.Docs)
 		}
 	}
-	if docIndexContains(index.Docs, ".agent-harness/research/scratch.md") {
+	if docIndexContains(index.Docs, ".issueops/research/scratch.md") {
 		t.Fatalf("untracked research artifact must stay excluded: %+v", index.Docs)
 	}
 }
@@ -93,7 +93,7 @@ func TestDocsIndexIncludesAgentDocs(t *testing.T) {
 	if !index.OK {
 		t.Fatalf("DocsIndex ok=false: %+v", index)
 	}
-	for _, want := range []string{"AGENTS.md", "CLAUDE.md", ".agent-harness/COMMIT_POLICY.md", ".agent-harness/OPERATIONS.md"} {
+	for _, want := range []string{"AGENTS.md", "CLAUDE.md", ".issueops/COMMIT_POLICY.md", ".issueops/OPERATIONS.md"} {
 		if !docIndexContains(index.Docs, want) {
 			t.Fatalf("DocsIndex missing %s: %+v", want, index.Docs)
 		}
@@ -108,17 +108,17 @@ func TestDocsIndexIncludesAgentDocs(t *testing.T) {
 func TestDocsIndexExcludesDraftWiki(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Rules\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "CAUTIONS.md"), "# Cautions\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "draft-wiki", "draft", "candidate.md"), "# Draft candidate\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "CAUTIONS.md"), "# Cautions\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "draft-wiki", "draft", "candidate.md"), "# Draft candidate\n")
 
 	index := DocsIndex(root, "test")
 	if !docIndexContains(index.Docs, "AGENTS.md") {
 		t.Fatalf("DocsIndex missing AGENTS.md: %+v", index.Docs)
 	}
-	if !docIndexContains(index.Docs, ".agent-harness/CAUTIONS.md") {
+	if !docIndexContains(index.Docs, ".issueops/CAUTIONS.md") {
 		t.Fatalf("DocsIndex missing CAUTIONS.md: %+v", index.Docs)
 	}
-	if docIndexContains(index.Docs, ".agent-harness/draft-wiki/draft/candidate.md") {
+	if docIndexContains(index.Docs, ".issueops/draft-wiki/draft/candidate.md") {
 		t.Fatalf("DocsIndex included draft-wiki candidate: %+v", index.Docs)
 	}
 }
@@ -126,19 +126,19 @@ func TestDocsIndexExcludesDraftWiki(t *testing.T) {
 func TestDocsIndexExcludesEvidence(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Rules\n")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "CAUTIONS.md"), "# Cautions\n")
-	// .agent-harness/evidence is gitignored, working-tree-dependent runtime data.
+	mustWrite(t, filepath.Join(root, ".issueops", "CAUTIONS.md"), "# Cautions\n")
+	// .issueops/evidence is gitignored, working-tree-dependent runtime data.
 	// It must never enter the docs index, or the response-contract golden becomes non-hermetic.
-	mustWrite(t, filepath.Join(root, ".agent-harness", "evidence", "pioneer-skills-quality", "baseline.md"), "# Baseline\n")
+	mustWrite(t, filepath.Join(root, ".issueops", "evidence", "pioneer-skills-quality", "baseline.md"), "# Baseline\n")
 
 	index := DocsIndex(root, "test")
 	if !docIndexContains(index.Docs, "AGENTS.md") {
 		t.Fatalf("DocsIndex missing AGENTS.md: %+v", index.Docs)
 	}
-	if !docIndexContains(index.Docs, ".agent-harness/CAUTIONS.md") {
+	if !docIndexContains(index.Docs, ".issueops/CAUTIONS.md") {
 		t.Fatalf("DocsIndex missing CAUTIONS.md: %+v", index.Docs)
 	}
-	if docIndexContains(index.Docs, ".agent-harness/evidence/pioneer-skills-quality/baseline.md") {
+	if docIndexContains(index.Docs, ".issueops/evidence/pioneer-skills-quality/baseline.md") {
 		t.Fatalf("DocsIndex included gitignored evidence doc: %+v", index.Docs)
 	}
 }

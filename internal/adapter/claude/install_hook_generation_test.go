@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // TestClaudeSettingsReportsHookGenerationSkew는 #328 완료 기준 1의 호스트
@@ -23,7 +23,7 @@ func TestClaudeSettingsReportsHookGenerationSkew(t *testing.T) {
 	FileBuildGenerationString = func(string) string { return "aaaaaaaaaaaa" }
 
 	home := t.TempDir()
-	binPath := filepath.Join(home, "bin", "agent-harness")
+	binPath := filepath.Join(home, "bin", "issueops")
 	settings := filepath.Join(home, "settings.json")
 	seeded, err := json.Marshal(claudeSettingsConfig(binPath))
 	if err != nil {

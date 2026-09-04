@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/issueops/pathutil"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 const ExecutionModeAuto = "auto"
@@ -162,7 +162,7 @@ func ensureExecutionRootUnclaimed(stateRoot, selfID, root string) error {
 				continue
 			}
 			return fmt.Errorf(
-				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: agent-harness issueops cleanup finish --id %s --preview --json",
+				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: issueops cleanup finish --id %s --preview --json",
 				target, record.ID, strings.TrimSpace(record.Branch), record.ID,
 			)
 		}

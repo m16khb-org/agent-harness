@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
 )
 
 const artifactStageBucket = "artifact_stage_v1"

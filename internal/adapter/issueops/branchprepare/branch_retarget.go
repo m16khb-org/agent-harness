@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // Retarget은 준비된 base를 provider가 실제로 보여주는 PR/MR target으로 바꾸고 그

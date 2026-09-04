@@ -29,15 +29,15 @@ func TestResourcesExposeStableDescriptors(t *testing.T) {
 	}
 
 	for _, uri := range []string{
-		"harness://commit-policy",
-		"harness://skill/atomic-commit-push",
-		"harness://agents",
-		"harness://docs",
-		"harness://project-docs",
-		"harness://project-doc-upkeep",
-		"harness://api-doc-guidance",
-		"harness://command-policy",
-		"harness://state",
+		"issueops://commit-policy",
+		"issueops://skill/atomic-commit-push",
+		"issueops://agents",
+		"issueops://docs",
+		"issueops://project-docs",
+		"issueops://project-doc-upkeep",
+		"issueops://api-doc-guidance",
+		"issueops://command-policy",
+		"issueops://state",
 	} {
 		if _, exists := byURI[uri]; !exists {
 			t.Fatalf("missing resource uri %q", uri)

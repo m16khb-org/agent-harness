@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 func TestClaimInboundContract(t *testing.T) {
@@ -15,7 +15,7 @@ func TestClaimInboundContract(t *testing.T) {
 		err  error
 		want string
 	}{
-		{name: "lease", err: leasedomain.Deny(leasedomain.DenyLeaseClaimable, errors.New("internal")), want: "lease is not claimable at generation 7: a released or superseded lease must be reseeded before any session can claim it; run `agent-harness issueops execution replace --id io-demo --expected-generation 7 --preview` and follow the next_command it renders"},
+		{name: "lease", err: leasedomain.Deny(leasedomain.DenyLeaseClaimable, errors.New("internal")), want: "lease is not claimable at generation 7: a released or superseded lease must be reseeded before any session can claim it; run `issueops execution replace --id io-demo --expected-generation 7 --preview` and follow the next_command it renders"},
 		{name: "cwd", err: leasedomain.Deny(leasedomain.DenyCanonicalCWD, errors.New("internal")), want: "claim cwd must be the canonical worktree"},
 		{name: "token", err: leasedomain.Deny(leasedomain.DenyClaimToken, errors.New("internal")), want: "claim token does not match the current generation"},
 		{name: "persistence", err: leasecontract.Fail(leasecontract.FailurePersistence, errors.New("holder index is unavailable")), want: "holder index is unavailable"},

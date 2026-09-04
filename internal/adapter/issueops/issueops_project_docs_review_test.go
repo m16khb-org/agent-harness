@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // gitRepoWithProjectDocsForTest는 committed 문서 하나(변경 집합 밖)와
@@ -19,14 +19,14 @@ func gitRepoWithProjectDocsForTest(t *testing.T) string {
 			t.Fatalf("git %v failed: %s", args, stderr)
 		}
 	}
-	writeRepoFileForTest(t, repo, ".agent-harness/ADR.md", "# adr\n")
+	writeRepoFileForTest(t, repo, ".issueops/ADR.md", "# adr\n")
 	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "base"}} {
 		if code, _, stderr := preflightGitForReviewTest(repo, args...); code != 0 {
 			t.Fatalf("git %v failed: %s", args, stderr)
 		}
 	}
 	writeRepoFileForTest(t, repo, "change.go", "package x\n")
-	writeRepoFileForTest(t, repo, ".agent-harness/CAUTIONS.md", "# cautions\n")
+	writeRepoFileForTest(t, repo, ".issueops/CAUTIONS.md", "# cautions\n")
 	return repo
 }
 
@@ -62,18 +62,18 @@ func TestRecordIssueOpsProjectDocsReviewValidation(t *testing.T) {
 		t.Fatal("updated verdict without a doc path must be rejected")
 	}
 	if _, err := RecordIssueOpsProjectDocsReview(stateRoot, record.ID, IssueOpsProjectDocsReviewRequest{
-		Verdict: "no-change", Docs: []string{".agent-harness/CAUTIONS.md"}, Evidence: []string{"확인함"},
+		Verdict: "no-change", Docs: []string{".issueops/CAUTIONS.md"}, Evidence: []string{"확인함"},
 	}); err == nil {
 		t.Fatal("no-change verdict must not carry updated docs")
 	}
 	// 연극 방지: 변경 집합에 없는 문서를 갱신했다고 주장하면 거부한다.
 	if _, err := RecordIssueOpsProjectDocsReview(stateRoot, record.ID, IssueOpsProjectDocsReviewRequest{
-		Verdict: "updated", Docs: []string{".agent-harness/ADR.md"}, Evidence: []string{"ADR 갱신"},
+		Verdict: "updated", Docs: []string{".issueops/ADR.md"}, Evidence: []string{"ADR 갱신"},
 	}); err == nil || !strings.Contains(err.Error(), "change set") {
 		t.Fatalf("doc outside the change set must be rejected: %v", err)
 	}
 	got, err := RecordIssueOpsProjectDocsReview(stateRoot, record.ID, IssueOpsProjectDocsReviewRequest{
-		Verdict: "updated", Docs: []string{".agent-harness/CAUTIONS.md"}, Evidence: []string{"재발 함정 기록"},
+		Verdict: "updated", Docs: []string{".issueops/CAUTIONS.md"}, Evidence: []string{"재발 함정 기록"},
 	})
 	if err != nil {
 		t.Fatal(err)

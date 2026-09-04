@@ -22,10 +22,10 @@ IssueOps는 record별 execution lease, canonical worktree, parent/child delegati
 
 ### File ownership
 
-- child A 전용: `internal/core/issueops/issueops_delegation_start_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
-- child B 전용: `internal/core/issueops/issueops_delegation_accept_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
-- parent 전용: 설계 문서, 구현 계획, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
-- parent lifecycle unblocker 전용: `cmd/harness/issueopscli/remotecmd/remote.go`, `cmd/harness/issueopscli/remotecmd/remote_test.go`, `internal/core/issueops/issueops_actor.go`, `internal/core/issueops_facade.go`, `internal/adapter/cli/issueops_catalog.go`, `cmd/harness/testdata/usage.golden.txt`, `internal/core/commandparse/issueops.go`, `internal/core/commandparse/issueops_test.go`, `internal/core/lifecycle/lifecycle_execution_guard.go`, `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
+- child A 전용: `internal/core/issueops/issueops_delegation_start_process_test.go`, `.issueops/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
+- child B 전용: `internal/core/issueops/issueops_delegation_accept_process_test.go`, `.issueops/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
+- parent 전용: 설계 문서, 구현 계획, `.issueops/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
+- parent lifecycle unblocker 전용: `cmd/issueops/issueopscli/remotecmd/remote.go`, `cmd/issueops/issueopscli/remotecmd/remote_test.go`, `internal/core/issueops/issueops_actor.go`, `internal/core/issueops_facade.go`, `internal/adapter/cli/issueops_catalog.go`, `cmd/issueops/testdata/usage.golden.txt`, `internal/core/commandparse/issueops.go`, `internal/core/commandparse/issueops_test.go`, `internal/core/lifecycle/lifecycle_execution_guard.go`, `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
 - production `issueops_delegation.go`는 새 테스트가 현 코드에서 실패하고 원인이 확정될 때만 parent가 범위를 다시 기록한 후 최소 수정한다.
 
 ### Cross-process test shape
@@ -77,7 +77,7 @@ Regression plane 실패는 code/test defect다. Lifecycle plane 실패는 regres
 - mutation sensitivity: 해당 outer lock을 임시 우회한 worktree에서 `-count=20`이 nonzero이고 ref/verdict 누락 assertion을 보여야 한다. 복원 뒤 production diff는 0이어야 한다.
 - package repeat: 복원된 current code에서 두 cross-process test를 `-count=10`으로 반복한다.
 - integration: `go test ./internal/core/issueops -count=1`.
-- repository: `go test ./... -count=1`, `go test -race ./... -count=1`, `go build -o bin/agent-harness ./cmd/harness`.
+- repository: `go test ./... -count=1`, `go test -race ./... -count=1`, `go build -o bin/issueops ./cmd/issueops`.
 - contracts: production/CLI response contract를 변경하지 않으므로 golden 갱신은 하지 않되 기존 전체 suite가 보호한다.
 - cleanup: provider/local/IssueOps 네 표면 모두 residue 없음.
 

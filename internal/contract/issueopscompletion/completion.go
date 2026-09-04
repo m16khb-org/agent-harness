@@ -2,7 +2,7 @@
 // completion contract shared by domain, application, and adapters.
 package issueopscompletion
 
-import leasecontract "agent-harness/internal/contract/issueopslease"
+import leasecontract "issueops/internal/contract/issueopslease"
 
 type Execution = leasecontract.Execution
 
@@ -33,12 +33,12 @@ type Lease struct {
 }
 
 type Completion struct {
-	Generation        uint64
-	FinalHead         string
-	TuringReportPath  string
-	Verification      []string
-	RemoteArtifactURL string
-	CompletedAt       string
+	Generation             uint64
+	FinalHead              string
+	VerificationReportPath string
+	Verification           []string
+	RemoteArtifactURL      string
+	CompletedAt            string
 }
 
 type LedgerEntry struct {
@@ -51,12 +51,12 @@ type LedgerEntry struct {
 }
 
 type Command struct {
-	Generation        uint64
-	Actor             Actor
-	FinalHead         string
-	TuringReportPath  string
-	Verification      []string
-	RemoteArtifactURL string
+	Generation             uint64
+	Actor                  Actor
+	FinalHead              string
+	VerificationReportPath string
+	Verification           []string
+	RemoteArtifactURL      string
 }
 
 type RemoteArtifact struct {

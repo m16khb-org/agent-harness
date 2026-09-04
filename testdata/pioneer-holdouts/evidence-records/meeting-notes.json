@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "skill": "meeting-notes",
+  "generated_at": "2026-08-15T02:34:41Z",
+  "execution_method": "fresh_context_child_task",
+  "artifact_kind": "bounded_final_response_receipt",
+  "answers_committed": false,
+  "runs": [
+    {
+      "task_id": "st_01a0027f",
+      "axes": [
+        "primary"
+      ],
+      "receipt_sha256": "fca2738b272cd457cd6329794c9e262c5b23d1e5fa8facdd71cb8050757c422a",
+      "receipt_bytes": 3350
+    },
+    {
+      "task_id": "st_01a002cb",
+      "axes": [
+        "boundary",
+        "operational"
+      ],
+      "receipt_sha256": "9e67ece444efd54f565eba28c03a01ed305e2d666db08f52fbb37cc8029c3d67",
+      "receipt_bytes": 25645
+    }
+  ],
+  "cases": [
+    {
+      "axis": "primary",
+      "fixture_path": "meeting-notes/TASK.md",
+      "fixture_sha256": "06d3f14356370d8a0228759c48bbdc8cadda57802ffa22d83a5bb87762c67345",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "decision_fact_separation",
+        "canvas_handoff"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "boundary",
+      "fixture_path": "meeting-notes/BOUNDARY.md",
+      "fixture_sha256": "1b3cfc8c13b016e79251d06c0d7a6409c21f590fa33657b17fcdc1a2f9b77fdc",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "no_fabricated_decision",
+        "relative_date_preserved"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "available"
+    },
+    {
+      "axis": "operational",
+      "fixture_path": "meeting-notes/OPERATIONAL.md",
+      "fixture_sha256": "2dd47e02264e7e8fb5a48e7b45aa6e4ce6ea347d49ccd758e8abe14b5c53f45b",
+      "verdict": "pass",
+      "blocked_reason": "",
+      "deterministic_assertions": [
+        "decision_action_question_counts",
+        "publication_boundary"
+      ],
+      "semantic_grade": "meets_case_contract",
+      "host_capability": "content_available_external_write_prohibited"
+    }
+  ]
+}

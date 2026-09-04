@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
-	"agent-harness/internal/port"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
+	"issueops/internal/port"
 )
 
 func TestSQLiteRepositoryLeavesRecordUnchangedWhenApplyFailsAfterClock(t *testing.T) {

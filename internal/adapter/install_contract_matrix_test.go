@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"testing"
 
-	agyadapter "agent-harness/internal/adapter/agy"
-	claudeadapter "agent-harness/internal/adapter/claude"
-	codexadapter "agent-harness/internal/adapter/codex"
-	install "agent-harness/internal/adapter/install"
-	omoadapter "agent-harness/internal/adapter/omo"
-	"agent-harness/internal/port"
+	agyadapter "issueops/internal/adapter/agy"
+	claudeadapter "issueops/internal/adapter/claude"
+	codexadapter "issueops/internal/adapter/codex"
+	install "issueops/internal/adapter/install"
+	omoadapter "issueops/internal/adapter/omo"
+	"issueops/internal/port"
 )
 
 var updateAdapterContractGolden = flag.Bool("update-adapter-contract", false, "update adapter install contract golden files")
@@ -75,7 +75,7 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			root := t.TempDir()
 			home := t.TempDir()
 			codexHome := filepath.Join(home, ".codex")
-			binPath := filepath.Join(root, "bin", "harness")
+			binPath := filepath.Join(root, "bin", "issueops")
 			writeContractSkill(t, root, "beta")
 			writeContractSkill(t, root, "alpha")
 			writeContractSkill(t, root, "codex-only", "codex")
@@ -101,7 +101,7 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	codexHome := filepath.Join(home, ".codex")
-	binPath := filepath.Join(root, "bin", "harness")
+	binPath := filepath.Join(root, "bin", "issueops")
 	writeContractSkill(t, root, "alpha")
 
 	req := install.DefaultNativeInstallRequest(root, home, codexHome, binPath)
@@ -169,8 +169,8 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 		`llm-wiki Codex source is nvk/llm-wiki`,
 		`llm-wiki Claude source is nvk/llm-wiki`,
 		"lazycodex-ai",
-		"HARNESS_INSTALL_UPSTREAM_TOOLS",
-		"HARNESS_INIT_CODEGRAPH",
+		"ISSUEOPS_INSTALL_UPSTREAM_TOOLS",
+		"ISSUEOPS_INIT_CODEGRAPH",
 		"codegraph install --target=codex,claude",
 		"npm install -g @colbymchenry/codegraph",
 	} {
@@ -182,18 +182,18 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 
 func TestInstallNativeScriptBindsStagedCandidateBeforeReplacement(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	begin := strings.Index(script, "HARNESS_NATIVE_ACTIVATION_STEP=begin")
+	begin := strings.Index(script, "ISSUEOPS_NATIVE_ACTIVATION_STEP=begin")
 	replace := strings.Index(script, "os.replace(source, target)")
-	seal := strings.Index(script, "HARNESS_NATIVE_ACTIVATION_STEP=seal")
+	seal := strings.Index(script, "ISSUEOPS_NATIVE_ACTIVATION_STEP=seal")
 	if begin < 0 || replace < 0 || seal < 0 || !(begin < replace && replace < seal) {
 		t.Fatalf("native activation order must be staged begin -> atomic replace -> canonical seal: begin=%d replace=%d seal=%d", begin, replace, seal)
 	}
 }
 
 func TestInstallNativeScriptRefusesRegularCommandBeforeActivationBegin(t *testing.T) {
-	harnessRoot := t.TempDir()
+	issueOpsRoot := t.TempDir()
 	home := t.TempDir()
-	binDir := filepath.Join(harnessRoot, "bin")
+	binDir := filepath.Join(issueOpsRoot, "bin")
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -201,13 +201,13 @@ func TestInstallNativeScriptRefusesRegularCommandBeforeActivationBegin(t *testin
 	if err := os.MkdirAll(commandDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(commandDir, "agent-harness"), []byte("prior managed command\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(commandDir, "issueops"), []byte("prior managed command\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	callsPath := filepath.Join(harnessRoot, "calls")
-	pendingPath := filepath.Join(harnessRoot, "pending")
-	receiptPath := filepath.Join(harnessRoot, "receipt")
+	callsPath := filepath.Join(issueOpsRoot, "calls")
+	pendingPath := filepath.Join(issueOpsRoot, "pending")
+	receiptPath := filepath.Join(issueOpsRoot, "receipt")
 	const priorReceipt = "prior sealed receipt\n"
 	if err := os.WriteFile(receiptPath, []byte(priorReceipt), 0o600); err != nil {
 		t.Fatal(err)
@@ -226,7 +226,7 @@ case "${1:-}" in
         dry_run=1
       fi
     done
-    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+    case "${ISSUEOPS_NATIVE_ACTIVATION_STEP:-}" in
       begin)
         printf 'begin\n' >>"$FAKE_CALLS"
         rm -f -- "$FAKE_RECEIPT"
@@ -244,7 +244,7 @@ case "${1:-}" in
         else
           printf 'seal\n' >>"$FAKE_CALLS"
         fi
-        if [[ -f "$HOME/.local/bin/agent-harness" ]]; then
+        if [[ -f "$HOME/.local/bin/issueops" ]]; then
           printf 'refusing to replace non-symlink command path\n' >&2
           exit 1
         fi
@@ -257,7 +257,7 @@ case "${1:-}" in
     ;;
 esac
 `
-	binPath := filepath.Join(binDir, "agent-harness")
+	binPath := filepath.Join(binDir, "issueops")
 	if err := os.WriteFile(binPath, []byte(fakeBinary), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -268,8 +268,8 @@ esac
 	}
 	cmd := exec.Command("bash", scriptPath, "--skip-build", "--json")
 	cmd.Env = append(os.Environ(),
-		"HARNESS_ROOT="+harnessRoot,
-		"HARNESS_SKIP_BUILD=1",
+		"ISSUEOPS_ROOT="+issueOpsRoot,
+		"ISSUEOPS_SKIP_BUILD=1",
 		"HOME="+home,
 		"FAKE_CALLS="+callsPath,
 		"FAKE_PENDING="+pendingPath,
@@ -292,13 +292,13 @@ esac
 }
 
 func TestInstallNativeScriptSupportsEmptyActivationArguments(t *testing.T) {
-	harnessRoot := t.TempDir()
+	issueOpsRoot := t.TempDir()
 	home := t.TempDir()
-	binDir := filepath.Join(harnessRoot, "bin")
+	binDir := filepath.Join(issueOpsRoot, "bin")
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	callsPath := filepath.Join(harnessRoot, "calls")
+	callsPath := filepath.Join(issueOpsRoot, "calls")
 	fakeBinary := `#!/usr/bin/env bash
 set -euo pipefail
 
@@ -307,14 +307,14 @@ case "${1:-}" in
     exit 0
     ;;
   install)
-    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+    case "${ISSUEOPS_NATIVE_ACTIVATION_STEP:-}" in
       begin)
         printf 'begin\n' >>"$FAKE_CALLS"
         printf '{"transition_id":"0123456789abcdef0123456789abcdef","binary_sha256":"%s"}\n' "$FAKE_BINARY_SHA256"
         ;;
       seal)
         printf 'seal\n' >>"$FAKE_CALLS"
-        printf '{"committed":true,"transition_id":"%s"}\n' "$HARNESS_NATIVE_ACTIVATION_TRANSITION_ID"
+        printf '{"committed":true,"transition_id":"%s"}\n' "$ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID"
         ;;
       *)
         printf 'preflight\n' >>"$FAKE_CALLS"
@@ -326,7 +326,7 @@ case "${1:-}" in
     ;;
 esac
 `
-	binPath := filepath.Join(binDir, "agent-harness")
+	binPath := filepath.Join(binDir, "issueops")
 	if err := os.WriteFile(binPath, []byte(fakeBinary), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -336,8 +336,8 @@ esac
 	}
 	cmd := exec.Command("bash", scriptPath, "--skip-build")
 	cmd.Env = append(os.Environ(),
-		"HARNESS_ROOT="+harnessRoot,
-		"HARNESS_SKIP_BUILD=1",
+		"ISSUEOPS_ROOT="+issueOpsRoot,
+		"ISSUEOPS_SKIP_BUILD=1",
 		"HOME="+home,
 		"FAKE_CALLS="+callsPath,
 		"FAKE_BINARY_SHA256="+sha256Hex(fakeBinary),
@@ -360,8 +360,8 @@ func TestInstallNativeScriptForwardsAdoptionAndOwnsExactTransitionCleanup(t *tes
 	for _, want := range []string{
 		"--adopt-command-file",
 		"ACTIVATION_ARGS+=(\"$arg\")",
-		"HARNESS_NATIVE_ACTIVATION_TRANSITION_ID=\"$ACTIVATION_TRANSITION_ID\"",
-		"HARNESS_NATIVE_ACTIVATION_STEP=abort",
+		"ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID=\"$ACTIVATION_TRANSITION_ID\"",
+		"ISSUEOPS_NATIVE_ACTIVATION_STEP=abort",
 		"ACTIVATION_ABORTED=1",
 		"ACTIVATION_COMMITTED=1",
 	} {
@@ -369,7 +369,7 @@ func TestInstallNativeScriptForwardsAdoptionAndOwnsExactTransitionCleanup(t *tes
 			t.Fatalf("install-native.sh transition/adoption contract missing %q", want)
 		}
 	}
-	if strings.Count(script, "HARNESS_NATIVE_ACTIVATION_STEP=abort") != 1 {
+	if strings.Count(script, "ISSUEOPS_NATIVE_ACTIVATION_STEP=abort") != 1 {
 		t.Fatal("install-native.sh must have exactly one abort invocation site")
 	}
 }
@@ -401,8 +401,8 @@ func TestReleaseReproSmokeUsesCurrentStateRoundTrip(t *testing.T) {
 func TestInstallNativeScriptDocumentsCommandShims(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	for _, want := range []string{
-		"~/.local/bin/agent-harness",
-		"~/.local/bin/ah",
+		"~/.local/bin/issueops",
+		"~/.local/bin/io",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("install-native.sh user command help missing %q", want)
@@ -433,7 +433,7 @@ func TestInstallNativeScriptExcludesRemovedProxyCompanion(t *testing.T) {
 		"install_" + removed + "_cli",
 		"enable_" + removed + "_runtime",
 		"--enable-" + removed + "-runtime",
-		"HARNESS_ENABLE_" + strings.ToUpper(removed) + "_RUNTIME",
+		"ISSUEOPS_ENABLE_" + strings.ToUpper(removed) + "_RUNTIME",
 		"scripts/setup-" + removed + "-runtime.sh",
 		"bash \"$ROOT/scripts/setup-" + removed + "-runtime.sh\"",
 		removed + "-ai[all]",
@@ -479,7 +479,7 @@ func TestInstallNativeScriptActivatesLinkedWorktreeBuildAtStableSource(t *testin
 	runInstallScriptTestCommand(t, source, "git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "fixture")
 	runInstallScriptTestCommand(t, source, "git", "worktree", "add", "-b", "feature", worktree)
 
-	stableBinary := filepath.Join(source, "bin", "agent-harness")
+	stableBinary := filepath.Join(source, "bin", "issueops")
 	writeInstallScriptTestFile(t, stableBinary, []byte("#!/bin/sh\nexit 0\n"), 0o755)
 	before := installScriptTestInode(t, stableBinary)
 	fakeBin := filepath.Join(base, "fake-bin")
@@ -503,18 +503,18 @@ case "${1:-}" in
   version) exit 0 ;;
   issueops) exit 0 ;;
   install)
-    printf '%s\n' "$HARNESS_ROOT" >"$FAKE_INSTALL_LOG"
+    printf '%s\n' "$ISSUEOPS_ROOT" >"$FAKE_INSTALL_LOG"
     transition_id=0123456789abcdef0123456789abcdef
-    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+    case "${ISSUEOPS_NATIVE_ACTIVATION_STEP:-}" in
       begin)
         binary_sha256="$(shasum -a 256 "$0" | awk '{print $1}')"
         printf '{"transition_id":"%s","binary_sha256":"%s"}\n' "$transition_id" "$binary_sha256"
         ;;
       seal)
-        printf '{"committed":true,"transition_id":"%s"}\n' "${HARNESS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
+        printf '{"committed":true,"transition_id":"%s"}\n' "${ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
         ;;
       abort)
-        printf '{"aborted":true,"transition_id":"%s"}\n' "${HARNESS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
+        printf '{"aborted":true,"transition_id":"%s"}\n' "${ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
         ;;
     esac
     exit 0
@@ -529,7 +529,7 @@ chmod 0755 "$output"
 	installLog := filepath.Join(base, "installed-root.log")
 	command := exec.Command("bash", filepath.Join(worktree, "scripts", "install-native.sh"), "--json")
 	command.Dir = worktree
-	command.Env = append(withoutInstallScriptTestEnv(os.Environ(), "HARNESS_ROOT", "HARNESS_SKIP_BUILD"),
+	command.Env = append(withoutInstallScriptTestEnv(os.Environ(), "ISSUEOPS_ROOT", "ISSUEOPS_SKIP_BUILD"),
 		"PATH="+fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"FAKE_INSTALL_LOG="+installLog,
 	)
@@ -548,7 +548,7 @@ chmod 0755 "$output"
 	if !strings.Contains(string(installed), "new-runtime") {
 		t.Fatalf("stable binary was not replaced: %q", installed)
 	}
-	if _, err := os.Stat(filepath.Join(worktree, "bin", "agent-harness")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(worktree, "bin", "issueops")); !os.IsNotExist(err) {
 		t.Fatalf("linked worktree retained a runtime binary: %v", err)
 	}
 	recordedRoot, err := os.ReadFile(installLog)
@@ -558,7 +558,7 @@ chmod 0755 "$output"
 	recordedInfo, recordedErr := os.Stat(strings.TrimSpace(string(recordedRoot)))
 	sourceInfo, sourceErr := os.Stat(source)
 	if recordedErr != nil || sourceErr != nil || !os.SameFile(recordedInfo, sourceInfo) {
-		t.Fatalf("installed HARNESS_ROOT = %q, want stable source %q", strings.TrimSpace(string(recordedRoot)), source)
+		t.Fatalf("installed ISSUEOPS_ROOT = %q, want stable source %q", strings.TrimSpace(string(recordedRoot)), source)
 	}
 }
 
@@ -731,7 +731,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	codexConfig := readFile(t, filepath.Join(req.CodexHome, "config.toml"))
-	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.Root} {
+	for _, needle := range []string{"[mcp_servers.issueops]", req.BinPath, req.Root} {
 		if !strings.Contains(codexConfig, needle) {
 			t.Fatalf("Codex config missing %q:\n%s", needle, codexConfig)
 		}
@@ -748,19 +748,19 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	omoMCP := readFile(t, filepath.Join(req.Home, ".omo", "mcp.json"))
-	for _, needle := range []string{`"agent_harness"`, req.BinPath, req.Root} {
+	for _, needle := range []string{`"issueops"`, req.BinPath, req.Root} {
 		if !strings.Contains(omoMCP, needle) {
 			t.Fatalf("Omo MCP config missing %q:\n%s", needle, omoMCP)
 		}
 	}
-	omoExtension := readFile(t, filepath.Join(req.Home, ".omo", "extensions", "agent-harness.js"))
+	omoExtension := readFile(t, filepath.Join(req.Home, ".omo", "extensions", "issueops.js"))
 	for _, needle := range []string{`pi.on("session_start"`, `pi.on("session_compact"`, `"--json"`, req.BinPath} {
 		if !strings.Contains(omoExtension, needle) {
 			t.Fatalf("Omo lifecycle extension missing %q:\n%s", needle, omoExtension)
 		}
 	}
 	agyMCP := readFile(t, filepath.Join(req.Home, ".gemini", "config", "mcp_config.json"))
-	for _, needle := range []string{`"agent_harness"`, req.BinPath, req.Root} {
+	for _, needle := range []string{`"issueops"`, req.BinPath, req.Root} {
 		if !strings.Contains(agyMCP, needle) {
 			t.Fatalf("agy MCP config missing %q:\n%s", needle, agyMCP)
 		}
@@ -807,7 +807,7 @@ func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInst
 		Assertions: []string{
 			"core discovers shared skills once and passes sorted names to all host adapters",
 			"Codex, Claude, and Omo user skill installs are symlinks resolving to $ROOT/skills/*",
-			"Codex, Claude, and Omo user-level lifecycle hooks route through the same agent-harness hook CLI",
+			"Codex, Claude, and Omo user-level lifecycle hooks route through the same issueops hook CLI",
 			"default install writes no repo-local .claude, .omo, or .mcp.json paths",
 			"project-local repo files are created only when project_local=true",
 		},

@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	issueopsartifactcontract "agent-harness/internal/contract/issueopsartifact"
-	"agent-harness/internal/domain/secretdetection"
+	issueopsartifactcontract "issueops/internal/contract/issueopsartifact"
+	"issueops/internal/domain/secretdetection"
 )
 
 func NormalizeName(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	switch name {
-	case "plan", "spec", "turing-loop":
+	case "plan", "spec", "verified-execution-loop":
 		return name, nil
 	default:
-		return "", fmt.Errorf("artifact name must be plan|spec|turing-loop")
+		return "", fmt.Errorf("artifact name must be plan|spec|verified-execution-loop")
 	}
 }
 

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	"issueops/internal/adapter/outbound/sqlstore"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestRepositoryUpdatesAndReadsRecordWithinSpan(t *testing.T) {
@@ -39,7 +39,7 @@ func TestRepositoryUpdatesAndReadsRecordWithinSpan(t *testing.T) {
 		func(record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, bool, error) {
 			record.RoutingTrace = append(record.RoutingTrace, issueopscontract.SkillRoutingEntry{
 				Phase: "plan",
-				Skill: "codd",
+				Skill: "database-design",
 			})
 			return record, true, nil
 		},

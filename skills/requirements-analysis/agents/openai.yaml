@@ -1,0 +1,4 @@
+interface:
+  display_name: "Requirements Analysis"
+  short_description: "Analyze planning documents and verify requirements"
+  default_prompt: "Use $requirements-analysis to analyze this planning document with native text, OCR, and visual evidence, identifying requirements and unresolved contradictions."

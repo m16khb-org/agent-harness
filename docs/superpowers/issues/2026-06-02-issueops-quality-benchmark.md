@@ -24,7 +24,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - 설계 문서: `docs/superpowers/specs/2026-06-02-issueops-quality-benchmark-design.md`
 - 이슈 가이드: `skills/issueops-create-issue/SKILL.md`; PR/MR 가이드: `skills/issueops-create-pr/SKILL.md`
 - 기존 IssueOps skill: `skills/issueops/SKILL.md`
-- 기존 IssueOps CLI state surface: `cmd/harness/issueops.go`
+- 기존 IssueOps CLI state surface: `cmd/issueops/issueops.go`
 - 기존 IssueOps core state helper: `internal/core/issueops.go`
 - 기존 response contract/golden 패턴은 CLI/MCP JSON surface와 self-verify score 비교를 포함한다.
 - 기존 `Z.AI Coding Plan` 통합 패턴은 commit suggestion, lint diagnosis, draft wiki suggestion, self-verify LLM evaluation 경로에 있다.
@@ -57,8 +57,8 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
   - `worktree_cleanup_quality`
 - benchmark output은 average score, minimum score, per-dimension score, deterministic failure, judge failure, critical failure, pass/fail을 포함한다.
 - CLI 명령을 추가한다.
-  - `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json`
-  - `agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json`
+  - `issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json`
+  - `issueops benchmark compare --baseline KEY --candidate KEY --json`
 - baseline/candidate run을 비교할 수 있도록 compact benchmark result를 harness state에 저장한다.
 - branch/worktree 요구사항을 기록하고 judge할 수 있도록 IssueOps workflow state 또는 contract evidence를 확장한다.
 - CLI/MCP contract가 바뀌면 usage와 response contract golden을 갱신한다.
@@ -95,7 +95,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - Worktree cleanup gate test가 clean, dirty, merged, unmerged, user-declined cleanup scenario를 커버.
 - CLI/MCP contract 변경 시 response contract/golden test 통과.
 - `go test ./... -count=1` 통과.
-- `go build -o bin/agent-harness ./cmd/harness` 통과.
+- `go build -o bin/issueops ./cmd/issueops` 통과.
 - sample benchmark run이 stable score summary와 compare result를 생성.
 
 ## 피드백 기록

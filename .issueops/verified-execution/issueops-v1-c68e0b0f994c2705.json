@@ -1,0 +1,97 @@
+{
+  "lifecycle": "io-42deba5ff4a1",
+  "schema_version": 1,
+  "scope": "Issue #196 execution lease release production vertical",
+  "constraints": {
+    "full_local_suite": "not run by approved issue constraint; focused and race gates below passed, and PR CI is the full-regression gate",
+    "mutation_root": "/Users/sample/workspace/issueops.worktrees/196-issueops-lease-release-vertical"
+  },
+  "deviations": [
+    {
+      "contract": ".issueops/artifact/plan.md:56 states that every persistence failure must avoid a clock read",
+      "actual": "SQLite validates holder-index conflicts before the application transition and clock read. A final transactional Apply failure occurs after the release timestamp must be materialized, so it samples the clock once but leaves record and holder-index bytes unchanged.",
+      "evidence": "TestExecutionLeaseReleaseDoesNotReadClockBeforeSQLiteIndexValidation and TestSQLiteRepositoryLeavesRecordUnchangedWhenApplyFailsAfterClock (record and holder-index byte assertions)",
+      "result": "documented limitation; no schema, record, or holder-index mutation on Apply failure"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "evidence": "execution status readback confirmed lifecycle io-42deba5ff4a1, generation 1 active Codex holder, canonical child root, sealed parent 117-hexagonal-architecture-migration, and base 8235f30cac338b444a99c918ffe9e11991e37a8f",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-02",
+      "test": "TestStableV1ShapeCoversEveryPersistedCoreField; TestExecutionLeaseReleaseDifferentialSuccess/schema-v1-rich-orca-record; TestExecutionLeaseReleaseProductionNormalizesLegacySchema; active differential fixture has non-empty ParentWorktree",
+      "command": "go test ./internal/core/issueops -run 'Differential|Lease|Release' -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-03",
+      "test": "TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/session-mismatch-precedes-reverse-index-conflict; TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic; TestReleaseHandlerPreservesNotPreparedCompatibilityText; TestReleaseKeepsLegacyNativeActorValidationErrorsPublic; TestReleaseHandlerPreservesLegacyNativeActorValidationText; TestReleaseHandlerPreservesLegacyContractAndPersistenceText",
+      "command": "go test ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-04",
+      "test": "TestEvaluateEdgesRejectsForbiddenDependencies; TestProductionGraphMatchesBaseline",
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-05",
+      "test": "TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate; TestExecutionLeaseReleaseDoesNotReadClockBeforeSQLiteIndexValidation; TestSQLiteRepositoryLeavesRecordUnchangedWhenApplyFailsAfterClock (record and holder-index byte assertions)",
+      "command": "go test ./internal/core/issueops -run 'Differential|Lease|Release' -count=1; go test ./internal/adapter/outbound/issueopslease -run 'ApplyFailsAfterClock' -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-06",
+      "test": "TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses starts the existing ReleaseExecution compatibility facade as the stale writer against a new SQLite repository writer, observes one shared-span commit, then verifies released record and absent holder index",
+      "command": "go test ./internal/core/issueops -run 'Differential|Lease|Release' -count=1; go test ./internal/core/sqlstore -run 'Apply|WithSpan' -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-07",
+      "test": "TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback; TestPublicReleaseErrorRetainsCompatibilityText; TestRunMCPWithDependenciesUsesItsReleaseHandlerOnDirectTransport; TestInitSDKServerDispatchesConcurrentReleaseWithIsolatedDependencies",
+      "command": "go test ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli/... ./cmd/issueops/issueopsapp/... -run 'Execution|Release|Contract|Facade|Dependency|Server' -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-08",
+      "test": "architecture production graph ratchet",
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-09",
+      "test": "focused core release and SDK server transport concurrency gates",
+      "command": "go test -race ./internal/core/issueops -run 'Differential|Lease|Release' -count=1; go test -race ./cmd/issueops/mcpcli/... ./cmd/issueops/issueopsapp/... -run 'Execution|Release|Contract|Facade|Dependency|Server' -count=1",
+      "result": "PASS"
+    }
+  ],
+  "verification": [
+    "go test ./internal/core/issueops -run 'DifferentialDenialsAreAtomic' -count=1: RED expected failure before validation/index ordering split; GREEN PASS after the split",
+    "go test ./internal/core/issueops -run 'Differential|Lease|Release' -count=1: PASS",
+    "go test -race ./internal/core/issueops -run 'Differential|Lease|Release' -count=1: PASS",
+    "go test ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -count=1: PASS",
+    "go test -race ./internal/adapter/outbound/issueopslease -run 'Release|Atomic|Concurrent' -count=1: exit 0, but no matching test names; not used as race evidence",
+    "go test -race ./internal/adapter/outbound/issueopslease -count=1: PASS (focused outbound package race replacement)",
+    "go test ./internal/core/sqlstore -run 'Apply|WithSpan' -count=1: PASS",
+    "go test ./internal/architecture -count=1: PASS",
+    "go test ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli/... ./cmd/issueops/issueopsapp/... -run 'Execution|Release|Contract|Facade|Dependency|Server' -count=1: PASS",
+    "go test -race ./cmd/issueops/mcpcli/... ./cmd/issueops/issueopsapp/... -run 'Execution|Release|Contract|Facade|Dependency|Server' -count=1: PASS",
+    "go test -race ./cmd/issueops/issueopsapp/... -run 'Execution|Release|Contract|Facade|Dependency|Server' -count=1: PASS",
+    "go test ./cmd/issueops/contractgolden -run Golden -count=1: PASS",
+    "go vet ./internal/application/... ./internal/domain/... ./internal/contract/... ./internal/adapter/... ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli/...: PASS",
+    "go build -o /tmp/issueops-196 ./cmd/issueops: PASS",
+    "jq '.' .issueops/verified-execution/issueops-v1-c68e0b0f994c2705.json: PASS (installed hook allowed exact identity readback)",
+    "rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/issueops/issueopscli internal/core/issueops | head -160: PASS (allowed output readback)",
+    "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server: PASS (installed hook allowed exact readback)",
+    "gofmt -d on every changed Go source: PASS (zero output)",
+    "git diff --check: PASS"
+  ],
+  "quality": {
+    "cleanup": "removed duplicated prototype tree and production fake adapter; narrowed domain ownership to release authority and canonical CWD; moved process ancestry resolution to application input; retained explicit sidecar projection and injected SDK handler isolation",
+    "code-quality-metrics": "PASS evidence: git status --short included tracked, deleted, and untracked inventory; git diff --numstat HEAD measured 651 added and 1547 deleted tracked lines; changed source passed gofmt -d with zero output and git diff --check with zero output. SNR before/after is not asserted because the approved lifecycle had no pre-cleanup Shannon baseline; this record reports only reproducible final-diff evidence."
+  }
+}

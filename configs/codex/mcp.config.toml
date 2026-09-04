@@ -1,7 +1,7 @@
-[mcp_servers.agent_harness]
-command = "./bin/agent-harness"
+[mcp_servers.issueops]
+command = "./bin/issueops"
 args = ["mcp"]
 startup_timeout_sec = 30
 
-[mcp_servers.agent_harness.env]
-HARNESS_ROOT = "."
+[mcp_servers.issueops.env]
+ISSUEOPS_ROOT = "."

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	contract "agent-harness/internal/contract/issueopspublication"
+	contract "issueops/internal/contract/issueopspublication"
 )
 
 func TestCreateRejectsMissingDependencies(t *testing.T) {

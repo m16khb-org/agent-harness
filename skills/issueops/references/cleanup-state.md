@@ -31,7 +31,7 @@ For GitLab, use equivalent `glab mr view` or GitLab API fields for merged state 
 After provider merge evidence is confirmed, run the harness cleanup status check. It is read-only: it does not remove branches or worktrees. It blocks cleanup readiness when merge evidence is missing, the worktree is dirty, the worktree branch does not match the IssueOps branch, the remote artifact was not verified, or the remote source branch still exists. Processes occupying the worktree and Orca terminals bound to it are not blockers: status reports them as warnings (`pid:command:started_at` plus "apply가 프로세스 N개와 Orca 터미널 M개를 종료합니다") because the typed apply stops them itself. Only the requester's own occupancy/terminal (`requester_occupies_worktree`, `requester_terminal_outside_worktree`, `requester_terminal_unresolved`), the source checkout (`worktree_is_source_checkout`), and observation failures (`workspace_processes_observable`, `orca_terminals_observable`, `orca_runtime_ready`) still block.
 
 ```bash
-agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
 ```
 
 ### Recordless merged orphan worktree
@@ -42,7 +42,7 @@ cleanup preview with the exact source repository, worktree, local branch, and
 remote artifact identity:
 
 ```bash
-agent-harness issueops cleanup orphan \
+issueops cleanup orphan \
   --id "$ORPHAN_ID" --repo "$REPO_ROOT" --worktree "$WORKTREE_PATH" \
   --branch "$BRANCH_NAME" --provider github --kind pr \
   --artifact-url "$PR_URL" --json
@@ -58,7 +58,7 @@ After the preview is ready and the user has explicitly approved the exact
 target, apply the same request with its fingerprint:
 
 ```bash
-agent-harness issueops cleanup orphan \
+issueops cleanup orphan \
   --id "$ORPHAN_ID" --repo "$REPO_ROOT" --worktree "$WORKTREE_PATH" \
   --branch "$BRANCH_NAME" --provider github --kind pr \
   --artifact-url "$PR_URL" --apply --confirm --fingerprint "$FINGERPRINT" --json
@@ -74,13 +74,13 @@ If the IssueOps record has linked child tasks, cleanup status also requires veri
 Dry-run child cleanup first:
 
 ```bash
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
+issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
 ```
 
 Execute only after the dry-run matches the intended linked children:
 
 ```bash
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
+issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
 ```
 
 Provider behavior:
@@ -109,13 +109,13 @@ For ordinary record-backed cleanup status, if the worktree is dirty, the PR/MR i
 Start:
 
 ```bash
-agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
 ```
 
 Record the intent contract:
 
 ```bash
-agent-harness issueops intent record --id "$ISSUEOPS_ID" \
+issueops intent record --id "$ISSUEOPS_ID" \
   --raw-request "$RAW_USER_REQUEST" \
   --interpreted-intent "$INTERPRETED_INTENT" \
   --success-criteria "$SUCCESS_CRITERION" \
@@ -125,22 +125,22 @@ agent-harness issueops intent record --id "$ISSUEOPS_ID" \
 Link the issue:
 
 ```bash
-agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 ```
 
 Record branch evidence, then provision the canonical worktree through execution
 v1. Preview first and repeat the same request with `--confirm`:
 
 ```bash
-agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" --link-verified --json
-agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --json
-agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --confirm --json
+issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" --link-verified --json
+issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --json
+issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --confirm --json
 ```
 
 Record the approved design review:
 
 ```bash
-agent-harness issueops design review --id "$ISSUEOPS_ID" \
+issueops design review --id "$ISSUEOPS_ID" \
   --problem-summary "$PROBLEM_SUMMARY" \
   --proposed-design "$PROPOSED_DESIGN" \
   --refactor-plan "$REFACTOR_PLAN" \
@@ -154,7 +154,7 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
 Link the plan:
 
 ```bash
-agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
+issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 ```
 
 State recovery must preserve the redacted intent contract and design review fields. Do not reconstruct them from hook recommendations alone; re-record main-agent judgment when the saved state is missing those sections.
@@ -162,14 +162,14 @@ State recovery must preserve the redacted intent contract and design review fiel
 Record feedback:
 
 ```bash
-agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
-agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
+issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 ```
 
 Check PR/MR readiness:
 
 ```bash
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
+issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
 ## Benchmark Commands
@@ -177,8 +177,8 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 Run the 100-point quality benchmark:
 
 ```bash
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge file --judge-file issueops-benchmark-judge.json --json
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+issueops benchmark run --fixtures testdata/issueops/fixtures --judge file --judge-file issueops-benchmark-judge.json --json
 ```
 
 The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Run `--judge none` first for deterministic evidence. For the semantic gate, give a fresh independent host agent the rubric, artifact fields, and required score-map schema described in the parent skill, save its provenanced JSON result, and validate it with `--judge file`.
@@ -186,7 +186,7 @@ The benchmark passes only when every fixture has `average_score: 100`, `minimum_
 Run the autoresearch keep/discard gate for IssueOps improvement candidates:
 
 ```bash
-agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
+issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
 ```
 
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.

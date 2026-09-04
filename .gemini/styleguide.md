@@ -1,6 +1,6 @@
 # Gemini Code Assist Review Guide
 
-Use this guide when reviewing `agent-harness` pull requests. Focus on concrete correctness, safety, and maintainability risks. Avoid generic style comments unless they hide a real defect or contract drift.
+Use this guide when reviewing `issueops` pull requests. Focus on concrete correctness, safety, and maintainability risks. Avoid generic style comments unless they hide a real defect or contract drift.
 
 ## Architecture Boundaries
 
@@ -10,7 +10,7 @@ Use this guide when reviewing `agent-harness` pull requests. Focus on concrete c
 
 ## Hook And MCP Contracts
 
-- Hook stdout schema compatibility matters. Review changes to `cmd/harness/hook_*`, `configs/codex/**`, and `configs/claude/**` for Codex/Claude differences before suggesting a shared output shape.
+- Hook stdout schema compatibility matters. Review changes to `cmd/issueops/hook_*`, `configs/codex/**`, and `configs/claude/**` for Codex/Claude differences before suggesting a shared output shape.
 - PreToolUse hooks are on the critical path. They should be cheap, deterministic, and no-op by default unless an explicit policy gate is enabled.
 - MCP and CLI JSON fields should stay aligned with the same core DTOs. If a response contract changes, require matching golden/schema updates.
 

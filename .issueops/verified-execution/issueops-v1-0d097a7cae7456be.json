@@ -1,0 +1,299 @@
+{
+  "lifecycle_id": "io-5bdee93886b2",
+  "issue_url": "https://github.com/m16khb-org/issueops/issues/191",
+  "branch": "191-issueops-lease-differential-spike",
+  "worktree_root": "/Users/sample/workspace/issueops.worktrees/191-issueops-lease-differential-spike",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "xhigh",
+    "mode": "orca",
+    "lease_generation": 5
+  },
+  "goal": "production release 경로를 변경하지 않는 test-only vertical prototype으로 IssueOps lease release 전이의 current/proposed differential parity를 검증한다.",
+  "gate_d_decision": {
+    "verdict": "continue",
+    "reason": "contract-owned stable v1 DTO와 canonicalizer가 production IssueOps model import 없이 current v1 JSON type shape와 canonical bytes를 재현하고, architecture ratchet이 그 금지 edge를 직접 RED로 고정했다. release application은 repository.Update 안에서 semantic validation 뒤 transition 직전에만 clock.Now를 호출하며, blocking clock 동안 persisted lease의 active/empty timestamp와 unblock 뒤 released/injected timestamp를 관찰한다. fresh Brooks implementation review가 staged 11-path diff를 proceed로 판정했다."
+  },
+  "tdd_loop": [
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run TestExecutionLeaseReleaseDifferentialSuccess -count=1",
+      "observed": "setup failed: package internal/core/issueops/testdata/leasevertical/adapter is missing",
+      "expected_reason": "test-only vertical prototype이 아직 존재하지 않음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run TestExecutionLeaseReleaseDifferentialSuccess -count=1",
+      "observed": "PASS: schema v1 with/without agent ID, rich Orca sidecar, legacy zero in-memory schema의 release result, persisted bytes, reverse-index deletion이 동일"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferentialSuccess/schema-v1-rich-orca-record' -count=1",
+      "observed": "FAIL: proposed persisted bytes에서 issue_url과 execution.orca가 삭제됨",
+      "expected_reason": "부분 contract DTO가 release와 무관한 durable 필드를 lossless 보존하지 못함"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferentialSuccess/schema-v1-rich-orca-record' -count=1",
+      "observed": "PASS: typed lease와 current-v1 canonical RawMessage projection이 rich Orca 및 pending/completion/failure/sync_base_events persisted record bytes를 보존"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/legacy-' -count=1",
+      "observed": "FAIL: persisted missing/zero schema에서 current는 unsupported-schema deny, proposed는 성공",
+      "expected_reason": "prototype durable Decode가 legacy zero를 current보다 느슨하게 수용함"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferential(LegacyMissingSchema|DenialsAreAtomic/legacy-)' -count=1",
+      "observed": "PASS: persisted missing/zero schema는 양쪽 모두 unsupported-schema로 fail-closed이고 state snapshot이 불변; in-memory legacy encode normalization도 동일"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferentialMissingHolderIndex|TestExecutionLeaseReleaseDifferentialDenialsAreAtomic' -count=1",
+      "observed": "FAIL: holder index 부재에서 current는 release 성공, proposed는 persistence deny",
+      "expected_reason": "prototype adapter가 current의 absent-index idempotence보다 엄격함"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run 'TestExecutionLeaseReleaseDifferentialMissingHolderIndex|TestExecutionLeaseReleaseDifferentialDenialsAreAtomic' -count=1",
+      "observed": "PASS: missing-index success, ancestry proof, forbidden legacy authority, invalid execution semantics, denial result와 state snapshot이 current와 동등"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic -count=1",
+      "observed": "build failed: undefined leaseadapter.NewFakeRepository",
+      "expected_reason": "계획된 atomic fake와 failure injection seam이 아직 존재하지 않음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic -count=1",
+      "observed": "PASS: proposed-only injected repository save failure가 persistence deny로 분류되고 record+holder-index snapshot이 불변"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops/... -run \"Differential|Lease\" -count=1",
+      "observed": "FAIL: active claimed_at 부재와 direct+Orca persisted row에서 current는 validation deny, proposed는 release 성공",
+      "expected_reason": "contract가 current-v1 lease와 sidecar semantic invariant 일부를 검증하지 않음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops/... -run \"Differential|Lease\" -count=1",
+      "observed": "PASS: current-v1 workspace/lease/actor/Orca/pending/completion/failure/sync-event validation과 malformed deny가 current와 동등"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses -count=1",
+      "observed": "FAIL: holder transition 종료 전 별도 OS process의 contender transition이 진입",
+      "expected_reason": "adapter-instance sync mutex는 process 경계를 직렬화하지 못함"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses -count=1",
+      "observed": "PASS: sqlstore.WithSpan이 decode, domain transition, index CAS, Apply 전체를 OS process 간 직렬화"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleaseDomainUsesResolvedCanonicalCWD -count=1",
+      "observed": "build failed: domain.ReleaseRequest에 resolved CanonicalCWD 입력이 없음",
+      "expected_reason": "domain transition이 filepath.Abs/EvalSymlinks로 외부 filesystem을 직접 관찰함"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleaseDomainUsesResolvedCanonicalCWD -count=1",
+      "observed": "PASS: application boundary가 canonical path 비교를 수행하고 domain은 resolved boolean만 소비"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleaseDifferentialActorAuthority -count=1",
+      "observed": "FAIL: whitespace-padded live receipt는 current 성공/proposed deny, ancestry에 포함한 fabricated dead receipt는 current deny/proposed 성공",
+      "expected_reason": "prototype이 caller ancestry membership만 신뢰하고 current의 normalization/exact live-process observation을 수행하지 않음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run TestExecutionLeaseReleaseDifferentialActorAuthority -count=1",
+      "observed": "PASS: application process-inspection port가 actor receipt를 정규화하고 ancestry membership과 exact live identity를 확인한 뒤 resolved authority만 domain에 전달"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/architecture -run '^TestArchitectureRatchetIncludesLeaseVerticalPrototype$' -count=1",
+      "observed": "FAIL: application_must_not_import_implementation: internal/core/issueops/testdata/leasevertical/application -> path/filepath",
+      "expected_reason": "testdata 아래 prototype은 go list ./... inventory에서 제외되어 application의 파일시스템 의존이 #190 ratchet에 입력되지 않음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/architecture -run '^TestArchitectureRatchetIncludesLeaseVerticalPrototype$' -count=1",
+      "observed": "PASS: domain/application/contract/adapter logical path inventory가 ratchet에 들어가고 application은 consumer-owned CanonicalPathMatcher port만 사용하며 adapter가 EvalSymlinks를 소유"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/schema-version-type-mismatch$' -count=1",
+      "observed": "FAIL: current persistence deny와 proposed malformed_schema deny가 달랐음",
+      "expected_reason": "유효 JSON의 UnmarshalTypeError까지 prototype Decode가 ErrMalformedSchema로 감싸 current의 persistence 분류와 갈라짐"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/schema-version-type-mismatch$' -count=1",
+      "observed": "PASS: syntax 오류만 malformed_schema로 감싸고 UnmarshalTypeError는 그대로 adapter에 전달해 양쪽 persistence deny와 snapshot 불변이 동등"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/repo-type-mismatch$' -count=1",
+      "observed": "FAIL: current=json: cannot unmarshal object into Go struct field IssueOpsRecord.repo of type string, proposed=<nil>",
+      "expected_reason": "RawMessage projection이 execution 밖 top-level v1 field의 JSON type shape를 검증하지 않아 current persistence deny와 갈라짐"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialDenialsAreAtomic/repo-type-mismatch$' -count=1",
+      "observed": "PASS: contract Decode가 current IssueOpsRecord JSON shape를 한 번 검증해 repo object의 persistence deny와 record/index snapshot 불변이 동등"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialSuccess/schema-v1-null-repo$' -count=1",
+      "observed": "FAIL: current persisted repo=\"\", proposed persisted repo=null",
+      "expected_reason": "current typed decode/re-marshal는 null string을 empty string으로 canonicalize하지만 proposed RawMessage re-encode는 source null을 남김"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseDifferentialSuccess/schema-v1-null-repo$' -count=1",
+      "observed": "PASS: shape-decoded current v1 record를 canonical JSON으로 contract DTO에 투영해 current/proposed persisted bytes와 released lease result가 동등"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/architecture -run '^TestEvaluateEdgesRejectsForbiddenDependencies$' -count=1",
+      "observed": "FAIL: expected leasevertical_contract_must_not_import_production_issueops for contract -> internal/core/issueops/model, got []",
+      "expected_reason": "architecture ratchet에 test-only contract의 production IssueOps import 금지 edge가 없었음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/architecture -run '^TestEvaluateEdgesRejectsForbiddenDependencies$' -count=1",
+      "observed": "PASS: leasevertical contract의 production IssueOps import를 직접 거부하고, stableV1Record가 current v1 typed JSON shape와 canonicalization을 contract 안에서 소유"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate$' -count=1",
+      "observed": "FAIL: valid transition clock.Now ran before repository.Update; invalid record clock.Now ran before rejecting invalid record",
+      "expected_reason": "application이 repository.Update 밖에서 clock.Now를 미리 관찰했음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate$' -count=1",
+      "observed": "PASS: blocking spy가 Update 진입 뒤의 Now만 허용하고, invalid released record는 clock을 읽지 않은 채 domain denial을 반환"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate$' -count=1",
+      "observed": "build failed: releaseClockOrderingRepository.Snapshot undefined",
+      "expected_reason": "fresh Brooks revise가 요구한 clock block 중 persisted lease state 관측 seam이 test repository에 없었음"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run '^TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate$' -count=1",
+      "observed": "PASS: Now가 block된 동안 persisted lease는 active와 empty released_at이고, unblock 뒤 released와 injected UTC timestamp가 저장됨; invalid released record는 여전히 clock을 읽지 않음"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "statement": "stable v1 schema DTO와 canonicalizer는 contract가 production IssueOps import 없이 소유하고, mapping은 outbound adapter, pure transition은 domain, orchestration과 consumer-owned repository port는 application에 위치한다.",
+      "tests": [
+        "TestExecutionLeaseReleaseDifferentialSuccess",
+        "TestExecutionLeaseReleaseDifferentialMissingHolderIndex",
+        "TestExecutionLeaseReleaseDifferentialActorAuthority",
+        "TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic",
+        "TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses",
+        "TestExecutionLeaseReleaseDomainUsesResolvedCanonicalCWD",
+        "TestArchitectureRatchetIncludesLeaseVerticalPrototype",
+        "TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate"
+      ],
+      "command": "go test -v ./internal/core/issueops -run 'TestExecutionLeaseRelease(Differential|Prototype|Domain|CallsClock)' -count=1; go test ./internal/architecture -count=1",
+      "result": "PASS",
+      "observed": "contract/domain/application/adapter 경계를 실제 import한 vertical flow는 stable v1 canonicalizer를 contract 안에 두고 production IssueOps import를 하지 않는다. application은 process/path port의 resolved result를 domain에 전달하고 repository.Update 안에서 semantic validation 뒤 transition 직전에만 clock을 읽는다. blocking clock 동안 persisted lease의 active/empty timestamp와 unblock 뒤 released/injected timestamp를 함께 관찰하며 SQLite RMW는 cross-process span 하나에서 수행된다."
+    },
+    {
+      "id": "AC-02",
+      "statement": "v1/legacy fixture와 actor/session/CWD/generation 실패에서 persisted JSON bytes, lease result, deny classification, atomicity가 기존 구현과 동등하다.",
+      "tests": [
+        "TestExecutionLeaseReleaseDifferentialSuccess",
+        "TestExecutionLeaseReleaseDifferentialLegacyMissingSchema",
+        "TestExecutionLeaseReleaseDifferentialMissingHolderIndex",
+        "TestExecutionLeaseReleaseDifferentialActorAuthority",
+        "TestExecutionLeaseReleaseDifferentialDenialsAreAtomic",
+        "TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic",
+        "TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses",
+        "TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate"
+      ],
+      "command": "go test -v ./internal/core/issueops -run 'TestExecutionLeaseRelease(Differential|Prototype|Domain|CallsClock)' -count=1",
+      "result": "PASS",
+      "observed": "v1/rich Orca와 pending/completion/failure/sync-base event, in-memory legacy normalization, persisted missing/zero fail-closed, actor/session/CWD/generation/status, malformed sidecar와 schema-version/repo valid-JSON type-mismatch별 deny, repo null의 current-v1 canonical success, missing-or-foreign-index를 비교한다. blocking spy는 valid transition의 Update-then-Now와 invalid denial의 no-Now를 함께 고정한다."
+    },
+    {
+      "id": "AC-03",
+      "statement": "production path를 변경하지 않고 differential evidence와 parent의 continue 또는 redesign 결정을 기록한다.",
+      "tests": [
+        "TestExecutionLeaseReleaseDifferentialSuccess",
+        "TestExecutionLeaseReleaseDifferentialMissingHolderIndex",
+        "TestExecutionLeaseReleaseDifferentialActorAuthority",
+        "TestExecutionLeaseReleaseDifferentialDenialsAreAtomic",
+        "TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic",
+        "TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses",
+        "TestExecutionLeaseReleaseDomainUsesResolvedCanonicalCWD"
+      ],
+      "command": "git diff --cached --name-only 71777ef4f184ab425374b5d52e029aa19d354d90; go test ./internal/architecture -count=1",
+      "result": "PASS",
+      "observed": "sealed-base staged inventory는 ADR, architecture ratchet, differential test, verification report와 leasevertical domain/application/contract(stable v1 포함)/adapter(fake/sqlite/filesystem)의 정확히 11개 경로다. production wiring은 없고 contract의 production IssueOps import는 ratchet이 거부하며 Gate D는 fresh Brooks verdict까지 보류다."
+    }
+  ],
+  "verification_mode": "사용자 승인 bounded mode: Differential|Lease 관련 package, 변경 architecture package, focused race/vet/build/golden만 실행",
+  "verification": [
+    "go test -v ./internal/core/issueops -run 'TestExecutionLeaseRelease(Differential|Prototype|Domain|CallsClock)' -count=1 => PASS; rich sidecar parity, malformed sidecar denial, schema-version/repo valid-JSON type-mismatch denial, validated Update-then-Now ordering, and persisted active-while-blocked/released-after-unblock state observed",
+    "go test ./internal/architecture -count=1 => PASS",
+    "go test -race ./internal/core/issueops -run '^TestExecutionLeaseRelease(Differential|Prototype|Domain|CallsClock)' -count=1 => PASS",
+    "go vet ./internal/core/issueops ./internal/core/issueops/testdata/leasevertical/... ./internal/architecture => PASS",
+    "go build ./internal/core/issueops ./internal/core/issueops/testdata/leasevertical/... => PASS",
+    "go test ./cmd/issueops/contractgolden -run Golden -count=1 => PASS",
+    "jq empty .issueops/verified-execution/issueops-v1-0d097a7cae7456be.json => PASS",
+    "git diff --cached --check => PASS",
+    "fresh Brooks staged-diff review => PASS (proceed); independent reviewer process의 focused rerun은 active generation-5 holder identity fence로 시작 전 차단되어 authoritative holder의 bounded evidence를 검토함"
+  ],
+  "skipped_checks": [
+    "go test ./... -count=1: 최신 사용자 지시로 실행하지 않음",
+    "go test -race ./... -count=1: 최신 사용자 지시로 실행하지 않음",
+    "issueops self-verify: 최신 사용자 지시로 실행하지 않음"
+  ],
+  "ai_slop_clean": [
+    "부분 DTO 재인코딩을 contract-owned stable v1 typed DTO의 decode/re-marshal canonicalization으로 대체해 production IssueOps model import와 domain sidecar 복제를 모두 제거",
+    "분리된 Load/SaveRelease port와 process-local mutex를 repository-owned Update + 기존 sqlstore.WithSpan 하나로 축소",
+    "filesystem canonicalization을 application consumer-owned port와 outbound adapter로 이동해 domain과 application의 직접 외부 관찰 제거",
+    "caller ancestry를 직접 신뢰하던 domain branch를 application process-inspection port와 resolved authority boolean으로 축소",
+    "untyped error를 persistence deny로 오인하던 fallback 제거",
+    "clock ordering fixture에만 persisted snapshot을 추가해 block 중 transition 미commit과 unblock 뒤 injected timestamp를 직접 확인",
+    "production compatibility shim, runtime wiring, speculative abstraction 없음; stable v1 DTO는 test-only contract의 current v1 parity 경계에만 둠",
+    "비자명한 foreign reverse-index CAS 이유만 한국어 주석으로 유지",
+    "Shannon code-only 근사: 추가 Go 1838줄, restatement/debug comment 0줄, authority/CAS invariant 한국어 주석 5줄은 signal로 보존; cleanup 전후 SNR 1.00로 이미 ceiling이라 코드 변경 없음"
+  ],
+  "production_path_evidence": [
+    "sealed base 71777ef4 대비 final staged inventory는 ADR, architecture ratchet, differential test, verification report와 leasevertical testdata만 포함할 예정",
+    "leasevertical contract는 production internal/core/issueops/model을 import하지 않으며 stableV1Record가 typed decode/re-marshal parity를 소유",
+    "architecture ratchet은 leasevertical의 네 logical path를 입력으로 삼고 contract -> production IssueOps edge를 직접 거부"
+  ],
+  "deviations": [
+    "최신 사용자 지시가 sealed prompt의 full/race 전체 검증을 bounded 검증으로 대체했다. 이전 generation의 interrupted/full 결과를 현재 PASS evidence로 재사용하지 않고 focused package/race/vet/build/golden만 fresh 실행한다.",
+    "첫 bounded build에 test-only internal/architecture를 포함해 'no non-test Go files'로 실패했다. architecture는 go test로 검증하고 build 대상을 non-test Go가 있는 issueops/prototype package로 바로잡았으며 최종 ordered gate는 1단계부터 재실행한다.",
+    "계획의 go build -o /tmp/issueops는 canonical mutation root 밖 산출물이라 lifecycle hook이 거부했다. 최종 compile 검증은 worktree 외 명시적 output 없이 issueops/prototype bounded package로 제한한다.",
+    "testdata-only import 범위는 go list ./... 대신 source parser 기반 architecture ratchet으로 명시적으로 inventory한다.",
+    "기존 RED test의 claimable/released fixture가 holder를 nil로 바꾼 뒤 index key를 역참조해 panic했다. mutation 전 initial holder에서 key를 계산하도록 setup만 교정했다.",
+    "첫 fresh Brooks 구현 리뷰는 sparse DTO의 rich record 손실, 실제 persisted legacy release 공백, proposed-only failure injection 주장, 부분 result assertion을 지적하며 revise했다. rich Orca fixture, persisted legacy deny matrix, schema-complete projection, lease result assertion, record+index fake snapshot으로 조치했다.",
+    "두 번째 fresh Brooks 리뷰는 ancestry proof, split Load/Save atomicity, missing-index 차이, semantic/legacy authority validation, denial result 공백을 지적하며 revise했다. ancestry membership, repository-owned Update, missing-index success case, persisted validation, denial OK/ID 비교로 조치했다. Execution sidecar는 persisted byte parity가 담당하고 result parity는 issue/plan이 요구한 lease result 범위로 유지했다.",
+    "세 번째 fresh Brooks 리뷰는 process-local RMW lock, active claimed_at/direct+Orca semantic 공백, domain filesystem 의존을 지적하며 revise했다. 기존 sqlstore.WithSpan의 cross-process critical section, current-v1 sidecar/lease validation, application-bound canonicalization과 pure domain boolean으로 조치했다.",
+    "네 번째 fresh Brooks 리뷰는 request ancestry membership만으로 actor authority를 인정해 current의 normalization/exact live receipt와 다르다고 지적하며 revise했다. application process-inspection port, normalized actor, resolved authority boolean, whitespace-live/fabricated-dead differential cases로 조치했다.",
+    "다섯 번째 fresh Brooks 리뷰는 JSON type mismatch가 current에서는 persistence, prototype에서는 malformed_schema로 분류되는 공백을 지적하며 revise했다. schema-version string fixture로 RED를 재현한 뒤 UnmarshalTypeError를 ErrMalformedSchema로 감싸지 않아 persistence parity와 atomic snapshot을 GREEN으로 확인했다.",
+    "여섯 번째 fresh Brooks 리뷰는 untracked filesystem adapter와 git diff --name-only inventory의 증거 불일치를 지적하며 revise했다. final patch를 exact-path staging으로 포착하고 AC-03을 sealed-base staged inventory로 정정한다.",
+    "일곱 번째 fresh Brooks 리뷰는 execution 밖 top-level v1 field가 RawMessage로 남아 repo object type mismatch를 current처럼 거부하지 못한다고 지적하며 revise했다. repo object RED fixture 뒤 contract Decode가 current IssueOpsRecord JSON shape를 한 번 검증하도록 하여 persistence deny와 atomic snapshot parity를 GREEN으로 확인했다.",
+    "여덟 번째 fresh Brooks 리뷰는 repo null이 type 검증은 통과하지만 current의 typed decode/re-marshal는 empty string으로 canonicalize하는 반면 RawMessage는 null을 남겨 persisted byte parity를 깨뜨린다고 지적하며 revise했다. repo null success RED fixture 뒤 shape-decoded current v1 record를 canonical JSON으로 contract DTO에 투영해 released bytes/result parity를 GREEN으로 확인했다.",
+    "decision gate 두 건은 contract의 production IssueOps model import와 repository.Update 밖의 선행 clock.Now를 publication blocker로 판정했다. contract-owned stableV1Record와 contract -> production IssueOps ratchet RED/GREEN, repository.Update 안의 semantic validation 뒤 transition 직전 Now를 고정하는 blocking spy RED/GREEN으로 조치했다.",
+    "아홉 번째 fresh Brooks 리뷰는 clock ordering spy가 Update 진입만 보며 Now가 block된 동안 persisted transition이 아직 active인지를 보지 못한다고 revise했다. Snapshot 없는 test repository RED 뒤, block 중 active/empty released_at와 unblock 뒤 released/injected timestamp를 관찰하도록 최소 fixture만 보강했다.",
+    "열 번째 fresh Brooks 리뷰는 snapshot이 prior ordering gap을 반증하고 contract-owned stable v1 canonicalizer 및 architecture edges가 test-only scope에 머문다고 proceed를 판정했다. 독립 reviewer process의 focused rerun은 active generation-5 holder identity fence가 시작 전 차단했으며, authoritative holder가 이미 rerun한 bounded evidence만 review했다."
+  ]
+}

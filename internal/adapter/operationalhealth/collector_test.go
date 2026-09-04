@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/domain/operationalhealth"
-	"agent-harness/internal/port"
+	issueopscontract "issueops/internal/contract/issueops"
+	corehealth "issueops/internal/domain/operationalhealth"
+	"issueops/internal/port"
 )
 
 func TestCycleFromRecordProjectsExecution(t *testing.T) {

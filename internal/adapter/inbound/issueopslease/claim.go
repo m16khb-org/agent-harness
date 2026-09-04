@@ -1,14 +1,14 @@
 package issueopslease
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"errors"
 	"fmt"
+	issueopscontract "issueops/internal/contract/issueops"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
 )
 
 type ClaimHandler struct{ service *leaseapp.ClaimService }
@@ -59,7 +59,7 @@ func publicClaimError(err error, generation uint64, id string) error {
 // 읽히지 않는다. 그래서 거절 자체가 첫 명령을 들고 있어야 한다.
 func claimableDenyError(generation uint64, id string) error {
 	return fmt.Errorf(
-		"lease is not claimable at generation %d: a released or superseded lease must be reseeded before any session can claim it; run `agent-harness issueops execution replace --id %s --expected-generation %d --preview` and follow the next_command it renders",
+		"lease is not claimable at generation %d: a released or superseded lease must be reseeded before any session can claim it; run `issueops execution replace --id %s --expected-generation %d --preview` and follow the next_command it renders",
 		generation, id, generation,
 	)
 }

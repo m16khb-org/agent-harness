@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt Engineering"
+  short_description: "Design, test, and refine prompts for AI systems"
+  default_prompt: "Use $prompt-engineering to define this prompt’s input and output contract, test edge cases, and measure improvements."

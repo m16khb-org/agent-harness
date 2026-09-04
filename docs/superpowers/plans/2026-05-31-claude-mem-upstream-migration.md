@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**Goal:** Remove agentmemory as the configured upstream memory companion, install claude-mem latest for Claude Code and Codex, and verify the full agent-harness + memory-provider E2E path.
+**Goal:** Remove agentmemory as the configured upstream memory companion, install claude-mem latest for Claude Code and Codex, and verify the full issueops + memory-provider E2E path.
 
-**Architecture:** `agent-harness` continues to own only shared CLI/MCP/hooks/install glue. Specialized memory remains upstream, but the upstream memory provider changes from `rohitg00/agentmemory` to `thedotmack/claude-mem`; hard deletion of existing local agentmemory state is an operator action, while the installer avoids reinstalling agentmemory and wires claude-mem through its upstream `npx claude-mem@latest install` entrypoint.
+**Architecture:** `issueops` continues to own only shared CLI/MCP/hooks/install glue. Specialized memory remains upstream, but the upstream memory provider changes from `rohitg00/agentmemory` to `thedotmack/claude-mem`; hard deletion of existing local agentmemory state is an operator action, while the installer avoids reinstalling agentmemory and wires claude-mem through its upstream `npx claude-mem@latest install` entrypoint.
 
 **Tech Stack:** Bash installer, Go tests, Codex/Claude plugin CLIs, `npx claude-mem@latest`, local worker runtime, existing `go test`/`go build` verification.
 
@@ -22,7 +22,7 @@
   - Assert memory prompts recommend claude-mem instead of agentmemory.
 - Modify `internal/adapter/install_contract_matrix_test.go`
   - Add a static installer contract test proving upstream setup invokes claude-mem and does not reinstall agentmemory.
-- Modify docs: `AGENTS.md`, `CLAUDE.md`, `.agent-harness/TESTING.md`, `README.md`
+- Modify docs: `AGENTS.md`, `CLAUDE.md`, `.issueops/TESTING.md`, `README.md`
   - Update upstream companion wording and smoke commands from agentmemory to claude-mem.
 
 ---
@@ -174,7 +174,7 @@ Expected: both pass.
 **Files:**
 - Modify: `AGENTS.md`
 - Modify: `CLAUDE.md`
-- Modify: `.agent-harness/TESTING.md`
+- Modify: `.issueops/TESTING.md`
 - Modify: `README.md`
 - Modify: generated golden files if tests require it
 
@@ -198,7 +198,7 @@ claude plugin list | grep -E 'wiki@llm-wiki|claude-mem'
 Run:
 
 ```bash
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/issueops -run Golden -count=1
 ```
 
 If golden output changes only because the memory-provider text changed, update the golden through the repository’s established update command or targeted edit.
@@ -298,7 +298,7 @@ npx -y claude-mem@latest status
 npx -y claude-mem@latest doctor
 ```
 
-- [x] **Step 3: Verify agent-harness E2E**
+- [x] **Step 3: Verify issueops E2E**
 
 Run:
 
@@ -307,19 +307,19 @@ Run:
 ./scripts/install-native.sh --with-upstream-tools
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness inspect --json
-./bin/agent-harness docs --json
-./bin/agent-harness daemon status --json
-./bin/agent-harness verify-work --json -- git status --short
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops inspect --json
+./bin/issueops docs --json
+./bin/issueops daemon status --json
+./bin/issueops verify-work --json -- git status --short
 ```
 
-Expected: agent-harness checks pass, claude-mem is latest and registered for both hosts, and agentmemory remains absent.
+Expected: issueops checks pass, claude-mem is latest and registered for both hosts, and agentmemory remains absent.
 
 ---
 
 ## Self-Review
 
-- Spec coverage: The plan covers hard deletion, latest claude-mem setup, agent-harness upstream migration, TDD, and full E2E verification.
+- Spec coverage: The plan covers hard deletion, latest claude-mem setup, issueops upstream migration, TDD, and full E2E verification.
 - Placeholder scan: No TBD/TODO/fill-in placeholders remain; one-off cleanup is specified with exact config blocks if no script exists.
 - Type/signature consistency: Test names and exact expected strings match the implementation steps.

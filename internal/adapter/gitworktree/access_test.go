@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/port"
 )
 
 func TestProbeAccessReturnsHostSpecificRelaunchWithoutWorktreeMutation(t *testing.T) {

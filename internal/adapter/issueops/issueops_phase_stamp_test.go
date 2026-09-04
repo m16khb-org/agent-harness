@@ -3,7 +3,7 @@ package issueops
 import (
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // A forward transition stamps the ledger: the phase being left is recorded

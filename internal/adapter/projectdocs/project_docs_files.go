@@ -22,7 +22,7 @@ func listInterestingFiles(root string) []string {
 		parts := strings.Split(rel, "/")
 		if d.IsDir() {
 			base := d.Name()
-			if base == ".git" || base == "node_modules" || base == "vendor" || base == "dist" || base == "build" || base == ".agent-harness" {
+			if base == ".git" || base == "node_modules" || base == "vendor" || base == "dist" || base == "build" || base == ".issueops" {
 				return filepath.SkipDir
 			}
 			if len(parts) > maxDepth {

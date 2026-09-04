@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	policycontract "agent-harness/internal/contract/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policycontract "issueops/internal/contract/policy"
+	policydomain "issueops/internal/domain/policy"
 
-	"agent-harness/internal/domain/auditid"
+	"issueops/internal/domain/auditid"
 )
 
 func EvaluateCommandPolicy(req policycontract.CommandPolicyRequest) policycontract.CommandPolicyEvaluation {

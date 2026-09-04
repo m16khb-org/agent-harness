@@ -5,15 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	stateapplication "agent-harness/internal/application/state"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	stateapplication "issueops/internal/application/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func knownStoreRoots() []string {
 	base := StateDir()
 	workerRoot := filepath.Join(base, "worker")
-	if dir := os.Getenv("HARNESS_WORKER_DIR"); dir != "" {
+	if dir := os.Getenv("ISSUEOPS_WORKER_DIR"); dir != "" {
 		if abs, err := filepath.Abs(dir); err == nil {
 			workerRoot = abs
 		}
@@ -36,7 +36,7 @@ func projectStoreRoots() ([]string, error) {
 			continue
 		}
 		dir := filepath.Join(projectsDir, entry.Name())
-		info, err := os.Lstat(filepath.Join(dir, "harness.db"))
+		info, err := os.Lstat(filepath.Join(dir, "issueops.db"))
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -60,7 +60,7 @@ func allStoreRoots() ([]string, error) {
 }
 
 func storeExists(root string) bool {
-	_, err := os.Stat(filepath.Join(root, "harness.db"))
+	_, err := os.Stat(filepath.Join(root, "issueops.db"))
 	return err == nil
 }
 

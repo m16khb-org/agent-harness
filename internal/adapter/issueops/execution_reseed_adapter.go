@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func PrepareExecutionReseedOwnerArtifacts(ctx context.Context, stateRoot, id string, execution issueops.Execution, readIssue ExecutionIssueSnapshotReadFunc) (ExecutionReseedArtifacts, error) {

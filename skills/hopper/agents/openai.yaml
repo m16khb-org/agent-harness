@@ -1,4 +1,0 @@
-interface:
-  display_name: "Hopper"
-  short_description: "Debug failures through reproduction, isolation, and verification"
-  default_prompt: "Use $hopper to investigate this failure systematically, isolate the root cause, and verify the fix."

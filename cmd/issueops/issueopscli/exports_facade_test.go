@@ -1,0 +1,148 @@
+package issueopscli
+
+import (
+	"context"
+	"errors"
+	"issueops/cmd/issueops/issueopscli/remotecmd"
+	"strings"
+	"testing"
+
+	"issueops/internal/adapter/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
+	"issueops/internal/port"
+)
+
+func TestExportedIssueOpsFacades(t *testing.T) {
+	if err := RunIssueOps([]string{"unknown"}); err == nil {
+		t.Fatal("unknown issueops subcommand should fail")
+	}
+	if CleanupMerged("", false) {
+		t.Fatal("cleanup without id and request should not be treated as merged")
+	}
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
+		t.Fatal("invalid remote artifact URL should fail before provider inspection")
+	}
+
+	sentinel := errors.New("sentinel")
+	previous := SetChildIssueVerifier(func(string) error { return sentinel })
+	defer SetChildIssueVerifier(previous)
+	if err := VerifyChildIssueBeforeLink("https://github.com/acme/repo/issues/1"); !errors.Is(err, sentinel) {
+		t.Fatalf("stubbed child verifier err=%v", err)
+	}
+}
+
+func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = issueops.LinkIssueOpsIssue(issueops.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/195")
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := []string{
+		"remote", "create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",
+		"--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "maintainer",
+	}
+	if err := RunIssueOps(args); !errors.Is(err, issueops.ErrRemotePullRequestCreateHandlerUnavailable) {
+		t.Fatalf("zero dependency wrapper err=%v", err)
+	}
+	handlerCalls := 0
+	err = RunIssueOpsWithDependencies(args, Dependencies{Publication: remotecmd.PublicationHandlers{Create: func(_ context.Context, _ string, request issueops.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		handlerCalls++
+		if request.ID != record.ID || request.Confirm {
+			t.Fatalf("request=%#v", request)
+		}
+		return port.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+	}}})
+	if err != nil || handlerCalls != 1 {
+		t.Fatalf("handlerCalls=%d err=%v", handlerCalls, err)
+	}
+}
+
+func TestIssueOpsBenchmarkArtifactFacades(t *testing.T) {
+	fixture := issueops.IssueOpsBenchmarkFixture{
+		Title:         "Fix quality gate",
+		UserPrompt:    "raise coverage",
+		RepoContext:   "issueops",
+		ExpectedIssue: []string{"quality label"},
+		ExpectedTasks: []string{"add tests"},
+	}
+	artifact := benchmarkArtifactFromFixture(fixture)
+	if !strings.Contains(artifact.ProblemSummary, "raise coverage") || !strings.Contains(artifact.IssueDraft, "quality label") {
+		t.Fatalf("artifact = %#v", artifact)
+	}
+	if bullets := issueOpsBenchmarkBullets([]string{"one", "two"}); !strings.Contains(bullets, "- one") || !strings.Contains(bullets, "- two") {
+		t.Fatalf("bullets = %q", bullets)
+	}
+	if tasks := issueOpsBenchmarkOwnedTasks([]string{"add tests"}); !strings.Contains(tasks, "owns add tests") {
+		t.Fatalf("owned tasks = %q", tasks)
+	}
+}
+
+func TestIssueOpsDecisionAndCleanupCLIBranches(t *testing.T) {
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "123-decision"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runIssueOpsDecision(nil); err != nil {
+		t.Fatalf("decision help: %v", err)
+	}
+	if err := runIssueOpsDecision([]string{"remove"}); err == nil {
+		t.Fatal("unknown decision subcommand should fail")
+	}
+	if err := runIssueOpsDecision([]string{
+		"add",
+		"--id", record.ID,
+		"--title", "Use focused tests",
+		"--body", "Raise low coverage with boundary tests",
+		"--kind", "test",
+		"--rationale", "quality gate",
+		"--alternative", "change threshold",
+		"--affected-artifact", "test",
+		"--json",
+	}); err != nil {
+		t.Fatalf("decision add: %v", err)
+	}
+}
+
+func TestIssueOpsSubcommandSuggestions(t *testing.T) {
+	cases := []struct {
+		input        string
+		mustContain  string
+		mustNotMatch bool
+	}{
+		// concept hint: subcommand으로 오인되는 도메인 어휘.
+		{"grill", "issueops phase --to grill", false},
+		{"split", "issueops remote create-child", false},
+		{"problem", "issueops phase --to problem", false},
+		{"implement", "issueops phase --to implement", false},
+		// 실제 registry에 대한 prefix 일치.
+		{"domain", "domain-review", false},
+		{"compat", "compatibility", false},
+		{"execut", "execution", false},
+		// 무의미한 입력에는 제안 없이 에러만 낸다.
+		{"totally-bogus", "", true},
+	}
+	for _, tc := range cases {
+		err := RunIssueOps([]string{tc.input})
+		if err == nil {
+			t.Fatalf("input %q should fail", tc.input)
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, `unknown issueops subcommand`) {
+			t.Fatalf("input %q: error missing canonical prefix: %q", tc.input, msg)
+		}
+		if tc.mustNotMatch {
+			if strings.Contains(msg, "did you mean") {
+				t.Fatalf("input %q: should have no suggestion, got %q", tc.input, msg)
+			}
+			continue
+		}
+		if !strings.Contains(msg, "did you mean") || !strings.Contains(msg, tc.mustContain) {
+			t.Fatalf("input %q: expected suggestion containing %q, got %q", tc.input, tc.mustContain, msg)
+		}
+	}
+}

@@ -1,0 +1,95 @@
+{
+  "lifecycle": "io-5350a3d82407",
+  "mode": "orca",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover",
+      "red_command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacement(RecoversDeadOwnerAfterOrcaRuntimeRollover|RuntimeRolloverSafetyBoundaries)$' -count=1",
+      "red_result": "FAIL: runtime rollover owner is not quiescent for stale dispatched task/dispatch inventory",
+      "green_result": "PASS: preview returned an inventory fingerprint"
+    },
+    "AC-02": {
+      "test": "TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover",
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover$' -count=1",
+      "result": "PASS: exact fingerprint revoked once, generation advanced from 1 to 2, duplicate generation-1 revoke failed CAS"
+    },
+    "AC-03": {
+      "test": "TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover",
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover$' -count=1",
+      "result": "PASS: finalize-preview returned quiescence fingerprint and finalize produced generation-2 claimable holderless lease"
+    },
+    "AC-04": {
+      "test": "TestExecutionReplacementRuntimeRolloverSafetyBoundaries/live_owner",
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacementRuntimeRolloverSafetyBoundaries$/live_owner' -count=1",
+      "result": "PASS: live exact process left allow_runtime_rollover false and preview failed"
+    },
+    "AC-05": {
+      "test": "TestExecutionReplacementRuntimeRolloverSafetyBoundaries/matching_ghost_terminal",
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacementRuntimeRolloverSafetyBoundaries$/matching_ghost_terminal' -count=1",
+      "result": "PASS: terminal ID alone blocked rollover even with terminal_live=false and settled task/dispatch"
+    },
+    "AC-06": {
+      "tests": [
+        "TestExecutionOwnerInventoryRejectsContradictoryTerminalDetail",
+        "TestExecutionOwnerInventoryRejectsMissingOrChangedRuntime",
+        "TestExecutionOwnerInventoryRuntimeRolloverRequiresOneCurrentRuntime"
+      ],
+      "command": "go test -v ./internal/adapter/orca -run '^TestExecutionOwnerInventory(RejectsMissingOrChangedRuntime|RuntimeRolloverRequiresOneCurrentRuntime|RejectsContradictoryTerminalDetail)$' -count=1",
+      "result": "PASS: missing, changed, mixed, and contradictory inventory remained fail-closed"
+    },
+    "AC-07": {
+      "test": "TestExecutionReplacementRuntimeRolloverSafetyBoundaries/same_runtime_task_remains_live",
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacementRuntimeRolloverSafetyBoundaries$/same_runtime_task_remains_live' -count=1",
+      "result": "PASS: same-runtime TaskLive blocked finalize-preview"
+    },
+    "AC-08": {
+      "command": "From the #270 worktree, run the #270 feature binary against #261 lifecycle io-14a09ebb1b15 with --expected-generation 1 --preview and the current coordinator receipt PID 83262",
+      "result": "PASS (fresh coordinator evidence): the live Orca relay returned ok=true for the #261 generation-1 active lease and issued requester-bound inventory fingerprint d5d876ee72d14cc2a74c2bad8f1b4a96f42791fc885a2becfd14bf9b5c9cc241. This supersedes the earlier requester fingerprint; the prior runtime rollover no longer failed at identity mismatch. No mutation was performed, and revoke/finalize remain coordinator-owned after review."
+    }
+  },
+  "verification": [
+    {
+      "command": "go test -v ./internal/core/issueops -run '^TestExecutionReplacement(RecoversDeadOwnerAfterOrcaRuntimeRollover|RuntimeRolloverSafetyBoundaries)$' -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./internal/core/issueops ./internal/adapter/orca ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./cmd/issueops/contractgolden ./cmd/issueops/issueopsapp -run 'Golden|ResponseContracts|Execution' -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS after review correction: PTY session 85540 exited 0"
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "PASS after review correction: PTY session 88787 exited 0"
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/issueops ./cmd/issueops",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "ai_slop_clean": {
+    "diff_inventory": "38 added and 5 removed tracked lines; 202-line untracked lifecycle test; verification report",
+    "snr_before": 0.99,
+    "snr_after": 1.0,
+    "secondary_metric": "zero TODO/debug/comment-noise matches; new functions below high-risk branch ceiling; no duplicate production policy blocks",
+    "cleanup": "removed a single-use pointer helper, isolated ghost-terminal evidence from TaskLive, and preserved the two-line non-obvious authority comment",
+    "heuristic_caveat": "SNR and entropy are shell/diff inspection approximations; Go tests, race, vet, and build provide executable evidence",
+    "result": "PASS"
+  },
+  "cleanup_receipt": "No persistent QA process, terminal, browser, port, or temporary workspace was spawned by this owner.",
+  "status": "verified_pending_review"
+}

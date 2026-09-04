@@ -106,7 +106,7 @@ generation별 packet/prompt가 private bounded regular file이며 digest 검증 
 ## 명령 계약
 
 ```bash
-agent-harness issueops execution resume \
+issueops execution resume \
   --id ID \
   --expected-generation N \
   --host HOST \
@@ -232,7 +232,7 @@ resume은 prepare와 같은 external-intent payload를 사용하므로 기존
 
 ### CLI/MCP/composition
 
-- `issueops execution resume` flag parser와 harnessapp facade
+- `issueops execution resume` flag parser와 issueopsapp facade
 - 기존 `issueops_execution` MCP action enum과 handler mapping
 - response contract, usage, MCP golden 갱신
 
@@ -279,12 +279,12 @@ resume은 prepare와 같은 external-intent payload를 사용하므로 기존
 4. Focused GREEN
    - `go test ./internal/core/issueops -run 'Resume|Reconcile' -count=1`
    - `go test ./internal/adapter/orca -run 'Intent|Owner' -count=1`
-   - `go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/harnessapp -run 'Resume|Golden' -count=1`
+   - `go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopsapp -run 'Resume|Golden' -count=1`
    - `go test ./internal/core/commandparse ./internal/core/lifecycle -run 'Resume|Execution' -count=1`
-   - `go test ./internal/adapter/mcp ./cmd/harness/mcpcli -run 'Resume|IssueOps' -count=1`
+   - `go test ./internal/adapter/mcp ./cmd/issueops/mcpcli -run 'Resume|IssueOps' -count=1`
    - `go test -race ./internal/core/issueops -run 'Resume|Reconcile' -count=1`
    - `go vet`은 변경된 패키지로 제한한다.
-   - `go build -o bin/agent-harness ./cmd/harness`
+   - `go build -o bin/issueops ./cmd/issueops`
 
 로컬 `go test ./...`와 전체 race는 실행하지 않는다. full suite는 push 이후 CI에
 맡긴다.
@@ -294,7 +294,7 @@ resume은 prepare와 같은 external-intent payload를 사용하므로 기존
 main 구현·focused 검증·커밋·푸시 후 다음 순서가 실제 #197 lifecycle에서
 성공해야 한다.
 
-1. `ah update --json`
+1. `io update --json`
 2. daemon build SHA와 installed binary SHA 일치
 3. MCP contract check 성공
 4. generation 2 released 상태에서 replace preview/reseed로 generation 3 발급

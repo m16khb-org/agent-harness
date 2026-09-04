@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review"
+  short_description: "Inspect GitHub PRs and GitLab MRs with code evidence"
+  default_prompt: "Use $pr-review to inspect this GitHub PR or GitLab MR at the requested level (default high), trace candidate defects through the code, and report the level actually run; only max includes adversarial verification."

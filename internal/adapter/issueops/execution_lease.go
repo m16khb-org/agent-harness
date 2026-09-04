@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
+	basesyncport "issueops/internal/port/issueopsbasesync"
 )
 
 type ExecutionReplaceRequest struct {
@@ -319,14 +319,14 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 // 세대를 바로 claim해야 한다. 이 명령이 없으면 holderless 복구가 중간에서
 // 멈추고 다음 durable mutation이 write-lease 가드에 막힌다.
 func executionDirectClaimCommand(id string, generation uint64, _ string) string {
-	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
+	return "issueops execution claim --id " + quoteExecutionOwnerArg(id) +
 		" --generation " + strconv.FormatUint(generation, 10) +
 		" --claim-current-token"
 }
 
 func executionReseedCommand(id string, generation, completionGeneration uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
 	process := actor.SessionProcess
-	command := "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+	command := "issueops execution replace --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10)
 	if completionGeneration != 0 {
 		command += " --completion-generation " + strconv.FormatUint(completionGeneration, 10)
@@ -349,7 +349,7 @@ func executionReseedCommand(id string, generation, completionGeneration uint64, 
 // 그대로 실행하는 exact가 아니라 값을 채우는 template이다.
 func executionRevokeCommand(id string, generation uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
 	process := actor.SessionProcess
-	command := "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+	command := "issueops execution replace --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) +
 		" --revoke --reason <TEXT> --inventory-fingerprint " + fingerprint +
 		" --host " + quoteExecutionOwnerArg(actor.Host) +
@@ -392,14 +392,14 @@ func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string
 	case issueops.LeaseStatusReleased:
 		return executionReplacementPreviewCommand(record.ID, lease.Generation)
 	case issueops.LeaseStatusRevoking:
-		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
+		return "issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
 			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --finalize-preview"
 	}
 	return ""
 }
 
 func executionReplacementPreviewCommand(id string, generation uint64) string {
-	return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+	return "issueops execution replace --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) + " --preview"
 }
 

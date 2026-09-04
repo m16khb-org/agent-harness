@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook session-start --host claude",
+            "command": "'./bin/issueops' hook session-start --host claude",
             "timeout": 5,
             "type": "command"
           }

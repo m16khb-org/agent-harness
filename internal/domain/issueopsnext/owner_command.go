@@ -12,7 +12,7 @@ func OwnerCommand(id, missingKey string) string {
 	key := strings.TrimSpace(missingKey)
 	switch {
 	case strings.HasPrefix(key, "plan_prep_"):
-		return "agent-harness issueops plan-prep record --id " + id +
+		return "issueops plan-prep record --id " + id +
 			" --decisions-evidence <TEXT> --related-score-ref <TEXT> --web-research-evidence <TEXT> --codebase-survey-evidence <TEXT>"
 	case strings.HasPrefix(key, "design_"):
 		return designReviewCommand(id)
@@ -21,37 +21,37 @@ func OwnerCommand(id, missingKey string) string {
 	case strings.HasPrefix(key, "ai_slop_clean_"):
 		return aiSlopCleanCommand(id)
 	case strings.HasPrefix(key, "gates_incomplete:"):
-		return "agent-harness gates check --cwd <worktree> --workspace-root <worktree> --json"
+		return "issueops gates check --cwd <worktree> --workspace-root <worktree> --json"
 	case strings.HasPrefix(key, "duplicate_issue_artifact:"):
-		return "agent-harness issueops remote reconcile-issue --id " + id
+		return "issueops remote reconcile-issue --id " + id
 	}
 	switch key {
 	case "intent_contract", "raw_request", "interpreted_intent", "success_criteria":
-		return "agent-harness issueops intent record --id " + id +
+		return "issueops intent record --id " + id +
 			" --raw-request <TEXT> --interpreted-intent <TEXT> --success-criteria <TEXT>"
 	case "domain_review":
-		return "agent-harness issueops domain-review record --id " + id + " --model-fit <TEXT>"
+		return "issueops domain-review record --id " + id + " --model-fit <TEXT>"
 	case "split_decision":
-		return "agent-harness issueops decision add --id " + id +
+		return "issueops decision add --id " + id +
 			" --kind scope --title <TEXT> --body <TEXT>"
 	case "issue_url":
-		return "agent-harness issueops link-issue --id " + id + " --issue-url <URL>"
+		return "issueops link-issue --id " + id + " --issue-url <URL>"
 	case "branch", "branch_prepare":
-		return "agent-harness issueops branch prepare --id " + id +
+		return "issueops branch prepare --id " + id +
 			" --provider <github|gitlab> --issue-url <URL> --branch <NAME> --base-branch <REF> --base-sha <SHA> --link-verified"
 	case "design_review":
 		return designReviewCommand(id)
 	case "compatibility_review":
 		return compatibilityReviewCommand(id)
 	case "devils_advocate_review", "devils_advocate_review_stale":
-		return "agent-harness issueops devils-advocate review --id " + id +
+		return "issueops devils-advocate review --id " + id +
 			" --reviewer-context subagent --verdict <pass|revise|stop> --finding <TEXT>"
 	case "plan_artifact":
-		return "agent-harness issueops artifact stage --id " + id + " --name plan --file <PATH>"
+		return "issueops artifact stage --id " + id + " --name plan --file <PATH>"
 	case "plan_path", "plan_exists", "plan_in_worktree":
-		return "agent-harness issueops link-plan --id " + id + " --plan-path <PATH>"
+		return "issueops link-plan --id " + id + " --plan-path <PATH>"
 	case "worktree_path", "worktree_exists":
-		return "agent-harness issueops execution prepare --id " + id + " --mode auto --owner-host <codex|claude|omo> $ACTOR_FLAGS"
+		return "issueops execution prepare --id " + id + " --mode auto --owner-host <codex|claude|omo> $ACTOR_FLAGS"
 	case "execution", "execution_valid", "execution_worktree_match", "execution_write_lease":
 		return executionStatusCommand(id)
 	case "implementation_changes":
@@ -59,54 +59,54 @@ func OwnerCommand(id, missingKey string) string {
 	case "cleanup_evidence", "verification_evidence", "current_fingerprint":
 		return aiSlopCleanCommand(id)
 	case "implementation_review", "implementation_review_stale":
-		return "agent-harness issueops implementation-review record --id " + id +
+		return "issueops implementation-review record --id " + id +
 			" --verdict <pass|revise|stop> --finding <TEXT> --evidence <TEXT>"
 	case "project_docs_review", "project_docs_review_stale":
-		return "agent-harness issueops project-docs-review record --id " + id +
+		return "issueops project-docs-review record --id " + id +
 			" --verdict <updated|no-change> --evidence <TEXT>"
 	case "schema_evidence", "schema_evidence_stale":
-		return "agent-harness issueops schema-evidence record --id " + id +
+		return "issueops schema-evidence record --id " + id +
 			" --measurement <TEXT> --source <TEXT>"
 	case "feedback_classification":
-		return "agent-harness issueops feedback add --id " + id +
+		return "issueops feedback add --id " + id +
 			" --source <TEXT> --body <TEXT> --classification <TEXT>"
 	case "feedback_resolution":
-		return "agent-harness issueops feedback resolve --id " + id +
+		return "issueops feedback resolve --id " + id +
 			" --index <N> --resolution <valid-defect|question-answered|noise-dismissed>"
 	case "contract_feedback_issue_update":
-		return "agent-harness issueops feedback mark-issue-updated --id " + id
+		return "issueops feedback mark-issue-updated --id " + id
 	case "remote_artifact":
-		return "agent-harness issueops remote verify-artifact --id " + id +
+		return "issueops remote verify-artifact --id " + id +
 			" --provider <github|gitlab> --kind <pr|mr> --url <URL> --target-branch <BRANCH> --label <LABEL> --assignee <USER>"
 	case "child_incomplete", "child_unvalidated", "child_rejected_unresolved":
-		return "agent-harness issueops child status --parent " + id + " --json"
+		return "issueops child status --parent " + id + " --json"
 	case "worktree_clean", "upstream", "upstream_fetch", "upstream_synced", "branch_match":
-		return "agent-harness issueops pr-readiness --id " + id + " --strict --json"
+		return "issueops pr-readiness --id " + id + " --strict --json"
 	default:
 		return statusCommand(id)
 	}
 }
 
 func designReviewCommand(id string) string {
-	return "agent-harness issueops design review --id " + id +
+	return "issueops design review --id " + id +
 		" --problem-summary <TEXT> --proposed-design <TEXT> --refactor-plan <TEXT>" +
 		" --alternative <TEXT> --risk <TEXT> --verification <TEXT> --approved"
 }
 
 func compatibilityReviewCommand(id string) string {
-	return "agent-harness issueops compatibility review --id " + id +
+	return "issueops compatibility review --id " + id +
 		" --backward-compatibility <TEXT> --side-effect <TEXT> --rollback-plan <TEXT> --verification <TEXT> --approved"
 }
 
 func aiSlopCleanCommand(id string) string {
-	return "agent-harness issueops ai-slop-clean record --id " + id +
+	return "issueops ai-slop-clean record --id " + id +
 		" --category <TEXT> --verification <TEXT>"
 }
 
 func executionStatusCommand(id string) string {
-	return "agent-harness issueops execution status --id " + id + " --json"
+	return "issueops execution status --id " + id + " --json"
 }
 
 func statusCommand(id string) string {
-	return "agent-harness issueops status --id " + id + " --json"
+	return "issueops status --id " + id + " --json"
 }

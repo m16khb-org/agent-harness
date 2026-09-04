@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BUILD_ROOT="${ISSUEOPS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ROOT="$BUILD_ROOT"
 if COMMON_GIT_DIR="$(git -C "$BUILD_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
   if [[ "$(basename "$COMMON_GIT_DIR")" == ".git" && -d "$COMMON_GIT_DIR" && ! -L "$COMMON_GIT_DIR" ]]; then
     ROOT="$(cd "$COMMON_GIT_DIR/.." && pwd)"
   fi
 fi
-export HARNESS_ROOT="$ROOT"
-BIN="$ROOT/bin/agent-harness"
-SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
-HARNESS_ARGS=()
+export ISSUEOPS_ROOT="$ROOT"
+BIN="$ROOT/bin/issueops"
+SKIP_BUILD="${ISSUEOPS_SKIP_BUILD:-0}"
+ISSUEOPS_ARGS=()
 STAGED_BIN=""
 ACTIVATION_BEGUN=0
 ACTIVATION_TRANSITION_ID=""
@@ -22,27 +22,27 @@ ACTIVATION_ARGS=()
 
 usage() {
   cat <<'EOF'
-Usage: scripts/install-native.sh [agent-harness install flags]
+Usage: scripts/install-native.sh [issueops install flags]
 
-Build and install agent-harness native Codex/Claude integrations.
+Build and install issueops native Codex/Claude integrations.
 
-Harness flags are passed to `agent-harness install`, for example:
+Harness flags are passed to `issueops install`, for example:
   --project-local
   --dry-run
   --json
   --adopt-command-file   Explicitly adopt a managed regular command file.
 
 Harness binary:
-  --skip-build            Do not rebuild bin/agent-harness before installing integrations.
+  --skip-build            Do not rebuild bin/issueops before installing integrations.
 
 User command:
-  PATH setup is handled by `agent-harness install --path-mode=auto|manual|skip`.
-  The default auto mode creates ~/.local/bin/agent-harness plus the safe
-  ~/.local/bin/ah shorthand, and adds ~/.local/bin to the detected shell rc
+  PATH setup is handled by `issueops install --path-mode=auto|manual|skip`.
+  The default auto mode creates ~/.local/bin/issueops plus the safe
+  ~/.local/bin/io shorthand, and adds ~/.local/bin to the detected shell rc
   when it is not already on PATH.
 
 Environment:
-  HARNESS_SKIP_BUILD=1              Same as --skip-build.
+  ISSUEOPS_SKIP_BUILD=1              Same as --skip-build.
 EOF
 }
 
@@ -54,7 +54,7 @@ is_truthy() {
 }
 
 log() {
-  printf '[agent-harness] %s\n' "$*" >&2
+  printf '[issueops] %s\n' "$*" >&2
 }
 
 file_sha256() {
@@ -73,8 +73,8 @@ cleanup_install() {
       abort_bin="$BIN"
     fi
     if [[ -n "$abort_bin" ]]; then
-      HARNESS_NATIVE_ACTIVATION_STEP=abort \
-        HARNESS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
+      ISSUEOPS_NATIVE_ACTIVATION_STEP=abort \
+        ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
         "$abort_bin" install --path-mode=skip --json >/dev/null ||
         log "native activation abort failed; transition remains pending for recovery"
     else
@@ -93,12 +93,12 @@ begin_activation() {
   local executable="$1"
   local receipt
   local begin_status=0
-  receipt="$(mktemp "$ROOT/bin/.agent-harness.begin-XXXXXX")"
+  receipt="$(mktemp "$ROOT/bin/.issueops.begin-XXXXXX")"
   if ((${#ACTIVATION_ARGS[@]})); then
-    HARNESS_NATIVE_ACTIVATION_STEP=begin \
+    ISSUEOPS_NATIVE_ACTIVATION_STEP=begin \
       "$executable" install --path-mode=skip --json "${ACTIVATION_ARGS[@]}" >"$receipt" || begin_status=$?
   else
-    HARNESS_NATIVE_ACTIVATION_STEP=begin \
+    ISSUEOPS_NATIVE_ACTIVATION_STEP=begin \
       "$executable" install --path-mode=skip --json >"$receipt" || begin_status=$?
   fi
   if ((begin_status != 0)); then
@@ -127,8 +127,8 @@ PY
 
 preflight_install() {
   local executable="$1"
-  if ((${#HARNESS_ARGS[@]})); then
-    "$executable" install "${HARNESS_ARGS[@]}" --dry-run >/dev/null
+  if ((${#ISSUEOPS_ARGS[@]})); then
+    "$executable" install "${ISSUEOPS_ARGS[@]}" --dry-run >/dev/null
   else
     "$executable" install --dry-run >/dev/null
   fi
@@ -146,37 +146,37 @@ for arg in "$@"; do
       ;;
     --dry-run)
       DRY_RUN=1
-      HARNESS_ARGS+=("$arg")
+      ISSUEOPS_ARGS+=("$arg")
       ;;
     --adopt-command-file)
-      HARNESS_ARGS+=("$arg")
+      ISSUEOPS_ARGS+=("$arg")
       ACTIVATION_ARGS+=("$arg")
       ;;
     *)
-      HARNESS_ARGS+=("$arg")
+      ISSUEOPS_ARGS+=("$arg")
       ;;
   esac
 done
 
 if [[ "$DRY_RUN" == "1" ]]; then
   if is_truthy "$SKIP_BUILD"; then
-    log "dry-run: would leave existing agent-harness binary unchanged"
+    log "dry-run: would leave existing issueops binary unchanged"
   elif [[ -x "$BIN" ]]; then
-    log "dry-run: would update agent-harness binary from current checkout"
+    log "dry-run: would update issueops binary from current checkout"
   else
-    log "dry-run: would build agent-harness binary"
+    log "dry-run: would build issueops binary"
   fi
 elif is_truthy "$SKIP_BUILD"; then
   log "skip-build: leaving existing harness binary unchanged"
 else
   mkdir -p "$ROOT/bin"
-  STAGED_BIN="$(mktemp "$ROOT/bin/.agent-harness.activate-XXXXXX")"
+  STAGED_BIN="$(mktemp "$ROOT/bin/.issueops.activate-XXXXXX")"
   if [[ -x "$BIN" ]]; then
-    log "staging agent-harness binary update from current checkout"
+    log "staging issueops binary update from current checkout"
   else
-    log "staging initial agent-harness binary from current checkout"
+    log "staging initial issueops binary from current checkout"
   fi
-  (cd "$BUILD_ROOT" && go build -o "$STAGED_BIN" ./cmd/harness)
+  (cd "$BUILD_ROOT" && go build -o "$STAGED_BIN" ./cmd/issueops)
   chmod 0755 "$STAGED_BIN"
   "$STAGED_BIN" version >/dev/null
   preflight_install "$STAGED_BIN"
@@ -208,21 +208,21 @@ if [[ -x "$BIN" ]]; then
     begin_activation "$BIN"
   fi
   if [[ "$DRY_RUN" == "1" ]]; then
-    if ((${#HARNESS_ARGS[@]})); then
-      "$BIN" install "${HARNESS_ARGS[@]}"
+    if ((${#ISSUEOPS_ARGS[@]})); then
+      "$BIN" install "${ISSUEOPS_ARGS[@]}"
     else
       "$BIN" install
     fi
   else
-    SEAL_RECEIPT="$(mktemp "$ROOT/bin/.agent-harness.seal-XXXXXX")"
+    SEAL_RECEIPT="$(mktemp "$ROOT/bin/.issueops.seal-XXXXXX")"
     set +e
-    if ((${#HARNESS_ARGS[@]})); then
-      HARNESS_NATIVE_ACTIVATION_STEP=seal \
-        HARNESS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
-        "$BIN" install "${HARNESS_ARGS[@]}" --json >"$SEAL_RECEIPT"
+    if ((${#ISSUEOPS_ARGS[@]})); then
+      ISSUEOPS_NATIVE_ACTIVATION_STEP=seal \
+        ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
+        "$BIN" install "${ISSUEOPS_ARGS[@]}" --json >"$SEAL_RECEIPT"
     else
-      HARNESS_NATIVE_ACTIVATION_STEP=seal \
-        HARNESS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
+      ISSUEOPS_NATIVE_ACTIVATION_STEP=seal \
+        ISSUEOPS_NATIVE_ACTIVATION_TRANSITION_ID="$ACTIVATION_TRANSITION_ID" \
         "$BIN" install --json >"$SEAL_RECEIPT"
     fi
     SEAL_STATUS=$?
@@ -250,6 +250,6 @@ PY
 elif [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: binary missing; skipping install plan because ${BIN} does not exist yet"
 else
-  log "agent-harness binary missing after build: ${BIN}"
+  log "issueops binary missing after build: ${BIN}"
   exit 1
 fi

@@ -14,7 +14,7 @@ func AdapterOwnedTools() []Tool {
 		},
 		{
 			Name:        "worker_enqueue",
-			Description: "Create a no-shell local worker job record. This writes only to the harness worker state directory and never executes shell commands.",
+			Description: "Create a no-shell local worker job record. This writes only to the issueops worker state directory and never executes shell commands.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"kind"}, "properties": map[string]any{"kind": map[string]any{"type": "string"}, "payload": map[string]any{"type": "string"}}},
 		},
 		{
@@ -37,7 +37,7 @@ func AdapterOwnedTools() []Tool {
 		},
 		{
 			Name:        "worker_list",
-			Description: "List no-shell local worker jobs from the harness worker state directory. This is read-only.",
+			Description: "List no-shell local worker jobs from the issueops worker state directory. This is read-only.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 		},
 		{

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Boehm"
-  short_description: "Verify Korean planning documents with Kordoc OCR"
-  default_prompt: "Use $boehm to analyze this planning document through native text, full-page OCR, region OCR, and visual evidence."

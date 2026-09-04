@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/domain/statepath"
+	statecontract "issueops/internal/contract/state"
+	"issueops/internal/domain/statepath"
 )
 
 func (service *Service) Prune(maxAge time.Duration, confirm bool) (statecontract.StatePruneResult, error) {

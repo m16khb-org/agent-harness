@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestExecutionValidatorsAcceptOmoOwner(t *testing.T) {
 	probe := port.ExecutionOrcaProbeRequest{
 		Repo: "/repo", Host: "omo", Model: "openai-codex/gpt-5.6-sol",
 		Effort: "max", Provider: "github", Issue: 469,
-		Marker: "agent-harness issueops-v1 lifecycle=io-omo operation=0123456789abcdef0123456789abcdef provider=github issue=469",
+		Marker: "issueops-v1 lifecycle=io-omo operation=0123456789abcdef0123456789abcdef provider=github issue=469",
 	}
 	workspace := port.ExecutionWorkspaceRequest{
 		LifecycleID: "io-omo", SourceRoot: "/repo", Root: "/repo.worktrees/469-omo",
@@ -496,7 +496,7 @@ func TestExecutionIntentInspectionSurvivesDeletedWorkspaceWithoutWeakeningInvoke
 }
 
 func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
-	marker := "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
+	marker := "issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
 	promptSHA256 := strings.Repeat("a", 64)
 
 	title := executionTaskTitle(marker, promptSHA256)
@@ -513,7 +513,7 @@ func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
 
 func TestExecutionIntentInventoryRejectsRetiredTaskTitle(t *testing.T) {
 	workspace, probe := executionFixture(t)
-	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d provider=github issue=69"
+	probe.Marker = "issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d provider=github issue=69"
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
 		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
 	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
@@ -975,7 +975,7 @@ func TestExecutionIntentDispatchReusesTheSealedTerminalAcrossResumeMarkers(t *te
 	}
 	client := &executionFake{terminals: []port.OrcaTerminal{{
 		RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69",
-		Title: "agent-harness issueops-v1 prior-operation", Connected: true, Writable: true,
+		Title: "issueops-v1 prior-operation", Connected: true, Writable: true,
 	}}}
 	receipt, err := NewExecutionClient(client).InvokeIntent(context.Background(), request)
 	if err != nil {
@@ -1214,7 +1214,7 @@ func executionFixture(t *testing.T) (port.ExecutionWorkspaceRequest, port.Execut
 	request := port.ExecutionOrcaProbeRequest{
 		Repo: workspace.SourceRoot, Host: "claude", Model: "caller-selected-model", Effort: "high",
 		Provider: "github", Issue: 69,
-		Marker: "agent-harness issueops-v1 lifecycle=io-69 operation=operation-69 provider=github issue=69",
+		Marker: "issueops-v1 lifecycle=io-69 operation=operation-69 provider=github issue=69",
 	}
 	return workspace, request
 }
@@ -1236,7 +1236,7 @@ func executionLaunchFixture(t *testing.T, root string) port.ExecutionOrcaLaunchR
 		t.Fatal(err)
 	}
 	packet := []byte("{\"schema_version\":1}\n")
-	packetPath := filepath.Join(root, ".agent-harness", "state", "issueops-v1", "context.json")
+	packetPath := filepath.Join(root, ".issueops", "state", "issueops-v1", "context.json")
 	if err := os.MkdirAll(filepath.Dir(packetPath), 0o700); err != nil {
 		t.Fatal(err)
 	}

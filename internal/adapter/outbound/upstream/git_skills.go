@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 // GitSkillStore materializes upstream skills from git into a harness-owned

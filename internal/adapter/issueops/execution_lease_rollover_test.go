@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	contractissueops "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	contractissueops "issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 type rolloverOwnerInspector struct {
@@ -194,7 +194,7 @@ func rolloverExecutionFixture(t *testing.T) (string, contractissueops.IssueOpsRe
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "270-runtime-rollover")
 	record := fixture.record
-	record.IssueURL = "https://github.com/example/agent-harness/issues/270"
+	record.IssueURL = "https://github.com/example/issueops/issues/270"
 	record.BranchPrepare.IssueURL = record.IssueURL
 	record.Execution.Mode = contractissueops.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"

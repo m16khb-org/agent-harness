@@ -30,7 +30,7 @@ func TestOrcaIntentMarkerLiteralHasOneProductionOwner(t *testing.T) {
 				return true
 			}
 			value, err := strconv.Unquote(literal.Value)
-			if err == nil && strings.Contains(value, "agent-harness issueops-v1") {
+			if err == nil && (strings.Contains(value, "issueops-v1 lifecycle=") || strings.Contains(value, "issueops-v1 resume ")) {
 				t.Errorf("%s contains an independently owned Orca marker literal", path)
 			}
 			return true

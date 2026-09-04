@@ -14,7 +14,7 @@ const (
 
 func base(nodes ...Node) Observation {
 	return Observation{
-		IssueURL:        "https://github.com/m16khb/agent-harness/issues/304",
+		IssueURL:        "https://github.com/m16khb/issueops/issues/304",
 		RequestedBranch: wantedName, SealedBase: sealedBase,
 		TotalCount: len(nodes), Nodes: nodes,
 	}

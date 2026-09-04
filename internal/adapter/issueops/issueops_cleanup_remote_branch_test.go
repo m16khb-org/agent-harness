@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 const (
@@ -362,7 +362,7 @@ func TestCleanupRemoteBranchPushFailureSurfacesFailedStep(t *testing.T) {
 	}
 }
 
-// 감사(brooks M12): apply 성공 시 브랜치·OID·시각이 이슈 본문 감사 라인으로
+// 감사(design-review M12): apply 성공 시 브랜치·OID·시각이 이슈 본문 감사 라인으로
 // 멱등 반영되고, 반영 실패는 삭제를 되돌리지 않되 결과에 드러난다.
 func TestCleanupRemoteBranchApplyReflectsAuditLine(t *testing.T) {
 	stateRoot, record := remoteBranchTestRecord(t)

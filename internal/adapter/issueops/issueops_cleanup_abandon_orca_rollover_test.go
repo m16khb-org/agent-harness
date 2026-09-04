@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // rolloverAwareInspector는 실제 Orca 어댑터의 계약을 재현한다. 봉인된 runtime과

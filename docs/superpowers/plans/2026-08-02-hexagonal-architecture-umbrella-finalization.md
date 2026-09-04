@@ -17,7 +17,7 @@
 - parent는 `main`을 포함하며 `origin/main...HEAD`는 `0/92`이다.
 - GitHub sub-issue 11개는 모두 `CLOSED`다.
 - #200의 caller inventory는 `internal/core=41`, `internal/core/issueops=15`,
-  `internal/port=28`, `cmd/harness/issueopscli=1`이고 삭제 후보는 0개다.
+  `internal/port=28`, `cmd/issueops/issueopscli=1`이고 삭제 후보는 0개다.
 - `legacy_imports.txt`와 public/persisted/runtime contract는 유지한다.
 - `eb4e4982...final HEAD`는 umbrella 최종화 문서·보고서만 포함하는 delta로,
   `origin/main...final HEAD`는 11개 child 전체 migration delta로 각각 검증한다.
@@ -54,13 +54,13 @@
 git status --short
 git rev-parse HEAD
 git rev-list --left-right --count origin/main...HEAD
-gh issue view 117 --repo m16khb/agent-harness --json state,subIssues,body
+gh issue view 117 --repo m16khb/issueops --json state,subIssues,body
 ```
 
 ### Task 2 — 활성 훅 fresh-host proof
 
 - 현재 부모 프로세스를 사용하지 않는다.
-- parent HEAD에서 `bin/agent-harness`를 다시 빌드한다.
+- parent HEAD에서 `bin/issueops`를 다시 빌드한다.
 - isolated `CODEX_HOME`에 repository Codex hook config를 byte-identical 복사하고
   `hooks/list` 및 fresh `codex exec --enable hooks`로 foreign sentinel mutation
   차단과 sentinel 미생성을 확인한다.
@@ -78,7 +78,7 @@ gh issue view 117 --repo m16khb/agent-harness --json state,subIssues,body
   PreToolUse deny와 sentinel 미생성을 확인한다.
 - `--disable hooks`, `--safe-mode`, `--bare`는 proof에 사용하지 않는다.
 
-검증 결과는 `.agent-harness/turing/issue117-report.md`에 session ID, deny reason,
+검증 결과는 `.issueops/verified-execution/issue117-report.md`에 session ID, deny reason,
 sentinel 부재와 함께 기록한다.
 
 ### Task 3 — 최종 로컬 gate
@@ -89,19 +89,19 @@ sentinel 부재와 함께 기록한다.
 go fmt ./...
 git diff --exit-code
 go test ./internal/architecture -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 git diff --check origin/main...HEAD
 ```
 
 ### Task 4 — evidence·독립 리뷰·publication
 
-- `.agent-harness/turing/issue117-report.md`에 child inventory, 활성 훅 proof, local
+- `.issueops/verified-execution/issue117-report.md`에 child inventory, 활성 훅 proof, local
   gate, 변경 범위와 pending remote boundary를 기록한다.
 - Shannon no-input guard는 `eb4e4982...final HEAD`의 finalization-only delta에
   적용한다. `origin/main...final HEAD`의 11-child production delta는 각 child

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func issueOpsChildPRGateMissing(stateRoot string, parent issueops.IssueOpsRecord) ([]string, []string) {

@@ -39,7 +39,7 @@ body:
     id: environment
     attributes:
       label: 환경과 버전
-      description: OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitHub/GitLab) 정보를 적어 주세요.
+      description: OS, Go 버전, `issueops version`, 관련 host(Codex/Claude/GitHub/GitLab) 정보를 적어 주세요.
       render: text
     validations:
       required: true

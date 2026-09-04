@@ -1,11 +1,11 @@
 ---
 name: atomic-commit-push
-description: Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.
+description: Git Operations sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **git-operations**.
 ---
 
 # Atomic Commit Push
 
-> **Torvalds sub-skill.** Handles basic commit and push workflows. Advanced git operations belong to the parent **`torvalds`** skill (`skills/torvalds/SKILL.md`).
+> **Git Operations sub-skill.** Handles basic commit and push workflows. Advanced git operations belong to the parent **`git-operations`** skill (`skills/git-operations/SKILL.md`).
 
 ## Goal
 
@@ -15,7 +15,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
 
 - Only commit/push when the user explicitly asks for it.
 - Read the repo's nearest `AGENTS.md`/`CLAUDE.md` and relevant project docs before committing.
-- If `.agent-harness/COMMIT_POLICY.md` exists, use it as the commit-message source of truth.
+- If `.issueops/COMMIT_POLICY.md` exists, use it as the commit-message source of truth.
 - Never use `git add .` or `git commit -a`. Stage exact files, and use `git add -p` when a file mixes unrelated changes.
 - Do not discard, stash, reformat, or rewrite user changes unless the user explicitly asks.
 - Treat `.env`, private keys, credentials, local state, logs, and generated secrets as blockers until inspected or excluded.
@@ -27,7 +27,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
 1. **Pre-start gate / Preflight**
    - Run `python3 <skill>/scripts/git_preflight.py [repo]` if available.
    - Before planning commits, run `python3 <skill>/scripts/api_doc_gate.py [repo]` if available. This hook-style gate calls the agent-backed API documentation reviewer and exits non-zero on blocking Swagger/OpenAPI drift.
-   - If that script is unavailable, run the equivalent API documentation gate when staged API candidate files exist: `agent-harness api-doc check --json` or MCP `api_doc_static_check` plus `api_doc_review`.
+   - If that script is unavailable, run the equivalent API documentation gate when staged API candidate files exist: `issueops api-doc check --json` or MCP `api_doc_static_check` plus `api_doc_review`.
    - If the API documentation gate fails, stop at the gate and report the blocking Swagger/OpenAPI findings instead of continuing to stage/commit.
    - Also inspect `git status --short`, current branch, upstream, and recent commit style.
    - If the directory is not a git repo, stop and report.
@@ -48,7 +48,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
    - Ensure unrelated work remains unstaged with `git status --short`.
 
 5. **Commit**
-   - To save context and ensure compliance with this format, you can execute the `commit_suggest` MCP tool (or run `agent-harness project commit-suggest --staged`) to automatically generate the commit message from your staged diff. Review the suggested draft and refine it as needed before executing the final commit.
+   - To save context and ensure compliance with this format, you can execute the `commit_suggest` MCP tool (or run `issueops project commit-suggest --staged`) to automatically generate the commit message from your staged diff. Review the suggested draft and refine it as needed before executing the final commit.
    - Match stronger repository-specific rules first, then use the hybrid format below.
    - Use a Conventional Commit subject: `<type>(<scope>)!?: <summary>`.
    - Add a `Lore:` body for AI-readable context:

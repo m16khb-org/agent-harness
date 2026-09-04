@@ -1,10 +1,10 @@
 package lifecycle
 
 import (
-	fingerprintdeps "agent-harness/internal/adapter/lifecycle/fingerprint"
-	statestore "agent-harness/internal/adapter/outbound/state"
-	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
-	"agent-harness/internal/adapter/repopath"
+	fingerprintdeps "issueops/internal/adapter/lifecycle/fingerprint"
+	statestore "issueops/internal/adapter/outbound/state"
+	projectdocsadapter "issueops/internal/adapter/projectdocs"
+	"issueops/internal/adapter/repopath"
 )
 
 // production wiring과 같은 state store, repo path resolver, git origin reader를

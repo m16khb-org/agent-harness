@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
@@ -170,7 +170,7 @@ func hashJSON(value any) (string, error) {
 
 func claimTokenPath(record issueops.IssueOpsRecord) string {
 	key := tokenSHA256(record.ID)[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
 }
 
 func createClaimToken(record issueops.IssueOpsRecord) (string, string, error) {

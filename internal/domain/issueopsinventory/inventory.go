@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 func NormalizeID(id string) (string, error) {

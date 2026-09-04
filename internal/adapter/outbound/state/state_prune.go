@@ -3,7 +3,7 @@ package state
 import (
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func StatePrune(maxAge time.Duration, confirm bool) (statecontract.StatePruneResult, error) {

@@ -3,7 +3,7 @@ package commandparse
 import "testing"
 
 func TestParseExactIssueOpsDesignReview(t *testing.T) {
-	commandText := "agent-harness issueops design review" +
+	commandText := "issueops design review" +
 		" --id io-1 --problem-summary problem --proposed-design design --refactor-plan boundary" +
 		" --alternative one --alternative two --risk risk-one --risk risk-two" +
 		" --verification check-one --verification check-two --open-question question-one --open-question question-two" +
@@ -43,7 +43,7 @@ func TestParseExactIssueOpsDesignReview(t *testing.T) {
 		t.Fatalf("unknown design review flag was accepted: %#v", got)
 	}
 
-	nearMiss, parsed := ParseExactIssueOpsCommand("agent-harness issueops design approve --id io-1")
+	nearMiss, parsed := ParseExactIssueOpsCommand("issueops design approve --id io-1")
 	if parsed {
 		if _, _, _, accepted := IssueOpsCommandSpec(nearMiss.Path); accepted {
 			t.Fatalf("malformed design path was classified: %#v", nearMiss)

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 func TestSyncInstallsOnlyMissingEntries(t *testing.T) {

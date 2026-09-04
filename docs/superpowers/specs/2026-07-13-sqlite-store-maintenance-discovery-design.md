@@ -9,8 +9,8 @@
 ## 관찰된 현재 상태
 
 - `knownStoreRoots`는 state root, issueops, worker만 반환한다.
-- loop는 `$HARNESS_STATE_DIR/loop/harness.db`에 독립 store를 둔다.
-- kubectl live-access approval은 project namespace에서 `state.WithKeyLock`을 사용한다. 이 호출은 `$HARNESS_STATE_DIR/projects/<repo-id>/harness.db`를 생성하지만 approval record 자체는 JSON 파일이므로 `records` table은 비어 있을 수 있다.
+- loop는 `$ISSUEOPS_STATE_DIR/loop/issueops.db`에 독립 store를 둔다.
+- kubectl live-access approval은 project namespace에서 `state.WithKeyLock`을 사용한다. 이 호출은 `$ISSUEOPS_STATE_DIR/projects/<repo-id>/issueops.db`를 생성하지만 approval record 자체는 JSON 파일이므로 `records` table은 비어 있을 수 있다.
 - 실측된 16개 project store는 각각 8,272-byte WAL 2 frames, loop store는 16,512-byte WAL 4 frames였다. 모든 data/lock DB의 `integrity_check`는 `ok`였고 파일 권한은 `0600`이었다.
 
 따라서 긴급한 손상 복구가 아니라, 새 store topology에 맞게 기존 유지보수 계약을 확장하는 작업이다.
@@ -19,7 +19,7 @@
 
 ### 채택: bounded discovery
 
-고정 root 목록에 loop를 추가하고, `projects/`의 직계 하위 디렉터리만 조회한다. 각 project 디렉터리 안에 regular file인 `harness.db`가 이미 있을 때만 유지보수 대상으로 추가한다.
+고정 root 목록에 loop를 추가하고, `projects/`의 직계 하위 디렉터리만 조회한다. 각 project 디렉터리 안에 regular file인 `issueops.db`가 이미 있을 때만 유지보수 대상으로 추가한다.
 
 이 방식은 현재 directory contract를 직접 반영하면서도 탐색 범위를 한 단계로 제한한다. `os.ReadDir`의 정렬 순서를 사용해 결과 순서를 결정적으로 유지한다.
 
@@ -37,17 +37,17 @@ store 생성 시 registry를 갱신하면 discovery는 빨라지지만 registry 
 
 1. state root
 2. issueops
-3. worker (`HARNESS_WORKER_DIR` override 유지)
+3. worker (`ISSUEOPS_WORKER_DIR` override 유지)
 4. loop
-5. `projects/<repo-id>` 중 existing `harness.db` store, repo ID 오름차순
+5. `projects/<repo-id>` 중 existing `issueops.db` store, repo ID 오름차순
 
-고정 root는 기존처럼 `harness.db`가 없으면 `Skipped`에 보고한다. 따라서 loop가 아직 생성되지 않았다면 skipped root가 된다.
+고정 root는 기존처럼 `issueops.db`가 없으면 `Skipped`에 보고한다. 따라서 loop가 아직 생성되지 않았다면 skipped root가 된다.
 
 Project discovery에는 다음 제약을 적용한다.
 
 - `projects/`가 없으면 project 후보는 0개이며 오류가 아니다.
 - 직계 하위 real directory만 검사하고 symlink directory는 따라가지 않는다.
-- `harness.db`가 regular file일 때만 후보로 추가한다. DB가 없는 project namespace는 `Skipped`에 추가하지 않는다. 수천 개의 lifecycle-only namespace가 응답을 팽창시키지 않게 하기 위해서다.
+- `issueops.db`가 regular file일 때만 후보로 추가한다. DB가 없는 project namespace는 `Skipped`에 추가하지 않는다. 수천 개의 lifecycle-only namespace가 응답을 팽창시키지 않게 하기 위해서다.
 - `projects/`가 존재하지만 읽을 수 없으면 성공으로 가장하지 않고 오류를 반환한다.
 - 후보를 발견하는 과정에서는 `sqlstore.Open`을 호출하지 않는다. 유지보수 대상으로 확정된 existing DB만 기존 `StateMaintain` loop에서 연다.
 
@@ -56,7 +56,7 @@ Project discovery에는 다음 제약을 적용한다.
 발견된 store에는 기존 `sqlstore.Maintain`을 그대로 적용한다.
 
 - `PRAGMA wal_checkpoint(TRUNCATE)`로 WAL을 checkpoint한다.
-- `harness.db*`와 `harness.lock.db*` 파일 권한을 `0600`으로 재보증한다.
+- `issueops.db*`와 `issueops.lock.db*` 파일 권한을 `0600`으로 재보증한다.
 - busy writer가 있으면 기존처럼 `Checkpointed=false`로 보고하고 전체 작업을 실패시키지 않는다.
 - discovery 또는 store open/maintenance 오류는 기존 fail-fast 방식으로 반환한다.
 
@@ -86,10 +86,10 @@ TDD는 다음 순서로 진행한다.
 
 ```bash
 go test ./internal/core/state -run 'Maintain|Discover' -count=1
-go test ./cmd/harness/statecli ./cmd/harness/mcpcli -run Maintain -count=1
+go test ./cmd/issueops/statecli ./cmd/issueops/mcpcli -run Maintain -count=1
 go test -p 1 -timeout 20m ./... -count=1
 go test -race -p 1 -timeout 20m ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 ## 완료 기준

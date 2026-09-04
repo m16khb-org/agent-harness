@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 func TestReadExecutionResumeArtifactsUsesDurableIdentityAcrossTemplateUpgrade(t *testing.T) {
@@ -181,9 +181,9 @@ func sealedResumeIdentityFixture(t *testing.T) (issueops.IssueOpsRecord, executi
 	issueBody := "## Acceptance\n- AC-01 sealed resume\n\n## Verification\n```bash\ngo test ./...\n```\n"
 	record := issueops.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsSchemaVersion, ID: "io-aaaaaaaaaaaa", Repo: filepath.Join(t.TempDir(), "source"), Branch: "254-resume",
-		IssueURL: "https://github.com/example/agent-harness/issues/254", WorktreePath: worktree,
+		IssueURL: "https://github.com/example/issueops/issues/254", WorktreePath: worktree,
 		PlanPath:      filepath.Join(worktree, "plans", "linked.md"),
-		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/254", Branch: "254-resume", BaseBranch: "main", BaseSHA: strings.Repeat("a", 40), LinkVerified: true},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/issueops/issues/254", Branch: "254-resume", BaseBranch: "main", BaseSHA: strings.Repeat("a", 40), LinkVerified: true},
 		Execution: &issueops.Execution{
 			Mode:      issueops.ExecutionModeOrca,
 			Workspace: issueops.Workspace{SourceRoot: filepath.Join(t.TempDir(), "source"), Root: worktree, Branch: "254-resume", BaseHead: strings.Repeat("a", 40), Driver: "orca", LinkedAt: "2026-08-03T00:00:00Z"},

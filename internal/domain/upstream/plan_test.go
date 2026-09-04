@@ -3,7 +3,7 @@ package upstream
 import (
 	"testing"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
 )
 
 func TestPlanSkipsEntriesTheHostAlreadyHas(t *testing.T) {
@@ -21,7 +21,7 @@ func TestPlanSkipsEntriesTheHostAlreadyHas(t *testing.T) {
 	observed := upstreamcontract.Observed{
 		Plugins:      []string{"open-code-review@open-code-review", "superpowers@claude-plugins-official"},
 		Marketplaces: []string{"claude-plugins-official", "open-code-review"},
-		Skills:       []string{"diagram-design", "turing"},
+		Skills:       []string{"diagram-design", "verified-execution"},
 	}
 
 	items := Plan(cfg, observed)

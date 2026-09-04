@@ -1,7 +1,7 @@
 # Agent-Harness Current Project Improvement Plan
 
 ## TL;DR
-> **Summary**: Current agent-harness is a functional Go MVP with a green baseline. The next improvement work should prioritize public contract drift, safe read-only worker parity, draft-wiki queue correctness, runtime verification, then maintainability refactors.
+> **Summary**: Current issueops is a functional Go MVP with a green baseline. The next improvement work should prioritize public contract drift, safe read-only worker parity, draft-wiki queue correctness, runtime verification, then maintainability refactors.
 > **Deliverables**: `update` command-surface consistency; MCP `worker_run_read_only`; draft-wiki queue locking/error contract; worker/daemon/race tests; installer deduplication; declarative hook routing; draft-wiki/LLM Wiki promotion QA.
 > **Effort**: Large
 > **Parallel**: YES - 5 waves
@@ -14,12 +14,12 @@
 
 ### Current-State Evidence
 - `README.md:24` says the repo is an early but functional MVP with CLI, daemon-backed MCP, policy checker, read-only evidence runner, state checkpoints, project-doc/draft-wiki tools, lifecycle hooks, guard/verify-work/trace gates, API-doc review, native installer, self-verify, and self-augment.
-- `go test ./... -count=1` passed on 2026-06-01 during planning across `cmd/harness`, `internal/adapter/*`, `internal/core`, and `internal/port`.
-- `cmd/harness/main.go:137` dispatches `update`, but `internal/adapter/cli/usage.go:14-38` omits it from `Commands()` and `internal/adapter/cli/usage.go:78-89` omits it from usage text.
-- `cmd/harness/worker.go:95-149` exposes `worker run --read-only`; `internal/core/worker.go:143-166` implements it through `RunReadOnlyCommand`; `internal/adapter/mcp/catalog.go:25-44` exposes only worker lifecycle MCP tools.
+- `go test ./... -count=1` passed on 2026-06-01 during planning across `cmd/issueops`, `internal/adapter/*`, `internal/core`, and `internal/port`.
+- `cmd/issueops/main.go:137` dispatches `update`, but `internal/adapter/cli/usage.go:14-38` omits it from `Commands()` and `internal/adapter/cli/usage.go:78-89` omits it from usage text.
+- `cmd/issueops/worker.go:95-149` exposes `worker run --read-only`; `internal/core/worker.go:143-166` implements it through `RunReadOnlyCommand`; `internal/adapter/mcp/catalog.go:25-44` exposes only worker lifecycle MCP tools.
 - `internal/core/policy.go:298-357` executes read-only argv commands with write/network/shell disabled, policy evaluation, timeout, env allowlist, redaction, and bounded output.
 - `internal/core/draft_wiki_queue.go:119-164` reads and rewrites a shared JSONL queue while processing; line 150 ignores running-state rewrite errors; `internal/core/draft_wiki_queue.go:293-296` silently skips malformed queue lines.
-- Contract coverage lives in `cmd/harness/contract_golden_test.go`, `cmd/harness/response_contract_golden_test.go`, `cmd/harness/testdata/*.golden.*`, and `internal/adapter/testdata/native_install_contract_matrix.golden.json`.
+- Contract coverage lives in `cmd/issueops/contract_golden_test.go`, `cmd/issueops/response_contract_golden_test.go`, `cmd/issueops/testdata/*.golden.*`, and `internal/adapter/testdata/native_install_contract_matrix.golden.json`.
 
 ### Metis Review (gaps addressed)
 - Treat the output as a prioritized backlog, not a single speculative feature.
@@ -45,17 +45,17 @@ Improve reliability and operator trust by eliminating public-surface drift, safe
 - `go test ./... -count=1` passes.
 - `go test -race ./... -count=1` passes, or a package-specific exception is documented with evidence.
 - `go vet ./...` passes.
-- `go build -o bin/agent-harness ./cmd/harness` passes.
-- `go test ./cmd/harness -run Golden -count=1` passes.
+- `go build -o bin/issueops ./cmd/issueops` passes.
+- `go test ./cmd/issueops -run Golden -count=1` passes.
 - `go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1` passes.
-- CLI smoke confirms `./bin/agent-harness --help` includes `agent-harness update` and `agent-harness worker run --read-only`.
+- CLI smoke confirms `./bin/issueops --help` includes `issueops update` and `issueops worker run --read-only`.
 - MCP smoke confirms `worker_run_read_only` exists and denies write/network/shell attempts.
 - Draft-wiki worker QA proves exactly-once processing under a two-worker race and safe malformed-line reporting.
-- `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json` passes after changes, or reports a newly documented non-regression with evidence.
+- `./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --json` passes after changes, or reports a newly documented non-regression with evidence.
 
 ### Must Have
 - TDD/characterization-first implementation for every production change.
-- Tests use temp `HOME`, `CODEX_HOME`, `HARNESS_STATE_DIR`, `HARNESS_WORKER_DIR`, and `HARNESS_DAEMON_DIR`; no real user-home mutation.
+- Tests use temp `HOME`, `CODEX_HOME`, `ISSUEOPS_STATE_DIR`, `ISSUEOPS_WORKER_DIR`, and `ISSUEOPS_DAEMON_DIR`; no real user-home mutation.
 - Golden updates only through existing update flags with diff review.
 - Redaction preserved for payloads, argv, stdout/stderr, queue material, errors, and MCP responses.
 - Command execution remains argv-only, read-only, timeout-bounded, non-shell, non-network, and workspace-confined.
@@ -103,26 +103,26 @@ Wave 5: Final verification wave.
   **Parallelization**: Can Parallel: NO | Wave 1 | Blocks: 2, 5, final | Blocked By: none
 
   **References**:
-  - Dispatch: `cmd/harness/main.go:137` - routes `update` to `runUpdate`.
+  - Dispatch: `cmd/issueops/main.go:137` - routes `update` to `runUpdate`.
   - Catalog: `internal/adapter/cli/usage.go:14` - owns top-level command list.
   - Usage: `internal/adapter/cli/usage.go:78` - install/bootstrap area omits `update`.
-  - README: `README.md:135` - recommends `agent-harness update`.
-  - Golden: `cmd/harness/testdata/usage.golden.txt`.
+  - README: `README.md:135` - recommends `issueops update`.
+  - Golden: `cmd/issueops/testdata/usage.golden.txt`.
 
   **Acceptance Criteria**:
   - [ ] RED test proves `update` omission before fix.
   - [ ] `internal/adapter/cli/usage.go` includes `update` in `Commands()` and `Usage()`.
   - [ ] `go test ./internal/adapter/cli -count=1` passes.
-  - [ ] `go test ./cmd/harness -run Golden -count=1` passes.
-  - [ ] `./bin/agent-harness --help` includes `agent-harness update`.
+  - [ ] `go test ./cmd/issueops -run Golden -count=1` passes.
+  - [ ] `./bin/issueops --help` includes `issueops update`.
 
   **QA Scenarios**:
   ```
   Scenario: help advertises update
     Tool: tmux
-    Steps: tmux new-session -d -s ah-qa-update-help 'cd /Users/user/Workspace/agent-harness && mkdir -p evidence/current-project-improvements-2026-06-01 && go build -o bin/agent-harness ./cmd/harness && ./bin/agent-harness --help | tee evidence/current-project-improvements-2026-06-01/task-1-help.txt; python3 - <<"PY2"
+    Steps: tmux new-session -d -s io-qa-update-help 'cd /Users/user/Workspace/issueops && mkdir -p evidence/current-project-improvements-2026-06-01 && go build -o bin/issueops ./cmd/issueops && ./bin/issueops --help | tee evidence/current-project-improvements-2026-06-01/task-1-help.txt; python3 - <<"PY2"
 from pathlib import Path
-assert "agent-harness update" in Path("evidence/current-project-improvements-2026-06-01/task-1-help.txt").read_text()
+assert "issueops update" in Path("evidence/current-project-improvements-2026-06-01/task-1-help.txt").read_text()
 PY2
  echo EXIT:$?'
     Expected: transcript contains `EXIT:0`.
@@ -130,12 +130,12 @@ PY2
 
   Scenario: update dry-run does not mutate real home
     Tool: bash
-    Steps: tmp=$(mktemp -d); HOME="$tmp/home" CODEX_HOME="$tmp/codex" HARNESS_STATE_DIR="$tmp/state" ./bin/agent-harness update --dry-run --json > evidence/current-project-improvements-2026-06-01/task-1-update-dry-run.json; test ! -e "$tmp/home/.claude/settings.json"; rm -rf "$tmp"
+    Steps: tmp=$(mktemp -d); HOME="$tmp/home" CODEX_HOME="$tmp/codex" ISSUEOPS_STATE_DIR="$tmp/state" ./bin/issueops update --dry-run --json > evidence/current-project-improvements-2026-06-01/task-1-update-dry-run.json; test ! -e "$tmp/home/.claude/settings.json"; rm -rf "$tmp"
     Expected: command exits 0, JSON is valid, no real user-home path is written.
     Evidence: evidence/current-project-improvements-2026-06-01/task-1-update-dry-run.json
   ```
 
-  **Commit**: YES | Message: `fix(cli): include update in canonical command surface` | Files: `internal/adapter/cli/usage.go`, `internal/adapter/cli/*_test.go`, `cmd/harness/testdata/usage.golden.txt`, response contract golden if changed
+  **Commit**: YES | Message: `fix(cli): include update in canonical command surface` | Files: `internal/adapter/cli/usage.go`, `internal/adapter/cli/*_test.go`, `cmd/issueops/testdata/usage.golden.txt`, response contract golden if changed
 
 - [x] 2. Add MCP parity for `worker run --read-only` without widening execution powers
 
@@ -145,11 +145,11 @@ PY2
   **Parallelization**: Can Parallel: YES | Wave 2 | Blocks: 4, final | Blocked By: 1
 
   **References**:
-  - CLI: `cmd/harness/worker.go:95`.
+  - CLI: `cmd/issueops/worker.go:95`.
   - Core: `internal/core/worker.go:143`.
   - Policy: `internal/core/policy.go:298`.
   - MCP catalog: `internal/adapter/mcp/catalog.go:25`.
-  - Contract snapshot: `cmd/harness/response_contract_golden_test.go:166`.
+  - Contract snapshot: `cmd/issueops/response_contract_golden_test.go:166`.
 
   **Acceptance Criteria**:
   - [ ] MCP schema includes `worker_run_read_only` with required `workspace_root`, `cwd`, and `argv`.
@@ -162,18 +162,18 @@ PY2
   ```
   Scenario: MCP worker read-only success
     Tool: tmux
-    Steps: tmux new-session -d -s ah-qa-worker-mcp 'cd /Users/user/Workspace/agent-harness && tmp=$(mktemp -d) && HARNESS_WORKER_DIR="$tmp/worker" go test ./cmd/harness -run TestMCPWorkerRunReadOnlyAllowsGitStatus -count=1; code=$?; rm -rf "$tmp"; echo EXIT:$code'
+    Steps: tmux new-session -d -s io-qa-worker-mcp 'cd /Users/user/Workspace/issueops && tmp=$(mktemp -d) && ISSUEOPS_WORKER_DIR="$tmp/worker" go test ./cmd/issueops -run TestMCPWorkerRunReadOnlyAllowsGitStatus -count=1; code=$?; rm -rf "$tmp"; echo EXIT:$code'
     Expected: transcript contains `PASS` and `EXIT:0`.
     Evidence: evidence/current-project-improvements-2026-06-01/task-2-mcp-worker-success.txt
 
   Scenario: MCP worker denies unsafe commands
     Tool: bash
-    Steps: go test ./cmd/harness -run TestMCPWorkerRunReadOnlyDeniesWriteNetworkAndShell -count=1 | tee evidence/current-project-improvements-2026-06-01/task-2-mcp-worker-deny.txt
+    Steps: go test ./cmd/issueops -run TestMCPWorkerRunReadOnlyDeniesWriteNetworkAndShell -count=1 | tee evidence/current-project-improvements-2026-06-01/task-2-mcp-worker-deny.txt
     Expected: test passes and assertions cover write, network, and shell denial reasons.
     Evidence: evidence/current-project-improvements-2026-06-01/task-2-mcp-worker-deny.txt
   ```
 
-  **Commit**: YES | Message: `feat(worker): expose read-only worker evidence via MCP` | Files: `internal/adapter/mcp/catalog.go`, MCP handler files, `cmd/harness/*_test.go`, `cmd/harness/testdata/*.golden.*`, docs if surface changes
+  **Commit**: YES | Message: `feat(worker): expose read-only worker evidence via MCP` | Files: `internal/adapter/mcp/catalog.go`, MCP handler files, `cmd/issueops/*_test.go`, `cmd/issueops/testdata/*.golden.*`, docs if surface changes
 
 - [x] 3. Harden draft-wiki queue processing for concurrency, malformed lines, and persistence errors
 
@@ -200,7 +200,7 @@ PY2
   ```
   Scenario: two workers race safely
     Tool: tmux
-    Steps: create temp repo/state/fake Z.AI; enqueue one event; run two `./bin/agent-harness worker draft-wiki --repo <repo> --model <fake> --limit 1 --json` commands in parallel tmux panes; capture both panes.
+    Steps: create temp repo/state/fake Z.AI; enqueue one event; run two `./bin/issueops worker draft-wiki --repo <repo> --model <fake> --limit 1 --json` commands in parallel tmux panes; capture both panes.
     Expected: exactly one result succeeds, the other is no-op/locked; only one draft file exists.
     Evidence: evidence/current-project-improvements-2026-06-01/task-3-draft-wiki-race.txt
 
@@ -222,14 +222,14 @@ PY2
 
   **References**:
   - Worker tests: `internal/core/audit_worker_test.go`.
-  - Daemon tests: `cmd/harness/daemon_test.go`.
-  - Race policy: `.agent-harness/TESTING.md`.
+  - Daemon tests: `cmd/issueops/daemon_test.go`.
+  - Race policy: `.issueops/TESTING.md`.
   - Worker dir override: `internal/core/worker.go:187`.
 
   **Acceptance Criteria**:
   - [ ] Worker timeout test proves timeout exit code and bounded stderr.
   - [ ] Worker denial test proves denied command produces failed job and no marker file.
-  - [ ] Daemon smoke proves start/status/stop under temp `HARNESS_DAEMON_DIR`.
+  - [ ] Daemon smoke proves start/status/stop under temp `ISSUEOPS_DAEMON_DIR`.
   - [ ] Socket permission or stale lock test covers failure/recovery path.
   - [ ] `go test -race ./... -count=1` evidence is captured.
 
@@ -237,7 +237,7 @@ PY2
   ```
   Scenario: isolated daemon lifecycle smoke
     Tool: tmux
-    Steps: tmux new-session -d -s ah-qa-daemon 'cd /Users/user/Workspace/agent-harness && tmp=$(mktemp -d) && HARNESS_DAEMON_DIR="$tmp/daemon" ./bin/agent-harness daemon start --json && HARNESS_DAEMON_DIR="$tmp/daemon" ./bin/agent-harness daemon status --json && HARNESS_DAEMON_DIR="$tmp/daemon" ./bin/agent-harness daemon stop --json; code=$?; rm -rf "$tmp"; echo EXIT:$code'
+    Steps: tmux new-session -d -s io-qa-daemon 'cd /Users/user/Workspace/issueops && tmp=$(mktemp -d) && ISSUEOPS_DAEMON_DIR="$tmp/daemon" ./bin/issueops daemon start --json && ISSUEOPS_DAEMON_DIR="$tmp/daemon" ./bin/issueops daemon status --json && ISSUEOPS_DAEMON_DIR="$tmp/daemon" ./bin/issueops daemon stop --json; code=$?; rm -rf "$tmp"; echo EXIT:$code'
     Expected: transcript contains start/status/stop JSON and `EXIT:0`.
     Evidence: evidence/current-project-improvements-2026-06-01/task-4-daemon-lifecycle.txt
 
@@ -248,7 +248,7 @@ PY2
     Evidence: evidence/current-project-improvements-2026-06-01/task-4-race.txt
   ```
 
-  **Commit**: YES | Message: `test(runtime): expand worker and daemon operational coverage` | Files: `internal/core/*_test.go`, `cmd/harness/daemon_test.go`, docs/testing updates if new required command is adopted
+  **Commit**: YES | Message: `test(runtime): expand worker and daemon operational coverage` | Files: `internal/core/*_test.go`, `cmd/issueops/daemon_test.go`, docs/testing updates if new required command is adopted
 
 - [x] 5. Deduplicate Codex/Claude installers without behavior changes
 
@@ -280,7 +280,7 @@ PY2
 
   Scenario: dry-run install remains user-safe
     Tool: tmux
-    Steps: tmux new-session -d -s ah-qa-install 'cd /Users/user/Workspace/agent-harness && tmp=$(mktemp -d) && HOME="$tmp/home" CODEX_HOME="$tmp/codex" ./bin/agent-harness install-native --dry-run --json; code=$?; find "$tmp" -maxdepth 3 -type f | sort; rm -rf "$tmp"; echo EXIT:$code'
+    Steps: tmux new-session -d -s io-qa-install 'cd /Users/user/Workspace/issueops && tmp=$(mktemp -d) && HOME="$tmp/home" CODEX_HOME="$tmp/codex" ./bin/issueops install-native --dry-run --json; code=$?; find "$tmp" -maxdepth 3 -type f | sort; rm -rf "$tmp"; echo EXIT:$code'
     Expected: JSON reports planned actions; no real user home touched; `EXIT:0`.
     Evidence: evidence/current-project-improvements-2026-06-01/task-5-install-dry-run.txt
   ```
@@ -296,22 +296,22 @@ PY2
 
   **References**:
   - Current hook routing: `internal/core/hook_prompt.go`.
-  - CLI hook wiring: `cmd/harness/hook_user_prompt.go`.
+  - CLI hook wiring: `cmd/issueops/hook_user_prompt.go`.
   - Codex template: `configs/codex/hooks.json`.
   - Claude template: `configs/claude/hooks.settings.json`.
-  - Cautions: `.agent-harness/CAUTIONS.md` hook rendering guidance.
+  - Cautions: `.issueops/CAUTIONS.md` hook rendering guidance.
 
   **Acceptance Criteria**:
   - [ ] Characterization tests cover API docs, project docs, CodeGraph, LLM Wiki, claude-mem, and opt-in Z.AI.
   - [ ] Rule table refactor passes same tests without output drift except accepted ordering normalization.
   - [ ] Template/installer tests prove checked-in hook configs match generated command strings.
-  - [ ] `--enable-llm-hints` and `HARNESS_ENABLE_LLM_HINTS` remain opt-in only.
+  - [ ] `--enable-llm-hints` and `ISSUEOPS_ENABLE_LLM_HINTS` remain opt-in only.
 
   **QA Scenarios**:
   ```
   Scenario: prompt routing remains stable
     Tool: bash
-    Steps: printf '{"prompt":"endpoint와 DTO를 추가하고 리뷰해줘"}' | ./bin/agent-harness hook user-prompt --enable-llm-hints --json > evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json; python3 - <<'PY2'
+    Steps: printf '{"prompt":"endpoint와 DTO를 추가하고 리뷰해줘"}' | ./bin/issueops hook user-prompt --enable-llm-hints --json > evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json; python3 - <<'PY2'
 import json
 text=open('evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json').read()
 assert 'Z.AI Coding Plan' in text and 'api' in text.lower()
@@ -322,7 +322,7 @@ PY2
 
   Scenario: default Z.AI hint remains absent
     Tool: bash
-    Steps: printf '{"prompt":"리뷰해줘"}' | ./bin/agent-harness hook user-prompt --json > evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json; python3 - <<'PY2'
+    Steps: printf '{"prompt":"리뷰해줘"}' | ./bin/issueops hook user-prompt --json > evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json; python3 - <<'PY2'
 text=open('evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json').read()
 assert 'Z.AI Coding Plan' not in text
 PY2
@@ -330,20 +330,20 @@ PY2
     Evidence: evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json
   ```
 
-  **Commit**: YES | Message: `refactor(hook): centralize prompt routing rules` | Files: `internal/core/hook_prompt.go`, `internal/core/hook_prompt_test.go`, `cmd/harness/hook_user_prompt_test.go`, config/template tests if added
+  **Commit**: YES | Message: `refactor(hook): centralize prompt routing rules` | Files: `internal/core/hook_prompt.go`, `internal/core/hook_prompt_test.go`, `cmd/issueops/hook_user_prompt_test.go`, config/template tests if added
 
 - [x] 7. Expand draft-wiki and LLM Wiki promotion integration QA
 
-  **What to do**: Add tests and CLI/tmux QA for queue suggestion to draft file, approve/reject, promote dry-run/confirm, collision handling, invalid target type, and upstream handoff boundaries. Confirm agent-harness writes only approved raw note/log handoff files and does not compile/query/index llm-wiki.
+  **What to do**: Add tests and CLI/tmux QA for queue suggestion to draft file, approve/reject, promote dry-run/confirm, collision handling, invalid target type, and upstream handoff boundaries. Confirm issueops writes only approved raw note/log handoff files and does not compile/query/index llm-wiki.
   **Must NOT do**: Do not call real upstream LLM Wiki or real `zai`; use temp wiki roots and fake Z.AI.
 
   **Parallelization**: Can Parallel: YES | Wave 3 | Blocks: final | Blocked By: 3
 
   **References**:
-  - Queue worker: `cmd/harness/worker.go:47`.
+  - Queue worker: `cmd/issueops/worker.go:47`.
   - Draft-wiki core: `internal/core/draft_wiki.go`, `internal/core/draft_wiki_suggest.go`, `internal/core/llm_wiki_promote.go`.
   - Existing tests: `internal/core/draft_wiki_test.go`.
-  - Policy: `.agent-harness/CAUTIONS.md` LLM Wiki 재구현 금지.
+  - Policy: `.issueops/CAUTIONS.md` LLM Wiki 재구현 금지.
 
   **Acceptance Criteria**:
   - [ ] Promote dry-run reports planned raw note/log path without writing.
@@ -356,7 +356,7 @@ PY2
   ```
   Scenario: approved draft promotes to temp wiki only
     Tool: tmux
-    Steps: tmux new-session -d -s ah-qa-draft-promote 'cd /Users/user/Workspace/agent-harness && tmp=$(mktemp -d) && ./bin/agent-harness project draft-wiki init --repo "$tmp/repo" --json && echo prepare approved draft and temp wiki config && ./bin/agent-harness project draft-wiki promote --repo "$tmp/repo" --target-wiki test --confirm --json; code=$?; find "$tmp" -maxdepth 5 -type f | sort; rm -rf "$tmp"; echo EXIT:$code'
+    Steps: tmux new-session -d -s io-qa-draft-promote 'cd /Users/user/Workspace/issueops && tmp=$(mktemp -d) && ./bin/issueops project draft-wiki init --repo "$tmp/repo" --json && echo prepare approved draft and temp wiki config && ./bin/issueops project draft-wiki promote --repo "$tmp/repo" --target-wiki test --confirm --json; code=$?; find "$tmp" -maxdepth 5 -type f | sort; rm -rf "$tmp"; echo EXIT:$code'
     Expected: raw note and log exist under temp wiki; no compile/query/index files/actions; `EXIT:0`.
     Evidence: evidence/current-project-improvements-2026-06-01/task-7-promote.txt
 
@@ -373,15 +373,15 @@ PY2
 > ALL must APPROVE. Present consolidated results to user and get explicit okay before completing.
 - [ ] F1. Plan Compliance Audit: verify every task acceptance criterion has evidence under `evidence/current-project-improvements-2026-06-01/`.
 - [ ] F2. Code Quality Review: spawn `code-reviewer`; focus on worker execution safety, draft-wiki queue locking, host adapter parity, and no companion reimplementation.
-- [ ] F3. Real Manual QA: run every tmux/bash scenario and confirm `tmux ls` has no `ah-qa-*` sessions left.
+- [ ] F3. Real Manual QA: run every tmux/bash scenario and confirm `tmux ls` has no `io-qa-*` sessions left.
 - [ ] F4. Full Verification Commands:
   - `go test ./... -count=1`
   - `go test -race ./... -count=1`
   - `go vet ./...`
-  - `go build -o bin/agent-harness ./cmd/harness`
-  - `go test ./cmd/harness -run Golden -count=1`
+  - `go build -o bin/issueops ./cmd/issueops`
+  - `go test ./cmd/issueops -run Golden -count=1`
   - `go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -count=1`
-  - `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json`
+  - `./bin/issueops self-verify --iterations=10 --seed=100 --target-score=95 --json`
 - [ ] F5. Scope Fidelity Check: no writable shell runner, no upstream companion core reimplementation, no real user-config mutation, and intentional golden diffs only.
 
 ## Commit Strategy

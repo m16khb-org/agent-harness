@@ -1,8 +1,8 @@
 package preflight
 
 import (
-	preflightcontract "agent-harness/internal/contract/preflight"
 	"fmt"
+	preflightcontract "issueops/internal/contract/preflight"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -34,7 +34,7 @@ func recentCommits(root string, limit int) []preflightcontract.CommitInfo {
 	return out
 }
 
-func commitStyleHints(root, harnessRoot string, limit int) map[string]any {
+func commitStyleHints(root, issueOpsRoot string, limit int) map[string]any {
 	recent := recentCommits(root, limit)
 	conv := 0
 	for _, c := range recent {
@@ -58,7 +58,7 @@ func commitStyleHints(root, harnessRoot string, limit int) map[string]any {
 		"conventional_subjects":   conv,
 		"lore_bodies":             lore,
 		"recommended":             "conventional_subject_plus_lore_body",
-		"message_policy_doc_path": filepath.Join(harnessRoot, ".agent-harness", "COMMIT_POLICY.md"),
+		"message_policy_doc_path": filepath.Join(issueOpsRoot, ".issueops", "COMMIT_POLICY.md"),
 	}
 }
 

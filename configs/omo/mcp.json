@@ -1,13 +1,13 @@
 {
   "mcpServers": {
-    "agent_harness_project": {
+    "issueops_project": {
       "args": [
         "mcp"
       ],
-      "command": "./bin/agent-harness",
+      "command": "./bin/issueops",
       "env": {
-        "HARNESS_MCP_CATALOG_SHA256": "5c8c14e2b46f6194a7ac779c07b318bea9dcc2dd73658ee27198015cbc59dc92",
-        "HARNESS_ROOT": "."
+        "ISSUEOPS_MCP_CATALOG_SHA256": "89f90218091dace84e3a73f73da58edb8b93d8254e92f40e9d97bfa4e1322b35",
+        "ISSUEOPS_ROOT": "."
       }
     }
   }

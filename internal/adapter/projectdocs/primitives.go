@@ -1,6 +1,6 @@
 package projectdocs
 
-import projectdocdomain "agent-harness/internal/domain/projectdoc"
+import projectdocdomain "issueops/internal/domain/projectdoc"
 
 const ProjectDocsDir = projectdocdomain.ProjectDocsDir
 

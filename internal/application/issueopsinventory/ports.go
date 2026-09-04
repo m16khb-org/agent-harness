@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 type Repository interface {

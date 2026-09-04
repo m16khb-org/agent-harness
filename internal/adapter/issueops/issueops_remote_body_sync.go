@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	bodysynccontract "agent-harness/internal/contract/issueopsbodysync"
-	bodysync "agent-harness/internal/domain/issueopsbodysync"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	bodysynccontract "issueops/internal/contract/issueopsbodysync"
+	bodysync "issueops/internal/domain/issueopsbodysync"
+	"issueops/internal/port"
 )
 
 // SyncRemoteArtifactBody refreshes the body of an artifact this cycle already

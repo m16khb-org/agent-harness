@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.InstallFile, []string, error) {

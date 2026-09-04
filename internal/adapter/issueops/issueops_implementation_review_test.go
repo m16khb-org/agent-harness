@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/contract/issueops"
 )
 
 func preflightGitForReviewTest(dir string, args ...string) (int, string, string) {

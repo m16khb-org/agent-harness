@@ -128,7 +128,7 @@ parser는 marker를 다시 typed identity로 읽고 중복 field, unknown duplic
 잘못된 숫자, provider/issue의 부분 존재를 거부한다. renderer 결과와 parser
 결과의 round-trip이 일치해야 canonical marker다.
 
-IssueOps production Go 파일에서 `agent-harness issueops-v1` marker literal은
+IssueOps production Go 파일에서 `issueops-v1` marker literal은
 renderer 파일 하나에만 존재할 수 있다. AST 기반 source ratchet이 다른
 production 파일의 새 literal을 거부한다. 테스트 fixture와 문서는 대상에서
 제외한다.
@@ -282,7 +282,7 @@ generation, operation ID, provider, issue number와 migration 여부만 진단
 ## 배포 및 현재 pending 복구
 
 1. focused core/adapter/CLI/MCP/guard tests와 build를 통과한다.
-2. atomic commit/push 후 `ah update`로 Codex와 Claude native 설치를 함께
+2. atomic commit/push 후 `io update`로 Codex와 Claude native 설치를 함께
    갱신한다.
 3. daemon과 MCP가 새 binary를 사용함을 readback한다.
 4. 현재 pending lifecycle에서 `execution reconcile --preview`로 operation과

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/port"
 )
 
 func TestReseedRepositoryCommitsOnlyMatchingSnapshot(t *testing.T) {
@@ -99,7 +99,7 @@ func TestReseedRepositoryPersistsCompletedReseedHistoryFixtures(t *testing.T) {
 			record.Phase = "done"
 			record.Execution.Lease.Generation = test.leaseGeneration
 			record.Execution.Lease.ReplacedAt = test.replacedAt
-			record.Execution.Completion = &leasecontract.Completion{FinalHead: test.oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: test.completedAt}
+			record.Execution.Completion = &leasecontract.Completion{FinalHead: test.oldHead, VerificationReportPath: ".issueops/verified-execution/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: test.completedAt}
 			record.Execution.SyncBaseEvents = []leasecontract.SyncBaseEvent{{Mode: "apply", BaseBranch: "main", BaseOID: strings.Repeat("a", 40), MergeCommit: strings.Repeat("b", 40), Actor: "codex", At: "2026-08-03T01:00:00Z"}}
 			record.PhaseLedger = json.RawMessage(`{"implement":{"phase":"implement","completed_at":"old"}}`)
 			data, err := leasecontract.Encode(record)

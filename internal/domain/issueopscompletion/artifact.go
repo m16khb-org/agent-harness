@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
 )
 
 func ValidateArtifact(record completioncontract.RecordSnapshot, requestedURL string) error {

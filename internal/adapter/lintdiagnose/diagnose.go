@@ -1,8 +1,8 @@
 package lintdiagnose
 
 import (
-	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
 	"fmt"
+	lintdiagnosecontract "issueops/internal/contract/lintdiagnose"
 	"os/exec"
 	"strings"
 )

@@ -1,6 +1,6 @@
 package projectdoc
 
-const ProjectDocsDir = ".agent-harness"
+const ProjectDocsDir = ".issueops"
 
 var requiredProjectDocNames = []string{
 	"ARCHITECTURE.md",
@@ -18,9 +18,9 @@ var requiredProjectDocNames = []string{
 
 var optionalProjectDocNames = []string{"VCS.md", "DESIGN.md"}
 
-const AgentsStartMarker = "<!-- AGENT_HARNESS:START -->"
+const AgentsStartMarker = "<!-- ISSUEOPS:START -->"
 
-const AgentsEndMarker = "<!-- AGENT_HARNESS:END -->"
+const AgentsEndMarker = "<!-- ISSUEOPS:END -->"
 
 const BehavioralGuidelines = `# AGENTS.md
 

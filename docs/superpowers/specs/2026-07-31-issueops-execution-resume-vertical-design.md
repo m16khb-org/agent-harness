@@ -408,7 +408,7 @@ adapter mapping 또는 persistence encoding 결함으로 취급하고 수정한�
 - CLI/MCP contract golden: 기존 flag, action, response field 불변
 - architecture fitness: domain/application의 adapter/core 역방향 import 0
 - focused race: resume application과 SQLite adapter의 CAS 경로
-- scoped `go vet`과 `go build ./cmd/harness`
+- scoped `go vet`과 `go build ./cmd/issueops`
 
 전체 `go test ./...`와 전체 race는 로컬에서 실행하지 않고 원격 CI에 맡긴다.
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func TestStableV1ShapeCoversEveryPersistedCoreField(t *testing.T) {
@@ -91,7 +91,7 @@ func TestCompletionHistoryStrictRoundTripAndLegacyRead(t *testing.T) {
 	execution := legacy["execution"].(map[string]any)
 	delete(execution, "completion_history")
 	execution["completion"] = map[string]any{
-		"final_head": strings.Repeat("c", 40), "turing_report_path": ".agent-harness/turing/legacy.json",
+		"final_head": strings.Repeat("c", 40), "verification_report_path": ".issueops/verified-execution/legacy.json",
 		"verification": []any{"go test ./... -count=1"}, "remote_artifact_url": "https://github.com/acme/repo/pull/1", "completed_at": "2026-08-02T00:00:00Z",
 	}
 	legacyBytes, err := json.Marshal(legacy)
@@ -136,7 +136,7 @@ func TestCurrentCompletionRejectsBlankVerificationEvidence(t *testing.T) {
 	record := completionHistoryRecord()
 	record.Execution.CompletionHistory = nil
 	record.Execution.Completion = &Completion{
-		FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+		FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/report.json",
 		Verification: []string{" "}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
 	}
 	if _, err := Encode(record); err == nil {
@@ -154,7 +154,7 @@ func TestCompletionGenerationValidation(t *testing.T) {
 	record = completionHistoryRecord()
 	record.Execution.CompletionHistory = nil
 	record.Execution.Completion = &Completion{
-		Generation: 3, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+		Generation: 3, FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/report.json",
 		Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
 	}
 	if _, err := Encode(record); err == nil || !strings.Contains(err.Error(), "exceeds the lease generation") {
@@ -172,7 +172,7 @@ func completionHistoryRecord() Record {
 			Lease:     Lease{Generation: 2, Status: "released"},
 			CompletionHistory: []CompletionHistoryEntry{{
 				Generation: 1,
-				Completion: Completion{Generation: 1, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json", Verification: []string{"go test ./... -count=1"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z"},
+				Completion: Completion{Generation: 1, FinalHead: strings.Repeat("b", 40), VerificationReportPath: ".issueops/verified-execution/report.json", Verification: []string{"go test ./... -count=1"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z"},
 				Reason:     "new verified HEAD", ReopenedAt: "2026-08-04T00:00:00Z",
 			}},
 		},

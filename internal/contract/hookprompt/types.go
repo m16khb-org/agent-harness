@@ -4,7 +4,7 @@
 // 알 필요가 없다.
 package hookprompt
 
-import projectdoc "agent-harness/internal/domain/projectdoc"
+import projectdoc "issueops/internal/domain/projectdoc"
 
 // ProjectDocCatalogContext is the static project-doc catalog a context hook
 // injects: Compact is the model-facing one-line menu, UserView the readable

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
 )
 
 type RecordTransition func(completioncontract.RecordSnapshot) (completioncontract.RecordSnapshot, bool, error)

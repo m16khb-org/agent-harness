@@ -1,6 +1,6 @@
 package issueopsstatus
 
-import issueopsstatuscontract "agent-harness/internal/contract/issueopsstatus"
+import issueopsstatuscontract "issueops/internal/contract/issueopsstatus"
 
 type Completion func(
 	issueopsstatuscontract.Record,

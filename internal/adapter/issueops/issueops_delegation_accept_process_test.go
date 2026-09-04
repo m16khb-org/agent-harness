@@ -9,17 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 const (
-	acceptProcessHelperModeEnv     = "HARNESS_ISSUEOPS_ACCEPT_HELPER"
-	acceptProcessHelperStateEnv    = "HARNESS_ISSUEOPS_ACCEPT_STATE"
-	acceptProcessHelperParentEnv   = "HARNESS_ISSUEOPS_ACCEPT_PARENT"
-	acceptProcessHelperChildEnv    = "HARNESS_ISSUEOPS_ACCEPT_CHILD"
-	acceptProcessHelperEvidenceEnv = "HARNESS_ISSUEOPS_ACCEPT_EVIDENCE"
-	acceptProcessHelperReadyEnv    = "HARNESS_ISSUEOPS_ACCEPT_READY"
-	acceptProcessHelperGateEnv     = "HARNESS_ISSUEOPS_ACCEPT_GATE"
+	acceptProcessHelperModeEnv     = "ISSUEOPS_ISSUEOPS_ACCEPT_HELPER"
+	acceptProcessHelperStateEnv    = "ISSUEOPS_ISSUEOPS_ACCEPT_STATE"
+	acceptProcessHelperParentEnv   = "ISSUEOPS_ISSUEOPS_ACCEPT_PARENT"
+	acceptProcessHelperChildEnv    = "ISSUEOPS_ISSUEOPS_ACCEPT_CHILD"
+	acceptProcessHelperEvidenceEnv = "ISSUEOPS_ISSUEOPS_ACCEPT_EVIDENCE"
+	acceptProcessHelperReadyEnv    = "ISSUEOPS_ISSUEOPS_ACCEPT_READY"
+	acceptProcessHelperGateEnv     = "ISSUEOPS_ISSUEOPS_ACCEPT_GATE"
 )
 
 func TestAcceptIssueOpsChildrenConcurrentlyAcrossProcesses(t *testing.T) {

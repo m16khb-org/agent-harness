@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "io-f395e881a515",
+  "issue_url": "https://github.com/m16khb-org/issueops/issues/303",
+  "branch": "303-generated-next-command-binary-provenance",
+  "base_head": "84d8618d47849c167fc6d5b9796f1e9d87e2ed6e",
+  "worktree_root": "/Users/m16khb/Workspace/issueops.worktrees/303-generated-next-command-binary-provenance",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "xhigh",
+    "mode": "orca",
+    "lease_generation": 1
+  },
+  "digests": {
+    "issue_body_sha256": "7723fa6ac00ff6f7b148921507a74c939b84e4ce0922c68c93692accc3fed384",
+    "context_packet_sha256": "f71b30bb8257464754f722dc6904c1c2a4fb530aca690bd1392f88402b4b5e19",
+    "verified": true
+  },
+  "contract": [
+    "일반 사용자가 직접 입력하는 issueops 명령은 기존 PATH UX를 유지한다.",
+    "생성된 next_command의 첫 token은 관찰된 canonical executable 절대 경로이고 path, SHA-256, durable generation을 bounded provenance envelope로 포함한다.",
+    "CLI와 MCP composition이 같은 binder를 사용하고 cleanup preview/finish를 포함한 모든 generated command를 결과 공개 전에 봉인한다.",
+    "root dispatch는 subcommand mutation 전에 envelope를 consume하고 durable generation 및 현재 executable path/hash와 비교하며 관찰 또는 비교 실패 시 fallback 없이 구조화 오류를 반환한다.",
+    "hook은 durable source root 또는 canonical worktree의 bin/issueops만 trusted absolute target으로 허용하고 symlink alias, wrapper, outside-root path, shell substitution을 fail-closed한다.",
+    "execution authority를 제거하는 switch-mode apply는 실행 불가능한 shell next_command 대신 non-command next_action만 반환한다."
+  ],
+  "tdd_loop": [
+    {
+      "step": "RED",
+      "command": "go test ./internal/contract/issueops ./internal/adapter/outbound/issueopsprovenance ./cmd/issueops/issueopscli/executioncmd -count=1",
+      "observed": "generated command provenance DTO, executable observer, binder가 없어 build와 신규 계약 테스트가 실패했다.",
+      "expected_reason": "생성 binary와 후속 실행 binary를 연결하는 stable contract 및 outbound observation 경계가 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./cmd/issueops/issueopscli/executioncmd -run TestBindExecutionNextCommandObservationFailureHasNoFallback -count=1",
+      "observed": "observation 실패에서 기존 PATH next_command가 그대로 노출되었다.",
+      "expected_reason": "binder가 관찰 실패를 typed error로 전파하지 않고 unavailable evidence를 허용했다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./cmd/issueops/issueopscli/feedbackcleanup ./cmd/issueops/mcpcli -count=1",
+      "observed": "cleanup preview/finish와 MCP execution 결과의 NextCommand가 CLI output binder를 우회했다.",
+      "expected_reason": "provenance binding이 모든 public composition boundary에 적용되지 않았다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./cmd/issueops/issueopscli -run TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation -count=1",
+      "observed": "stale executable path/hash/generation mismatch를 root가 subcommand dispatch 전에 거부하지 못했다.",
+      "expected_reason": "input envelope consume와 durable generation/current executable 검증이 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/commandparse ./internal/core/lifecycle ./cmd/issueops/hookcli -count=1",
+      "observed": "absolute self-declared target와 $(command -v issueops) 치환을 Codex/Claude pre-tool 경로가 허용했다.",
+      "expected_reason": "parser의 self-match만으로는 trusted root 경계를 증명하지 못했고 shell substitution 차단이 실제 lifecycle decision path에 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/architecture -run TestProductionGraphMatchesBaseline -count=1",
+      "observed": "port_must_not_import_internal: internal/port/issueopsprovenance -> internal/contract/issueops 및 cmd/issueops/issueopscli, executioncmd, feedbackcleanup, mcpcli -> outbound adapter 신규 edge가 실패했다.",
+      "expected_reason": "초기 observer port가 contract DTO를 반환하고 cmd package가 실제 adapter fallback을 직접 생성해 strict dependency ownership을 위반했다."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/architecture -run TestProductionGraphMatchesBaseline -count=1",
+      "observed": "port가 순수 Receipt를 소유하고 application binder가 contract provenance로 변환하며 실제 adapter 생성은 issueopsapp composition root에만 남아 PASS했다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./cmd/issueops/issueopscli/executioncmd ./internal/core/issueops -count=1",
+      "observed": "ExecutionPrepareResult, ExecutionSyncBaseResult, ExecutionSwitchModeResult에 durable generation binding이 없고 switch-mode apply가 execution 제거 뒤 실행 불가능한 PATH prepare command를 반환했다.",
+      "expected_reason": "command-bearing public result type 전부를 봉인한다는 invariant가 세 타입과 authority-removal transition을 누락했다."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/mcpcli ./internal/core/issueops -count=1",
+      "observed": "prepare/sync-base/switch-mode preview가 정확한 durable generation으로 CLI/MCP binder를 통과하고 nil observer는 payload 없이 거부되며 switch-mode apply는 next_action만 반환했다."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/contract/issueops ./internal/adapter/outbound/issueopsprovenance ./internal/application/issueopsprovenance ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli ./internal/core/commandparse ./internal/core/lifecycle ./cmd/issueops/hookcli -count=1",
+      "observed": "pure contract, injected observer, CLI/MCP parity, pre-dispatch rejection, trusted-root hook parity가 모두 통과했다."
+    },
+    {
+      "step": "GREEN",
+      "command": "ISSUEOPS_CURRENT_RELAY_DOGFOOD_BINARY=/Users/m16khb/Workspace/issueops.worktrees/303-generated-next-command-binary-provenance/bin/issueops ISSUEOPS_CURRENT_RELAY_DOGFOOD_ID=io-f395e881a515 go test ./cmd/issueops/issueopsapp -run TestCurrentRelayReleasedReseedGeneratedCommandDogfood -count=1 -v",
+      "observed": "current relay 0.1.0+576ecd9bd42d에서 released reseed preview가 생성한 exact absolute command를 caller repair 없이 실행해 temp fixture generation 2 claimable 전이를 완료했다."
+    },
+    {
+      "step": "GREEN",
+      "command": "ISSUEOPS_CURRENT_RELAY_DOGFOOD_BINARY=/Users/m16khb/Workspace/issueops.worktrees/303-generated-next-command-binary-provenance/bin/issueops ISSUEOPS_CURRENT_RELAY_DOGFOOD_ID=io-f395e881a515 go test ./cmd/issueops/issueopscli/feedbackcleanup -run TestCurrentRelayCleanupGeneratedCommandDogfood -count=1 -v",
+      "observed": "current relay 0.1.0+576ecd9bd42d에서 cleanup preview와 finish의 exact command를 실제 Orca remove-worktree 호출 및 temp durable record에 대해 실행했고 PASS했다."
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "tests": [
+        "TestBindGeneratedCommandRequiresCompleteBinaryProvenance",
+        "TestValidateGeneratedCommandInvocationRejectsStaleInstalledBinary",
+        "TestBindExecutionNextCommandObservationFailureHasNoFallback",
+        "TestBindExecutionNextCommandMissingObserverHasNoFallback",
+        "TestBindExecutionNextCommandCommandBearingResultsFailClosedWithoutObserver",
+        "TestMCPIssueOpsExecutionHandlerObservationFailureHasNoUnboundPayload",
+        "TestMCPIssueOpsExecutionHandlerMissingObserverHasNoUnboundPayload",
+        "TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation"
+      ],
+      "command": "go test ./internal/contract/issueops ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli -count=1",
+      "result": "PASS",
+      "observed": "path/hash/generation이 같을 때만 generated command가 실행되고 observation·불일치는 mutation 전에 typed error와 no next_command로 끝난다."
+    },
+    {
+      "id": "AC-02",
+      "tests": [
+        "TestParseExactIssueOpsCommandAcceptsOnlyEnvelopeMatchedAbsoluteExecutable",
+        "TestExecutionGeneratedProvenanceEnvelopeKeepsHostParityAndShellFailClosed",
+        "TestRunHookPreToolUseGeneratedProvenanceHostParity"
+      ],
+      "command": "go test ./internal/core/commandparse ./internal/core/lifecycle ./cmd/issueops/hookcli -count=1",
+      "result": "PASS",
+      "observed": "canonical source/worktree bin target만 허용하고 outside-root absolute target, symlink alias, wrapper, shell substitution을 Codex와 Claude 양쪽에서 차단한다."
+    },
+    {
+      "id": "AC-03",
+      "tests": [
+        "TestConsumeGeneratedCommandProvenanceKeepsManualPATHCommandUnchanged",
+        "TestExecutableObserverCanonicalizesAndHashesExecutable",
+        "TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair"
+      ],
+      "command": "go test ./internal/contract/issueops ./internal/adapter/outbound/issueopsprovenance ./cmd/issueops/issueopscli -count=1",
+      "result": "PASS",
+      "observed": "수동 PATH token은 유지되고 generated command만 exact canonical executable과 그 SHA-256을 사용한다."
+    },
+    {
+      "id": "AC-04",
+      "tests": [
+        "TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation",
+        "TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair"
+      ],
+      "command": "go test ./cmd/issueops/issueopscli -run TestGeneratedCommand -count=1",
+      "result": "PASS",
+      "observed": "stale installed binary fixture는 mutation 전에 거부되고 newer worktree binary가 생성한 command는 첫 token부터 그 binary를 직접 실행한다."
+    },
+    {
+      "id": "AC-05",
+      "tests": [
+        "TestBindGeneratedCommandUsesCanonicalExecutableAndAddsBoundedEvidence",
+        "TestObservationErrorDoesNotExposeAdapterDiagnostic"
+      ],
+      "command": "go test ./internal/contract/issueops -count=1",
+      "result": "PASS",
+      "observed": "audit evidence는 executable path, SHA-256, generation으로 제한되며 observer diagnostic, credential, token, 환경은 오류와 command에 포함되지 않는다."
+    },
+    {
+      "id": "AC-06",
+      "tests": [
+        "TestCurrentRelayReleasedReseedGeneratedCommandDogfood",
+        "TestCurrentRelayCleanupGeneratedCommandDogfood",
+        "TestCleanupFinishPreviewEmitsBoundFinishCommand",
+        "TestBindCleanupNextCommandCoversPreviewAndFinish"
+      ],
+      "command": "current-relay released reseed 및 typed cleanup opt-in dogfood commands",
+      "result": "PASS",
+      "observed": "final review candidate binary SHA-256 4623422956448c6e6ba99398135221fb7878ce9a40e55522bee34ded8ab0d535와 relay 0.1.0+576ecd9bd42d에서 reseed와 cleanup의 preview/finish exact command를 실제 실행했다."
+    },
+    {
+      "id": "AC-07",
+      "tests": [
+        "TestRunHookPreToolUseGeneratedProvenanceHostParity",
+        "TestBindMCPIssueOpsExecutionNextCommandMatchesCLIContract",
+        "TestBindMCPIssueOpsExecutionNextCommandCoversEveryCommandBearingResult",
+        "TestMCPIssueOpsExecutionHandlerBindsGeneratedNextCommand",
+        "TestBindExecutionNextCommandCoversEveryCommandBearingResult",
+        "TestSwitchExecutionModeApplyReturnsNonCommandNextActionAfterExecutionRemoval",
+        "TestResponseContractsGolden"
+      ],
+      "command": "go test ./cmd/issueops/hookcli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run Provenance -count=1",
+      "result": "PASS",
+      "observed": "Codex/Claude hook decision과 CLI/MCP generated command payload가 같은 provenance 계약을 사용한다."
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test ./internal/architecture -run TestProductionGraphMatchesBaseline -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./internal/core/issueops ./internal/core/commandparse ./internal/core/lifecycle -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./cmd/issueops/issueopscli/... ./internal/adapter/orca -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./cmd/issueops/mcpcli ./internal/adapter/outbound/issueopsprovenance ./internal/application/issueopsprovenance -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./cmd/issueops/contractgolden -run Golden -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS; rerun serially after this report seal for final completion evidence"
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "PASS; rerun serially after this report seal for final completion evidence"
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/issueops ./cmd/issueops",
+      "result": "PASS; SHA-256 4623422956448c6e6ba99398135221fb7878ce9a40e55522bee34ded8ab0d535"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "shannon_audit": {
+    "snr": {
+      "before_cleanup": 1.0,
+      "after_cleanup": 1.0,
+      "passed": true,
+      "observed": "추가 production diff에 코드 번역형 주석이나 주석 소음이 없었다."
+    },
+    "entropy": {
+      "passed": true,
+      "observed": "추가 production function 가운데 12개 초과 branch를 가진 high-risk function이 없었다."
+    },
+    "redundancy": {
+      "passed": true,
+      "observed": "CLI/MCP의 얇은 결과 매핑만 composition boundary 때문에 유지하고 core shim 및 중복 provenance model을 제거했다."
+    },
+    "channel_overhead": {
+      "passed": true,
+      "observed": "stable DTO/validation은 contract, observation은 outbound port/adapter, orchestration은 application과 CLI/MCP composition에만 배치했다."
+    }
+  },
+  "ai_slop_clean": [
+    "strict-core-zero를 위반하던 초기 internal/core/commandprovenance 패키지를 제거했다.",
+    "port의 contract 역의존과 cmd package의 outbound adapter fallback을 제거하고 issueopsapp 단일 composition으로 정리했다.",
+    "observation failure에서 unavailable evidence 또는 PATH next_command를 내는 silent fallback을 제거했다.",
+    "adapter 원인 문자열이 오류로 새어 나가지 않게 bounded typed observation error로 정리했다.",
+    "legacy shim, 임의 PATH rewrite, 호스트별 중복 계약, speculative trusted-installed target을 추가하지 않았다.",
+    "execution authority를 지운 switch-mode apply의 실행 불가능한 prepare shell command를 non-command next_action으로 축소했다.",
+    "비자명한 authority 경계 외에는 설명형 주석을 추가하지 않았다."
+  ],
+  "implementation_reviews": [
+    {
+      "reviewer": "fresh gpt-5.6-sol xhigh Brooks",
+      "verdict": "pass",
+      "finding": "no dangerous flaw found in Issue #303 generated next_command binary provenance implementation",
+      "evidence": "bounded path/SHA/generation contract, root pre-dispatch validation, CLI/MCP/hook parity, cleanup/switch-mode coverage, and issueopsapp-only observer wiring verified by source review",
+      "reviewed_fingerprint": "f17bed0faefdf6be1f2b2739af0c7e6577b60356284b816e022122da8364803d"
+    }
+  ],
+  "deviations": [
+    "현재 checkout의 legacy worktree prepare/handoff 문서는 조사 증거로만 사용하고 IssueOps execution v1의 sealed claim, branch prepare, typed phase 명령을 따랐다.",
+    "Issue #321로 추적 중인 hook reader 제한 때문에 복합 rg pattern과 shell wrapper를 사용하지 않고 literal foreground reader를 분리했다.",
+    "실제 lifecycle은 변경하지 않았으며 current-relay dogfood는 임시 state와 fixture에서 실행했다."
+  ]
+}

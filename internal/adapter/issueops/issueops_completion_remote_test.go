@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 type fakeCompletionProvider struct {
@@ -156,7 +156,7 @@ func TestReflectIssueCompletionGathersArtifactsFromDisk(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(artifactDir, "plan.md"), []byte("plan 본문"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(artifactDir, "turing-loop.md"), []byte("turing 본문"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(artifactDir, "verified-execution-loop.md"), []byte("verified-execution 본문"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	prov := &fakeCompletionProvider{updateRes: port.IssueProviderUpdateIssueBodySectionResult{OK: true}}
@@ -164,7 +164,7 @@ func TestReflectIssueCompletionGathersArtifactsFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := prov.updateReq.Completion
-	if c.PlanBody != "plan 본문" || !strings.Contains(c.TuringSummary, "turing 본문") {
+	if c.PlanBody != "plan 본문" || !strings.Contains(c.TuringSummary, "verified-execution 본문") {
 		t.Fatalf("artifact bodies must be gathered: %+v", c)
 	}
 	if len(c.ArtifactManifest) != 2 {

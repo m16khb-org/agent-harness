@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/port"
 )
 
 func TestSQLiteReseedFenceSeparatesLifecycles(t *testing.T) {

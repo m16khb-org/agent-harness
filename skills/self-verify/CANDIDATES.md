@@ -1,7 +1,7 @@
 # Self-verification candidate catalog
 
 Date: 2026-05-27
-Scope: reliability, observability, security, regression detection, and native integration coverage for `harness self-verify`.
+Scope: reliability, observability, security, regression detection, and native integration coverage for `issueops self-verify`.
 
 This file is the backlog for improving the self-verification loop itself. It is not the implementation backlog for self-augmentation. Even when the current loop passes the 95-point gate, this catalog records gaps that future runs could miss.
 
@@ -11,7 +11,7 @@ A 2026-08-11 single-pass baseline completed successfully in 247 seconds. The run
 reported `minimum_goal_score=100` with every goal at `100/100`. The elevated
 risk-QA full race suite took 242 seconds and supplied the regular full-test
 evidence without rerunning the same package suite. Existing
-`./bin/agent-harness self-augment --json` candidates were already satisfied and
+`./bin/issueops self-augment --json` candidates were already satisfied and
 no candidate was selected.
 
 Conclusion: the run was not hung, but redirected execution gave too little progress feedback. Candidate priority therefore emphasizes progress observability, blind-spot detection, and reproducibility rather than pass/fail alone.
@@ -44,7 +44,7 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + (100-risk)*0.15 + (10
 | 5 | `self-verify-failure-rerun-recipe` | reproducibility | 78 | Failed steps needed copy-paste rerun commands with seed/env context. | Failing fixture and `summary.rerun_commands`. |
 | 6 | `self-verify-candidate-export` | curriculum | 77 | Future self-verify improvements needed a dedicated export after self-augment candidates were satisfied. | `self-verify candidates --json`, MCP golden, state export. |
 | 7 | `self-verify-step-budget-baseline` | performance | 76 | Gradual slowdowns needed p95 label budgets, not only top-5 slowest steps. | `summary.step_duration_stats` and compare regressions. |
-| 8 | `self-verify-install-dry-run-smoke` | native integration | 76 | Dry-run install needed explicit no-write verification evidence. | Temp HOME/CODEX_HOME/HARNESS_ROOT dry-run smoke. |
+| 8 | `self-verify-install-dry-run-smoke` | native integration | 76 | Dry-run install needed explicit no-write verification evidence. | Temp HOME/CODEX_HOME/ISSUEOPS_ROOT dry-run smoke. |
 | 9 | `self-verify-policy-path-fuzz-plus` | policy/security | 76 | Path policy needed symlink, `~/`, URL, git ref, and Unicode cases. | Seeded policy fuzz table and negative fixtures. |
 | 10 | `self-verify-json-schema-contract` | contract | 76 | Expanding summaries needed schema/hash drift detection beyond manual golden review. | Contract hash and required-field tests. |
 | 11 | `self-verify-flake-classifier` | reliability | 75 | Intermittent seed failures needed deterministic vs flaky classification. | Synthetic intermittent step and failure clustering. |

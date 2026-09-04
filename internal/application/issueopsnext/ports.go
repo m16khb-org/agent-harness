@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 // Ports는 `issueops next`가 필요로 하는 관측이다. 전부 읽기 전용이며, 함수

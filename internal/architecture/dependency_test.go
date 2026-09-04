@@ -34,9 +34,9 @@ func TestEvaluateEdgesRejectsForbiddenDependencies(t *testing.T) {
 	}{
 		{"root core adapter", dependencyEdge{"internal/core", "internal/adapter"}, "core_must_not_import_adapter_or_cmd"},
 		{"core adapter", dependencyEdge{"internal/core/issueops", "internal/adapter/provider"}, "core_must_not_import_adapter_or_cmd"},
-		{"core command", dependencyEdge{"internal/core/issueops", "cmd/harness"}, "core_must_not_import_adapter_or_cmd"},
+		{"core command", dependencyEdge{"internal/core/issueops", "cmd/issueops"}, "core_must_not_import_adapter_or_cmd"},
 		{"root adapter command", dependencyEdge{"internal/adapter", "cmd"}, "adapter_must_not_import_cmd"},
-		{"adapter command", dependencyEdge{"internal/adapter/cli", "cmd/harness"}, "adapter_must_not_import_cmd"},
+		{"adapter command", dependencyEdge{"internal/adapter/cli", "cmd/issueops"}, "adapter_must_not_import_cmd"},
 		{"port internal", dependencyEdge{"internal/port", "internal/core"}, "port_must_not_import_internal"},
 		{"domain os", dependencyEdge{"internal/domain/session", "os"}, "domain_must_not_import_implementation"},
 		{"domain net", dependencyEdge{"internal/domain/session", "net"}, "domain_must_not_import_implementation"},
@@ -159,11 +159,11 @@ func TestCurrentIssueOpsVerticalOnly(t *testing.T) {
 }
 
 func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) {
-	edge := dependencyEdge{"cmd/harness/issueopscli", "internal/adapter/provider"}
+	edge := dependencyEdge{"cmd/issueops/issueopscli", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
 		t.Fatalf("expected legacy concrete-adapter edge %s, got %v", formatEdge(edge), got)
 	}
-	compositionRootEdge := dependencyEdge{"cmd/harness/harnessapp", "internal/adapter/provider"}
+	compositionRootEdge := dependencyEdge{"cmd/issueops/issueopsapp", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{compositionRootEdge}); len(got) != 0 {
 		t.Fatalf("expected composition-root edge to stay outside legacy baseline, got %v", got)
 	}
@@ -390,8 +390,8 @@ func route(req request, deps dependencies) {
 func TestDependencyPreparationCallerViolationsRejectConcreteConstruction(t *testing.T) {
 	file, err := parser.ParseFile(token.NewFileSet(), "caller.go", `package caller
 import (
-	wt "agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/adapter/orca"
+	wt "issueops/internal/adapter/gitworktree"
+	"issueops/internal/adapter/orca"
 )
 func issueOpsExecutionDeps() { _ = wt.New(); _ = orca.NewExecution() }
 func unrelatedCleanup() { _ = orca.NewExecution() }
@@ -422,7 +422,7 @@ func route() { reconcileRemotePullRequest() }
 
 func TestDependencyPublicationCallerViolationsIgnoreUnrelatedRemoteOperations(t *testing.T) {
 	file, err := parser.ParseFile(token.NewFileSet(), "remote.go", `package caller
-import "agent-harness/internal/adapter/provider"
+import "issueops/internal/adapter/provider"
 func createIssue() { provider.Resolve("github") }
 func createPullRequest() { provider.Resolve("github") }
 `, 0)
@@ -488,7 +488,7 @@ func TestReseedOwnerArtifactPreparationDoesNotReapplyLeaseTransition(t *testing.
 }
 
 func TestProductionReseedWiringUsesOutboundInventory(t *testing.T) {
-	path := filepath.Join(findRepoRoot(t), "cmd", "harness", "harnessapp", "issueops_reseed_wiring.go")
+	path := filepath.Join(findRepoRoot(t), "cmd", "issueops", "issueopsapp", "issueops_reseed_wiring.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -630,7 +630,7 @@ func productionReconcileRoutingViolations(repoRoot string) ([]string, error) {
 
 func productionPublicationCallerViolations(repoRoot string) ([]string, error) {
 	var violations []string
-	for _, relative := range []string{filepath.Join("cmd", "harness", "issueopscli"), filepath.Join("cmd", "harness", "mcpcli")} {
+	for _, relative := range []string{filepath.Join("cmd", "issueops", "issueopscli"), filepath.Join("cmd", "issueops", "mcpcli")} {
 		dir := filepath.Join(repoRoot, relative)
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
@@ -687,7 +687,7 @@ func productionPreparationRoutingViolations(repoRoot string) ([]string, error) {
 		violations = append(violations, preparationRoutingViolations(file, name == "execution_api.go")...)
 	}
 
-	for _, relative := range []string{filepath.Join("cmd", "harness", "issueopscli"), filepath.Join("cmd", "harness", "mcpcli")} {
+	for _, relative := range []string{filepath.Join("cmd", "issueops", "issueopscli"), filepath.Join("cmd", "issueops", "mcpcli")} {
 		dir := filepath.Join(repoRoot, relative)
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
@@ -716,8 +716,8 @@ func productionPreparationRoutingViolations(repoRoot string) ([]string, error) {
 		path     string
 		function string
 	}{
-		{path: filepath.Join("cmd", "harness", "harnessapp", "issueops_policy_facade.go"), function: "runIssueOps"},
-		{path: filepath.Join("cmd", "harness", "harnessapp", "mcp_facade.go"), function: "issueOpsMCPDependencies"},
+		{path: filepath.Join("cmd", "issueops", "issueopsapp", "issueops_policy_facade.go"), function: "runIssueOps"},
+		{path: filepath.Join("cmd", "issueops", "issueopsapp", "mcp_facade.go"), function: "issueOpsMCPDependencies"},
 	} {
 		file, err := parseProductionFile(filepath.Join(repoRoot, wiring.path))
 		if err != nil {
@@ -800,7 +800,7 @@ func concretePreparationImportAliases(file *ast.File) map[string]string {
 		if err != nil {
 			continue
 		}
-		if path != "agent-harness/internal/adapter/gitworktree" && path != "agent-harness/internal/adapter/orca" && path != "agent-harness/internal/adapter/provider" {
+		if path != "issueops/internal/adapter/gitworktree" && path != "issueops/internal/adapter/orca" && path != "issueops/internal/adapter/provider" {
 			continue
 		}
 		alias := filepath.Base(path)
@@ -808,7 +808,7 @@ func concretePreparationImportAliases(file *ast.File) map[string]string {
 			alias = imported.Name.Name
 		}
 		if alias != "_" && alias != "." {
-			aliases[alias] = strings.TrimPrefix(path, "agent-harness/")
+			aliases[alias] = strings.TrimPrefix(path, "issueops/")
 		}
 	}
 	return aliases
@@ -913,7 +913,7 @@ func reconcileWiringForbiddenCalls(repoRoot string) ([]string, error) {
 	var violations []string
 	for _, relative := range []string{
 		filepath.Join("internal", "adapter", "outbound", "issueopslease"),
-		filepath.Join("cmd", "harness", "harnessapp"),
+		filepath.Join("cmd", "issueops", "issueopsapp"),
 	} {
 		dir := filepath.Join(repoRoot, relative)
 		entries, err := os.ReadDir(dir)
@@ -1292,7 +1292,7 @@ func loadProductionEdges(t *testing.T) []dependencyEdge {
 		if err := decoder.Decode(&pkg); err != nil {
 			t.Fatalf("decode go list package: %v", err)
 		}
-		if !strings.HasPrefix(pkg.ImportPath, "agent-harness/") {
+		if !strings.HasPrefix(pkg.ImportPath, "issueops/") {
 			continue
 		}
 		for _, imported := range pkg.Imports {
@@ -1321,7 +1321,7 @@ func loadProductionPackages(t *testing.T) []string {
 		if err := decoder.Decode(&pkg); err != nil {
 			t.Fatalf("decode go list package: %v", err)
 		}
-		if strings.HasPrefix(pkg.ImportPath, "agent-harness/") {
+		if strings.HasPrefix(pkg.ImportPath, "issueops/") {
 			packages = append(packages, normalizeImport(pkg.ImportPath))
 		}
 	}
@@ -1361,7 +1361,7 @@ func legacyEdges(edges []dependencyEdge) []dependencyEdge {
 }
 
 func normalizeImport(path string) string {
-	return strings.TrimPrefix(path, "agent-harness/")
+	return strings.TrimPrefix(path, "issueops/")
 }
 
 func sortedEdges(edges []dependencyEdge) []dependencyEdge {
@@ -1468,7 +1468,7 @@ func isOutboundAdapter(path string) bool {
 	return path == "internal/adapter/outbound" || strings.HasPrefix(path, "internal/adapter/outbound/")
 }
 
-func isCompositionRoot(path string) bool { return path == "cmd/harness/harnessapp" }
+func isCompositionRoot(path string) bool { return path == "cmd/issueops/issueopsapp" }
 
 func isDomainImplementation(path string) bool {
 	return isApplication(path) || isAdapter(path) || isCommand(path) || isContract(path) || path == "os" || path == "os/exec" || path == "net" || path == "net/http" || path == "database/sql" || path == "syscall" || strings.Contains(path, "sqlite")

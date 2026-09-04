@@ -3,8 +3,8 @@ package issueops_test
 import (
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 func TestPhaseDecisionsPreserveCurrentOrder(t *testing.T) {

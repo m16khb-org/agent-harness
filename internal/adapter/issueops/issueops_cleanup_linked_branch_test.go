@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	issueopscontract "issueops/internal/contract/issueops"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 const (
 	lbSealedBase = "5480568a4178d5ea46d5486b97d0ff5223f1c24c"
 	lbBranch     = "304-completion-reseed-stale-receipt"
-	lbIssueURL   = "https://github.com/m16khb/agent-harness/issues/304"
+	lbIssueURL   = "https://github.com/m16khb/issueops/issues/304"
 	lbOrphanID   = "LB_kwDPAAAAAS0v3kvOAOdU6g"
 )
 

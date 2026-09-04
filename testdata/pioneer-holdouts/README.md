@@ -29,7 +29,7 @@ scenario can be re-run, but it is no longer a blind holdout.
   are evaluation receipts, not answer text.
 - **NOT committed (answer):** root-cause analysis, exact fix, evaluator prose,
   and answer artifacts. Those live in
-  `.agent-harness/evidence/pioneer-skills-quality/reruns/<skill>/result.yaml`,
+  `.issueops/evidence/pioneer-skills-quality/reruns/<skill>/result.yaml`,
   which stays blanket-gitignored (`.gitignore: evidence`). A Go test
   (`internal/holdoutdeleak`) mechanically asserts no file here leaks an answer
   token and that the evidence tree stays untracked.
@@ -38,12 +38,12 @@ scenario can be re-run, but it is no longer a blind holdout.
 
 - Each namesake has `TASK.md` (primary), `BOUNDARY.md`, and `OPERATIONAL.md`.
   The latter two are independent prompts rather than answer variants.
-- **6 of 12 primary cases are filesystem fixtures** (dijkstra, hopper, shannon, torvalds,
-  turing, von-neumann). `shannon` and `torvalds` need a git working-tree state,
+- **6 of 12 primary cases are filesystem fixtures** (algorithm-optimization, debugging, code-quality-metrics, git-operations,
+  verified-execution, implementation-planning). `code-quality-metrics` and `git-operations` need a git working-tree state,
   so they ship a `setup.sh` builder rather than a committable nested `.git`.
-- **5 are in-prompt** (boehm, brooks, codd, engelbart, karpathy): there is no
+- **5 are in-prompt** (requirements-analysis, design-review, database-design, meeting-notes, prompt-engineering): there is no
   filesystem input beyond the prompt text in `TASK.md`.
-- **1 is live-web** (berners-lee): it depended on live network state and is
+- **1 is live-web** (web-research): it depended on live network state and is
   **NOT reproducible offline** — recorded for provenance only.
 - **Provenance gap:** these inputs are RE-AUTHORED from the recorded specs. The
   original `/tmp/pioneer-holdouts` working dirs that produced the recorded

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/adapter/preflight"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/adapter/preflight"
+	"issueops/internal/contract/issueops"
 )
 
 func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {

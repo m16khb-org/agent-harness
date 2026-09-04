@@ -1,0 +1,16 @@
+{
+  "id": "pioneer-meeting-notes",
+  "title": "Meeting transcript needs durable team memory",
+  "user_prompt": "이 화자 분리 회의 전사본을 결정·액션·불확실성이 보존된 한국어 회의록과 Slack Canvas handoff로 만들어줘",
+  "repo_context": "A synthetic meeting transcript must become shared team memory without inventing owners, deadlines, decisions, or source evidence.",
+  "pioneer_skill_target": "meeting-notes",
+  "expected_routing": [],
+  "expected_issue": ["records success criteria", "defines evidence artifacts", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["maps criteria to evidence", "records cleanup receipts", "includes verification"],
+  "expected_tasks": ["bounded ownership"],
+  "expected_tdd": ["failing tests before implementation"],
+  "expected_subagents": ["records subagent decision before use"],
+  "expected_pr": ["includes verification ledger", "links issue", "is written in Korean", "references issue/pr guideline"],
+  "expected_pioneer_artifact": ["Source fidelity", "Decision log", "Action owners", "Uncertainty", "Canvas handoff"],
+  "critical_failures": ["skips pioneer method", "works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

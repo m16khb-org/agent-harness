@@ -17,7 +17,7 @@ IssueOps execution은 owner context를 봉인하거나 claim 시 본문 drift를
 그 capability를 소비할 수 없고, 로컬 `glab` credential이 대상 host/project와
 맞지 않으면 MCP로는 읽을 수 있는 이슈를 CLI 경로에서 실패한다.
 
-MCP server는 agent-harness의 child process나 dependency가 아니다. Host가 노출한
+MCP server는 issueops의 child process나 dependency가 아니다. Host가 노출한
 tool catalog에서 `glab_api` capability를 발견하고 호출할 수 있는 주체는 host
 agent다. 현재 사용자 환경의 `glab-mcp-wrapper`도 이 capability를 제공하는 한
 개의 등록 방식일 뿐이며, 다른 머신에서는 공식 `glab mcp serve`나 다른 server
@@ -41,16 +41,16 @@ provider/IID를 검증한다. Snapshot transport 실패를 Orca readiness 실패
 - 선택된 snapshot source를 secret이나 개인 server identity 없이 관찰할 수 있게
   한다.
 - 성공적으로 검증한 provider capability 사용법을 진행 중인 repo의
-  `.agent-harness/VCS.md`에 남겨 다음 agent/session이 재사용하게 한다.
+  `.issueops/VCS.md`에 남겨 다음 agent/session이 재사용하게 한다.
 - 설치·업데이트·self-verify는 GitLab MCP나 `glab` 설치를 요구하지 않는다.
 
 ## 비목표
 
 - `glab-mcp-wrapper`, profile 이름, token 환경 변수, 사용자 MCP config path를
-  agent-harness에 등록하거나 특별 취급하지 않는다.
-- agent-harness binary가 sibling MCP server를 직접 시작하거나 MCP tool catalog를
+  issueops에 등록하거나 특별 취급하지 않는다.
+- issueops binary가 sibling MCP server를 직접 시작하거나 MCP tool catalog를
   탐색하지 않는다.
-- GitLab MCP 또는 `glab`을 agent-harness install/update가 설치·인증하지 않는다.
+- GitLab MCP 또는 `glab`을 issueops install/update가 설치·인증하지 않는다.
 - MCP server마다 별도 provider adapter를 만들지 않는다.
 - GitLab issue snapshot transport로 Orca의 worktree/terminal/task 기능을
   복제하지 않는다.
@@ -76,7 +76,7 @@ GitLab provider adapter가 일반 `glab api`를 실행한다.
 - MCP가 없는 머신에서도 기존 CLI 경로가 유지된다.
 - Agent가 이미 가진 MCP capability를 binary가 역으로 호출하려는 계층 역전이 없다.
 
-### 2. agent-harness가 `glab mcp serve`를 직접 실행 — 기각
+### 2. issueops가 `glab mcp serve`를 직접 실행 — 기각
 
 Binary가 별도 MCP client와 process lifecycle, config discovery, credential
 selection을 소유해야 한다. Host가 이미 관리하는 MCP 연결을 중복하고, 사용자
@@ -171,7 +171,7 @@ Host agent와 공용 IssueOps skill/hook hint는 다음 순서를 따른다.
 것이 아니라 노출된 `glab_api` capability와 live response identity로 portable하게
 선택하는 것이다.
 
-탐색은 host agent가 수행한다. `agent-harness` hook은 네트워크를 호출하지 않고
+탐색은 host agent가 수행한다. `issueops` hook은 네트워크를 호출하지 않고
 GitLab 관련 prompt에 이 capability-first 순서를 bounded routing hint로 제공한다.
 공용 skill은 Codex와 Claude Code에 같은 지시를 제공한다.
 
@@ -180,7 +180,7 @@ GitLab 관련 prompt에 이 capability-first 순서를 bounded routing hint로 �
 ### 문서 위치와 생명주기
 
 사용자가 말한 “진행 중인 repo의 `VCS.md`”는 프로젝트 문서 경계에 맞춰
-`<repo>/.agent-harness/VCS.md`로 둔다. Root `VCS.md`를 새로 만들지 않는다.
+`<repo>/.issueops/VCS.md`로 둔다. Root `VCS.md`를 새로 만들지 않는다.
 
 현재 project-doc catalog에는 `VCS.md`가 없으므로 이를 **optional first-class
 project doc**으로 추가한다. 다음 경계를 지킨다.
@@ -405,7 +405,7 @@ transport의 어떤 본문이 실제로 봉인됐는지 검증할 수 있다.
   contract로 승격하지 않는다.
 - `skills/issueops/references/execution.md`는 GitLab snapshot이 필요한 action에서
   MCP evidence를 전달하는 예와 CLI fallback을 설명한다.
-- Project-doc catalog는 optional `.agent-harness/VCS.md`를 read/update 대상으로
+- Project-doc catalog는 optional `.issueops/VCS.md`를 read/update 대상으로
   허용하고 VCS/GitLab/GitHub task routing에 포함한다.
 - Hook/skill 안내를 따른 main agent가 successful read 뒤 canonical worktree와
   SHA-CAS를 확인해 `VCS.md`를 materialize한다.
@@ -436,7 +436,7 @@ transport의 어떤 본문이 실제로 봉인됐는지 검증할 수 있다.
 9. Hook/skill 계약은 server namespace를 필터링하지 않고 `glab_api` leaf와
    live response identity만 사용한다. 현재 개인 wrapper는 설치 후 live smoke로
    같은 경로가 실제 호출되는지 확인한다.
-10. `.agent-harness/VCS.md`는 optional project doc으로 read/update/route되지만
+10. `.issueops/VCS.md`는 optional project doc으로 read/update/route되지만
     bootstrap과 doctor가 모든 repo에 생성을 강제하지 않는다.
 11. Required와 optional project-doc 목록이 분리되어 `VCS.md` allowlist 추가가
     기존 bootstrap/doctor required 목록을 바꾸지 않는다.
@@ -452,19 +452,19 @@ transport의 어떤 본문이 실제로 봉인됐는지 검증할 수 있다.
 
 ```bash
 go test ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./internal/core/projectbootstrap ./internal/core/doctor -count=1
-go test ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli ./cmd/harness/hookcli ./internal/adapter/mcp -count=1
+go test ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli ./cmd/issueops/hookcli ./internal/adapter/mcp -count=1
 go test -race ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/projectdoc ./internal/core/projectdocs -count=1
-go vet ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli ./cmd/harness/hookcli ./internal/adapter/mcp
-go build -o bin/agent-harness ./cmd/harness
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go vet ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli ./cmd/issueops/hookcli ./internal/adapter/mcp
+go build -o bin/issueops ./cmd/issueops
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 ```
 
 사용자의 명시적 자원 제한 지시에 따라 머신 자원을 많이 쓰는 `go test ./...`,
 전체 `-race`, full self-verify는 이번 작업에서 실행하지 않는다. 위 targeted
 package와 contract/install/live surface 증거로 회귀 범위를 검증한다.
 
-설치 surface 검증은 `ah update --json` 뒤 daemon을 갱신하고 Codex/Claude MCP
+설치 surface 검증은 `io update --json` 뒤 daemon을 갱신하고 Codex/Claude MCP
 catalog에서 변경된 `issueops_execution` schema를 다시 읽는다. GitLab live smoke는
 server 이름이 아니라 실제 노출된 `glab_api` capability를 사용해 exact issue를
 읽고 evidence를 전달한 결과가 `issue_snapshot_source=glab_mcp`,
@@ -478,7 +478,7 @@ evidence를 생략해 `issue_snapshot_source=glab_cli`를 확인한다.
 - 현재 등록된 개인 wrapper가 노출한 `glab_api`도 일반 capability와 동일하게
   발견·호출할 수 있다.
 - Successful discovery의 portable recipe가 진행 중인 repo의
-  `.agent-harness/VCS.md`에 secret 없이 기록되고 다음 session에서 route된다.
+  `.issueops/VCS.md`에 secret 없이 기록되고 다음 session에서 route된다.
 - `VCS.md`는 GitLab과 GitHub recipe를 provider/remote별로 기록하며 현재 repo의
   VCS와 맞는 recipe만 재사용한다.
 - 같은 recipe 재사용은 문서 churn을 만들지 않고, wrapper/server 이름 변경도
@@ -491,7 +491,7 @@ evidence를 생략해 `issue_snapshot_source=glab_cli`를 확인한다.
 - Invalid supplied evidence는 fallback 없이 fail-closed한다.
 - Snapshot transport failure가 `mode=direct` 선택으로 오분류되지 않는다.
 - CLI/MCP request와 response golden, targeted/race/vet/build가 통과한다.
-- `ah update`와 daemon refresh 뒤 Codex/Claude installed surface에서 동일 schema가
+- `io update`와 daemon refresh 뒤 Codex/Claude installed surface에서 동일 schema가
   관찰된다.
 - #2609 live preview가 MCP evidence로 `resolved_mode=orca`를 유지한다.
 - OpenWiki 자동 update는 실행하지 않는다.

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Torvalds"
-  short_description: "Handle advanced Git history, recovery, and branch operations"
-  default_prompt: "Use $torvalds to perform this advanced Git operation with verification and a clear recovery path."

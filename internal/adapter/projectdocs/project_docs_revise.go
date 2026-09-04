@@ -1,8 +1,8 @@
 package projectdocs
 
 import (
-	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"fmt"
+	projectdocscontract "issueops/internal/contract/projectdocs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +30,7 @@ func ReadProjectDoc(repoRoot, relPath string) (projectdocscontract.ProjectDocsRe
 	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		result.Exists = false
-		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or agent-harness project bootstrap first"}
+		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or issueops project bootstrap first"}
 		return result, nil
 	}
 	if err != nil {
@@ -84,7 +84,7 @@ func ReviseProjectDoc(req projectdocscontract.ProjectDocsReviseRequest) (project
 	nextSHA := sha256Hex(content)
 	warnings := []string{}
 	if !req.Confirm {
-		warnings = append(warnings, "dry_run_only: pass confirm=true to write the updated .agent-harness document")
+		warnings = append(warnings, "dry_run_only: pass confirm=true to write the updated .issueops document")
 	} else if action != "unchanged" {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return projectdocscontract.ProjectDocsReviseResult{}, err

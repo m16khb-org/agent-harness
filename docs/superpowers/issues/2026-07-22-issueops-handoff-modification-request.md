@@ -84,6 +84,6 @@ steering이나 unfenced orchestration send는 sealed lifecycle identity와 권�
 - focused package tests
 - `go test ./... -count=1`
 - `go test -race ./... -count=1`
-- `go build -o <temporary-path> ./cmd/harness`
+- `go build -o <temporary-path> ./cmd/issueops`
 - CLI/MCP response contract golden
 - source/main과 worker root의 clean/dirty ownership 확인

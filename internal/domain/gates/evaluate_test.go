@@ -9,7 +9,7 @@ func TestExpectMatchesLineAnchored(t *testing.T) {
 	if !ExpectMatches("3/3 tiers ok", "checking...\n3/3 tiers ok\n") {
 		t.Fatal("whole-line match failed")
 	}
-	if !ExpectMatches("ok", "ok  \tagent-harness/internal/adapter/gates\t0.3s") {
+	if !ExpectMatches("ok", "ok  \tissueops/internal/adapter/gates\t0.3s") {
 		t.Fatal("EXPECT followed by whitespace must match (go test lines)")
 	}
 	if !ExpectMatches("docs-ok", "Skill is valid!\n  docs-ok  \n") {

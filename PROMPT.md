@@ -1,6 +1,6 @@
 # Prompt Scaffold
 
-Use this scaffold when creating reusable prompts for `agent-harness` agents, external LLM judges, benchmark fixtures, or review helpers. Keep the structure; replace bracketed placeholders with task-specific content. Do not copy domain-specific examples into production prompts.
+Use this scaffold when creating reusable prompts for `issueops` agents, external LLM judges, benchmark fixtures, or review helpers. Keep the structure; replace bracketed placeholders with task-specific content. Do not copy domain-specific examples into production prompts.
 
 ## Identity
 

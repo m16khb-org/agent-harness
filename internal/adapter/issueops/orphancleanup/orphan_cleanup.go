@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	model "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/domain/operationalhealth"
+	model "issueops/internal/contract/issueops"
+	corehealth "issueops/internal/domain/operationalhealth"
 )
 
 // Dependencies keep the control-plane policy in core while the CLI supplies

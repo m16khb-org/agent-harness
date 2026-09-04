@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 const executionIssueSnapshotBodyLimit = 1 << 19

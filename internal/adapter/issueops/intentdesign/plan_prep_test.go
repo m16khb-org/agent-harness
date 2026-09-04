@@ -3,7 +3,7 @@ package intentdesign
 import (
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func planPrepMemStore() (Store, *model.IssueOpsRecord) {
@@ -24,7 +24,7 @@ func planPrepMemStore() (Store, *model.IssueOpsRecord) {
 func TestRecordPlanPrepStoresEvidenceAndWaive(t *testing.T) {
 	store, rec := planPrepMemStore()
 	_, err := RecordPlanPrep(store, "state", "io-1", model.IssueOpsPlanPrepRequest{
-		PriorDecisions: model.IssueOpsPlanPrepItemRequest{Evidence: []string{".agent-harness/ADR.md"}},
+		PriorDecisions: model.IssueOpsPlanPrepItemRequest{Evidence: []string{".issueops/ADR.md"}},
 		RelatedIssues:  model.IssueOpsPlanPrepItemRequest{Evidence: []string{"remote score: selected=#1(0.9)"}},
 		WebResearch:    model.IssueOpsPlanPrepItemRequest{WaiveReason: "내부 전용 변경"},
 		CodebaseSurvey: model.IssueOpsPlanPrepItemRequest{Evidence: []string{"rg gate: issueops_readiness.go, plan_prep.go 관련 심볼 전수 확인"}},

@@ -17,5 +17,5 @@
 go test ./internal/core/issueops ./internal/core/lifecycle -count=1
 go test -race ./internal/core/issueops ./internal/core/lifecycle -count=1
 go vet ./...
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```

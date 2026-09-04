@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E2E operational stability audit for agent-harness.
+"""E2E operational stability audit for issueops.
 
 Default mode avoids destructive cleanup and real host install. Use --full-install
 for installed-surface verification and --cleanup-stale to terminate confirmed
@@ -23,9 +23,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path.cwd()
-BIN = ROOT / "bin" / "agent-harness"
+BIN = ROOT / "bin" / "issueops"
 LEGACY_BIN_RE = re.compile(r"/bin/harness (daemon --internal|mcp)\b")
-HARNESS_DAEMON_RE = re.compile(r"agent-harness daemon --internal")
+ISSUEOPS_DAEMON_RE = re.compile(r"issueops daemon --internal")
 TEMP_WATCHER_RE = re.compile(r"scripts/codegraph-watcher\.mjs .*/T/tmp\.")
 REGRESSION_TIMEOUT_SECONDS = 300
 SELF_VERIFY_TIMEOUT_SECONDS = 1800
@@ -95,7 +95,7 @@ def is_noisy_user_prompt_context(ctx: str) -> bool:
 
 
 def mcp_smoke_env(env: dict[str, str]) -> dict[str, str]:
-    return {**env, "HARNESS_MCP_DIRECT": "1"}
+    return {**env, "ISSUEOPS_MCP_DIRECT": "1"}
 
 
 def run_mcp_jsonrpc_process(
@@ -303,15 +303,15 @@ def terminate(pid: int) -> str:
 
 
 def classify_processes(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    current_daemons = [r for r in rows if HARNESS_DAEMON_RE.search(r["command"])]
+    current_daemons = [r for r in rows if ISSUEOPS_DAEMON_RE.search(r["command"])]
     legacy = [r for r in rows if LEGACY_BIN_RE.search(r["command"])]
     temp_watchers = [r for r in rows if TEMP_WATCHER_RE.search(r["command"])]
-    zombies = [r for r in rows if "Z" in r["state"] and re.search(r"agent-harness|bin/harness|codegraph", r["command"])]
+    zombies = [r for r in rows if "Z" in r["state"] and re.search(r"issueops|bin/harness|codegraph", r["command"])]
     return {"current_daemons": current_daemons, "legacy_harness": legacy, "temp_watchers": temp_watchers, "zombies": zombies}
 
 
 def build(report: dict[str, Any]) -> None:
-    res = run(["go", "build", "-o", str(BIN), "./cmd/harness"], timeout=120)
+    res = run(["go", "build", "-o", str(BIN), "./cmd/issueops"], timeout=120)
     add_step(report, "build", res["returncode"] == 0, result={k: res[k] for k in ("returncode", "stderr", "duration_ms")})
 
 
@@ -458,8 +458,8 @@ def hook_smoke(report: dict[str, Any]) -> None:
 
 def temp_state_worker_policy(report: dict[str, Any]) -> None:
     with tempfile.TemporaryDirectory() as state, tempfile.TemporaryDirectory() as worker:
-        env_state = {"HARNESS_STATE_DIR": state}
-        env_worker = {"HARNESS_WORKER_DIR": worker}
+        env_state = {"ISSUEOPS_STATE_DIR": state}
+        env_worker = {"ISSUEOPS_WORKER_DIR": worker}
         commands = [
             ("state_write", [str(BIN), "state", "write", "--key", "stability-audit", "--value", "current-v1", "--json"], env_state),
             ("state_read", [str(BIN), "state", "read", "--key", "stability-audit", "--json"], env_state),
@@ -500,7 +500,7 @@ def temp_state_worker_policy(report: dict[str, Any]) -> None:
 def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
     baseline = {r["pid"] for r in classify_processes(ps_rows())["current_daemons"] + classify_processes(ps_rows())["legacy_harness"]}
     with tempfile.TemporaryDirectory() as td:
-        env = {"HARNESS_DAEMON_DIR": str(Path(td) / "daemon"), "HARNESS_STATE_DIR": str(Path(td) / "state"), "HARNESS_ROOT": str(ROOT)}
+        env = {"ISSUEOPS_DAEMON_DIR": str(Path(td) / "daemon"), "ISSUEOPS_STATE_DIR": str(Path(td) / "state"), "ISSUEOPS_ROOT": str(ROOT)}
         ok = True
         cycle_details = []
         for i in range(cycles):
@@ -574,15 +574,15 @@ def host_mcp_checks(report: dict[str, Any]) -> None:
     details = []
     ok = True
     if shutil.which("codex"):
-        res = run(["codex", "mcp", "get", "agent_harness"], timeout=20)
-        step_ok = res["returncode"] == 0 and "agent-harness" in (res["stdout"] + res["stderr"])
+        res = run(["codex", "mcp", "get", "issueops"], timeout=20)
+        step_ok = res["returncode"] == 0 and "issueops" in (res["stdout"] + res["stderr"])
         ok = ok and step_ok
         details.append({"name": "codex_mcp_get", "ok": step_ok, "stdout_head": res["stdout"][:500], "stderr_head": res["stderr"][:500]})
     if shutil.which("claude"):
         res = run(["claude", "mcp", "list"], timeout=40)
         text = res["stdout"] + res["stderr"]
-        conflict = "Conflicting scopes" in text and "agent_harness" in text
-        legacy = "/bin/harness mcp" in text
+        conflict = "Conflicting scopes" in text and "issueops" in text
+        legacy = "/bin/issueops mcp" in text
         step_ok = res["returncode"] == 0 and not conflict and not legacy
         ok = ok and step_ok
         details.append({"name": "claude_mcp_list", "ok": step_ok, "conflict": conflict, "legacy_bin_harness": legacy, "output_head": text[:1000]})
@@ -627,19 +627,19 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
     commands = [["go", "test", "./...", "-count=1"]]
     if race:
         commands.append(["go", "test", "-race", "./...", "-count=1"])
-    commands.append(["go", "build", "-o", str(BIN), "./cmd/harness"])
+    commands.append(["go", "build", "-o", str(BIN), "./cmd/issueops"])
     details = []
     ok = True
-    with tempfile.TemporaryDirectory(prefix="agent-harness-stability-regression-") as td:
+    with tempfile.TemporaryDirectory(prefix="issueops-stability-regression-") as td:
         isolated_root = Path(td)
         isolated_env = {
-            "HARNESS_STATE_DIR": str(isolated_root / "state"),
-            "HARNESS_ROOT": str(ROOT),
-            "HARNESS_DAEMON_DIR": str(isolated_root / "daemon"),
-            "HARNESS_WORKER_DIR": str(isolated_root / "worker"),
+            "ISSUEOPS_STATE_DIR": str(isolated_root / "state"),
+            "ISSUEOPS_ROOT": str(ROOT),
+            "ISSUEOPS_DAEMON_DIR": str(isolated_root / "daemon"),
+            "ISSUEOPS_WORKER_DIR": str(isolated_root / "worker"),
         }
         for key, path in isolated_env.items():
-            if key == "HARNESS_ROOT":
+            if key == "ISSUEOPS_ROOT":
                 continue
             Path(path).mkdir(mode=0o700)
         for cmd in commands:
@@ -652,7 +652,7 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
         with tempfile.TemporaryDirectory() as td:
             res = run(
                 self_verify_command(),
-                env={"HARNESS_STATE_DIR": td},
+                env={"ISSUEOPS_STATE_DIR": td},
                 timeout=SELF_VERIFY_TIMEOUT_SECONDS,
             )
             parsed = None
@@ -683,7 +683,7 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run agent-harness E2E stability audit")
+    parser = argparse.ArgumentParser(description="Run issueops E2E stability audit")
     parser.add_argument("--full-install", action="store_true", help="run the canonical install command after dry-run checks")
     parser.add_argument("--cleanup-stale", action="store_true", help="terminate confirmed legacy/temp harness-owned stale processes")
     parser.add_argument(

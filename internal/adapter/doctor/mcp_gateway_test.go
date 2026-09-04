@@ -35,7 +35,7 @@ func TestHarnessDoctorReportsMCPGatewayCheck(t *testing.T) {
 	countMCPGatewayFDs = func(port int) (int, error) { return 24, nil }
 	t.Cleanup(func() { probeMCPGateway, countMCPGatewayFDs = oldProbe, oldCount })
 
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: home, Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: home, Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestHarnessDoctorWarnsOnUnreachableMCPGateway(t *testing.T) {
 	countMCPGatewayFDs = func(port int) (int, error) { return 24, nil }
 	t.Cleanup(func() { probeMCPGateway, countMCPGatewayFDs = oldProbe, oldCount })
 
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: home, Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: home, Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestHarnessDoctorWarnsOnMCPGatewayFDPressure(t *testing.T) {
 	countMCPGatewayFDs = func(port int) (int, error) { return mcpGatewayFDWarningThreshold, nil }
 	t.Cleanup(func() { probeMCPGateway, countMCPGatewayFDs = oldProbe, oldCount })
 
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: home, Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: home, Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestHarnessDoctorWarnsOnMCPGatewayFDPressure(t *testing.T) {
 }
 
 func TestHarnessDoctorSkipsMCPGatewayWithoutConfig(t *testing.T) {
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), HarnessRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
+	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: t.TempDir(), IssueOpsRoot: t.TempDir(), Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}

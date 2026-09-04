@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/outbound/sqlstore"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestJSONLineObserverEmitsOnlyActionableRedactedSpanEvents(t *testing.T) {

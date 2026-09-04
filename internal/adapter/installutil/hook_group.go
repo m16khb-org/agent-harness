@@ -26,7 +26,7 @@ func ValidateHookConfigForMerge(config map[string]any, knownEvents []string) err
 }
 
 // HookGroupContainsAgentHarness reports whether a host hook group already holds
-// an agent-harness lifecycle hook command, so installers can remove their own
+// an issueops lifecycle hook command, so installers can remove their own
 // prior hook while preserving third-party groups.
 func HookGroupContainsAgentHarness(group any) bool {
 	m, ok := group.(map[string]any)
@@ -72,5 +72,5 @@ func HookGroupContainsCommand(group any, commandPrefix string) bool {
 
 func isAgentHarnessHookCommand(command string) bool {
 	executable, ok := hookCommandTarget(command)
-	return ok && filepath.Base(executable) == "agent-harness"
+	return ok && filepath.Base(executable) == "issueops"
 }

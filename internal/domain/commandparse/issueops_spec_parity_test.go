@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	domaincli "agent-harness/internal/domain/cli"
+	domaincli "issueops/internal/domain/cli"
 )
 
 // usage 카탈로그(internal/domain/cli)가 광고하는 플래그는 exact-parse 스펙이
@@ -24,7 +24,7 @@ func TestIssueOpsCommandSpecAcceptsEveryCatalogAdvertisedFlag(t *testing.T) {
 		advertised := map[string]bool{}
 		for _, field := range strings.Fields(line) {
 			switch field {
-			case "agent-harness", "issueops":
+			case "issueops":
 			case "RECORD_ACTOR_FLAGS", "[RECORD_ACTOR_FLAGS]":
 				carriesRecordActorFlags = true
 				for name := range actorRecord {

@@ -1,12 +1,12 @@
 package adapter_test
 
 import (
-	agyadapter "agent-harness/internal/adapter/agy"
-	claudeadapter "agent-harness/internal/adapter/claude"
-	codexadapter "agent-harness/internal/adapter/codex"
-	installutiladapter "agent-harness/internal/adapter/installutil"
-	omoadapter "agent-harness/internal/adapter/omo"
-	mcpdomain "agent-harness/internal/domain/mcp"
+	agyadapter "issueops/internal/adapter/agy"
+	claudeadapter "issueops/internal/adapter/claude"
+	codexadapter "issueops/internal/adapter/codex"
+	installutiladapter "issueops/internal/adapter/installutil"
+	omoadapter "issueops/internal/adapter/omo"
+	mcpdomain "issueops/internal/domain/mcp"
 )
 
 // production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 네 host adapter의

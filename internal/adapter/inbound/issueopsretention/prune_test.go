@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	issueopsretentionapplication "agent-harness/internal/application/issueopsretention"
-	issueopsretentioncontract "agent-harness/internal/contract/issueopsretention"
+	issueopsretentionapplication "issueops/internal/application/issueopsretention"
+	issueopsretentioncontract "issueops/internal/contract/issueopsretention"
 )
 
 type fakeRetentionStore struct {

@@ -3,8 +3,8 @@ package issueopsdecision
 import (
 	"context"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	issueopsdecisioncontract "agent-harness/internal/contract/issueopsdecision"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	issueopsdecisioncontract "issueops/internal/contract/issueopsdecision"
 )
 
 type Repository struct {

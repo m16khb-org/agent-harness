@@ -1,6 +1,6 @@
 # #198 — IssueOps execution completion vertical 구현 계획
 
-- GitHub issue: https://github.com/m16khb/agent-harness/issues/198
+- GitHub issue: https://github.com/m16khb-org/issueops/issues/198
 - lifecycle: `io-3cec83770d84`
 - child branch: `198-issueops-execution-completion-vertical`
 - parent branch: `117-hexagonal-architecture-migration`
@@ -62,14 +62,14 @@ go test ./internal/core/issueops -run 'ExecutionComplete|CompletionVerticalDiffe
 ## Task 4 — production routing과 caller-zero cleanup
 
 1. complete handler/dependency를 공개 compatibility seam에 추가한다.
-2. harnessapp가 새 service를 조립하고 CLI/MCP가 같은 handler를 사용하게 한다.
+2. issueopsapp가 새 service를 조립하고 CLI/MCP가 같은 handler를 사용하게 한다.
 3. missing handler fail-closed와 legacy fallback 금지 fitness test를 먼저 RED로 만든다.
 4. production caller 0을 증명한 completion 전용 orchestration만 제거한다.
 
 검증:
 
 ```bash
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'ExecutionComplete|ExecutionHandler|ResponseContract' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'ExecutionComplete|ExecutionHandler|ResponseContract' -count=1
 go test ./internal/architecture -run 'Dependency|Completion' -count=1
 ```
 
@@ -90,9 +90,9 @@ go test ./internal/domain/issueopscompletion ./internal/application/issueopscomp
 go test -race ./internal/domain/issueopscompletion ./internal/application/issueopscompletion ./internal/adapter/inbound/issueopscompletion ./internal/adapter/outbound/issueopscompletion -count=1
 go test ./internal/core/issueops -run 'ExecutionComplete|CompletionVerticalDifferential' -count=1
 go test ./internal/architecture -run 'Dependency|Completion' -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 go vet ./internal/domain/issueopscompletion/... ./internal/application/issueopscompletion/... ./internal/adapter/inbound/issueopscompletion/... ./internal/adapter/outbound/issueopscompletion/...
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 git diff --check
 ```

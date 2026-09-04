@@ -17,55 +17,21 @@ import (
 
 // ① 축약 키는 카탈로그 줄과 정확히 하나씩 대응해야 한다. 맞지 않는 키는 오타이고,
 // 그 명령은 최상위 help에서 사라진다.
-func TestAbridgedIssueOpsKeysMatchExactlyOneCatalogLine(t *testing.T) {
-	catalog := IssueOpsUsageLines()
-	if len(catalog) == 0 {
-		t.Fatal("issueops usage catalog is empty; single-source wiring is broken")
-	}
-	keys := abridgedIssueOpsUsageKeys()
-	if len(keys) == 0 {
-		t.Fatal("abridged issueops key set is empty; top-level help would list nothing")
-	}
-	var unmatched, ambiguous []string
-	for _, key := range keys {
-		matches := 0
-		for _, line := range catalog {
-			if IssueOpsUsageKey(line) == key {
-				matches++
-			}
-		}
-		switch {
-		case matches == 0:
-			unmatched = append(unmatched, key)
-		case matches > 1:
-			ambiguous = append(ambiguous, key)
-		}
-	}
-	if len(unmatched) > 0 {
-		sort.Strings(unmatched)
-		t.Errorf("abridged keys match no catalog line (the command silently disappears from top-level help): %s",
-			strings.Join(unmatched, ", "))
-	}
-	if len(ambiguous) > 0 {
-		sort.Strings(ambiguous)
-		t.Errorf("abridged keys match more than one catalog line: %s", strings.Join(ambiguous, ", "))
-	}
-}
 
-// ② 최상위 usage가 실제로 그 키들만, 그리고 그 키들을 모두 렌더해야 한다. 키 집합과
-// 렌더 결과가 어긋나면 필터가 깨진 것이다.
-func TestTopLevelUsageRendersExactlyTheAbridgedIssueOpsKeys(t *testing.T) {
+func TestTopLevelUsageRendersExactlyTheLifecycleCatalog(t *testing.T) {
 	rendered := map[string]bool{}
 	for _, raw := range strings.Split(Usage("test"), "\n") {
 		trimmed := strings.TrimSpace(raw)
-		if !strings.HasPrefix(trimmed, "agent-harness issueops ") {
+		if !strings.HasPrefix(trimmed, "issueops ") {
 			continue
 		}
-		rendered[IssueOpsUsageKey("  "+trimmed)] = true
+		if key := IssueOpsUsageKey("  " + trimmed); key != "" {
+			rendered[key] = true
+		}
 	}
 	want := map[string]bool{}
-	for _, key := range abridgedIssueOpsUsageKeys() {
-		want[key] = true
+	for _, line := range IssueOpsUsageLines() {
+		want[IssueOpsUsageKey(line)] = true
 	}
 	var extra, absent []string
 	for key := range rendered {
@@ -90,14 +56,3 @@ func TestTopLevelUsageRendersExactlyTheAbridgedIssueOpsKeys(t *testing.T) {
 
 // ③ 축약은 전체의 **부분집합**이다. 카탈로그에 없는 명령이 최상위에만 있으면 그것이
 // 새로운 중복이다.
-func TestAbridgedIssueOpsKeysAreASubsetOfTheCatalog(t *testing.T) {
-	catalogKeys := map[string]bool{}
-	for _, line := range IssueOpsUsageLines() {
-		catalogKeys[IssueOpsUsageKey(line)] = true
-	}
-	for _, key := range abridgedIssueOpsUsageKeys() {
-		if !catalogKeys[key] {
-			t.Errorf("abridged key %q is not in the catalog", key)
-		}
-	}
-}

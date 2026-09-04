@@ -3,7 +3,7 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/active"
+	"issueops/internal/adapter/issueops/active"
 )
 
 // PreparedBaseBranchForWorkspace는 주어진 워크스페이스에서 진행 중인 사이클이

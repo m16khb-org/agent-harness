@@ -23,7 +23,7 @@ func TestValidateIssueCreateTransitionRejectsRetryEnablingDowngrade(t *testing.T
 func TestValidateIssueCreateIntentRejectsUnboundedDurableFields(t *testing.T) {
 	valid := IssueOpsIssueCreateIntent{
 		OperationID:      "0123456789abcdef0123456789abcdef",
-		Marker:           "<!-- agent-harness:issue-create:0123456789abcdef0123456789abcdef -->",
+		Marker:           "<!-- issueops:issue-create:0123456789abcdef0123456789abcdef -->",
 		Provider:         "github",
 		ProjectAuthority: "github.com/acme/repo",
 		Title:            "Title",

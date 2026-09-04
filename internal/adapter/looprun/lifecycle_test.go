@@ -1,13 +1,13 @@
 package looprun
 
 import (
-	loopruncontract "agent-harness/internal/contract/looprun"
+	loopruncontract "issueops/internal/contract/looprun"
 	"strings"
 	"testing"
 )
 
 func TestStartResumePreservesAttemptsAndRedactsGoal(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	req := loopruncontract.StartLoopRequest{
 		Repo:        repo,
@@ -44,7 +44,7 @@ func TestStartResumePreservesAttemptsAndRedactsGoal(t *testing.T) {
 }
 
 func TestRecordAttemptEvidenceRequired(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "evidence-required", 2)
 	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass"}); err == nil || !strings.Contains(err.Error(), "evidence_required") {
 		t.Fatalf("record attempt without evidence err=%v, want evidence_required", err)
@@ -52,7 +52,7 @@ func TestRecordAttemptEvidenceRequired(t *testing.T) {
 }
 
 func TestRecordAttemptAutoExhaustRejectsFurtherAttempts(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "auto-exhaust", 1)
 	exhausted, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "fail", Evidence: []string{"first failure"}})
 	if err != nil {
@@ -67,7 +67,7 @@ func TestRecordAttemptAutoExhaustRejectsFurtherAttempts(t *testing.T) {
 }
 
 func TestStopSuccessRequiresPass(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "success-requires-pass", 2)
 	if _, err := Stop(loop.ID, true, ""); err == nil || !strings.Contains(err.Error(), "loop_success_requires_pass") {
 		t.Fatalf("success without pass err=%v, want loop_success_requires_pass", err)
@@ -91,7 +91,7 @@ func TestStopSuccessRequiresPass(t *testing.T) {
 }
 
 func TestStopReasonAndTerminalRestartRefusal(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	req := loopruncontract.StartLoopRequest{Repo: t.TempDir(), Name: "terminal", Goal: "prove stop reason", MaxAttempts: 2}
 	loop, err := Start(req)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestStopReasonAndTerminalRestartRefusal(t *testing.T) {
 }
 
 func TestStatusReportsAttemptSummary(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "status", 3)
 	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass", Evidence: []string{"green"}}); err != nil {
 		t.Fatal(err)

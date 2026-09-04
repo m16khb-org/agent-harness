@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
+	"issueops/internal/adapter/outbound/sqlstore"
 )
 
 const defaultSlowSpanThreshold = 100 * time.Millisecond

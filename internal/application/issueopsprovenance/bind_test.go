@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
+	commandparsecontract "issueops/internal/contract/commandparse"
+	provenanceport "issueops/internal/port/issueopsprovenance"
 )
 
 type stubObserver struct {
@@ -24,9 +24,9 @@ func (s stubObserver) Observe(context.Context) (provenanceport.Receipt, error) {
 // 명령에 증거를 바인딩해야 한다.
 func TestBindManyObservesAndBindsAllNonEmptyCommands(t *testing.T) {
 	observer := stubObserver{receipt: provenanceport.Receipt{
-		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64),
+		ExecutablePath: "/repo/bin/issueops", ExecutableSHA256: strings.Repeat("a", 64),
 	}}
-	bound, err := BindMany(context.Background(), []string{"agent-harness issueops status --id io-1", "", "agent-harness issueops list"}, 3, observer)
+	bound, err := BindMany(context.Background(), []string{"issueops status --id io-1", "", "issueops list"}, 3, observer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestBindManyObservesAndBindsAllNonEmptyCommands(t *testing.T) {
 		if !strings.Contains(command, "issueops") || !strings.Contains(command, "--generated-for-generation 3") {
 			t.Fatalf("command not bound with provenance: %q", command)
 		}
-		if !strings.Contains(command, "/repo/bin/agent-harness") {
+		if !strings.Contains(command, "/repo/bin/issueops") {
 			t.Fatalf("bound command must carry the observed executable path: %q", command)
 		}
 	}
@@ -54,7 +54,7 @@ func TestBindManyEmptyInputSkipsObservation(t *testing.T) {
 }
 
 func TestBindManyFailsClosedOnObserverProblems(t *testing.T) {
-	if _, err := BindMany(context.Background(), []string{"agent-harness issueops status"}, 1, nil); err == nil {
+	if _, err := BindMany(context.Background(), []string{"issueops status"}, 1, nil); err == nil {
 		t.Fatal("nil observer must fail closed")
 	} else {
 		var obsErr *commandparsecontract.GeneratedCommandProvenanceError
@@ -63,7 +63,7 @@ func TestBindManyFailsClosedOnObserverProblems(t *testing.T) {
 		}
 	}
 	failing := stubObserver{err: errors.New("hash failed")}
-	if _, err := BindMany(context.Background(), []string{"agent-harness issueops status"}, 1, failing); err == nil {
+	if _, err := BindMany(context.Background(), []string{"issueops status"}, 1, failing); err == nil {
 		t.Fatal("observer error must propagate")
 	}
 }

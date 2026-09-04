@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 // BuildDelegatedProfile은 위임 자식이 부모의 검토 상태를 상속받는 방식을

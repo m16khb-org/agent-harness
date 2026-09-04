@@ -1,7 +1,7 @@
 package inspect
 
 import (
-	inspectcontract "agent-harness/internal/contract/inspect"
+	inspectcontract "issueops/internal/contract/inspect"
 	"path/filepath"
 	"testing"
 )
@@ -15,13 +15,13 @@ func TestInspectHarnessIndexesSkillsAndDocs(t *testing.T) {
 	if !info.OK {
 		t.Fatalf("InspectHarness ok=false: %+v", info)
 	}
-	if info.Version != "test-version" || info.HarnessRoot != root || info.TargetRepo != root {
+	if info.Version != "test-version" || info.IssueOpsRoot != root || info.TargetRepo != root {
 		t.Fatalf("unexpected identity fields: %+v", info)
 	}
 	if !containsSkill(info.Skills, "atomic-commit-push") {
 		t.Fatalf("unexpected skills: %+v", info.Skills)
 	}
-	if !containsDoc(info.Docs, ".agent-harness/OPERATIONS.md") {
+	if !containsDoc(info.Docs, ".issueops/OPERATIONS.md") {
 		t.Fatalf("USAGE.md not indexed: %+v", info.Docs)
 	}
 	if !info.Integration.ProjectClaudeMCPConfig {

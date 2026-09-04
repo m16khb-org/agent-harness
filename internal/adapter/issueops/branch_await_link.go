@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	linkedbranch "agent-harness/internal/domain/issueopslinkedbranch"
+	issueopscontract "issueops/internal/contract/issueops"
+	linkedbranch "issueops/internal/domain/issueopslinkedbranch"
 )
 
 // AwaitBranchLinkDeps는 외부 표면 주입점이다. 이 경로는 **읽기 전용**이다 —

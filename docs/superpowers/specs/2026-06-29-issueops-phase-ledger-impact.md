@@ -2,7 +2,7 @@
 
 Companion to `2026-06-29-issueops-phase-ledger-design.md`. Lists the concrete Go
 files, tests, and golden fixtures that change, grounded in the current tree
-(`internal/core/issueops`, `cmd/harness`). Ordered by dependency so each phase
+(`internal/core/issueops`, `cmd/issueops`). Ordered by dependency so each phase
 compiles and tests green before the next.
 
 ## Layer 1 — Model (`internal/core/issueops/model/`)
@@ -38,7 +38,7 @@ Mirror the existing `RecordIssueOps*` wrappers (see `RecordIssueOpsCompatibility
 - `ResolveIssueOpsFeedback`
 - `IssueOpsPhaseCompletion` exposure for CLI/MCP status
 
-## Layer 4 — CLI (`cmd/harness/issueopscli/`)
+## Layer 4 — CLI (`cmd/issueops/issueopscli/`)
 
 | File | Change |
 | --- | --- |
@@ -49,7 +49,7 @@ Mirror the existing `RecordIssueOps*` wrappers (see `RecordIssueOpsCompatibility
 | `issueops_cli_support.go` | Update usage text. |
 | status command | Render `phase_ledger` (per-phase entry, completed/missing artifacts, owner command). |
 
-## Layer 5 — MCP (`cmd/harness/mcpcli/`)
+## Layer 5 — MCP (`cmd/issueops/mcpcli/`)
 
 | File | Change |
 | --- | --- |
@@ -61,18 +61,18 @@ Mirror the existing `RecordIssueOps*` wrappers (see `RecordIssueOpsCompatibility
 
 | Target | Change |
 | --- | --- |
-| `cmd/harness/testdata/mcp_tools.golden.json` | New tools + descriptions. |
-| `cmd/harness/testdata/response_contracts.golden.json` | New record fields in contracts. |
-| `cmd/harness/contractgolden/` | Contract shape for new fields/tools. |
+| `cmd/issueops/testdata/mcp_tools.golden.json` | New tools + descriptions. |
+| `cmd/issueops/testdata/response_contracts.golden.json` | New record fields in contracts. |
+| `cmd/issueops/contractgolden/` | Contract shape for new fields/tools. |
 | `internal/core/issueops/*_test.go` | New core tests (see spec Testing): problem/grill gates, entry-vs-completion no-deadlock, regated downstream gates, target_branch_match, backfill determinism. |
-| `cmd/harness/issueopscli/*_test.go` | CLI ledger/status + new subcommands. |
-| `cmd/harness/mcpcli/issueops/*_test.go` | MCP ledger parity + new tools. |
+| `cmd/issueops/issueopscli/*_test.go` | CLI ledger/status + new subcommands. |
+| `cmd/issueops/mcpcli/issueops/*_test.go` | MCP ledger parity + new tools. |
 
-Regenerate golden: `go test ./cmd/harness -run Golden -count=1` (with the repo's update flag if present).
+Regenerate golden: `go test ./cmd/issueops -run Golden -count=1` (with the repo's update flag if present).
 
 ## Layer 7 — Docs
 
-`.agent-harness/ARCHITECTURE.md`, `AGENT_WORKFLOW.md`, `ADR.md`; `skills/issueops/SKILL.md`, `skills/issueops/references/worktree-context.md`.
+`.issueops/ARCHITECTURE.md`, `AGENT_WORKFLOW.md`, `ADR.md`; `skills/issueops/SKILL.md`, `skills/issueops/references/worktree-context.md`.
 
 ## Recommended order
 
@@ -82,7 +82,7 @@ Regenerate golden: `go test ./cmd/harness -run Golden -count=1` (with the repo's
 4. **Transition wiring** in `issueops_phase.go` (problem/grill gates, entered_at/completed_at, entry-vs-completion). This is the fail-closed step — land it only after step 3 so cycles can satisfy the new gates.
 5. **Strict PR** `target_branch_match`.
 6. **Status rendering** + golden regeneration.
-7. **Docs + ADR**, then `agent-harness update --path-mode=skip --json` and surface verification per the spec Rollout.
+7. **Docs + ADR**, then `issueops update --path-mode=skip --json` and surface verification per the spec Rollout.
 
 Steps 3→4 ordering matters: wiring the grill/problem gates before the recorders exist would block every new cycle. Land recorders first, gates last.
 

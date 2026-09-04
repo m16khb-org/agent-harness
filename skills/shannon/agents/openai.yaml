@@ -1,4 +1,0 @@
-interface:
-  display_name: "Shannon"
-  short_description: "Measure code quality with quantitative signal metrics"
-  default_prompt: "Use $shannon to measure code quality before and after cleanup using reproducible signal-to-noise metrics."

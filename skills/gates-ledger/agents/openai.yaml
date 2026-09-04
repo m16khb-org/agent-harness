@@ -1,4 +1,4 @@
 interface:
   display_name: "Gates Ledger"
-  short_description: "Create and check task gate ledgers with the agent-harness gates CLI"
+  short_description: "Create and check task gate ledgers with the issueops gates CLI"
   default_prompt: "Use $gates-ledger to turn acceptance criteria into a G-numbered ledger under the worktree and to fill it with real evidence. Write each gate as an observable outcome plus one read-only CHECK command and the EXPECT string it must print, create it with `gates init`, fill EVIDENCE with `gates check --write`, and close impossible gates with `gates abandon --reason` instead of relaxing EXPECT. Unmet gates block PR entry as gates_incomplete:<file>."

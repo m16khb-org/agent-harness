@@ -1,10 +1,10 @@
 package issueops
 
 import (
-	issueopsartifactinbound "agent-harness/internal/adapter/inbound/issueopsartifact"
-	issueopsartifactoutbound "agent-harness/internal/adapter/outbound/issueopsartifact"
-	issueopsartifactapplication "agent-harness/internal/application/issueopsartifact"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopsartifactinbound "issueops/internal/adapter/inbound/issueopsartifact"
+	issueopsartifactoutbound "issueops/internal/adapter/outbound/issueopsartifact"
+	issueopsartifactapplication "issueops/internal/application/issueopsartifact"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func stageIssueOpsArtifactForTest(

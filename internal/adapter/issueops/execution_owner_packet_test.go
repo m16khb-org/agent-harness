@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	preparationcontract "issueops/internal/contract/issueopspreparation"
+	"issueops/internal/port"
 )
 
 func TestExecutionPreparationPlanArtifactGatePrecedesRemoteOwnerRead(t *testing.T) {
@@ -85,7 +85,7 @@ func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	// #482: linked issue 16 seals under the issue folder, recorded in workspace.artifact_dir.
-	wantPath := filepath.Join(worktree, ".agent-harness", "issues", "16", "artifact", "plan.md")
+	wantPath := filepath.Join(worktree, ".issueops", "issues", "16", "artifact", "plan.md")
 	wantDigest := digestExecutionOwnerBytes([]byte(plan))
 	if artifacts.PlanPath != wantPath {
 		t.Fatalf("plan path=%q want %q", artifacts.PlanPath, wantPath)
@@ -216,10 +216,10 @@ func TestExecutionOwnerBranchLinkCommandPreservesSealedTopology(t *testing.T) {
 	record.BranchPrepare.ParentWorktree = "/repo/example.worktrees/117-umbrella"
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
 	for _, required := range []string{
-		"gh issue develop --list 69 --repo 'example/agent-harness'",
+		"gh issue develop --list 69 --repo 'example/issueops'",
 		"issueops branch prepare",
 		"--provider 'github'",
-		"--issue-url 'https://github.com/example/agent-harness/issues/69'",
+		"--issue-url 'https://github.com/example/issueops/issues/69'",
 		"--branch '69-issueops-v1'",
 		"--base-branch 'main'",
 		"--base-sha '0123456789012345678901234567890123456789'",
@@ -247,7 +247,7 @@ func TestExecutionOwnerPromptUsesOnlyTheGeneratedBranchLinkReader(t *testing.T) 
 	record.BranchPrepare.LinkVerified = false
 	prompt := executionOwnerPromptFixture(t, record, req)
 	for _, required := range []string{
-		"gh issue develop --list 69 --repo 'example/agent-harness'",
+		"gh issue develop --list 69 --repo 'example/issueops'",
 		"대체 GraphQL이나 다른 reader를 만들지 않는다",
 	} {
 		if !strings.Contains(prompt, required) {
@@ -310,7 +310,7 @@ func TestExecutionDirectOwnerPromptUsesNoClaimCommand(t *testing.T) {
 }
 
 func TestExecutionOwnerPromptTemplateMatchesKarpathyArtifactByteForByte(t *testing.T) {
-	doc, err := os.ReadFile(filepath.Join("..", "..", "..", ".agent-harness", "karpathy", "prompts", "issueops-v1-owner-execution-v1.md"))
+	doc, err := os.ReadFile(filepath.Join("..", "..", "..", ".issueops", "prompt-engineering", "prompts", "issueops-v1-owner-execution-v1.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,9 +387,9 @@ func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDetermin
 		LeaseGeneration: record.Execution.Lease.Generation,
 		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
 		OwnerHost:       req.OwnerHost, OwnerModel: "{OWNER_EFFORT}", OwnerEffort: "injected",
-		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
+		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "verified-execution"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
-		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
+		VerificationReportPath: executionOwnerVerificationReportPath(record), Commands: commands,
 	}
 	for attempt := 0; attempt < 100; attempt++ {
 		if _, err := renderExecutionOwnerPrompt(packet, filepath.Join(packet.WorktreeRoot, "context.json"), strings.Repeat("b", 64)); err == nil || !strings.Contains(err.Error(), "placeholder") {
@@ -413,9 +413,9 @@ func executionOwnerPromptFixture(t *testing.T, record issueops.IssueOpsRecord, r
 		LeaseGeneration: record.Execution.Lease.Generation,
 		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
 		OwnerHost:       req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
-		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
+		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "verified-execution"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
-		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
+		VerificationReportPath: executionOwnerVerificationReportPath(record), Commands: commands,
 	}
 	prompt, err := renderExecutionOwnerPrompt(packet, filepath.Join(packet.WorktreeRoot, "context.json"), strings.Repeat("b", 64))
 	if err != nil {
@@ -428,19 +428,19 @@ func ownerPacketFixture() (issueops.IssueOpsRecord, ExecutionPrepareRequest) {
 	record := issueops.IssueOpsRecord{
 		SchemaVersion: 1,
 		ID:            "io-69",
-		Repo:          "/workspace/agent-harness",
+		Repo:          "/workspace/issueops",
 		Branch:        "69-issueops-v1",
-		IssueURL:      "https://github.com/example/agent-harness/issues/69",
+		IssueURL:      "https://github.com/example/issueops/issues/69",
 		BranchPrepare: &issueops.IssueOpsBranchPrepare{
-			Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
+			Provider: "github", IssueURL: "https://github.com/example/issueops/issues/69",
 			Branch: "69-issueops-v1", BaseBranch: "main",
 			BaseSHA: "0123456789012345678901234567890123456789",
 		},
 		Execution: &issueops.Execution{
 			Mode: issueops.ExecutionModeOrca,
 			Workspace: issueops.Workspace{
-				SourceRoot: "/workspace/agent-harness",
-				Root:       "/workspace/agent-harness.worktrees/69-issueops-v1",
+				SourceRoot: "/workspace/issueops",
+				Root:       "/workspace/issueops.worktrees/69-issueops-v1",
 				Branch:     "69-issueops-v1",
 				BaseHead:   "0123456789012345678901234567890123456789",
 				Driver:     "orca",

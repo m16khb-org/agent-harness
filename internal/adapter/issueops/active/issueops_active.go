@@ -3,8 +3,8 @@ package active
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	model "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/pathutil"
+	model "issueops/internal/contract/issueops"
 )
 
 type Store struct {

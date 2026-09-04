@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"strings"
 
-	"agent-harness/internal/adapter/provider/providerutil"
-	bodysync "agent-harness/internal/domain/issueopsbodysync"
-	"agent-harness/internal/domain/remoteparse"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/provider/providerutil"
+	bodysync "issueops/internal/domain/issueopsbodysync"
+	"issueops/internal/domain/remoteparse"
+	"issueops/internal/port"
 )
 
 // glabArtifactEndpoint resolves the REST collection that addresses a sync kind.

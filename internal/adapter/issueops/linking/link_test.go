@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
-	issueopsdomain "agent-harness/internal/domain/issueops"
+	model "issueops/internal/contract/issueops"
+	issueopsdomain "issueops/internal/domain/issueops"
 )
 
 type linkStoreForTest struct {

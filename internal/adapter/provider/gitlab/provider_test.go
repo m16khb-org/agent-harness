@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestGitLabProviderName(t *testing.T) {

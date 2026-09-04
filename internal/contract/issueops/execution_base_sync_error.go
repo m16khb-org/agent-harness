@@ -17,7 +17,7 @@ func NewBaseSyncRequiredError(id string, completionGeneration uint64) *BaseSyncR
 		ID:                   id,
 		CompletionGeneration: completionGeneration,
 		NextCommand: fmt.Sprintf(
-			"agent-harness issueops execution sync-base --id %s --preview --completion-generation %d --json",
+			"issueops execution sync-base --id %s --preview --completion-generation %d --json",
 			quotedID,
 			completionGeneration,
 		),

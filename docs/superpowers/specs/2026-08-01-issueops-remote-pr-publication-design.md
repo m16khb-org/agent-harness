@@ -2,7 +2,7 @@
 
 ## 상태와 결정
 
-이 문서는 GitHub 이슈 [#195](https://github.com/m16khb/agent-harness/issues/195)의 승인된 구현 전 설계다. 기준 parent integration HEAD는 `667e5d15b0773e2550cfbf5bc2780506e9eb2896`, child branch는 `195-issueops-remote-pr-publication-vertical`이다.
+이 문서는 GitHub 이슈 [#195](https://github.com/m16khb-org/issueops/issues/195)의 승인된 구현 전 설계다. 기준 parent integration HEAD는 `667e5d15b0773e2550cfbf5bc2780506e9eb2896`, child branch는 `195-issueops-remote-pr-publication-vertical`이다.
 
 기존 FS/HTTP/host/provider 수평 정리 범위는 폐기한다. `remote_pr_create`의 최초 생성과 그 durable recovery를 함께 소유하는 publication capability 하나만 수직 이전한다. 생성과 복구는 같은 schema v1 intent payload와 receipt CAS를 공유하므로 별도 child로 나누지 않는다.
 
@@ -19,9 +19,9 @@ CodeGraph와 exact parent ref에서 확인한 주요 경계는 다음과 같다.
 - 공개 create DTO와 intent lifecycle: `internal/core/issueops/execution_remote.go:31-330`
 - raw payload read와 exact candidate 검증: `internal/core/issueops/execution_remote.go:332-450`
 - public reconcile router와 remote state machine: `internal/core/issueops/execution_reconcile.go:17-268`
-- 중복 production wiring: `cmd/harness/issueopscli/issueops_execution_cli.go:24-46`, `cmd/harness/mcpcli/mcp_tool_issueops_execution.go:27-54`, `cmd/harness/issueopscli/remotecmd/remote.go:709-786`
+- 중복 production wiring: `cmd/issueops/issueopscli/issueops_execution_cli.go:24-46`, `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go:27-54`, `cmd/issueops/issueopscli/remotecmd/remote.go:709-786`
 - provider DTO와 concrete adapter port: `internal/port/provider.go:33-98,220-230`
-- #194 composition precedent: `cmd/harness/harnessapp/issueops_reconcile_wiring.go`
+- #194 composition precedent: `cmd/issueops/issueopsapp/issueops_reconcile_wiring.go`
 
 ## 목표
 
@@ -32,7 +32,7 @@ CodeGraph와 exact parent ref에서 확인한 주요 경계는 다음과 같다.
 - 동일 repository/provider/verification port를 공유하는 `CreateService`와 `ReconcileService`
 - schema v1 raw bytes와 기존 transaction 의미를 보존하는 persistence adapter
 - 기존 GitHub/GitLab concrete adapter를 호출하는 provider gateway
-- 모든 production create/reconcile 진입점을 동일 service에 연결하는 harnessapp composition
+- 모든 production create/reconcile 진입점을 동일 service에 연결하는 issueopsapp composition
 
 완료 후 core는 공개 facade와 아직 공유되는 raw persistence·artifact projection primitive만 보존한다. publication 전용 orchestration은 production caller가 0임을 architecture test로 증명한 것만 제거한다.
 
@@ -68,7 +68,7 @@ outbound/issueopspublication
     ├── existing GitHub/GitLab provider adapters
     └── existing live artifact verification
 
-cmd/harness/harnessapp = 유일한 production composition root
+cmd/issueops/issueopsapp = 유일한 production composition root
 ```
 
 패키지 책임은 다음과 같다.
@@ -78,7 +78,7 @@ cmd/harness/harnessapp = 유일한 production composition root
 - `internal/application/issueopspublication`: `CreateService`, `ReconcileService`, consumer-owned `Repository`, `Provider`, `Verifier` port. domain 결정을 실행하되 concrete package를 import하지 않는다.
 - `internal/adapter/inbound/issueopspublication`: 기존 `RemotePullRequestRequest`, `ExecutionReconcileRequest/Result`와 새 contract 사이를 매핑하는 compatibility adapter. legacy core DTO import가 허용되는 유일한 새 inbound 경계다.
 - `internal/adapter/outbound/issueopspublication`: application port 구현. raw persistence client와 기존 provider/verification 경계를 얇게 투영하고 정책을 재구현하지 않는다.
-- `cmd/harness/harnessapp`: 실제 SQLite compatibility bridge, GitHub/GitLab gateway, verifier를 조립해 CLI와 MCP에 같은 handler를 제공한다.
+- `cmd/issueops/issueopsapp`: 실제 SQLite compatibility bridge, GitHub/GitLab gateway, verifier를 조립해 CLI와 MCP에 같은 handler를 제공한다.
 - `internal/core/issueops`: 기존 public facade와 purpose-bound raw CAS primitive를 유지하고 새 handler로 forward한다.
 
 contract, domain, application은 `internal/core`, `internal/port`, CLI/MCP, SQLite, concrete provider를 import하지 않는다. outbound는 application이 소유한 port를 구현하며, concrete 생성과 lifecycle 정책을 섞지 않는다.
@@ -198,7 +198,7 @@ retry 호출이 다시 pre-invocation-proven으로 실패하면 pending과 paylo
 
 ```text
 CLI remote create-pr ─┐
-                     ├─▶ harnessapp publication handler ─▶ CreateService
+                     ├─▶ issueopsapp publication handler ─▶ CreateService
 MCP remote create-pr ─┘
 
 CLI execution reconcile ─┐
@@ -206,7 +206,7 @@ CLI execution reconcile ─┐
 MCP execution reconcile ─┘
 ```
 
-CLI/MCP는 concrete publication provider closure를 직접 조립하지 않는다. harnessapp만 기존 provider resolver, live verifier, raw persistence compatibility bridge를 조립한다. core facade는 함수명과 public DTO를 유지하면서 injected handler로 forward한다.
+CLI/MCP는 concrete publication provider closure를 직접 조립하지 않는다. issueopsapp만 기존 provider resolver, live verifier, raw persistence compatibility bridge를 조립한다. core facade는 함수명과 public DTO를 유지하면서 injected handler로 forward한다.
 
 migrated `remote_pr_create` handler가 nil이면 legacy helper를 호출하지 않는다. 반면 #194의 Orca handler, preview/no-pending/unsupported routing은 그대로 유지해 두 vertical이 서로의 pending kind를 소유하지 않게 한다.
 
@@ -221,7 +221,7 @@ migrated `remote_pr_create` handler가 nil이면 legacy helper를 호출하지 �
 - provider/network 호출을 감싼 SQLite cycle lock
 - caller가 남은 publication orchestration 삭제
 
-production caller-zero ratchet은 제거 대상 helper의 이름만 세는 것이 아니라 CLI, MCP, harnessapp, core router에서 새 handler가 실제로 사용되는지를 함께 확인한다.
+production caller-zero ratchet은 제거 대상 helper의 이름만 세는 것이 아니라 CLI, MCP, issueopsapp, core router에서 새 handler가 실제로 사용되는지를 함께 확인한다.
 
 ## 테스트 계약
 
@@ -247,12 +247,12 @@ go test ./internal/domain/issueopspublication ./internal/application/issueopspub
 go test -race ./internal/domain/issueopspublication ./internal/application/issueopspublication ./internal/adapter/inbound/issueopspublication ./internal/adapter/outbound/issueopspublication -count=1
 go test ./internal/core/issueops -run 'RemotePullRequest|RemoteReconcile' -count=1
 go test ./internal/adapter/provider/github ./internal/adapter/provider/gitlab -run 'CreatePullRequest|ReconcilePullRequest' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'RemotePullRequest|CreatePR|Reconcile|ExecutionHandler' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'RemotePullRequest|CreatePR|Reconcile|ExecutionHandler' -count=1
 go test ./internal/architecture -run Dependency -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 go vet ./internal/domain/issueopspublication/... ./internal/application/issueopspublication/... ./internal/adapter/inbound/issueopspublication/... ./internal/adapter/outbound/issueopspublication/...
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 로컬에서 전체 `go test ./...`와 전체 race는 실행하지 않는다. parent #117 정책에 따라 GitHub Actions의 마지막 완전한 run에서 확인한다.
@@ -269,7 +269,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 schema/data migration과 새 persisted field가 없으므로 child PR revert가 유일한 rollback이다. 새 vertical이 기록한 bytes는 legacy implementation이 그대로 읽을 수 있어야 하며, rollback 때문에 별도 cleanup command나 state migration을 요구하지 않는다.
 
-구현 증거가 기존 운영 설명을 바꾸면 `.agent-harness/ARCHITECTURE.md`, `CONVENTIONS.md`, `OPERATIONS.md`, `TESTING.md`를 surgical하게 갱신한다. 현재 단계에서는 설계 문서와 #195 원격 계약만 source of truth로 추가하며 OpenWiki는 수정하지 않는다.
+구현 증거가 기존 운영 설명을 바꾸면 `.issueops/ARCHITECTURE.md`, `CONVENTIONS.md`, `OPERATIONS.md`, `TESTING.md`를 surgical하게 갱신한다. 현재 단계에서는 설계 문서와 #195 원격 계약만 source of truth로 추가하며 OpenWiki는 수정하지 않는다.
 
 ## 열린 질문
 

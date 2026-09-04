@@ -1,7 +1,6 @@
 package issueops
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,11 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	issueopscontract "issueops/internal/contract/issueops"
 	"strings"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/outbound/sqlstore"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 var leaseHolderBucket = fmt.Sprintf("lease_holder_v%d", issueops.IssueOpsSchemaVersion)

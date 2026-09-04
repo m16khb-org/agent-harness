@@ -15,13 +15,13 @@ func TestApplyCompletionReleasesLeaseAndStampsDoneLedger(t *testing.T) {
 	}
 	command := Command{
 		Generation: 3, Actor: holder, FinalHead: "0123456789012345678901234567890123456789",
-		TuringReportPath: "/repo/turing.json", Verification: []string{"go test ./..."},
+		VerificationReportPath: "/repo/verified-execution.json", Verification: []string{"go test ./..."},
 		RemoteArtifactURL: "https://github.com/example/repo/pull/198",
 	}
 	if err := ValidateActive(snapshot, command, true); err != nil {
 		t.Fatal(err)
 	}
-	outcome := Apply(snapshot, command, command.TuringReportPath, now)
+	outcome := Apply(snapshot, command, command.VerificationReportPath, now)
 	want := now.Format(time.RFC3339Nano)
 	if outcome.Phase != "done" || outcome.Lease.Status != "released" || outcome.Lease.Holder != nil {
 		t.Fatalf("invalid terminal outcome: %+v", outcome)
@@ -56,8 +56,8 @@ func TestApplyCompletionClearsCompletedReseedStaleNotesFromPRAndDone(t *testing.
 			"done": {Phase: "done", EnteredAt: "old-done", Notes: []string{stale, "keep done"}},
 		},
 	}
-	command := Command{Generation: 5, Actor: holder, FinalHead: "ff27b34520e4e253d8ebfd523e4e4352bf93e8d8", TuringReportPath: "/repo/turing.json", Verification: []string{"new verification"}, RemoteArtifactURL: "https://github.com/example/repo/pull/304"}
-	outcome := Apply(snapshot, command, command.TuringReportPath, now)
+	command := Command{Generation: 5, Actor: holder, FinalHead: "ff27b34520e4e253d8ebfd523e4e4352bf93e8d8", VerificationReportPath: "/repo/verified-execution.json", Verification: []string{"new verification"}, RemoteArtifactURL: "https://github.com/example/repo/pull/304"}
+	outcome := Apply(snapshot, command, command.VerificationReportPath, now)
 	if got := outcome.Ledger["pr"].Notes; len(got) != 1 || got[0] != "keep pr" {
 		t.Fatalf("pr notes=%v", got)
 	}

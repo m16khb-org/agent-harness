@@ -70,7 +70,7 @@ identity이며 native session 권한을 대신하지 않는다.
 CLI:
 
 ```text
-agent-harness issueops handoff request-modification \
+issueops handoff request-modification \
   --id ID \
   --host HOST \
   --session-id SESSION \
@@ -384,10 +384,10 @@ Message failure는 owner authority나 phase를 바꾸지 않는다. Source가 �
 ## 검증 명령
 
 ```bash
-go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/adapter/mcp ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -count=1
+go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/adapter/mcp ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 설치된 Orca가 available/ready인 환경에서는 disposable cycle로 source request,
@@ -396,11 +396,11 @@ owner feedback, 수정 commit, fast-forward republish까지 확인한다. Live s
 
 ## 문서 변경
 
-- `.agent-harness/AGENT_WORKFLOW.md`: source disengagement의 typed correction 예외
-- `.agent-harness/ARCHITECTURE.md`: durable projection과 CLI/MCP 표면
-- `.agent-harness/OPERATIONS.md`: source request와 owner feedback/republish 순서
-- `.agent-harness/TESTING.md`: crash seam, resource targeting, ancestry matrix
-- `.agent-harness/CAUTIONS.md`: raw terminal guidance 예외 제거, typed path 사용
+- `.issueops/AGENT_WORKFLOW.md`: source disengagement의 typed correction 예외
+- `.issueops/ARCHITECTURE.md`: durable projection과 CLI/MCP 표면
+- `.issueops/OPERATIONS.md`: source request와 owner feedback/republish 순서
+- `.issueops/TESTING.md`: crash seam, resource targeting, ancestry matrix
+- `.issueops/CAUTIONS.md`: raw terminal guidance 예외 제거, typed path 사용
 - `skills/issueops/references/worktree-context.md`: owner-active correction workflow
 - 필요한 CLI/MCP usage 및 response-contract golden
 

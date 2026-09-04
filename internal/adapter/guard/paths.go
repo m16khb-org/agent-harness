@@ -59,7 +59,7 @@ func guardAllowsFixtureURL(raw string) bool {
 
 func isSourcePath(rel string) bool {
 	p := strings.ToLower(filepath.ToSlash(rel))
-	if isTestPath(p) || strings.HasPrefix(p, ".agent-harness/") || strings.HasPrefix(p, "docs/") {
+	if isTestPath(p) || strings.HasPrefix(p, ".issueops/") || strings.HasPrefix(p, "docs/") {
 		return false
 	}
 	ext := strings.ToLower(filepath.Ext(p))
@@ -73,5 +73,5 @@ func isSourcePath(rel string) bool {
 
 func isContractSurfacePath(rel string) bool {
 	p := filepath.ToSlash(rel)
-	return strings.HasPrefix(p, "cmd/harness/") || strings.HasPrefix(p, "internal/adapter/") || strings.HasPrefix(p, "internal/core/")
+	return strings.HasPrefix(p, "cmd/issueops/") || strings.HasPrefix(p, "internal/adapter/") || strings.HasPrefix(p, "internal/core/")
 }

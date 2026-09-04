@@ -1,6 +1,6 @@
 ---
 name: issueops-docs
-description: Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .agent-harness documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when "issueops next" reports docs, or when the user says "문서 반영", "ADR 남겨줘", "주의사항 기록", "update the project docs".
+description: Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .issueops documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when "issueops next" reports docs, or when the user says "문서 반영", "ADR 남겨줘", "주의사항 기록", "update the project docs".
 ---
 
 # IssueOps Docs
@@ -16,7 +16,7 @@ description: Reflect a finished IssueOps implementation into the project's opera
 ## 이 스킬이 맞는지 확인
 
 ```bash
-agent-harness issueops next --id "$ISSUEOPS_ID" --json
+issueops next --id "$ISSUEOPS_ID" --json
 ```
 
 `stage.key`가 `docs`면 이 스킬이다. `clean`이면 정리와 봉인이 아직이므로
@@ -42,7 +42,7 @@ git -C "$WORKTREE" diff --stat "$BASE_SHA"
 # MCP: project_docs_read로 각 문서의 현재 content와 SHA를 받는다.
 ```
 
-MCP를 쓸 수 없으면 `agent-harness docs --json`의 required-doc 목록에서 `CONSTITUTION.md`,
+MCP를 쓸 수 없으면 `issueops docs --json`의 required-doc 목록에서 `CONSTITUTION.md`,
 `ARCHITECTURE.md`(해당 모듈), `CONVENTIONS.md`, `CAUTIONS.md`(색인과 해당 모듈),
 `ADR.md`, `TESTING.md`를 읽는다.
 
@@ -78,11 +78,11 @@ diff가 어겼는가. 어겼으면 **문서가 아니라 구현을 고친다.** 
 ADR은 append-only다. 기존 항목을 고치지 않고, 뒤집는 결정이면 그것을 새 항목으로
 적는다.
 
-하네스 저장소에서 `.agent-harness/*.md`를 고쳤으면 응답 계약 골든이 드리프트한다.
+하네스 저장소에서 `.issueops/*.md`를 고쳤으면 응답 계약 골든이 드리프트한다.
 같은 단계에서 재생성한다.
 
 ```bash
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -update -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -update -count=1
 ```
 
 대상 저장소에 그 골든이 없으면 이 줄은 해당 없음이다.
@@ -92,7 +92,7 @@ go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -update -count
 문서를 하나라도 고쳤으면 정리 단계의 봉인을 다시 맞춘다.
 
 ```bash
-agent-harness issueops ai-slop-clean record --id "$ISSUEOPS_ID" \
+issueops ai-slop-clean record --id "$ISSUEOPS_ID" \
   --category "<5단계와 같은 category>" \
   --verification "<5단계의 검증 결과 그대로>" $RECORD_ACTOR_FLAGS --json
 ```
@@ -103,12 +103,12 @@ category는 정리 단계와 같고, verification도 그때의 결과를 그대�
 ## 5 판정 기록
 
 ```bash
-agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID" \
-  --verdict updated --doc ".agent-harness/CAUTIONS.md" --doc ".agent-harness/cautions/<module>.md" \
+issueops project-docs-review record --id "$ISSUEOPS_ID" \
+  --verdict updated --doc ".issueops/CAUTIONS.md" --doc ".issueops/cautions/<module>.md" \
   --evidence "<무엇을 대조했고 왜 이 문서를 고쳤는가>" $RECORD_ACTOR_FLAGS --json
 
 # 고칠 것이 없을 때
-agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID" \
+issueops project-docs-review record --id "$ISSUEOPS_ID" \
   --verdict no-change --evidence "<대조한 문서 목록과 판단>" $RECORD_ACTOR_FLAGS --json
 ```
 
@@ -137,9 +137,9 @@ agent-harness issueops project-docs-review record --id "$ISSUEOPS_ID" \
 
 ## 검증
 
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `project_docs_review`에
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `project_docs_review`에
   이번 판정이 있고 `reviewed_fingerprint`가 현재 변경 집합과 같다.
-- `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `verify`이거나
+- `issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가 `verify`이거나
   그 뒤 단계다. `docs`나 `clean`으로 남아 있으면 `missing`이 이유를 말한다.
 - `verdict updated`로 기록했으면 `git -C "$WORKTREE" status --porcelain`에 그 문서들이
   보인다.

@@ -3,7 +3,7 @@ package omo
 import (
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 type Installer struct{}
@@ -28,7 +28,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	omoRoot := filepath.Join(req.Home, ".omo")
 	plan.File(writeOmoUserMCP(filepath.Join(omoRoot, "mcp.json"), req))
 	plan.File(WriteTextPlan(
-		filepath.Join(omoRoot, "extensions", "agent-harness.js"),
+		filepath.Join(omoRoot, "extensions", "issueops.js"),
 		"omo_user_lifecycle_extension",
 		omoLifecycleExtension(req.BinPath),
 		0o644,
@@ -40,9 +40,9 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		req.DryRun,
 	))
 	plan.File(WriteTextPlan(
-		filepath.Join(req.Root, "configs", "omo", "agent-harness.js"),
+		filepath.Join(req.Root, "configs", "omo", "issueops.js"),
 		"omo_lifecycle_extension_template",
-		omoLifecycleExtension("./bin/agent-harness"),
+		omoLifecycleExtension("./bin/issueops"),
 		0o644,
 		req.DryRun,
 	))

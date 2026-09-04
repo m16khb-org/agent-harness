@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/toolconformance"
-	"agent-harness/internal/port"
+	"issueops/internal/adapter/toolconformance"
+	"issueops/internal/port"
 )
 
 type claudeCommandRunner struct {
@@ -28,7 +28,7 @@ func claudeProbeRequest() port.HostProbeRequest {
 	return port.HostProbeRequest{
 		HarnessBinary: "/ignored/by-constructor",
 		FixtureID:     "empty_object",
-		ProbeTool:     "agent_harness_web_fetch_resilient",
+		ProbeTool:     "issueops_web_fetch_resilient",
 		SchemaSHA256:  "schema-sha",
 		Prompt:        "Call only the probe tool.",
 		Model:         "claude-opus-4-6",
@@ -79,14 +79,14 @@ func argumentValue(t *testing.T, argv []string, flag string) string {
 
 func TestClaudeRunnerRunUsesOnePrivateProbeConfig(t *testing.T) {
 	episodeRoot := filepath.Join(t.TempDir(), "episode")
-	harnessBinary, err := filepath.Abs("./bin/agent-harness")
+	harnessBinary, err := filepath.Abs("./bin/issueops")
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := claudeProbeRequest()
 	inherited := []string{"PATH=/test/bin", "HOME=/private/home", "USER=tester", "TEST_CREDENTIAL=credential-value"}
 	var received CommandRequest
-	runner := NewClaudeRunner("./bin/agent-harness", Dependencies{
+	runner := NewClaudeRunner("./bin/issueops", Dependencies{
 		TempDir: func(_, _ string) (string, error) {
 			if err := os.Mkdir(episodeRoot, 0o755); err != nil {
 				return "", err
@@ -152,7 +152,7 @@ func TestClaudeRunnerRunUsesOnePrivateProbeConfig(t *testing.T) {
 				"/test/bin/claude", "-p", "--verbose", "--setting-sources", "",
 				"--output-format", "stream-json", "--strict-mcp-config", "--mcp-config", configPath,
 				"--no-session-persistence", "--permission-mode", "dontAsk", "--tools", "",
-				"--allowedTools=mcp__agent_harness_probe__" + request.ProbeTool,
+				"--allowedTools=mcp__issueops_probe__" + request.ProbeTool,
 				"--model", request.Model, request.Prompt,
 			}
 			if !reflect.DeepEqual(command.Argv, wantArgv) {
@@ -188,7 +188,7 @@ func TestClaudeRunnerRunDefaultModelOmitsModelFlag(t *testing.T) {
 	episodeRoot := filepath.Join(t.TempDir(), "episode")
 	request := claudeProbeRequest()
 	request.Model = "default"
-	runner := NewClaudeRunner("harness", Dependencies{
+	runner := NewClaudeRunner("issueops", Dependencies{
 		TempDir: func(_, _ string) (string, error) {
 			if err := os.Mkdir(episodeRoot, 0o700); err != nil {
 				return "", err
@@ -215,7 +215,7 @@ func TestClaudeRunnerRunDefaultModelOmitsModelFlag(t *testing.T) {
 func TestClaudeRunnerRunMissingCaptureIsTransportFailure(t *testing.T) {
 	episodeRoot := filepath.Join(t.TempDir(), "episode")
 	request := claudeProbeRequest()
-	runner := NewClaudeRunner("harness", Dependencies{
+	runner := NewClaudeRunner("issueops", Dependencies{
 		TempDir: func(_, _ string) (string, error) {
 			if err := os.Mkdir(episodeRoot, 0o700); err != nil {
 				return "", err
@@ -241,7 +241,7 @@ func TestClaudeRunnerPreflightUsesClaudeExecutable(t *testing.T) {
 	request := claudeProbeRequest()
 	request.Model = "default"
 	var executable string
-	runner := NewClaudeRunner("harness", Dependencies{
+	runner := NewClaudeRunner("issueops", Dependencies{
 		LookPath: func(name string) (string, error) {
 			executable = name
 			return "/test/bin/claude", nil
@@ -268,11 +268,11 @@ func TestClaudeRunnerPreflightUsesClaudeExecutable(t *testing.T) {
 }
 
 func TestNewClaudeRunnerNormalizesDependencies(t *testing.T) {
-	runner := NewClaudeRunner("harness", Dependencies{})
+	runner := NewClaudeRunner("issueops", Dependencies{})
 	if runner.deps.Process == nil || runner.deps.LookPath == nil || runner.deps.Now == nil || runner.deps.TempDir == nil || runner.deps.Getenv == nil || runner.deps.Environ == nil {
 		t.Fatalf("dependencies were not normalized: %#v", runner.deps)
 	}
-	if runner.harnessBinary != "harness" {
+	if runner.harnessBinary != "issueops" {
 		t.Fatalf("harness binary=%q", runner.harnessBinary)
 	}
 }

@@ -14,7 +14,7 @@ CLI / MCP / hook / skill / installer/bootstrap / docs / tests / other 중 해당
 <details>
 <summary>환경과 버전</summary>
 
-OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitLab/GitHub) 정보를 적어 주세요.
+OS, Go 버전, `issueops version`, 관련 host(Codex/Claude/GitLab/GitHub) 정보를 적어 주세요.
 
 ```text
 

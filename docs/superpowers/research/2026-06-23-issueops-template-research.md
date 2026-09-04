@@ -4,7 +4,7 @@ Date: 2026-06-23
 
 ## Goal
 
-Improve IssueOps remote artifact templates without depending on repo-native templates as the only quality gate. The canonical source of truth is the shared renderer/validator in `agent-harness issueops remote`, with GitHub/GitLab native templates kept aligned for humans using the provider UI.
+Improve IssueOps remote artifact templates without depending on repo-native templates as the only quality gate. The canonical source of truth is the shared renderer/validator in `issueops remote`, with GitHub/GitLab native templates kept aligned for humans using the provider UI.
 
 ## Provider Findings
 

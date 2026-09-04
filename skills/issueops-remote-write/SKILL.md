@@ -1,6 +1,6 @@
 ---
 name: issueops-remote-write
-description: Apply the shared IssueOps remote write protocol to any governed "agent-harness issueops remote ..." mutation. Polish the Korean body with fluent-korean, run the bundled Korean artifact gate, preview, confirm the identical request, read the artifact back, and reconcile instead of retrying when the result is ambiguous. Use before creating or editing issues, child tasks, PR or MR bodies, comments, or review replies inside an IssueOps cycle, or when the user says "원격에 써줘", "이슈 본문 올려줘", "PR 본문 갱신".
+description: Apply the shared IssueOps remote write protocol to any governed "issueops remote ..." mutation. Polish the Korean body with fluent-korean, run the bundled Korean artifact gate, preview, confirm the identical request, read the artifact back, and reconcile instead of retrying when the result is ambiguous. Use before creating or editing issues, child tasks, PR or MR bodies, comments, or review replies inside an IssueOps cycle, or when the user says "원격에 써줘", "이슈 본문 올려줘", "PR 본문 갱신".
 ---
 
 # IssueOps Remote Write
@@ -40,19 +40,19 @@ description: Apply the shared IssueOps remote write protocol to any governed "ag
 python3 "$SKILL_DIR/scripts/remote_artifact_gate.py" --kind issue --title "$TITLE" --body-file "$BODY_FILE"
 
 # 3. preview (confirm 없음)
-agent-harness issueops remote <verb> --id "$ISSUEOPS_ID" ... --body-file "$BODY_FILE" --json
+issueops remote <verb> --id "$ISSUEOPS_ID" ... --body-file "$BODY_FILE" --json
 
 # 4. 동일 요청 + --confirm
-agent-harness issueops remote <verb> --id "$ISSUEOPS_ID" ... --body-file "$BODY_FILE" --confirm --json
+issueops remote <verb> --id "$ISSUEOPS_ID" ... --body-file "$BODY_FILE" --confirm --json
 
 # 5. readback
-agent-harness issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
+issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$PROVIDER" \
   --kind pr --url "$URL" --target-branch "$BASE" --label "$LABEL" --assignee "$ASSIGNEE" --json   # PR/MR
 # issue·child·본문 갱신은 해당 명령의 응답 readback 필드(hierarchy_verified, url, body sha)를 확인한다.
 
 # 6. 결과가 불명확하면 재호출하지 않는다.
-agent-harness issueops remote reconcile-issue --id "$ISSUEOPS_ID" --json                          # issue create
-agent-harness issueops execution reconcile --id "$ISSUEOPS_ID" --preview $ACTOR_FLAGS --json      # PR/MR create
+issueops remote reconcile-issue --id "$ISSUEOPS_ID" --json                          # issue create
+issueops execution reconcile --id "$ISSUEOPS_ID" --preview $ACTOR_FLAGS --json      # PR/MR create
 ```
 
 provider CLI(`gh`, `glab`)는 어댑터 내부 구현이다. 이 절차는 provider CLI를 직접
@@ -101,7 +101,7 @@ python3 "$SKILL_DIR/scripts/remote_artifact_gate.py" --kind pr --title "$TITLE" 
   이 절차에 있다.
 
 원격 issue 본문에는 repo-local plan 경로를 넣지 않는다. plan 파일은 추적되지 않을 수
-있으므로 링크는 `agent-harness issueops link-plan` state와 PR/MR 본문에서만 다룬다.
+있으므로 링크는 `issueops link-plan` state와 PR/MR 본문에서만 다룬다.
 
 ## body-of-record
 
@@ -112,7 +112,7 @@ python3 "$SKILL_DIR/scripts/remote_artifact_gate.py" --kind pr --title "$TITLE" 
 
 ```bash
 # 본문 갱신은 issueops-sync-issue가 소유한다. 갱신한 뒤 그 접합점을 기록한다.
-agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" $RECORD_ACTOR_FLAGS --json
+issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" $RECORD_ACTOR_FLAGS --json
 ```
 
 이 기록 전까지 `issueops pr-readiness --strict`는 `contract_feedback_issue_update`로
@@ -134,7 +134,7 @@ agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" $RECORD_A
 ## 검증
 
 - write 뒤 readback 응답의 URL·상태·본문 해시가 방금 쓴 것과 같은지 확인한다.
-- `agent-harness issueops status --id "$ISSUEOPS_ID" --json`의 `body_syncs`에 이번 write의
+- `issueops status --id "$ISSUEOPS_ID" --json`의 `body_syncs`에 이번 write의
   baseline이 남았는지 확인한다.
 - 모호한 결과를 만났다면 reconcile 결과가 정확히 하나의 아티팩트를 지목했는지 확인한다.
   둘 이상이면 사람이 판단할 때까지 멈춘다.

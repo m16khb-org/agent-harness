@@ -1,6 +1,6 @@
 // Package upstream runs one upstream provisioning pass: observe the host, ask
 // the domain what is missing, and provision only that. A pass never fails the
-// caller — the harness install path must not depend on a third-party plugin CLI
+// caller — the issueops install path must not depend on a third-party plugin CLI
 // or on network reachability.
 package upstream
 
@@ -8,9 +8,9 @@ import (
 	"context"
 	"errors"
 
-	upstreamcontract "agent-harness/internal/contract/upstream"
-	upstreamdomain "agent-harness/internal/domain/upstream"
-	upstreamport "agent-harness/internal/port/upstream"
+	upstreamcontract "issueops/internal/contract/upstream"
+	upstreamdomain "issueops/internal/domain/upstream"
+	upstreamport "issueops/internal/port/upstream"
 )
 
 // Service provisions declared upstream plugins and skills onto one host.

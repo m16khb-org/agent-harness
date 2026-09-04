@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestApplyMutationsCommitsLifecycleAndLeaseIndexTogether(t *testing.T) {

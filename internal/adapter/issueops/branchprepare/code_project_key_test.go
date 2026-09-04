@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	model "agent-harness/internal/contract/issueops"
+	model "issueops/internal/contract/issueops"
 )
 
 func codeProjectStore(t *testing.T, observed string, observeErr error) (Store, *model.IssueOpsRecord) {

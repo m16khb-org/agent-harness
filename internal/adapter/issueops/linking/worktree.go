@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
-	model "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/pathutil"
+	model "issueops/internal/contract/issueops"
 )
 
 func ValidateIsolatedWorktreePath(record model.IssueOpsRecord, path string) error {

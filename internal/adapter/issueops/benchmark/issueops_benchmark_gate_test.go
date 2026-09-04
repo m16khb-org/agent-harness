@@ -1,7 +1,7 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 	"strings"
 	"testing"
 )
@@ -74,7 +74,7 @@ func TestEvaluateIssueOpsAutoresearchGateRejectsEditSurfaceViolation(t *testing.
 		Candidate:    candidate,
 		BaselineRun:  issueOpsBenchmarkRunForGateTest("baseline", 100, 100, 0),
 		CandidateRun: issueOpsBenchmarkRunForGateTest("candidate", 100, 100, 0),
-		ChangedPaths: []string{"cmd/harness/issueops.go"},
+		ChangedPaths: []string{"cmd/issueops/issueops.go"},
 	})
 
 	if result.KeepCandidate || len(result.EditSurfaceViolations) != 1 || !containsFold(strings.Join(result.DiscardReasons, "\n"), "edit surface") {

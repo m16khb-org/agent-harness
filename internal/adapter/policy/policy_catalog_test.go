@@ -1,8 +1,8 @@
 package policy
 
 import (
-	policycontract "agent-harness/internal/contract/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policycontract "issueops/internal/contract/policy"
+	policydomain "issueops/internal/domain/policy"
 	"os"
 	"strings"
 	"testing"
@@ -107,7 +107,7 @@ func TestCommandPolicySummaryIncludesCatalog(t *testing.T) {
 
 func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 	repoRoot := t.TempDir()
-	agentHarnessDir := repoRoot + "/.agent-harness"
+	agentHarnessDir := repoRoot + "/.issueops"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestLoadPolicyOverridesNoFileIsBackwardCompatible(t *testing.T) {
 
 func TestPolicyOverridesInvalidJSONWarnsAndUsesBuiltins(t *testing.T) {
 	repoRoot := t.TempDir()
-	agentHarnessDir := repoRoot + "/.agent-harness"
+	agentHarnessDir := repoRoot + "/.issueops"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestPolicyOverridesInvalidJSONWarnsAndUsesBuiltins(t *testing.T) {
 
 func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
 	repoRoot := t.TempDir()
-	agentHarnessDir := repoRoot + "/.agent-harness"
+	agentHarnessDir := repoRoot + "/.issueops"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
 
 func TestPolicyOverridesDoNotLeakAcrossWorkspaceRoots(t *testing.T) {
 	rootWithOverride := t.TempDir()
-	agentHarnessDir := rootWithOverride + "/.agent-harness"
+	agentHarnessDir := rootWithOverride + "/.issueops"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

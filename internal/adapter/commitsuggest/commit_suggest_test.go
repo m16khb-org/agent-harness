@@ -1,13 +1,13 @@
 package commitsuggest
 
 import (
-	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
+	commitsuggestcontract "issueops/internal/contract/commitsuggest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/preflight"
+	"issueops/internal/adapter/preflight"
 )
 
 func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {

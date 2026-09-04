@@ -1,6 +1,6 @@
 package benchmark
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import issueopscontract "issueops/internal/contract/issueops"
 
 import "strings"
 

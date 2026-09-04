@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsartifactdomain "agent-harness/internal/domain/issueopsartifact"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsartifactdomain "issueops/internal/domain/issueopsartifact"
 )
 
 func TestRequireStagedExecutionOwnerPlanArtifact(t *testing.T) {
@@ -138,7 +138,7 @@ func TestRequireStagedExecutionOwnerPlanArtifact(t *testing.T) {
 					t.Fatalf("next_command=%q present=%t want present=%t", next, hasNext, test.wantNext)
 				}
 				if test.wantExactNext {
-					want := "agent-harness issueops artifact stage --id " + quoteExecutionOwnerArg(record.ID) + " --name plan --file " + quoteExecutionOwnerArg(record.PlanPath) + " --json"
+					want := "issueops artifact stage --id " + quoteExecutionOwnerArg(record.ID) + " --name plan --file " + quoteExecutionOwnerArg(record.PlanPath) + " --json"
 					if next != want {
 						t.Fatalf("next_command=%q want %q", next, want)
 					}
@@ -246,7 +246,7 @@ func TestArtifactStagingReleasedRecoveryPredicate(t *testing.T) {
 	tests[3].execution.Lease.Holder = &holder
 	tests[4].execution.Pending = &issueopscontract.ExternalIntent{OperationID: "operation", Kind: "owner_launch", Marker: "marker", StartedAt: "2026-08-03T00:00:00Z"}
 	completion := &issueopscontract.ExecutionCompletion{
-		FinalHead: strings.Repeat("a", 40), TuringReportPath: "report.json",
+		FinalHead: strings.Repeat("a", 40), VerificationReportPath: "report.json",
 		Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://example.test/pr/1", CompletedAt: "2026-08-03T00:00:00Z",
 	}
 	tests[5].execution.Completion = completion

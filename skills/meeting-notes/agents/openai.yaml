@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meeting Notes"
+  short_description: "Turn transcripts into meeting notes and action items"
+  default_prompt: "Use $meeting-notes to turn this transcript and participant list into Korean meeting minutes with decisions, owners, action items, and Slack Canvas-ready formatting."

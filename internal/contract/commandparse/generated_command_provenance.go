@@ -42,7 +42,7 @@ func BindGeneratedCommand(command string, provenance GeneratedCommandProvenance)
 	if err := provenance.Validate(); err != nil {
 		return "", err
 	}
-	tail, matched := strings.CutPrefix(command, "agent-harness")
+	tail, matched := strings.CutPrefix(command, "issueops")
 	if !matched || (tail != "" && !strings.HasPrefix(tail, " ")) {
 		return "", &GeneratedCommandProvenanceError{Code: "generated_command_provenance_invalid", Message: "generated command executable token is invalid", Expected: provenance}
 	}

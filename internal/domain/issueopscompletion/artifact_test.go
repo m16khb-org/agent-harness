@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	completioncontract "agent-harness/internal/contract/issueopscompletion"
+	completioncontract "issueops/internal/contract/issueopscompletion"
 )
 
 func TestValidateArtifactAcceptsCanonicalCurrentArtifact(t *testing.T) {

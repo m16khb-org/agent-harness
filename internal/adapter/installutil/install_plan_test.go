@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestJoinErrors(t *testing.T) {
@@ -60,9 +60,9 @@ func TestPlanFinishFoldsErrors(t *testing.T) {
 }
 
 func TestHookGroupContainsAgentHarness(t *testing.T) {
-	harness := map[string]any{"hooks": []any{map[string]any{"command": "'/bin/agent-harness' hook stop"}}}
+	harness := map[string]any{"hooks": []any{map[string]any{"command": "'/bin/issueops' hook stop"}}}
 	if !HookGroupContainsAgentHarness(harness) {
-		t.Fatalf("should detect agent-harness hook group")
+		t.Fatalf("should detect issueops hook group")
 	}
 	thirdParty := map[string]any{"hooks": []any{map[string]any{"command": "echo keep"}}}
 	if HookGroupContainsAgentHarness(thirdParty) {

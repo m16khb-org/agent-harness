@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Host가 제공한 일반 `glab_api` 결과를 GitLab IssueOps snapshot으로 안전하게 주입하고, CLI fallback과 provider-neutral `.agent-harness/VCS.md` 재사용 계약을 Codex와 Claude Code에 동일하게 제공한다.
+**Goal:** Host가 제공한 일반 `glab_api` 결과를 GitLab IssueOps snapshot으로 안전하게 주입하고, CLI fallback과 provider-neutral `.issueops/VCS.md` 재사용 계약을 Codex와 Claude Code에 동일하게 제공한다.
 
 **Architecture:** Host agent는 trusted tool catalog에서 server namespace와 무관하게 `glab_api` leaf를 발견하고 bounded evidence를 공용 execution DTO에 넣는다. Core는 injected evidence와 provider CLI 결과를 같은 GitLab issue identity 경계에서 검증하며, optional `VCS.md`는 bootstrap/doctor required 목록과 분리한다. Hook은 read/record 절차만 안내하고 shared 문서를 직접 수정하지 않는다.
 
@@ -16,7 +16,7 @@
 - `/issues/:iid`와 `/work_items/:iid`는 authority, project path, IID가 같을 때만 같은 GitLab identity다.
 - Supplied evidence가 invalid면 CLI로 fallback하지 않고 fail-closed한다. Evidence가 없을 때만 일반 `glab api` adapter를 사용한다.
 - Snapshot transport 실패는 Orca readiness 실패나 `mode=direct` 전환 사유가 아니다.
-- `.agent-harness/VCS.md`는 read/update/route 가능한 optional doc이며 bootstrap과 doctor의 required 목록에는 포함하지 않는다.
+- `.issueops/VCS.md`는 read/update/route 가능한 optional doc이며 bootstrap과 doctor의 required 목록에는 포함하지 않는다.
 - GitHub recipe는 exact `gh issue view` 또는 실제 호출해 검증한 MCP schema만 기록한다. 공통 GitHub MCP 이름을 추측하지 않는다.
 - Hook은 network read, git mutation, shared-doc write, cross-worktree queue handoff를 수행하지 않는다.
 - Active IssueOps 문서 변경은 canonical holder worktree에서 main agent가 `project_docs_read` 후 SHA-CAS `project_docs_revise`로 수행한다.
@@ -59,7 +59,7 @@ func TestOptionalVCSProjectDocIsAllowedButNotRequired(t *testing.T) {
 	if !contains(AllowedProjectDocNames(), "VCS.md") {
 		t.Fatal("VCS.md must be readable and writable on demand")
 	}
-	if got, err := NormalizeRelPath(".agent-harness/VCS.md"); err != nil || got != ".agent-harness/VCS.md" {
+	if got, err := NormalizeRelPath(".issueops/VCS.md"); err != nil || got != ".issueops/VCS.md" {
 		t.Fatalf("NormalizeRelPath(VCS.md) = %q, %v", got, err)
 	}
 }
@@ -68,7 +68,7 @@ func TestOptionalVCSProjectDocIsAllowedButNotRequired(t *testing.T) {
 `TestBootstrapProjectDocsDryRunAndWrite`에는 다음 검증을 추가한다.
 
 ```go
-if projectPlanContainsRel(dry.Files, ".agent-harness/VCS.md") {
+if projectPlanContainsRel(dry.Files, ".issueops/VCS.md") {
 	t.Fatalf("optional VCS.md must not be created by bootstrap: %+v", dry.Files)
 }
 ```
@@ -77,7 +77,7 @@ Doctor fixture가 모든 required docs를 가진 상태에서 `VCS.md`가 없어
 `project_docs_missing` issue를 만들지 않는 assertion을 추가한다.
 
 ```go
-if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "VCS.md")); !os.IsNotExist(err) {
+if _, err := os.Stat(filepath.Join(repo, ".issueops", "VCS.md")); !os.IsNotExist(err) {
 	t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
 }
 if hasHarnessDoctorIssue(result.Issues, "project_docs_missing") {
@@ -91,7 +91,7 @@ if hasHarnessDoctorIssue(result.Issues, "project_docs_missing") {
 ```go
 created, err := ReviseProjectDoc(ProjectDocsReviseRequest{
 	RepoRoot: root,
-	RelPath:  ".agent-harness/VCS.md",
+	RelPath:  ".issueops/VCS.md",
 	Content:  "# VCS\n\n## GitHub\n",
 	Summary:  "record verified provider recipe",
 	Confirm:  true,
@@ -99,7 +99,7 @@ created, err := ReviseProjectDoc(ProjectDocsReviseRequest{
 if err != nil || created.Action != "create" {
 	t.Fatalf("create optional VCS.md: result=%#v err=%v", created, err)
 }
-read, err := ReadProjectDoc(root, ".agent-harness/VCS.md")
+read, err := ReadProjectDoc(root, ".issueops/VCS.md")
 if err != nil || !read.Exists || !strings.Contains(read.Content, "## GitHub") {
 	t.Fatalf("read optional VCS.md: result=%#v err=%v", read, err)
 }
@@ -165,7 +165,7 @@ func TestRouteProjectDocsIncludesOptionalVCSForRemoteWork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !routeContains(route.Docs, ".agent-harness/VCS.md") {
+	if !routeContains(route.Docs, ".issueops/VCS.md") {
 		t.Fatalf("VCS route missing: %+v", route.Docs)
 	}
 }
@@ -175,7 +175,7 @@ GitLab repo profile hook test에는 다음 문자열 검증을 추가한다.
 
 ```go
 for _, want := range []string{
-	"read .agent-harness/VCS.md when present",
+	"read .issueops/VCS.md when present",
 	"glab_api",
 	"server namespace",
 	"glab api fallback",
@@ -206,7 +206,7 @@ Expected: route와 hook output에 VCS/capability 안내가 없어 FAIL.
 ```go
 addPriority(
 	"project_docs_read/project_docs_revise",
-	"Read .agent-harness/VCS.md when present; after a successful exact-identity provider read, record only the portable recipe with SHA-CAS in the canonical worktree.",
+	"Read .issueops/VCS.md when present; after a successful exact-identity provider read, record only the portable recipe with SHA-CAS in the canonical worktree.",
 	hintPriorityAction,
 )
 if strings.EqualFold(repoProfile.VCS.Provider, "gitlab") {
@@ -222,8 +222,8 @@ if strings.EqualFold(repoProfile.VCS.Provider, "gitlab") {
 
 ```go
 case "project_docs_read/project_docs_revise":
-	if strings.Contains(h.Reason, ".agent-harness/VCS.md") {
-		return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_revise"
+	if strings.Contains(h.Reason, ".issueops/VCS.md") {
+		return "read .issueops/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_revise"
 	}
 	return "refresh project docs only if evidence changed"
 case "glab_api":
@@ -421,11 +421,11 @@ git commit -m "feat(issueops): accept validated GitLab MCP snapshots"
 **Files:**
 
 - Modify: `internal/adapter/mcp/issueops_catalog.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution.go`
-- Modify: `cmd/harness/mcpcli/mcp_tool_issueops_execution_test.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go`
+- Modify: `cmd/issueops/mcpcli/mcp_tool_issueops_execution_test.go`
 - Modify: `internal/adapter/mcp/issueops_catalog_test.go`
-- Update: `cmd/harness/testdata/mcp_tools.golden.json`
-- Update: `cmd/harness/testdata/response_contracts.golden.json`
+- Update: `cmd/issueops/testdata/mcp_tools.golden.json`
+- Update: `cmd/issueops/testdata/response_contracts.golden.json`
 
 **Interfaces:**
 
@@ -472,7 +472,7 @@ Wrong object type must return an error instead of silently omitting evidence.
 Run:
 
 ```bash
-go test ./internal/adapter/mcp ./cmd/harness/mcpcli -run 'IssueOps.*Snapshot|ExecutionActionRequestFromMCP' -count=1
+go test ./internal/adapter/mcp ./cmd/issueops/mcpcli -run 'IssueOps.*Snapshot|ExecutionActionRequestFromMCP' -count=1
 ```
 
 Expected: schema property와 parser가 없어 FAIL.
@@ -508,17 +508,17 @@ non-string field를 error로 반환한다. Handler는 parse error를
 Run:
 
 ```bash
-go test ./internal/adapter/mcp ./cmd/harness/mcpcli -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./internal/adapter/mcp ./cmd/issueops/mcpcli -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 ```
 
 If golden tests report only the intentional nested property/result-field drift, run:
 
 ```bash
-go test ./cmd/harness/contractgolden -run Golden -update -count=1
-go test ./cmd/harness/harnessapp -run Golden -update -count=1
-git diff -- cmd/harness/testdata/mcp_tools.golden.json cmd/harness/testdata/response_contracts.golden.json
+go test ./cmd/issueops/contractgolden -run Golden -update -count=1
+go test ./cmd/issueops/issueopsapp -run Golden -update -count=1
+git diff -- cmd/issueops/testdata/mcp_tools.golden.json cmd/issueops/testdata/response_contracts.golden.json
 ```
 
 Then rerun the three non-update test commands and reject any unrelated golden
@@ -527,7 +527,7 @@ change.
 - [ ] **Step 6: Commit the MCP surface**
 
 ```bash
-git add internal/adapter/mcp/issueops_catalog.go cmd/harness/mcpcli cmd/harness/testdata
+git add internal/adapter/mcp/issueops_catalog.go cmd/issueops/mcpcli cmd/issueops/testdata
 git commit -m "feat(mcp): expose GitLab issue snapshot evidence"
 ```
 
@@ -535,11 +535,11 @@ git commit -m "feat(mcp): expose GitLab issue snapshot evidence"
 
 **Files:**
 
-- Modify: `cmd/harness/issueopscli/executioncmd/execution.go`
-- Create: `cmd/harness/issueopscli/executioncmd/snapshot_file.go`
-- Create: `cmd/harness/issueopscli/executioncmd/snapshot_file_test.go`
-- Modify: `cmd/harness/issueopscli/issueops_execution_cli_test.go`
-- Update: `cmd/harness/testdata/usage.golden.txt`
+- Modify: `cmd/issueops/issueopscli/executioncmd/execution.go`
+- Create: `cmd/issueops/issueopscli/executioncmd/snapshot_file.go`
+- Create: `cmd/issueops/issueopscli/executioncmd/snapshot_file_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops_execution_cli_test.go`
+- Update: `cmd/issueops/testdata/usage.golden.txt`
 
 **Interfaces:**
 
@@ -571,7 +571,7 @@ if err != nil || got == nil || got.Source != "glab_mcp" {
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli/executioncmd -run 'SnapshotFile' -count=1
+go test ./cmd/issueops/issueopscli/executioncmd -run 'SnapshotFile' -count=1
 ```
 
 Expected: helper가 없어 compile FAIL.
@@ -604,7 +604,7 @@ fail-closed한다. `status`, `release`, `complete`에는 flag를 추가하지 �
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/issueopscli -run 'Snapshot|ExecutionCLI' -count=1
+go test ./cmd/issueops/issueopscli/executioncmd ./cmd/issueops/issueopscli -run 'Snapshot|ExecutionCLI' -count=1
 ```
 
 Expected: valid file maps to the same evidence DTO and unsafe files fail before provider CLI execution.
@@ -612,7 +612,7 @@ Expected: valid file maps to the same evidence DTO and unsafe files fail before 
 - [ ] **Step 6: Commit the CLI surface**
 
 ```bash
-git add cmd/harness/issueopscli/executioncmd cmd/harness/issueopscli/issueops_execution_cli_test.go cmd/harness/testdata/usage.golden.txt
+git add cmd/issueops/issueopscli/executioncmd cmd/issueops/issueopscli/issueops_execution_cli_test.go cmd/issueops/testdata/usage.golden.txt
 git commit -m "feat(cli): read bounded IssueOps snapshots"
 ```
 
@@ -622,9 +622,9 @@ git commit -m "feat(cli): read bounded IssueOps snapshots"
 
 - Modify: `skills/gitlab-usecase/SKILL.md`
 - Modify: `skills/issueops/references/execution.md`
-- Modify: `.agent-harness/OPERATIONS.md`
-- Modify: `.agent-harness/AGENT_WORKFLOW.md`
-- Modify: `.agent-harness/TESTING.md`
+- Modify: `.issueops/OPERATIONS.md`
+- Modify: `.issueops/AGENT_WORKFLOW.md`
+- Modify: `.issueops/TESTING.md`
 - Modify: `docs/superpowers/specs/2026-07-28-gitlab-mcp-cli-snapshot-design.md`
 - Modify: `docs/superpowers/plans/2026-07-28-gitlab-mcp-cli-vcs-recipe.md`
 - Test: `internal/core/skillcontract/skill_contract_test.go`
@@ -645,7 +645,7 @@ for _, want := range []string{
 	"server namespace",
 	"issue_snapshot",
 	"--issue-snapshot-file",
-	".agent-harness/VCS.md",
+	".issueops/VCS.md",
 	"project_docs_read",
 	"project_docs_revise",
 	"glab api",
@@ -673,7 +673,7 @@ Expected: new snapshot/VCS recipe language is missing.
 
 `gitlab-usecase`에 다음 deterministic sequence를 document한다.
 
-1. Current repo의 `.agent-harness/VCS.md`를 읽는다.
+1. Current repo의 `.issueops/VCS.md`를 읽는다.
 2. Trusted host catalog에서 leaf `glab_api`를 찾고 server namespace를 선택 기준으로
    쓰지 않는다.
 3. `projects/<escaped-project>/issues/<iid>`와 `flags.hostname`으로 bounded read한다.
@@ -711,7 +711,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit the host-neutral workflow**
 
 ```bash
-git add skills/gitlab-usecase skills/issueops/references/execution.md .agent-harness docs/superpowers
+git add skills/gitlab-usecase skills/issueops/references/execution.md .issueops docs/superpowers
 git commit -m "docs(issueops): document portable VCS snapshots"
 ```
 
@@ -730,7 +730,7 @@ git commit -m "docs(issueops): document portable VCS snapshots"
 
 ```bash
 go test ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./internal/core/projectbootstrap ./internal/core/doctor -count=1
-go test ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli ./cmd/harness/hookcli ./internal/adapter/mcp ./internal/core/skillcontract -count=1
+go test ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli ./cmd/issueops/hookcli ./internal/adapter/mcp ./internal/core/skillcontract -count=1
 ```
 
 Expected: PASS.
@@ -739,7 +739,7 @@ Expected: PASS.
 
 ```bash
 go test -race ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/projectdoc ./internal/core/projectdocs -count=1
-go vet ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli ./cmd/harness/hookcli ./internal/adapter/mcp
+go vet ./internal/core/issueops ./internal/adapter/provider/gitlab ./internal/core/hookprompt ./internal/core/projectdoc ./internal/core/projectdocs ./cmd/issueops/issueopscli/... ./cmd/issueops/mcpcli ./cmd/issueops/hookcli ./internal/adapter/mcp
 ```
 
 Expected: PASS. Do not expand either command to `./...`.
@@ -747,9 +747,9 @@ Expected: PASS. Do not expand either command to `./...`.
 - [ ] **Step 3: Run build and contract golden**
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 git diff --check
 ```
 
@@ -758,9 +758,9 @@ Expected: PASS and no whitespace error.
 - [ ] **Step 4: Refresh installed hosts**
 
 ```bash
-ah update --json
-./bin/agent-harness daemon status --json
-codex mcp get agent_harness
+io update --json
+./bin/issueops daemon status --json
+codex mcp get issueops
 claude mcp list
 ```
 
@@ -801,9 +801,9 @@ Do not create the #2609 worktree or claim the lease in this smoke.
 - [ ] **Step 7: Record the successful recipe only in the authorized worktree**
 
 If #2609 still has no active canonical holder worktree, do not write
-`service-api/.agent-harness/VCS.md` from its source checkout. Revalidate and record
-the recipe when the #2609 worktree is created. For the current `agent-harness`
-repo, create/update `.agent-harness/VCS.md` only if this task actually performed a
+`service-api/.issueops/VCS.md` from its source checkout. Revalidate and record
+the recipe when the #2609 worktree is created. For the current `issueops`
+repo, create/update `.issueops/VCS.md` only if this task actually performed a
 successful GitHub provider read.
 
 - [ ] **Step 8: Run atomic commit/push preflight**

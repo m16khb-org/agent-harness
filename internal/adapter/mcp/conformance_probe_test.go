@@ -1,19 +1,19 @@
 package mcp
 
 import (
-	mcpcontract "agent-harness/internal/contract/mcp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
+	mcpcontract "issueops/internal/contract/mcp"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	core "agent-harness/internal/adapter/toolconformance"
+	core "issueops/internal/adapter/toolconformance"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

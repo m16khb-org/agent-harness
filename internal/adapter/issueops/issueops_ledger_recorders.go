@@ -7,7 +7,7 @@ import (
 
 	"context"
 
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/contract/issueops"
 )
 
 // RecordIssueOpsDomainReview persists the grill-phase domain review

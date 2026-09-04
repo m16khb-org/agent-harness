@@ -40,11 +40,11 @@ func DefaultVerificationCommand(step string) string {
 	step = strings.ToLower(step)
 	switch {
 	case strings.Contains(step, "contract") || strings.Contains(step, "golden"):
-		return "go test ./cmd/harness -run Golden -count=1"
+		return "go test ./cmd/issueops -run Golden -count=1"
 	case strings.Contains(step, "policy") || strings.Contains(step, "guard"):
 		return "go test ./internal/core -count=1"
 	case strings.Contains(step, "build"):
-		return "go build -o bin/agent-harness ./cmd/harness"
+		return "go build -o bin/issueops ./cmd/issueops"
 	default:
 		return "go test ./... -count=1"
 	}

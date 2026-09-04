@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	mutexHelperModeEnv   = "HARNESS_SQLSTORE_MUTEX_HELPER"
-	mutexHelperDirEnv    = "HARNESS_SQLSTORE_MUTEX_DIR"
-	mutexHelperMarkerEnv = "HARNESS_SQLSTORE_MUTEX_MARKER"
+	mutexHelperModeEnv   = "ISSUEOPS_SQLSTORE_MUTEX_HELPER"
+	mutexHelperDirEnv    = "ISSUEOPS_SQLSTORE_MUTEX_DIR"
+	mutexHelperMarkerEnv = "ISSUEOPS_SQLSTORE_MUTEX_MARKER"
 )
 
 // appendOrderedMarker appends a single line to the shared ordered-marker file

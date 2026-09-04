@@ -1,15 +1,15 @@
 package doctor
 
 import (
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	operationalhealthcontract "agent-harness/internal/contract/operationalhealth"
+	lifecyclecontract "issueops/internal/contract/lifecycle"
+	operationalhealthcontract "issueops/internal/contract/operationalhealth"
 )
 
 type ProjectLifecycleStatePlan = lifecyclecontract.ProjectLifecycleStatePlan
 
 type HarnessDoctorRequest struct {
 	RepoRoot            string                              `json:"repo_root,omitempty"`
-	HarnessRoot         string                              `json:"harness_root,omitempty"`
+	IssueOpsRoot        string                              `json:"issueops_root,omitempty"`
 	Home                string                              `json:"home,omitempty"`
 	Version             string                              `json:"version,omitempty"`
 	StaticOnly          bool                                `json:"-"`
@@ -31,7 +31,7 @@ type HarnessDoctorResult struct {
 	Healthy           bool                      `json:"healthy"`
 	Kind              string                    `json:"kind"`
 	Version           string                    `json:"version,omitempty"`
-	HarnessRoot       string                    `json:"harness_root,omitempty"`
+	IssueOpsRoot      string                    `json:"issueops_root,omitempty"`
 	RepoRoot          string                    `json:"repo_root"`
 	StateDir          string                    `json:"state_dir"`
 	LifecycleState    ProjectLifecycleStatePlan `json:"lifecycle_state"`

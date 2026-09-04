@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	stateapplication "agent-harness/internal/application/state"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	stateapplication "issueops/internal/application/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func StateDoctor() (statecontract.StateDoctorResult, error) {

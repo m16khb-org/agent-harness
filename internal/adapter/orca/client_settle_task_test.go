@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // SettleTask는 완료된 사이클의 task를 terminal 상태로 옮긴다. 어떤 status가

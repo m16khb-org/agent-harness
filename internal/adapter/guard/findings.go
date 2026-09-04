@@ -1,10 +1,10 @@
 package guard
 
 import (
-	guardcontract "agent-harness/internal/contract/guard"
+	guardcontract "issueops/internal/contract/guard"
 	"strings"
 
-	"agent-harness/internal/domain/guardpattern"
+	"issueops/internal/domain/guardpattern"
 )
 
 func guardFileFindings(rel, content string, existingSymbols map[string][]string) []guardcontract.GuardFinding {

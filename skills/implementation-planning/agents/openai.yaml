@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Planning"
+  short_description: "Create implementation plans with resolved decisions"
+  default_prompt: "Use $implementation-planning to produce a decision-complete plan for this multi-step or ambiguous task."

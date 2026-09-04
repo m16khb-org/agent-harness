@@ -108,8 +108,8 @@ removed `--judge llm` or `--model` flags.
 After targeted, full, race, build, and contract-golden verification:
 
 1. create atomic commits and push the parent integration branch;
-2. run `ah update` from the repaired canonical worktree;
-3. restart the harness daemon and re-check both Codex and Claude native MCP
+2. run `io update` from the repaired canonical worktree;
+3. restart the issueops daemon and re-check both Codex and Claude native MCP
    registration;
 4. verify the installed CLI and a fresh MCP process, not only the source tree;
 5. reconcile and retire the blocked #190 generation using its exact Orca

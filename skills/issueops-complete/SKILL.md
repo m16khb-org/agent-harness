@@ -10,7 +10,7 @@ description: Record IssueOps execution completion and release the generation aft
 PR/MR을 만들지 않고, 머지하지 않으며, 워크트리·브랜치·이슈를 정리하지 않는다.
 
 - 전체 흐름과 phase 라우팅: [`issueops`](../issueops/SKILL.md). 시작 전
-  `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가
+  `issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가
   `pr.complete`인지 확인한다
 - 직전 단계(PR/MR publication): [`issueops-create-pr`](../issueops-create-pr/SKILL.md)
 - 직후 단계(머지 후 정리): [`issueops-cleanup`](../issueops-cleanup/SKILL.md)
@@ -46,13 +46,13 @@ flowchart LR
 | cwd가 canonical worktree다 | canonical cwd 계열 거부 |
 | actor가 살아 있는 PID 재사용 안전 receipt를 포함한다 | `native actor requires a PID reuse-safe session_process receipt` / `native process identity is not live` |
 | `--final-head`가 canonical worktree의 현재 HEAD와 같은 전체 SHA다 | `final_head must match canonical worktree HEAD` |
-| `--turing-report`가 canonical worktree 안의 정규 파일이다 | `Turing report must be inside the canonical worktree` / `must be a regular file` |
+| `--verification-report`가 canonical worktree 안의 정규 파일이다 | `verification report must be inside the canonical worktree` / `must be a regular file` |
 | `--confirm`이 있다 | `execution complete requires confirm` |
 
 ```bash
-agent-harness issueops status --id "$ISSUEOPS_ID" --json
-agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
-agent-harness issueops execution whoami --json
+issueops status --id "$ISSUEOPS_ID" --json
+issueops execution status --id "$ISSUEOPS_ID" --json
+issueops execution whoami --json
 ```
 
 `complete`에는 preview가 없다. 확신이 서지 않으면 위 세 관측을 먼저 읽고,
@@ -86,10 +86,10 @@ git -C "$WORKTREE" status --porcelain
 ## Canonical 명령
 
 ```bash
-agent-harness issueops execution complete --id "$ISSUEOPS_ID" \
+issueops execution complete --id "$ISSUEOPS_ID" \
   --generation "$GENERATION" \
   --final-head "$FINAL_HEAD" \
-  --turing-report "$REPORT_REL" \
+  --verification-report "$REPORT_REL" \
   --remote-artifact-url "$ARTIFACT_URL" \
   --verification "$COMMAND_AND_RESULT" \
   --host claude --session-id "$SESSION_ID" \

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN="$ROOT/bin/agent-harness"
+BIN="$ROOT/bin/issueops"
 SKIP_BUILD=0
 ARGS=()
 
@@ -23,7 +23,7 @@ fi
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
   mkdir -p "$ROOT/bin"
-  (cd "$ROOT" && go build -o "$BIN" ./cmd/harness)
+  (cd "$ROOT" && go build -o "$BIN" ./cmd/issueops)
 fi
 
 if [[ ${#ARGS[@]} -eq 0 ]]; then

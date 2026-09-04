@@ -5,14 +5,14 @@ import (
 	"io/fs"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	corestate "agent-harness/internal/adapter/outbound/state"
-	statecontract "agent-harness/internal/contract/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	corestate "issueops/internal/adapter/outbound/state"
+	statecontract "issueops/internal/contract/state"
 )
 
 func TestStateInvalidMatrix(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	db, err := sqlstore.Open(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestStateInvalidMatrix(t *testing.T) {
 
 func TestStateAbsentAndCurrentV1(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	db, err := sqlstore.Open(dir)
 	if err != nil {
 		t.Fatal(err)

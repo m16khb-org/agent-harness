@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 // TestClientSettleTaskConvergesAgainstTheLiveRelay는 #325의 dogfood 조건이다.
@@ -26,10 +26,10 @@ import (
 // Run 레코드를 만드는 부작용이 있다(Orca는 Run 삭제를 제공하지 않는다).
 // 실행:
 //
-//	HARNESS_ORCA_LIVE=1 go test ./internal/adapter/orca -run LiveRelay -count=1 -v
+//	ISSUEOPS_ORCA_LIVE=1 go test ./internal/adapter/orca -run LiveRelay -count=1 -v
 func TestClientSettleTaskConvergesAgainstTheLiveRelay(t *testing.T) {
-	if os.Getenv("HARNESS_ORCA_LIVE") != "1" {
-		t.Skip("실물 Orca가 필요하다: HARNESS_ORCA_LIVE=1로 실행한다")
+	if os.Getenv("ISSUEOPS_ORCA_LIVE") != "1" {
+		t.Skip("실물 Orca가 필요하다: ISSUEOPS_ORCA_LIVE=1로 실행한다")
 	}
 	client := NewClient(ExecRunner{})
 	if !client.Available() {

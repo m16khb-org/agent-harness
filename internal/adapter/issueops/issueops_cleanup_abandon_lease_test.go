@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // claimable은 홀더 부재가 강제되는 상태다(model/execution.go의 validateWriteLease).

@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	contract "agent-harness/internal/contract/issueopsbodysync"
+	contract "issueops/internal/contract/issueopsbodysync"
 )
 
 // ErrAlreadyInSync reports that the merged body equals the live body, so a
@@ -39,13 +39,13 @@ const (
 	// managed regions in preview output and durable evidence.
 	RegionDevilsAdvocate = "issueops:devils-advocate"
 	RegionCompletion     = "issueops:completion"
-	RegionIssueCreate    = "agent-harness:issue-create"
+	RegionIssueCreate    = "issueops:issue-create"
 )
 
 // issueCreateMarker matches the durable marker that reconcile-issue uses to
 // re-find an issue whose creation outcome was unclear. It is a single comment
 // line rather than a delimited block.
-var issueCreateMarker = regexp.MustCompile(`<!-- agent-harness:issue-create:[0-9a-f]{32} -->`)
+var issueCreateMarker = regexp.MustCompile(`<!-- issueops:issue-create:[0-9a-f]{32} -->`)
 
 // NormalizeBody folds the transformations a provider applies to a body it
 // stores, so that a plain round trip through the provider does not read as a

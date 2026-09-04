@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvidence, error) {
@@ -24,12 +24,9 @@ func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvi
 	if !ok {
 		return nil, fmt.Errorf("Omo MCP readback has no mcpServers object")
 	}
-	if _, alias := servers["agent-harness"]; alias {
-		return nil, fmt.Errorf("Omo MCP readback retained obsolete agent-harness alias")
-	}
-	actual, ok := servers["agent_harness"]
+	actual, ok := servers["issueops"]
 	if !ok {
-		return nil, fmt.Errorf("Omo MCP readback has no agent_harness server")
+		return nil, fmt.Errorf("Omo MCP readback has no issueops server")
 	}
 	actualDigest, err := SemanticSHA256(actual)
 	if err != nil {
@@ -44,10 +41,10 @@ func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvi
 		return nil, err
 	}
 	if actualDigest != expectedDigest {
-		return nil, fmt.Errorf("Omo MCP readback does not target the canonical binary and HARNESS_ROOT")
+		return nil, fmt.Errorf("Omo MCP readback does not target the canonical binary and ISSUEOPS_ROOT")
 	}
 
-	extensionPath := filepath.Join(omoRoot, "extensions", "agent-harness.js")
+	extensionPath := filepath.Join(omoRoot, "extensions", "issueops.js")
 	extension, err := os.ReadFile(extensionPath)
 	if err != nil {
 		return nil, err

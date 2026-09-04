@@ -7,7 +7,7 @@ import (
 
 func originalArtifact() ArtifactObservation {
 	return ArtifactObservation{
-		URL:      "https://github.com/m16khb/agent-harness/pull/241",
+		URL:      "https://github.com/m16khb/issueops/pull/241",
 		Provider: "github",
 		State:    "CLOSED",
 	}
@@ -20,14 +20,14 @@ func TestValidateSupersedingArtifactAcceptsDeclaredMergedReplacement(t *testing.
 		name string
 		body string
 	}{
-		{"URL 참조", "Supersedes https://github.com/m16khb/agent-harness/pull/241 and #243"},
+		{"URL 참조", "Supersedes https://github.com/m16khb/issueops/pull/241 and #243"},
 		{"번호 참조", "Supersedes #243 and #241"},
 		{"replaces 어휘", "This replaces #241 with a corrected boundary"},
 		{"대소문자 무시", "SUPERSEDES #241"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			replacement := ArtifactObservation{
-				URL: "https://github.com/m16khb/agent-harness/pull/245", Provider: "github",
+				URL: "https://github.com/m16khb/issueops/pull/245", Provider: "github",
 				Merged: true, State: "MERGED", Body: tc.body,
 			}
 			if err := ValidateSupersedingArtifact(originalArtifact(), replacement); err != nil {
@@ -41,7 +41,7 @@ func TestValidateSupersedingArtifactAcceptsDeclaredMergedReplacement(t *testing.
 // 아무 record나 지우는" 문을 열지 않음을 고정한다.
 func TestValidateSupersedingArtifactFailsClosed(t *testing.T) {
 	base := ArtifactObservation{
-		URL: "https://github.com/m16khb/agent-harness/pull/245", Provider: "github",
+		URL: "https://github.com/m16khb/issueops/pull/245", Provider: "github",
 		Merged: true, State: "MERGED", Body: "Supersedes #241",
 	}
 	for _, tc := range []struct {
@@ -55,17 +55,17 @@ func TestValidateSupersedingArtifactFailsClosed(t *testing.T) {
 			a.URL = "https://github.com/other/repo/pull/245"
 		}, "not the original project"},
 		{"cross-host", func(a *ArtifactObservation) {
-			a.URL = "https://github.enterprise/m16khb/agent-harness/pull/245"
+			a.URL = "https://github.enterprise/m16khb/issueops/pull/245"
 		}, "not the original project"},
 		{"supersede 선언 없음", func(a *ArtifactObservation) { a.Body = "Fixes a boundary bug" }, "does not declare"},
 		{"URL만 언급", func(a *ArtifactObservation) {
-			a.Body = "Related: https://github.com/m16khb/agent-harness/pull/241"
+			a.Body = "Related: https://github.com/m16khb/issueops/pull/241"
 		}, "does not declare"},
 		{"다른 줄의 supersede", func(a *ArtifactObservation) {
 			a.Body = "Supersedes an earlier attempt\n\nRelated: #241"
 		}, "does not declare"},
 		{"자기 자신", func(a *ArtifactObservation) {
-			a.URL = "https://github.com/m16khb/agent-harness/pull/241"
+			a.URL = "https://github.com/m16khb/issueops/pull/241"
 		}, "must differ"},
 		{"URL 없음", func(a *ArtifactObservation) { a.URL = "" }, "URL is required"},
 		{"canonical 아님", func(a *ArtifactObservation) { a.URL = "not-a-url" }, "canonical artifact URL"},
@@ -88,7 +88,7 @@ func TestValidateSupersedingArtifactFailsClosed(t *testing.T) {
 // supersede 관계 자체를 검증할 수 없음을 고정한다.
 func TestValidateSupersedingArtifactRequiresAKnownOriginal(t *testing.T) {
 	replacement := ArtifactObservation{
-		URL:    "https://github.com/m16khb/agent-harness/pull/245",
+		URL:    "https://github.com/m16khb/issueops/pull/245",
 		Merged: true, State: "MERGED", Body: "Supersedes #241",
 	}
 	err := ValidateSupersedingArtifact(ArtifactObservation{}, replacement)

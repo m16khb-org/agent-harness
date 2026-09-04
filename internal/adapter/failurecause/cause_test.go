@@ -1,7 +1,7 @@
 package failurecause
 
 import (
-	failurecausecontract "agent-harness/internal/contract/failurecause"
+	failurecausecontract "issueops/internal/contract/failurecause"
 	"reflect"
 	"strings"
 	"testing"

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	leasedomain "agent-harness/internal/domain/issueopslease"
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	leasecontract "issueops/internal/contract/issueopslease"
+	leasedomain "issueops/internal/domain/issueopslease"
+	basesyncport "issueops/internal/port/issueopsbasesync"
 )
 
 func TestReseedServiceRejectsParentDriftBeforeArtifactsOrCommit(t *testing.T) {
@@ -121,7 +121,7 @@ func TestReseedServiceArchivesCompletionAtItsOriginGeneration(t *testing.T) {
 	record.Lease = record.Stable.Execution.Lease
 	record.Stable.Execution.CompletionHistory = []leasecontract.CompletionHistoryEntry{{
 		Generation: 1,
-		Completion: leasecontract.Completion{FinalHead: strings.Repeat("a", 40), TuringReportPath: ".agent-harness/turing/prior.json", Verification: []string{"prior verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-01T00:00:00Z"},
+		Completion: leasecontract.Completion{FinalHead: strings.Repeat("a", 40), VerificationReportPath: ".issueops/verified-execution/prior.json", Verification: []string{"prior verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-01T00:00:00Z"},
 		Reason:     "prior reopen", ReopenedAt: "2026-07-02T00:00:00Z",
 	}}
 	var committed leasecontract.Record
@@ -291,7 +291,7 @@ func completedReseedTestRecord(oldHead string) Record {
 	record.Stable.Phase = "done"
 	record.Stable.BranchPrepare = json.RawMessage(`{"base_branch":"main"}`)
 	record.Stable.Execution.Completion = &leasecontract.Completion{
-		Generation: 4, FinalHead: oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"},
+		Generation: 4, FinalHead: oldHead, VerificationReportPath: ".issueops/verified-execution/old.json", Verification: []string{"old verification"},
 		RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-29T09:00:00Z",
 	}
 	record.Stable.Execution.SyncBaseEvents = []leasecontract.SyncBaseEvent{{Mode: "apply", BaseBranch: "main", BaseOID: strings.Repeat("a", 40), MergeCommit: strings.Repeat("b", 40), Actor: "codex", At: "2026-07-29T10:00:00Z"}}

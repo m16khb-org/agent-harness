@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestServiceRecordsIdempotentlyAndScoresObservedRouting(t *testing.T) {
@@ -26,13 +26,13 @@ func TestServiceRecordsIdempotentlyAndScoresObservedRouting(t *testing.T) {
 		"/state",
 		"io-routing01",
 		" plan ",
-		" codd ",
+		" database-design ",
 		issueopscontract.IssueOpsActor{},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(record.RoutingTrace) != 1 || record.RoutingTrace[0].Phase != "plan" || record.RoutingTrace[0].Skill != "codd" {
+	if len(record.RoutingTrace) != 1 || record.RoutingTrace[0].Phase != "plan" || record.RoutingTrace[0].Skill != "database-design" {
 		t.Fatalf("routing entry was not normalized: %+v", record.RoutingTrace)
 	}
 	if repository.writes != 1 {
@@ -44,7 +44,7 @@ func TestServiceRecordsIdempotentlyAndScoresObservedRouting(t *testing.T) {
 		"/state",
 		"io-routing01",
 		"PLAN",
-		"CODD",
+		"DATABASE-DESIGN",
 		issueopscontract.IssueOpsActor{},
 	); err != nil {
 		t.Fatal(err)
@@ -58,14 +58,14 @@ func TestServiceRecordsIdempotentlyAndScoresObservedRouting(t *testing.T) {
 		"/state",
 		"io-routing01",
 		[]issueopscontract.SkillRouting{
-			{Phase: "plan", Skill: "codd"},
-			{Phase: "implement", Skill: "dijkstra"},
+			{Phase: "plan", Skill: "database-design"},
+			{Phase: "implement", Skill: "algorithm-optimization"},
 		},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.OK || observed != 1 || len(result.Missing) != 1 || result.Missing[0].Skill != "dijkstra" {
+	if result.OK || observed != 1 || len(result.Missing) != 1 || result.Missing[0].Skill != "algorithm-optimization" {
 		t.Fatalf("unexpected routing score: result=%+v observed=%d", result, observed)
 	}
 }

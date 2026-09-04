@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestClientListRunsProjectsInstalledShape(t *testing.T) {
@@ -29,10 +29,10 @@ func TestClientListRunsProjectsInstalledShape(t *testing.T) {
 
 func TestClientCreateRunUsesAuthenticatedCurrentCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
-	argv := []string{"orca", "orchestration", "run-create", "--objective", "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test", "--json"}
+	argv := []string{"orca", "orchestration", "run-create", "--objective", "issueops-v1 lifecycle=io-test generation=1 intent=op-test", "--json"}
 	runner.responses[strings.Join(argv, " ")] = fixtureOutput(t, "run_create.json")
 
-	got, err := NewClient(runner).CreateRun(context.Background(), port.OrcaCreateRunRequest{Objective: "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test"})
+	got, err := NewClient(runner).CreateRun(context.Background(), port.OrcaCreateRunRequest{Objective: "issueops-v1 lifecycle=io-test generation=1 intent=op-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestClientCoordinatorMutationRejectsMissingHandleBeforeInvocation(t *testin
 	runner := newFakeRunner(t)
 	t.Setenv("ORCA_TERMINAL_HANDLE", "")
 
-	_, err := NewClient(runner).CreateRun(context.Background(), port.OrcaCreateRunRequest{Objective: "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test"})
+	_, err := NewClient(runner).CreateRun(context.Background(), port.OrcaCreateRunRequest{Objective: "issueops-v1 lifecycle=io-test generation=1 intent=op-test"})
 	var orcaErr *port.OrcaError
 	if !errors.As(err, &orcaErr) || orcaErr.Code != "coordinator_identity_unavailable" || orcaErr.Invoked || len(runner.calls) != 0 {
 		t.Fatalf("missing coordinator error=%v calls=%#v", err, runner.calls)
@@ -135,13 +135,13 @@ func TestClientCoordinatorMutationRejectsMissingHandleBeforeInvocation(t *testin
 
 func TestClientRunScopedTaskMutationUsesRunAndAuthenticatedCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
-	createArgv := []string{"orca", "orchestration", "task-create", "--spec", "spec", "--task-title", "agent-harness marker", "--display-name", "16-demo", "--run", "run_issueops_1", "--json"}
+	createArgv := []string{"orca", "orchestration", "task-create", "--spec", "spec", "--task-title", "issueops marker", "--display-name", "16-demo", "--run", "run_issueops_1", "--json"}
 	dispatchArgv := []string{"orca", "orchestration", "dispatch", "--task", "task-1", "--to", "term_worker", "--run", "run_issueops_1", "--inject", "--json"}
 	runner.responses[strings.Join(createArgv, " ")] = fixtureOutput(t, "task_create.json")
 	runner.responses[strings.Join(dispatchArgv, " ")] = fixtureOutput(t, "dispatch_create.json")
 	client := NewClient(runner)
 
-	task, err := client.CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
+	task, err := client.CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "issueops marker", DisplayName: "16-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,8 +159,8 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"runs":[
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"},
-			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b"}
+			{"id":"run_a","objective":"issueops-v1 lifecycle=io-a"},
+			{"id":"run_b","objective":"issueops-v1 lifecycle=io-b"}
 		],"nextCursor":null},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
@@ -184,7 +184,7 @@ func TestClientTaskInventoryReadsOpaqueRunRowsUniformly(t *testing.T) {
 		"ok":true,
 		"result":{"runs":[
 			{"id":"run_legacy_local","objective":"retired orchestration state"},
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"}
+			{"id":"run_a","objective":"issueops-v1 lifecycle=io-a"}
 		],"nextCursor":null},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}

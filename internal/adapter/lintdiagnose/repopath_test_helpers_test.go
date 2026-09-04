@@ -1,7 +1,7 @@
 package lintdiagnose
 
 import (
-	"agent-harness/internal/adapter/repopath"
+	"issueops/internal/adapter/repopath"
 )
 
 // production wiring과 같은 repo path resolver를 설치한다. 다른 adapter까지 채우면

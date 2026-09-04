@@ -269,12 +269,12 @@ Each net-new artifact needs an owner command so the missing-key → owner-comman
 
 Update these docs together with the implementation:
 
-- `.agent-harness/ARCHITECTURE.md`: state model and phase semantics.
-- `.agent-harness/AGENT_WORKFLOW.md`: phase-by-phase resume contract.
+- `.issueops/ARCHITECTURE.md`: state model and phase semantics.
+- `.issueops/AGENT_WORKFLOW.md`: phase-by-phase resume contract.
 - `skills/issueops/SKILL.md`: artifact matrix and owner commands.
 - `skills/issueops/references/worktree-context.md`: clarify `worktree prepare` vs `worktree prepare-tools`.
-- MCP tool descriptions and golden contract fixtures: `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`, and `cmd/harness/contractgolden` (new tools/fields change these).
-- `.agent-harness/ADR.md`: record the decision to add net-new source-of-truth fields (`domain_review`, cleanup/verification evidence, feedback resolution, remote-artifact target branch) and the entry-vs-completion gating rule, per the repo's ADR convention.
+- MCP tool descriptions and golden contract fixtures: `cmd/issueops/testdata/mcp_tools.golden.json`, `cmd/issueops/testdata/response_contracts.golden.json`, and `cmd/issueops/contractgolden` (new tools/fields change these).
+- `.issueops/ADR.md`: record the decision to add net-new source-of-truth fields (`domain_review`, cleanup/verification evidence, feedback resolution, remote-artifact target branch) and the entry-vs-completion gating rule, per the repo's ADR convention.
 
 ## Testing
 
@@ -318,14 +318,14 @@ Verification commands:
 
 ```bash
 go test ./internal/core/issueops -count=1
-go test ./cmd/harness/issueopscli -count=1
-go test ./cmd/harness/mcpcli -count=1
+go test ./cmd/issueops/issueopscli -count=1
+go test ./cmd/issueops/mcpcli -count=1
 go test ./... -count=1
-go test ./cmd/harness/... -run Golden -count=1
+go test ./cmd/issueops/... -run Golden -count=1
 ```
 
-(`go test ./cmd/harness -run Golden` runs ZERO golden tests — the golden tests live in subpackages `cmd/harness/contractgolden` and `cmd/harness/harnessapp`, so the recursive `./cmd/harness/...` selector is required.)
+(`go test ./cmd/issueops -run Golden` runs ZERO golden tests — the golden tests live in subpackages `cmd/issueops/contractgolden` and `cmd/issueops/issueopsapp`, so the recursive `./cmd/issueops/...` selector is required.)
 
 ## Rollout
 
-Implement the ledger as additive state first. Do not run a destructive migration. After tests pass, run `agent-harness update --path-mode=skip --json`, then verify the installed surfaces with `agent-harness daemon status --json`, `codex mcp get agent_harness`, and `claude mcp list`.
+Implement the ledger as additive state first. Do not run a destructive migration. After tests pass, run `issueops update --path-mode=skip --json`, then verify the installed surfaces with `issueops daemon status --json`, `codex mcp get issueops`, and `claude mcp list`.

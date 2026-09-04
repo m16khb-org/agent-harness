@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"agent-harness/internal/contract/state"
+	"issueops/internal/contract/state"
 )
 
 func TestInvalidExistingStateUsesOnePublicIdentity(t *testing.T) {

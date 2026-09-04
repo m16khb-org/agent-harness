@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	leaseapp "agent-harness/internal/application/issueopslease"
-	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/port"
+	leaseapp "issueops/internal/application/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
+	"issueops/internal/port"
 )
 
 type IssueSnapshot struct {
@@ -68,7 +68,7 @@ func (p *ClaimContextPreflight) Preflight(ctx context.Context, request leaseapp.
 		return nil, fmt.Errorf("remote issue snapshot url does not match the linked issue: observed=%s expected=%s", strings.TrimSpace(snapshot.URL), strings.TrimSpace(record.IssueURL))
 	}
 	if observed := claimDigest([]byte(snapshot.Body)); observed != issueDigest {
-		return nil, fmt.Errorf("remote issue body digest drifted from the sealed owner context: expected=%s observed=%s; reseal with `agent-harness issueops execution replace --reseed` after confirming the revision is intended", issueDigest, observed)
+		return nil, fmt.Errorf("remote issue body digest drifted from the sealed owner context: expected=%s observed=%s; reseal with `issueops execution replace --reseed` after confirming the revision is intended", issueDigest, observed)
 	}
 	return func(current leaseapp.Record) error {
 		return validateClaimPacket(current.Stable, issueDigest, packetDigest)
@@ -125,7 +125,7 @@ func validateClaimPacket(record leasecontract.Record, issueDigest, packetDigest 
 		return fmt.Errorf("sealed context packet issue body does not hash to its sealed digest: expected=%s observed=%s", issueDigest, observed)
 	}
 	for name, digest := range packet.ArtifactManifest {
-		path := filepath.Join(execution.Workspace.Root, ".agent-harness", "artifact", name+".md")
+		path := filepath.Join(execution.Workspace.Root, ".issueops", "artifact", name+".md")
 		artifact, err := readClaimOwnerArtifact(execution.Workspace.Root, path)
 		if err != nil {
 			return fmt.Errorf("read sealed artifact %s: %w", name, err)
@@ -139,7 +139,7 @@ func validateClaimPacket(record leasecontract.Record, issueDigest, packetDigest 
 
 func claimContextPacketPath(record leasecontract.Record) string {
 	key := claimTokenSHA256(record.ID)[:16]
-	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("generation-%d", record.Execution.Lease.Generation), "context.json")
+	return filepath.Join(record.Execution.Workspace.Root, ".issueops", "state", "issueops-v1", key, fmt.Sprintf("generation-%d", record.Execution.Lease.Generation), "context.json")
 }
 
 func readClaimOwnerArtifact(root, path string) ([]byte, error) {

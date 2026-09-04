@@ -4,7 +4,7 @@
 
 **Goal:** `issueops child --help`가 실제 child parser와 동일한 actor 플래그 계약을 canonical usage catalog에서 렌더하도록 수정한다.
 
-**Architecture:** `internal/adapter/cli`의 기존 `IssueOpsUsageLines`와 `IssueOpsUsageKey`를 단일 원본으로 유지한다. `cmd/harness/issueopscli`는 정확한 child 명령 key 여섯 개만 선택해 공용 `IssueOpsActorFlagLegend`와 결합하며, parser·lifecycle·cleanup 구현은 변경하지 않는다.
+**Architecture:** `internal/adapter/cli`의 기존 `IssueOpsUsageLines`와 `IssueOpsUsageKey`를 단일 원본으로 유지한다. `cmd/issueops/issueopscli`는 정확한 child 명령 key 여섯 개만 선택해 공용 `IssueOpsActorFlagLegend`와 결합하며, parser·lifecycle·cleanup 구현은 변경하지 않는다.
 
 **Tech Stack:** Go 1.26, 표준 `flag`/`strings` 패키지, Go `testing`, 기존 IssueOps CLI adapter.
 
@@ -59,9 +59,9 @@ git commit -m "docs(issueops): define child help implementation plan" -m "Lore:
 ### Task 1: Canonical child help projection
 
 **Files:**
-- Create: `cmd/harness/issueopscli/issueops_child_usage_parity_test.go`
-- Modify: `cmd/harness/issueopscli/issueops_cli_support.go:29-37`
-- Modify: `cmd/harness/issueopscli/issueops_subcommands.go:111-115`
+- Create: `cmd/issueops/issueopscli/issueops_child_usage_parity_test.go`
+- Modify: `cmd/issueops/issueopscli/issueops_cli_support.go:29-37`
+- Modify: `cmd/issueops/issueopscli/issueops_subcommands.go:111-115`
 
 **Interfaces:**
 - Consumes: `cliadapter.IssueOpsUsageLines() []string`, `cliadapter.IssueOpsUsageKey(string) string`, `cliadapter.IssueOpsActorFlagLegend string`.
@@ -76,7 +76,7 @@ import (
 	"strings"
 	"testing"
 
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "issueops/internal/adapter/cli"
 )
 
 func TestIssueOpsChildUsageMatchesCanonicalCatalog(t *testing.T) {
@@ -118,7 +118,7 @@ func TestIssueOpsChildUsageMatchesCanonicalCatalog(t *testing.T) {
 	if legendLine(got, "RECORD_ACTOR_FLAGS") == "" {
 		t.Fatal("child help가 RECORD_ACTOR_FLAGS 범례를 정의하지 않는다")
 	}
-	if strings.Contains(got, "\n  agent-harness issueops link-child ") {
+	if strings.Contains(got, "\n  issueops link-child ") {
 		t.Fatal("child help에 비-child link-child 명령이 포함됐다")
 	}
 }
@@ -129,7 +129,7 @@ func TestIssueOpsChildUsageMatchesCanonicalCatalog(t *testing.T) {
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli -run TestIssueOpsChildUsageMatchesCanonicalCatalog -count=1
+go test ./cmd/issueops/issueopscli -run TestIssueOpsChildUsageMatchesCanonicalCatalog -count=1
 ```
 
 Expected: test가 실행되고 기존 별도 상수 출력이 canonical projection과 달라 실패한다. diff에는
@@ -137,7 +137,7 @@ Expected: test가 실행되고 기존 별도 상수 출력이 canonical projecti
 
 - [ ] **Step 3: child help를 canonical catalog의 정확한 key projection으로 구현한다**
 
-`cmd/harness/issueopscli/issueops_cli_support.go`의 `issueOpsChildUsage` 상수를 다음 함수로
+`cmd/issueops/issueopscli/issueops_cli_support.go`의 `issueOpsChildUsage` 상수를 다음 함수로
 대체한다.
 
 ```go
@@ -158,7 +158,7 @@ func issueOpsChildUsageText() string {
 }
 ```
 
-`cmd/harness/issueopscli/issueops_subcommands.go`의 help 분기는 계산된 문자열을 출력한다.
+`cmd/issueops/issueopscli/issueops_subcommands.go`의 help 분기는 계산된 문자열을 출력한다.
 
 ```go
 func runIssueOpsChild(args []string) error {
@@ -173,20 +173,20 @@ func runIssueOpsChild(args []string) error {
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli -run 'TestIssueOpsChildUsageMatchesCanonicalCatalog|TestUsageTextsDefineActorFlagShorthand|TestCommandsRequiringActorDiscloseItInUsage|TestIssueOpsUsageMatchesAdapterUsage' -count=1
+go test ./cmd/issueops/issueopscli -run 'TestIssueOpsChildUsageMatchesCanonicalCatalog|TestUsageTextsDefineActorFlagShorthand|TestCommandsRequiringActorDiscloseItInUsage|TestIssueOpsUsageMatchesAdapterUsage' -count=1
 ```
 
-Expected: `ok agent-harness/cmd/harness/issueopscli`.
+Expected: `ok issueops/cmd/issueops/issueopscli`.
 
 - [ ] **Step 5: 범위 package와 contract golden을 focused 검증한다**
 
 Run:
 
 ```bash
-go test ./cmd/harness/issueopscli/... ./internal/adapter/cli/... -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go build -o bin/agent-harness ./cmd/harness
-./bin/agent-harness issueops child --help
+go test ./cmd/issueops/issueopscli/... ./internal/adapter/cli/... -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go build -o bin/issueops ./cmd/issueops
+./bin/issueops child --help
 ```
 
 Expected:
@@ -201,9 +201,9 @@ Expected:
 
 ```bash
 git add -- \
-  cmd/harness/issueopscli/issueops_child_usage_parity_test.go \
-  cmd/harness/issueopscli/issueops_cli_support.go \
-  cmd/harness/issueopscli/issueops_subcommands.go
+  cmd/issueops/issueopscli/issueops_child_usage_parity_test.go \
+  cmd/issueops/issueopscli/issueops_cli_support.go \
+  cmd/issueops/issueopscli/issueops_subcommands.go
 git diff --cached --check
 git diff --cached
 git commit -m "fix(issueops): align child help actor flags" -m "Lore:
@@ -251,9 +251,9 @@ Expected:
 - changed path 목록은 다음 다섯 경로와 정확히 같다.
 
 ```text
-cmd/harness/issueopscli/issueops_child_usage_parity_test.go
-cmd/harness/issueopscli/issueops_cli_support.go
-cmd/harness/issueopscli/issueops_subcommands.go
+cmd/issueops/issueopscli/issueops_child_usage_parity_test.go
+cmd/issueops/issueopscli/issueops_cli_support.go
+cmd/issueops/issueopscli/issueops_subcommands.go
 docs/superpowers/plans/2026-07-31-issueops-child-help-parity.md
 docs/superpowers/specs/2026-07-31-issueops-child-help-parity-design.md
 ```
@@ -267,7 +267,7 @@ Read-only reviewer는 `origin/main...HEAD`의 다섯 changed path와 focused ver
 TDD로 수정한 뒤 review를 다시 실행한다. `pass`일 때만 메인 holder가 다음 record를 남긴다.
 
 ```bash
-/Users/sample/workspace/agent-harness/bin/agent-harness issueops implementation-review record \
+/Users/sample/workspace/issueops/bin/issueops implementation-review record \
   --id io-60af1c5c4367 \
   --verdict pass \
   --finding '독립 구현 검토에서 blocking finding이 없다.' \
@@ -278,7 +278,7 @@ TDD로 수정한 뒤 review를 다시 실행한다. `pass`일 때만 메인 hold
   --reviewer-effort xhigh \
   --host codex \
   --session-id 019fa0f7-65da-7cb3-a7b6-6db05b21f4b5 \
-  --cwd /Users/sample/workspace/agent-harness.worktrees/207-issueops-child-help-parity \
+  --cwd /Users/sample/workspace/issueops.worktrees/207-issueops-child-help-parity \
   --json
 ```
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
+	"issueops/internal/contract/issueops"
+	"issueops/internal/port"
 )
 
 // parseGitLabExecutionIssueIdentity는 실행 스냅샷 신원 검증의 근간이다.

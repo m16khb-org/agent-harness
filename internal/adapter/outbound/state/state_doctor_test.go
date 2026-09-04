@@ -9,7 +9,7 @@ import (
 
 func TestStateDoctorDetectsCorruptRecords(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	if _, err := StateWrite("good", "good content"); err != nil {
 		t.Fatalf("StateWrite good: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestStateDoctorDetectsCorruptRecords(t *testing.T) {
 }
 
 func TestStateDoctorEmptyDirIsHealthy(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("ISSUEOPS_STATE_DIR", t.TempDir())
 	result, err := StateDoctor()
 	if err != nil {
 		t.Fatalf("StateDoctor: %v", err)
@@ -50,7 +50,7 @@ func TestStateDoctorEmptyDirIsHealthy(t *testing.T) {
 
 func TestStateDoctorProjectsInvalidExistingRecords(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	for name, raw := range map[string]string{
 		"missing": `{"key":"missing","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}`,
 		"zero":    `{"schema_version":0,"key":"zero","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}`,
@@ -76,7 +76,7 @@ func TestStateDoctorProjectsInvalidExistingRecords(t *testing.T) {
 
 func TestStateDoctorAcceptsCurrentIssueOpsDirectory(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	if err := os.MkdirAll(filepath.Join(dir, "issueops_v1"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestStateDoctorAcceptsCurrentIssueOpsDirectory(t *testing.T) {
 
 func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
+	t.Setenv("ISSUEOPS_STATE_DIR", dir)
 	if _, err := StateWrite("good", "good content"); err != nil {
 		t.Fatalf("StateWrite good: %v", err)
 	}

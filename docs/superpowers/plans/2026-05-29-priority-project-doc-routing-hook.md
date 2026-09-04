@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Upgrade `agent-harness hook user-prompt` from flat document candidates to priority-based `.agent-harness` routing with Required, Consider, Route, and Secondary companion sections.
+**Goal:** Upgrade `issueops hook user-prompt` from flat document candidates to priority-based `.issueops` routing with Required, Consider, Route, and Secondary companion sections.
 
 **Architecture:** Keep routing deterministic and local in `internal/core/hook_prompt.go`. Extend `HookUserPromptHint` with a backward-compatible `priority` JSON field, classify hints at creation time, and render grouped sections. Update `internal/core/hook_prompt_test.go` to lock priority ordering, false-positive reduction, and existing API/tool behavior.
 
-**Tech Stack:** Go standard library, existing `go test` suite, existing `agent-harness` CLI.
+**Tech Stack:** Go standard library, existing `go test` suite, existing `issueops` CLI.
 
 ---
 
@@ -161,7 +161,7 @@ Group hints by priority:
 
 - [ ] **Step 2: Preserve safety and host output**
 
-Keep the same `HookUserPromptResult` and `hookSpecificOutput.additionalContext` shape. Do not change `cmd/harness/hook_user_prompt.go`.
+Keep the same `HookUserPromptResult` and `hookSpecificOutput.additionalContext` shape. Do not change `cmd/issueops/hook_user_prompt.go`.
 
 - [ ] **Step 3: Run targeted tests**
 
@@ -185,7 +185,7 @@ Expected: PASS.
 Run:
 
 ```bash
-go build -o bin/agent-harness ./cmd/harness
+go build -o bin/issueops ./cmd/issueops
 ```
 
 Expected: PASS.
@@ -195,7 +195,7 @@ Expected: PASS.
 Run:
 
 ```bash
-printf '{"prompt":"hook 구조와 테스트 검증을 설계해줘"}' | ./bin/agent-harness hook user-prompt
+printf '{"prompt":"hook 구조와 테스트 검증을 설계해줘"}' | ./bin/issueops hook user-prompt
 ```
 
 Expected: output contains `Required project docs:`, `Consider project docs:`, `Route if ambiguous:`, `ARCHITECTURE.md`, `OPERATIONS.md`, and `TESTING.md`.
@@ -235,7 +235,7 @@ Run:
 
 ```bash
 git add internal/core/hook_prompt.go internal/core/hook_prompt_test.go docs/superpowers/plans/2026-05-29-priority-project-doc-routing-hook.md
-git commit -m "feat(hook): rank project-doc routing hints" -m "Make prompt-hook document guidance distinguish required reads from optional considerations and route-only ambiguity handling.\n\nConstraint: Hook routing must remain deterministic static analysis without MCP, network, or companion-tool execution.\nRejected: Flat document candidate lists | They blur mandatory project rules with optional context and encourage over-reading.\nConfidence: high\nScope-risk: narrow\nDirective: Add future document mappings with an explicit priority tier and a regression test.\nTested: go test ./internal/core -run 'TestBuildUserPromptMCPHints' -count=1; go build -o bin/agent-harness ./cmd/harness; hook JSON smoke; go test ./... -count=1\nNot-tested: Live host hook invocation in Codex and Claude Code."
+git commit -m "feat(hook): rank project-doc routing hints" -m "Make prompt-hook document guidance distinguish required reads from optional considerations and route-only ambiguity handling.\n\nConstraint: Hook routing must remain deterministic static analysis without MCP, network, or companion-tool execution.\nRejected: Flat document candidate lists | They blur mandatory project rules with optional context and encourage over-reading.\nConfidence: high\nScope-risk: narrow\nDirective: Add future document mappings with an explicit priority tier and a regression test.\nTested: go test ./internal/core -run 'TestBuildUserPromptMCPHints' -count=1; go build -o bin/issueops ./cmd/issueops; hook JSON smoke; go test ./... -count=1\nNot-tested: Live host hook invocation in Codex and Claude Code."
 ```
 
 Expected: commit succeeds.

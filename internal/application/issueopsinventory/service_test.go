@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopsinventorycontract "agent-harness/internal/contract/issueopsinventory"
+	issueopscontract "issueops/internal/contract/issueops"
+	issueopsinventorycontract "issueops/internal/contract/issueopsinventory"
 )
 
 func TestServiceListCyclesFiltersAndProjectsInventory(t *testing.T) {

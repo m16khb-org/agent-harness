@@ -337,12 +337,12 @@ type stableV1ExternalIntent struct {
 	StartedAt   string `json:"started_at"`
 }
 type stableV1Completion struct {
-	Generation        uint64   `json:"generation,omitempty"`
-	FinalHead         string   `json:"final_head"`
-	TuringReportPath  string   `json:"turing_report_path"`
-	Verification      []string `json:"verification"`
-	RemoteArtifactURL string   `json:"remote_artifact_url"`
-	CompletedAt       string   `json:"completed_at"`
+	Generation             uint64   `json:"generation,omitempty"`
+	FinalHead              string   `json:"final_head"`
+	VerificationReportPath string   `json:"verification_report_path"`
+	Verification           []string `json:"verification"`
+	RemoteArtifactURL      string   `json:"remote_artifact_url"`
+	CompletedAt            string   `json:"completed_at"`
 }
 type stableV1CompletionHistory struct {
 	Generation uint64             `json:"generation"`

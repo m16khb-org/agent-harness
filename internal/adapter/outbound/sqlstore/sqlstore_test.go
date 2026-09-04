@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/port"
+	"issueops/internal/port"
 )
 
 func TestGetExistingMissingDoesNotCreateStore(t *testing.T) {
@@ -203,7 +203,7 @@ func TestOpenCreatesDBAndIsCachedPerDir(t *testing.T) {
 	if d1 != d2 {
 		t.Fatalf("expected cached handle for same dir")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "harness.db")); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "issueops.db")); err != nil {
 		t.Fatalf("expected data db file: %v", err)
 	}
 }

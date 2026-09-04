@@ -1,11 +1,11 @@
 package trace
 
 import (
-	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
+	tracecontract "issueops/internal/contract/trace"
 	"sort"
 
-	"agent-harness/internal/domain/policy"
+	"issueops/internal/domain/policy"
 )
 
 func guardFindings(doc map[string]any) []tracecontract.TraceAnalysisFinding {

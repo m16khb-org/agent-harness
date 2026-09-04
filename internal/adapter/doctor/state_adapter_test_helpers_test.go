@@ -1,10 +1,10 @@
 package doctor
 
 import (
-	issueopsstatepkg "agent-harness/internal/adapter/issueops"
-	lifecyclestatepkg "agent-harness/internal/adapter/lifecycle"
-	looprunstatepkg "agent-harness/internal/adapter/looprun"
-	statestore "agent-harness/internal/adapter/outbound/state"
+	issueopsstatepkg "issueops/internal/adapter/issueops"
+	lifecyclestatepkg "issueops/internal/adapter/lifecycle"
+	looprunstatepkg "issueops/internal/adapter/looprun"
+	statestore "issueops/internal/adapter/outbound/state"
 )
 
 // production wiring과 같은 state store를 설치한다. 이 package가 실제로 의존하는

@@ -101,6 +101,6 @@ body:
       description: 관련 project docs, IssueOps guide, upstream docs 경로를 적어 주세요.
       value: |
         - skills/issueops-create-issue/SKILL.md
-        - .agent-harness/operations/guides/issueops-providers.md
+        - .issueops/operations/guides/issueops-providers.md
     validations:
       required: true

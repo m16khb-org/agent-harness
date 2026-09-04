@@ -7,7 +7,7 @@ package gates
 import "errors"
 
 // ErrNoGateFiles는 게이트 파일을 못 찾았을 때의 사용법 오류이다(unlazy exit 2).
-var ErrNoGateFiles = errors.New("no gate files found (.agent-harness/gates/*.md, GATES.md, or gates/*.md)")
+var ErrNoGateFiles = errors.New("no gate files found (.issueops/gates/*.md, GATES.md, or gates/*.md)")
 
 // SchemaVersion는 gates 응답 계약의 현재 버전이다.
 const SchemaVersion = 1

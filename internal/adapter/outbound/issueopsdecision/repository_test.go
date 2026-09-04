@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/adapter/outbound/issueopsrecord"
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	issueopscontract "agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/outbound/issueopsrecord"
+	"issueops/internal/adapter/outbound/sqlstore"
+	issueopscontract "issueops/internal/contract/issueops"
 )
 
 func TestRepositoryPersistsDecisionMutationWithinSpan(t *testing.T) {

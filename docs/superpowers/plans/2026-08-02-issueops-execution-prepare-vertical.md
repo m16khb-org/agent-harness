@@ -4,7 +4,7 @@
 
 **Goal:** Move the complete `issueops execution prepare --mode auto|direct|orca` capability behind one contract/domain/application/inbound/outbound boundary without changing public JSON, persisted schema-v1 bytes, recovery, or Codex/Claude hook authority.
 
-**Architecture:** `internal/contract/issueopspreparation` owns the stable prepare command/result and the one prepare/resume Orca intent codec while reusing `internal/contract/issueopslease.Record`. A pure domain matrix selects preview, idempotent, deny, direct, or Orca behavior; an application service coordinates six consumer-owned ports. `cmd/harness/harnessapp` is the only production composition root, and `internal/core/issueops` ends with compatibility DTOs and granular raw-effect bridges, not a production prepare orchestrator.
+**Architecture:** `internal/contract/issueopspreparation` owns the stable prepare command/result and the one prepare/resume Orca intent codec while reusing `internal/contract/issueopslease.Record`. A pure domain matrix selects preview, idempotent, deny, direct, or Orca behavior; an application service coordinates six consumer-owned ports. `cmd/issueops/issueopsapp` is the only production composition root, and `internal/core/issueops` ends with compatibility DTOs and granular raw-effect bridges, not a production prepare orchestrator.
 
 **Tech Stack:** Go 1.26.3, standard library, existing `sqlstore`, `port.TransactionalRecordStore`, Git worktree adapter, Orca adapter, table-driven Go tests, GitHub Actions.
 
@@ -32,7 +32,7 @@ Create:
 - `internal/application/issueopspreparation/{ports,prepare}.go` and test: six ports and orchestration.
 - `internal/adapter/inbound/issueopspreparation/prepare.go` and test: legacy DTO mapping.
 - `internal/adapter/outbound/issueopspreparation/{repository,workspace,orca,evidence}.go` and tests: SQLite/Git/Orca/evidence adapters.
-- `cmd/harness/harnessapp/issueops_preparation_wiring.go` and test: only production composition.
+- `cmd/issueops/issueopsapp/issueops_preparation_wiring.go` and test: only production composition.
 - `internal/core/issueops/execution_prepare_intent_codec_spike_test.go`: prepare/resume byte and recovery proof.
 - `internal/core/issueops/execution_prepare_legacy_oracle_test.go`: predecessor orchestration used only by differential tests.
 - `internal/core/issueops/execution_prepare_vertical_differential_test.go`: public/state/trace comparison.
@@ -40,11 +40,11 @@ Create:
 Modify surgically:
 
 - `internal/core/issueops/execution_api.go`, `execution_prepare.go`, `execution_orca_intent.go`, `execution_orca_marker.go`, `execution_resume_bridge.go`, `execution_reconcile_bridge.go`.
-- `cmd/harness/issueopscli/issueops_execution_cli.go`, `executioncmd/execution.go`, `issueops.go`.
-- `cmd/harness/mcpcli/mcp_tool_issueops_execution.go`, `mcp_sdk_server.go`.
-- `cmd/harness/harnessapp/issueops_policy_facade.go`, `mcp_facade.go`.
+- `cmd/issueops/issueopscli/issueops_execution_cli.go`, `executioncmd/execution.go`, `issueops.go`.
+- `cmd/issueops/mcpcli/mcp_tool_issueops_execution.go`, `mcp_sdk_server.go`.
+- `cmd/issueops/issueopsapp/issueops_policy_facade.go`, `mcp_facade.go`.
 - `internal/architecture/dependency_test.go`, `internal/architecture/testdata/legacy_imports.txt`.
-- `cmd/harness/hookcli/hook_execution_contract_test.go`.
+- `cmd/issueops/hookcli/hook_execution_contract_test.go`.
 
 ---
 
@@ -125,7 +125,7 @@ func (IntentCodec) Seal(intent Intent, issue IssueIdentity) (Intent, error)
 func (IntentCodec) Canonicalize(record issueopslease.Record, raw []byte) (Intent, []byte, bool, error)
 ```
 
-Canonical markers remain exactly `agent-harness issueops-v1 lifecycle=... operation=... provider=... issue=...` and the resume form adds `resume` and `generation=...`. Legacy canonicalization accepts only exact legacy markers with `not_invoked_proven`; identity or invocation ambiguity returns `legacy_intent_upgrade_unsafe`.
+Canonical markers remain exactly `issueops-v1 lifecycle=... operation=... provider=... issue=...` and the resume form adds `resume` and `generation=...`. Legacy canonicalization accepts only exact legacy markers with `not_invoked_proven`; identity or invocation ambiguity returns `legacy_intent_upgrade_unsafe`.
 
 - [ ] **Step 4: Integrate existing recovery** — Alias the private payload to the contract intent, add explicit contract↔`internal/port` conversion helpers, and replace direct JSON/marker codec calls in prepare, resume, and reconcile bridges. Keep raw CAS operations unchanged.
 
@@ -288,9 +288,9 @@ go test ./internal/core/issueops -run 'PreparationDifferential|ExecutionPrepare|
 
 - [ ] **Step 7: Commit** — Commit `test(issueops): prove preparation vertical parity` with inbound, oracle, and differential files.
 
-### Task 6: Compose in harnessapp and cut over handler-only routing
+### Task 6: Compose in issueopsapp and cut over handler-only routing
 
-**Files:** Create harnessapp preparation wiring/test; modify core route, CLI/MCP dependency structs/builders, and harnessapp facades.
+**Files:** Create issueopsapp preparation wiring/test; modify core route, CLI/MCP dependency structs/builders, and issueopsapp facades.
 
 **Interfaces:** Produces one `issueOpsPrepareHandler`; CLI and daemon-backed MCP receive it plus composition-owned dependencies.
 
@@ -300,7 +300,7 @@ go test ./internal/core/issueops -run 'PreparationDifferential|ExecutionPrepare|
 
 ```bash
 go test ./internal/core/issueops -run 'ExecutionAPI.*Prepare|PrepareHandler' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'ExecutionPrepare|PrepareWiring|HandlerMissing' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'ExecutionPrepare|PrepareWiring|HandlerMissing' -count=1
 ```
 
 - [ ] **Step 3: Build composition** — Open `sqlstore`; construct preparation repository/codec, Git workspace, Orca gateway, evidence callbacks, clock/ID, application service, and inbound handler. Granular callbacks may call exported core primitives but never a prepare orchestrator or wrapper.
@@ -325,16 +325,16 @@ No fallback branch exists.
 
 ```bash
 go test ./internal/core/issueops -run 'ExecutionAPI.*Prepare|PrepareHandler|PreparationDifferential' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'ExecutionPrepare|PrepareWiring|HandlerMissing|ResponseContract' -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'ExecutionPrepare|PrepareWiring|HandlerMissing|ResponseContract' -count=1
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
 ```
 
 - [ ] **Step 8: Commit** — Commit `refactor(issueops): route prepare through application handler` with composition, injection, route, and predecessor removal.
 
 ### Task 7: Lock architecture and hook-enabled authority parity
 
-**Files:** Modify architecture test/baseline, hook execution contract test, and harnessapp wiring test.
+**Files:** Modify architecture test/baseline, hook execution contract test, and issueopsapp wiring test.
 
 **Interfaces:** Produces automated no-fallback/no-leak layer gates and actual PreToolUse-shaped Codex/Claude parity tests.
 
@@ -350,9 +350,9 @@ go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 
 ```bash
 go test ./internal/architecture -run 'Preparation|ProductionGraph' -count=1
-go test ./cmd/harness/hookcli -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
+go test ./cmd/issueops/hookcli -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
 go test ./internal/core/lifecycle -run 'AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
-go test -race ./cmd/harness/hookcli ./internal/core/lifecycle -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
+go test -race ./cmd/issueops/hookcli ./internal/core/lifecycle -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
 ```
 
 - [ ] **Step 6: Commit** — Commit `test(issueops): enforce preparation hook parity` with architecture and hook gates.
@@ -366,7 +366,7 @@ go test -race ./cmd/harness/hookcli ./internal/core/lifecycle -run 'ExecutionPre
 - [ ] **Step 1: Format/static check**
 
 ```bash
-gofmt -w internal/contract/issueopspreparation internal/domain/issueopspreparation internal/application/issueopspreparation internal/adapter/inbound/issueopspreparation internal/adapter/outbound/issueopspreparation cmd/harness/harnessapp/issueops_preparation_wiring.go cmd/harness/harnessapp/issueops_preparation_wiring_test.go
+gofmt -w internal/contract/issueopspreparation internal/domain/issueopspreparation internal/application/issueopspreparation internal/adapter/inbound/issueopspreparation internal/adapter/outbound/issueopspreparation cmd/issueops/issueopsapp/issueops_preparation_wiring.go cmd/issueops/issueopsapp/issueops_preparation_wiring_test.go
 git diff --check
 go vet ./internal/contract/issueopspreparation/... ./internal/domain/issueopspreparation/... ./internal/application/issueopspreparation/... ./internal/adapter/inbound/issueopspreparation/... ./internal/adapter/outbound/issueopspreparation/...
 ```
@@ -377,8 +377,8 @@ go vet ./internal/contract/issueopspreparation/... ./internal/domain/issueopspre
 go test ./internal/contract/issueopspreparation ./internal/domain/issueopspreparation ./internal/application/issueopspreparation ./internal/adapter/inbound/issueopspreparation ./internal/adapter/outbound/issueopspreparation -count=1
 go test -race ./internal/contract/issueopspreparation ./internal/domain/issueopspreparation ./internal/application/issueopspreparation ./internal/adapter/inbound/issueopspreparation ./internal/adapter/outbound/issueopspreparation -count=1
 go test ./internal/core/issueops -run 'ExecutionPrepare|PreparationDifferential|AutoFallback|RootCollision|ParentWorktree|OrcaIntent|Reconcile|ResumeIntent' -count=1
-go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'ExecutionPrepare|PrepareWiring|ExecutionHandler|ResponseContract' -count=1
-go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
+go test ./cmd/issueops/issueopscli ./cmd/issueops/mcpcli ./cmd/issueops/issueopsapp -run 'ExecutionPrepare|PrepareWiring|ExecutionHandler|ResponseContract' -count=1
+go test ./internal/core/lifecycle ./cmd/issueops/hookcli -run 'ExecutionPrepare|AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1
 go test ./internal/architecture -run 'Dependency|Preparation' -count=1
 ```
 
@@ -387,9 +387,9 @@ go test ./internal/architecture -run 'Dependency|Preparation' -count=1
 ```bash
 go test ./... -count=1
 go test -race ./... -count=1
-go test ./cmd/harness/contractgolden -run Golden -count=1
-go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
-go build -o bin/agent-harness ./cmd/harness
+go test ./cmd/issueops/contractgolden -run Golden -count=1
+go test ./cmd/issueops/issueopsapp -run TestResponseContractsGolden -count=1
+go build -o bin/issueops ./cmd/issueops
 ```
 
 - [ ] **Step 4: Official hook-command smoke** — With a temporary state root and built binary, start/link/prepare direct; invoke the product hook command using Codex- and Claude-shaped JSON. Expect exact-holder allow and foreign-holder deny. The current process flag `--disable hooks` is explicitly not evidence.
@@ -397,20 +397,20 @@ go build -o bin/agent-harness ./cmd/harness
 - [ ] **Step 5: Turing/self-verification**
 
 ```bash
-./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
+./bin/issueops self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/issueops self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ```
 
 Create the lifecycle-required Turing report mapping AC-199-01 through AC-199-10 to exact tests/commands/results; require score `>=95` and no blocker.
 
-- [ ] **Step 6: Record only verified docs drift** — If `.agent-harness/CAUTIONS.md`, `ARCHITECTURE.md`, or `OPERATIONS.md` disagrees with code, make a surgical commit `docs(issueops): record preparation operation`; otherwise create no docs commit.
+- [ ] **Step 6: Record only verified docs drift** — If `.issueops/CAUTIONS.md`, `ARCHITECTURE.md`, or `OPERATIONS.md` disagrees with code, make a surgical commit `docs(issueops): record preparation operation`; otherwise create no docs commit.
 
 - [ ] **Step 7: Final readiness**
 
 ```bash
 git status --short
 git log --oneline 739de96aeca540cf7d5cf6333b345a192afcfd59..HEAD
-./bin/agent-harness issueops pr-readiness --id io-ab4d4c69d7e5 --strict --json
+./bin/issueops pr-readiness --id io-ab4d4c69d7e5 --strict --json
 ```
 
 Expected: clean tree and no missing implementation gate after compatibility review, AI-slop clean, implementation review, Turing evidence, and final verification are recorded.

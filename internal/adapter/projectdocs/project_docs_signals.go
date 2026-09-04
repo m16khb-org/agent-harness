@@ -1,7 +1,7 @@
 package projectdocs
 
 import (
-	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdoc "issueops/internal/domain/projectdoc"
 	"sort"
 	"strings"
 )

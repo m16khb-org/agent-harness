@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	leasecontract "agent-harness/internal/contract/issueopslease"
+	leasecontract "issueops/internal/contract/issueopslease"
 )
 
 type ResumeArtifactReader func(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error)

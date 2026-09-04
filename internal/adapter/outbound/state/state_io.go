@@ -1,11 +1,11 @@
 package state
 
 import (
-	"agent-harness/internal/adapter/outbound/sqlstore"
-	stateapplication "agent-harness/internal/application/state"
-	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/domain/statepath"
-	stateport "agent-harness/internal/port/state"
+	"issueops/internal/adapter/outbound/sqlstore"
+	stateapplication "issueops/internal/application/state"
+	statecontract "issueops/internal/contract/state"
+	"issueops/internal/domain/statepath"
+	stateport "issueops/internal/port/state"
 )
 
 const stateBucket = "state"

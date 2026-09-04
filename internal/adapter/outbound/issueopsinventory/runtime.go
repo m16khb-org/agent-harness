@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"time"
 
-	"agent-harness/internal/domain/repoidentity"
+	"issueops/internal/domain/repoidentity"
 )
 
 type SystemClock struct{}

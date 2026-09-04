@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/contract/issueops"
+	"issueops/internal/adapter/issueops/implementation"
+	"issueops/internal/contract/issueops"
 )
 
 // RecordIssueOpsSchemaEvidence는 스키마·마이그레이션·엔티티 변경 사이클의

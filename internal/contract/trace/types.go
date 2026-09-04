@@ -4,7 +4,7 @@
 // 알 필요가 없다.
 package trace
 
-import failurecause "agent-harness/internal/contract/failurecause"
+import failurecause "issueops/internal/contract/failurecause"
 
 type TraceAnalyzeRequest struct {
 	Input string `json:"input"`
