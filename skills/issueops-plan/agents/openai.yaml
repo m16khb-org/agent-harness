@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Plan"
+  short_description: "Read the constraints, write the plan, get it reviewed, hand off the implementation"
+  default_prompt: "Use $issueops-plan for stage 3, from the source checkout. Read the operating documents that constrain the change before writing anything and record what they require in the plan. Write the plan outside the source checkout, stage it with `artifact stage --name plan`, approve the design review, and run $issueops-review with --target plan until it passes. Hand off with `execution prepare --mode auto`: Orca takes over when it is ready, direct keeps this session when it is not, and `resolved_mode` says which. Never create the worktree here."
