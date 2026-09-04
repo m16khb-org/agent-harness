@@ -1566,7 +1566,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
 - [x] **T16. 전체 게이트 배터리** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-16-battery.txt`, `task-16-links.txt`. 단독 실행에서 `go test ./...`와 `go test -race ./...` 모두 247 패키지 통과, 실패 0, 데이터 레이스 0.
 
-  **찾은 결함 1건**: `internal/domain/commandparse`의 `cleanup abandon` 스펙에 T7의 새 플래그 세 개가 없었다(커밋 `8e80c086`). **부하 인공물 3건**: self-verify의 `go test`와 `go test -race`를 동시에 돌린 1차 실행에서 webfetch·github·gitlab이 `signal: killed`/`context deadline exceeded`로 실패했고, 단독 재실행에서 전부 통과했다.
+  **찾은 결함 1건**: `internal/domain/commandparse`의 `cleanup abandon` 스펙에 T7의 새 플래그 세 개가 없었다(커밋 `bc42c0be`). **부하 인공물 3건**: self-verify의 `go test`와 `go test -race`를 동시에 돌린 1차 실행에서 webfetch·github·gitlab이 `signal: killed`/`context deadline exceeded`로 실패했고, 단독 재실행에서 전부 통과했다.
 
   **실행 결과와 계획 대비 편차**: `./scripts/install-native.sh`가 stale 스킬 링크를 스스로 지웠다(dry-run이 "would prune stale skill link for agy: issueops-branch-worktree"를 보고했고 실행 뒤 `~/.claude/skills`에 남지 않았다). 계획이 대비한 수동 `rm`과 CAUTIONS §7 추가는 필요 없었다.
 
