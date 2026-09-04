@@ -46,7 +46,7 @@ Codex/Claude 기본 설치는 `agent-harness hook session-start`를 context-only
 
 IssueOps에서 authority는 `agent-harness issueops ...` CLI/MCP 하나다. 이 경로가 durable phase enum `problem -> grill -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> done`과 durable record를 소유한다. 원격 이슈 연결(remote issue linkage)은 `grill`과 `plan` 사이의 작업 흐름 단계이며, cleanup은 `done` 뒤의 후처리다. 사용자에게 보이는 작업 흐름에는 이 두 단계가 포함되지만, 둘 다 phase enum에는 포함되지 않는다. Default hooks는 issue 생성, 파일 편집, 테스트 실행, background wait, branch/worktree 준비, PR/MR 생성, review reply, merge, cleanup을 직접 수행하지 않으며 IssueOps record도 읽지 않는다.
 
-IssueOps 자동 루프는 missing gate를 읽고 해당 state owner command를 실행한 뒤 readiness를 다시 확인한다. 예를 들어 `intent_contract`는 `issueops intent record`, `plan_prep_*`는 `issueops plan-prep record`, `branch_prepare`는 `issueops branch prepare`, `design_review`는 `issueops design review`, canonical worktree/lease는 `issueops execution prepare`, current holder와 복구 안내는 `issueops execution status`, compatibility는 `issueops compatibility review`, `plan_path`는 `issueops link-plan`, `domain_review`는 `issueops domain-review record`, split/child readiness는 각각의 owner command, cleanup/verification evidence는 `issueops ai-slop-clean record`, `project_docs_review`는 `issueops project-docs-review record`, `schema_evidence`는 `issueops schema-evidence record`, `feedback_resolution`은 `issueops feedback resolve`, contract-changing feedback은 remote issue body update 후 `issueops feedback mark-issue-updated`가 소유한다.
+단계 판별은 `agent-harness issueops next`가 소유한다. 읽기 전용이며 record와 로컬 관측만으로 현재 단계, 미충족 게이트, 다음 명령, 탈출 경로를 돌려준다. 스킬은 그 결과를 읽고 자기 단계인지 확인한 뒤 진행한다. IssueOps 자동 루프는 missing gate를 읽고 해당 state owner command를 실행한 뒤 readiness를 다시 확인한다. 예를 들어 `intent_contract`는 `issueops intent record`, `plan_prep_*`는 `issueops plan-prep record`, `branch_prepare`는 `issueops branch prepare`, `design_review`는 `issueops design review`, canonical worktree/lease는 `issueops execution prepare`, current holder와 복구 안내는 `issueops execution status`, compatibility는 `issueops compatibility review`, `plan_path`는 `issueops link-plan`, `domain_review`는 `issueops domain-review record`, split/child readiness는 각각의 owner command, cleanup/verification evidence는 `issueops ai-slop-clean record`, `project_docs_review`는 `issueops project-docs-review record`, `schema_evidence`는 `issueops schema-evidence record`, `feedback_resolution`은 `issueops feedback resolve`, contract-changing feedback은 remote issue body update 후 `issueops feedback mark-issue-updated`가 소유한다.
 
 `issueops execution prepare`를 confirm한 뒤에는 반환된 canonical path를 `HARNESS_EXPECTED_WORKTREE`에 반영한다. 이후 편집은 그 절대경로, `git -C "$HARNESS_EXPECTED_WORKTREE"`, worktree-rooted CodeGraph/`rg`/test 명령으로 수행하고, source checkout과 worktree의 `git status --short`를 따로 확인한다.
 
@@ -106,8 +106,9 @@ the local-only Orca branch, then create and record the linked branch before
 plan linkage and implementation. Direct mode grants the calling native session
 generation 1; Orca mode launches one owner that verifies the sealed
 issue/context digests and asks the CLI to consume the current-generation private token.
-The active holder performs planning, implementation, publication, and
-completion from the canonical worktree. The source main worktree remains
+The active holder performs implementation, cleanup, project-doc reflection,
+verification, publication, and completion from the canonical worktree; planning
+happens before the lease exists, in the preparing session. The source main worktree remains
 available before, during, and after execution for unrelated work.
 
 GitLab-linked execution은 특정 MCP server 이름이 아니라 semantic leaf
@@ -126,6 +127,6 @@ persisted Orca resource. One active execution exists per record, so unrelated
 cycles remain independent. Completion records `done` and releases the lease;
 merge and destructive cleanup require separate authority.
 
-## 이원 구조 흐름 요약
+## 10단계 흐름 요약
 
-메인 세션(planner)은 조사→이슈→설계→artifact stage→execution prepare(orca)까지 수행하고 핸드오프하면 그 사이클에 대한 임무가 끝난다 — lease를 보유하지 않으므로 즉시 다른 사이클을 계획할 수 있다. 하위 세션(implementer)은 claim→staged plan link→`phase=implement`→artifact 기반 TDD→AI-slop evidence→`phase=ai-slop-clean`→project-doc 반영 판정(project-docs-review)과 스키마 실측 근거(schema-evidence, 스키마 변경 시)→planner급 brooks 리뷰(implementation-review pass)→atomic-commit-push→`phase=pr`→governed create-pr→execution complete로 종료한다. 이 exact 명령은 sealed owner packet이 제공하며 owner가 추론해서 보충하지 않는다. 휴먼 머지 후 정리는 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조).
+1·2단계는 source checkout의 준비 세션이 `issueops-create-issue`와 `issueops-prepare`로 수행하며 lease를 갖지 않는다. 3단계 `issueops-plan`도 같은 세션이 수행하고, 그 끝의 `execution prepare --mode auto`가 워크트리와 구현 세션을 만든다 — Orca가 준비돼 있으면 Orca가 세션을 띄우고 lease는 claimable로 남으며, 아니면 direct로 그 세션이 generation 1 홀더가 된다. 4단계부터는 구현 세션이 canonical worktree에서 `issueops-implement` → `issueops-clean` → `issueops-docs` → `issueops-verify` → `atomic-commit-push` → `issueops-create-pr` → `issueops-complete`를 지나 완료한다. 휴먼 머지 뒤 정리는 `issueops-cleanup`이며 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조). 어느 단계든 `agent-harness issueops next`가 현재 단계를 판별하고, `issueops-abandon`이 일시 중단·재개·인수·폐기를 맡는다. 적대 리뷰는 `issueops-review`, 게이트 원장은 `gates-ledger`, 원격 쓰기는 `issueops-remote-write`가 단계와 무관하게 소유한다.

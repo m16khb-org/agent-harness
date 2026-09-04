@@ -166,7 +166,14 @@ Omo의 non-inject fallback은 official preamble 전체를 bracketed paste 한 �
 Enter 한 번으로 전달한다. Raw multiline send는 줄마다 별도 turn으로 실행될 수
 있으므로 사용하지 않는다.
 
-## IssueOps 이원 구조 운영 (planner/implementer)
+## IssueOps 10단계 운영
+
+단계 판별은 `agent-harness issueops next --json`이 소유한다. 읽기 전용이며 현재 단계,
+미충족 게이트, 다음 명령, 탈출 경로를 돌려준다. 세션 경계는 하나뿐이다: 1~3단계는
+source checkout의 준비 세션이, 4단계 이후는 canonical worktree의 구현 세션이 수행하며,
+그 경계를 만드는 것이 3단계 끝의 `execution prepare --mode auto`다. 어느 단계에서든
+빠져나오는 길은 `issueops-abandon`이고, 미머지 사이클의 원격 정리는 `cleanup abandon`의
+`--close-pr`·`--close-issue`·`--delete-remote-branch`가 소유한다.
 
 - 스폰 준비: 승인된 child plan을 source checkout 밖의 임시 파일에 작성 → `issueops artifact stage --id ID --name plan --file PATH --json` → `issueops execution prepare --id ID --mode auto ...`. `spec|turing-loop`도 prepare 전에 stage할 수 있고 잘못 올렸으면 `artifact unstage`한다. Clean released Orca에서는 next-generation recovery용 plan stage만 허용되며 반드시 `execution replace --reseed` 후 resume한다. (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high, Omo `openai-codex/gpt-5.6-sol`/max; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
 - Orca가 Omo TUI를 native `--inject` 대상으로 인식하지 않는 runtime에서는 harness가 non-inject dispatch의 official preamble을 검증한 뒤 sealed terminal handle에 `terminal send --enter`로 전달한다. 이미 dispatch가 보이지만 prompt delivery receipt가 없는 recovery는 성공으로 간주하지 않고 fence한다.

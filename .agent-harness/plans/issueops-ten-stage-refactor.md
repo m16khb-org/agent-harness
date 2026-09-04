@@ -1479,7 +1479,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs(adr): record the ten-stage issueops skills and the auto execution mode` | Files: 위 2개
 
-- [ ] **T14. AGENT_WORKFLOW, 운영 가이드, 아키텍처, 테스팅 모듈 갱신**
+- [x] **T14. AGENT_WORKFLOW, 운영 가이드, 아키텍처, 테스팅 모듈 갱신** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-14-orca.txt`(Orca owner sequence 보존), `task-14-testing.txt`. `이원 구조` 표현 0건, docs checker `ok: true`(문서 357개, 위반 0).
+
+  **실행 결과와 계획 대비 편차**: `architecture/issueops.md`의 워크트리 문장은 계획이 지시한 "`issueops-prepare`가 미리 만든 워크트리를 채택"이 아니라 "top-level·branch·HEAD가 모두 일치하는 기존 워크트리를 채택"으로 썼다. 2단계는 더 이상 워크트리를 만들지 않으므로 그 주체를 특정하면 사실과 다르다. 채택 기제 자체는 남아 있다.
 
   **Files:**
   - Modify: `.agent-harness/AGENT_WORKFLOW.md` ("이원 구조 흐름 요약" 절 교체, "Execution v1 workflow" 절의 "The active holder performs planning, implementation..." 문장을 10단계 기준으로, "IssueOps 자동 루프는 missing gate를 읽고" 문단 앞에 "단계 판별은 `issueops next`" 한 문장)

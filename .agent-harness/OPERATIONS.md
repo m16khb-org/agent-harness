@@ -21,7 +21,7 @@ guide that matches the task.
 | Native skills, host hook rules, hook kill-switch | [skills-and-hosts.md](operations/guides/skills-and-hosts.md) |
 | Health gate, diagnosis, one-time reconciliation | [troubleshooting.md](operations/guides/troubleshooting.md) |
 | IssueOps provider publication, branch linkage, issue snapshots | [issueops-providers.md](operations/guides/issueops-providers.md) |
-| IssueOps execution lifecycle, recovery, sync-base, owner sequence, planner/implementer | [issueops-execution.md](operations/guides/issueops-execution.md) |
+| IssueOps execution lifecycle, recovery, sync-base, owner sequence, ten-stage operation | [issueops-execution.md](operations/guides/issueops-execution.md) |
 
 ## Detailed references owned under `operations/`
 

@@ -31,6 +31,17 @@ Execution tests must cover:
 
 - `direct`, explicit `orca`, and `auto`; `auto` may fall back only when the
   read-only Orca probe fails before the first external mutation.
+- `issueops next` stage classification as a table test over the rule order, and an
+  assertion that the read path performs no fetch: the local readiness surface must
+  run without `git fetch`, and the strict surface must still run it.
+- `cleanup abandon` remote effects (`--close-pr`, `--close-issue`,
+  `--delete-remote-branch`): the applied order (`close_pr` → `close_issue` →
+  `remote_branch_delete` → local removal), idempotence when an artifact is already
+  closed or the remote branch is already absent, and partial failure leaving the
+  record and worktree intact with a resumable failure receipt. A run without the
+  flags must produce byte-identical output and the same fingerprint as before the
+  flags existed.
+- the implementation review gate in every execution mode. `direct` is not exempt.
 - claimable → active → revoking/released generation transitions, the
   `lease_holder_v1` reverse index, exact native process identity, and stale
   holder/generation rejection across CLI and MCP. Host hooks no longer take
