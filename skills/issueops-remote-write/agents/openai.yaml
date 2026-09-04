@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Remote Write"
+  short_description: "The shared protocol for every governed IssueOps remote mutation"
+  default_prompt: "Use $issueops-remote-write before any `agent-harness issueops remote ...` write. Polish the Korean body with fluent-korean, pass the bundled Korean artifact gate, preview, confirm the byte-identical request, read the artifact back, and reconcile instead of retrying when a result is ambiguous. Never write through raw gh or glab, never attach unredacted secrets, and never publish without a selected label and a concrete assignee."

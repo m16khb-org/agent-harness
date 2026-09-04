@@ -116,30 +116,13 @@ Rules:
 - When creating a PR/MR, copy labels from the linked issue into the provider create command. If the linked issue is unlabeled, apply an explicit manual label to the issue first or stop and record why no label can be chosen; do not create an unlabeled PR/MR. Label-copy flags such as `--copy-issue-labels` or GitLab issue-based MR flags such as `--with-labels` satisfy only the label requirement; the create command must still include an assignee flag for the current user.
 - If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 
-## Korean Remote Artifact Gate
+## Language And Writing Protocol
 
-IssueOps가 원격에 생성하거나 수정하는 issue와 PR/MR 제목·본문은 한글 중심이어야 한다. 명령어, 코드 식별자, 파일 경로, URL, upstream/project 이름은 영어 원문을 유지할 수 있다.
+원격 아티팩트의 한국어 게이트, `fluent-korean` 호출, preview→confirm→readback 절차는
+[`issueops-remote-write`](../../issueops-remote-write/SKILL.md)가 소유한다. 이 문서는
+provider별 링크와 계층 규칙만 소유한다. 게이트 스크립트도 그 스킬이 번들한다.
 
-IssueOps cycle에서 `agent-harness issueops remote create-issue`,
-`create-child`, `create-pr` 또는 artifact readback을 실행하기 전에는 매번
-다음 gate를 통과해야 한다. Provider CLI는 adapter 내부 구현일 뿐 skill의
-직접 실행 경로가 아니다.
-
-1. 제목과 본문을 임시 파일 또는 heredoc으로 준비한다.
-2. bundled language gate를 실행한다. `$ISSUEOPS_SKILL_DIR`는 설치된 issueops 스킬 디렉터리(예: `~/.claude/skills/issueops`, `~/.codex/skills/issueops`)다. 대상 repo에는 `skills/issueops/` 경로가 없으므로 repo-relative 경로는 실패한다.
-
-```bash
-python3 "$ISSUEOPS_SKILL_DIR/scripts/remote_artifact_gate.py" --kind issue --title "$TITLE" --body-file "$BODY_FILE"
-python3 "$ISSUEOPS_SKILL_DIR/scripts/remote_artifact_gate.py" --kind pr --title "$TITLE" --body-file "$BODY_FILE"
-```
-
-3. gate가 실패하면 원격 artifact를 생성하거나 수정하지 말고 한글 중심으로 다시 작성한다.
-
-이 gate는 issue/PR/MR에 영어 section label, command output, code identifier, URL, 외부 project 이름이 포함되어도 반드시 실행한다.
-
-No installed hook inspects remote commands (the PreToolUse `--enforce-korean-remote-artifacts` gate was removed on 2026-08-27). Prepare the title/body in a body file and let the `issueops remote ...` command that owns the artifact apply the Korean language threshold before the remote write.
-
-The same VCS linking rules apply without a hook:
+원격 write 없이 남는 링크 규칙은 다음과 같다.
 
 - Issue bodies must not contain `Plan Link`; GitLab relations belong in native
   linked items, not an invented `Related Issues` section.
@@ -153,25 +136,3 @@ The same VCS linking rules apply without a hook:
   revive deprecated provider-specific creation aliases.
 
 원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.
-
-## Remote Artifact Writing Quality
-
-한국어 게이트는 한글 비율만 검사한다. 게이트를 통과한 본문에도 AI가 쓴 티는 그대로 남는다. issue와 child task, PR/MR의 제목과 본문, issue 댓글, review thread 답글을 작성하거나 수정할 때는 원격에 쓰기 전에 `fluent-korean` 스킬을 Skill 도구로 호출해서 초안을 다듬는다.
-
-이 호출은 권고가 아니라 원격 write의 선행 조건이다. 호출하지 않은 초안은 확정하지 않으며, `--confirm`을 붙이지 않는다. 호출한 뒤 아래 규칙까지 확인한다.
-
-1. 명사구나 목록 항목을 제외하면 완성된 문장으로 쓴다. 서술어와 종결어미를 생략하지 않는다.
-2. 단정 회피 어미를 쓰지 않는다. 불확실성이 실제로 있으면 근거를 함께 쓴다.
-   - 나쁜 예: `해당 변경이 호환성 문제를 일으키지 않을 것으로 보여집니다.`
-   - 좋은 예: `기존 클라이언트는 응답 필드를 추가로 무시하므로 호환됩니다.`
-3. 서론 선언으로 시작하지 않는다. 첫 문장이 문제 정의나 요구 사항이다.
-   - 나쁜 예: `이 이슈에서는 배포 실패 문제를 다루고자 합니다.`
-   - 좋은 예: `v2.3 배포가 시크릿 누락으로 실패합니다.`
-4. 수락 기준은 검증 가능한 동작으로 쓴다. "적절히 처리된다" 같은 판단 불가능한 문구를 쓰지 않는다.
-   - 나쁜 예: `잘못된 입력이 적절하게 처리됩니다.`
-   - 좋은 예: `만료된 토큰으로 요청하면 401과 재발급 안내를 반환합니다.`
-5. 정보가 없는 수식어(`효율적인`, `전반적인`, `개선된`) 대신 무엇이 어떻게 바뀌는지 쓴다.
-6. 같은 개념에 하나의 용어를 유지한다. 본문 안에서 워커와 worker, 데몬과 daemon을 섞어 쓰지 않는다.
-7. 명령어, 코드 식별자, 경로, URL은 영어 원문을 유지하고, 나머지 서술은 위 규칙대로 한국어로 쓴다.
-
-이 규칙은 한국어 게이트보다 먼저 적용한다. 게이트는 최종 방어선이고, 자연스러운 본문은 게이트 전에 만들어진다.

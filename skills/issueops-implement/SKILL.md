@@ -194,8 +194,9 @@ agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID" \
 
 ## Implementation review gate
 
-orca mode 사이클은 publication 전에 구현 diff에 대한 적대 리뷰가 필수다.
-게이트가 리뷰를 부르는 것이 아니라 **리뷰가 기록을 만든다**.
+execution이 있는 모든 사이클은 publication 전에 구현 diff에 대한 적대 리뷰가
+필수다. 모드는 이 게이트를 가르지 않는다. 게이트가 리뷰를 부르는 것이 아니라
+**리뷰가 기록을 만든다**.
 
 1. planner급 모델의 fresh 서브에이전트로 최종 diff의 brooks 적대 리뷰를 실제로
    실행한다. prepare가 기록한 `{REVIEWER_MODEL}`/`{REVIEWER_EFFORT}` 기본값을
@@ -215,8 +216,8 @@ agent-harness issueops implementation-review record --id "$ISSUEOPS_ID" \
 - 기록은 implement phase 이후부터 가능하고, 리뷰가 검토한 change fingerprint를
   봉인한다. 이후 diff가 바뀌면 `implementation_review_stale`로 create-pr과 strict
   readiness가 거부하므로, 리뷰는 ai-slop-clean 재검증까지 끝난 diff에 수행한다.
-- direct mode는 이 게이트 대상이 아니다. direct의 brooks 리뷰는 devils-advocate
-  ledger 기록으로 남긴다.
+- 모드에 따른 면제는 없다. direct 모드도 같은 기록을 요구한다 — 리뷰 없이
+  게시된 변경은 어느 모드에서 만들어졌든 검토되지 않은 변경이다.
 
 ## 종료 게이트
 

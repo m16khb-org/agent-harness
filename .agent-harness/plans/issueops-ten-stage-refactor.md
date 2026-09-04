@@ -1833,7 +1833,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-docs as the project document reflection stage` | Files: 위 2개
 
-- [ ] **T21. `issueops-review` 신설 (공용: 적대 리뷰 실행과 판정 기록)**
+- [x] **T21. `issueops-review` 신설 (공용: 적대 리뷰 실행과 판정 기록)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-21-targets.txt`, `task-21-stale.txt`. 수용 기준 전부 통과(호스트 전용 pseudo-API 0건, 모델 이름 0건).
 
   **Files:**
   - Create: `skills/issueops-review/SKILL.md`
@@ -1897,7 +1897,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-review as the shared adversarial review runner` | Files: 위 2개
 
-- [ ] **T22. `gates-ledger` 신설 (공용: 게이트 원장)**
+- [x] **T22. `gates-ledger` 신설 (공용: 게이트 원장)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-22-mismatch.txt`(EXPECT 불일치 → exit 1, `check_error: expect not matched`), `task-22-paths.txt`. smoke(init→check --write→report) 종료 코드 0.
 
   **Files:**
   - Create: `skills/gates-ledger/SKILL.md`
@@ -1954,7 +1954,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add gates-ledger for shared task gate ledgers` | Files: 위 2개
 
-- [ ] **T23. `issueops-remote-write` 신설 (공용: 원격 쓰기 프로토콜)**
+- [x] **T23. `issueops-remote-write` 신설 (공용: 원격 쓰기 프로토콜)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-23-gate-en.txt`(영어 본문 exit 1, "expected at least 20 Hangul chars"), `task-23-single-owner.txt`(스크립트 참조 파일 1개).
+
+  **실행 결과와 계획 대비 편차**: `remote-issue.md`의 두 절을 지우면서 그 안에 섞여 있던 **VCS 링크 규칙**(Plan Link 금지, label·assignee, target branch 정책, GitLab relations)은 남겼다. 그것은 원격 쓰기 절차가 아니라 provider 링크 규칙이고 이 문서가 소유자다. 남은 절은 `## Language And Writing Protocol`로 이름을 바꿔 새 스킬을 가리키기만 한다. 라우터의 "Remote write 공통 게이트" 절 삭제는 T11이 라우터를 재작성할 때 함께 한다.
 
   **Files:**
   - Create: `skills/issueops-remote-write/SKILL.md`
@@ -2022,7 +2024,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-remote-write as the shared remote write protocol` | Files: 위 파일
 
-- [ ] **T24. implementation review 게이트를 모든 execution mode로 확장**
+- [x] **T24. implementation review 게이트를 모든 execution mode로 확장** — 완료(2026-09-05), 커밋 `86a6fc7a`. direct 모드 면제를 제거하고 `execution_remote.go`의 freshness 거부에서 orca 조건을 뺐다. 리플: 어댑터 3건·CLI 3건의 픽스처에 리뷰 기록을 추가했고(테스트를 지우거나 건너뛰지 않았다), 빈 fingerprint를 허용하도록 recorder를 고쳐 `project_docs_review` 선례와 맞췄다. `skills/issueops/references/execution.md`와 `.agent-harness/architecture/issueops.md`의 문구도 함께 고쳤다. `skills/issueops-implement/SKILL.md`의 direct 면제 문단은 T24 커밋에서 빠졌고 2026-09-05에 뒤이어 고쳤다(T9의 재작성을 기다리면 그때까지 스킬이 코드와 반대되는 말을 한다).
 
   **Files:**
   - Modify: `internal/adapter/issueops/issueops_implementation_review.go:73-79`
