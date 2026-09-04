@@ -69,7 +69,7 @@ Orca는 `exec.CommandContext`로 설치된 CLI를 호출하는 선택적 IssueOp
 | 범주 | 스킬 |
 |------|------|
 | 협업 | `slack-delegate`, `sharing-backend-work` |
-| Git / IssueOps | `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-branch-worktree`, `issueops-cleanup` |
+| Git / IssueOps | `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-prepare`, `issueops-cleanup` |
 | Project docs | `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize` |
 | Browser QA | `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact` |
 | Code review | `parnas`, `review-agent-feedback` |

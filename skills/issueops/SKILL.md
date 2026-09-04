@@ -20,7 +20,7 @@ IssueOps는 문제를 원격 Issue, 계획, 격리 worktree, 검증 증거, PR/M
 | 낡은 Issue·child 본문 최신화 | [`issueops-sync-issue`](../issueops-sync-issue/SKILL.md) |
 | 낡은 PR·MR 본문 최신화 | [`issueops-sync-pr`](../issueops-sync-pr/SKILL.md) |
 | execution completion 기록·generation 반납 | [`issueops-complete`](../issueops-complete/SKILL.md) |
-| issue branch·worktree | [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md) |
+| issue 브랜치 정체성 봉인 | [`issueops-prepare`](../issueops-prepare/SKILL.md) |
 | merge 후 Issue·local worktree·branch 정리 | [`issueops-cleanup`](../issueops-cleanup/SKILL.md) |
 
 Issue 단계에서 MR 스킬을, PR/MR 단계에서 Issue 스킬을 함께 읽지 않는다.
@@ -112,7 +112,7 @@ readiness 오류가 나오면 숨은 override를 추측하지 말고 해당 stat
 | `design_review` | `agent-harness issueops design review` |
 | `compatibility_review` | `issueops compatibility review` |
 | `devils_advocate_review` | `issueops devils-advocate review` |
-| branch·worktree·plan·execution lease | `issueops-branch-worktree`, `execution.md` |
+| branch·worktree·plan·execution lease | `issueops-prepare`, `execution.md` |
 | `implementation_review`·`implementation_review_stale` | `issueops-implement` |
 | `project_docs_review`·`project_docs_review_stale` | `issueops-implement`, `project-docs-update` |
 | `schema_evidence`·`schema_evidence_stale` | `issueops-implement`, `codd` |

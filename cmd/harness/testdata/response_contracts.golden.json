@@ -856,6 +856,13 @@
           "path": "$HARNESS_ROOT/skills/fluent-korean"
         },
         {
+          "description": "Create, check, and report task gate ledgers with the agent-harness gates CLI. Turns acceptance criteria into G-numbered CHECK and EXPECT gates in .agent-harness/issues/\u003cn\u003e/gates.md or .agent-harness/gates/\u003cscope\u003e.md, fills EVIDENCE by running the checks through the command policy, and abandons gates honestly. Use when issueops-plan, issueops-implement, issueops-clean, issueops-verify, or turing needs a gate ledger, or when the user says \"게이트 원장\", \"gates 만들어줘\", \"수용 기준 체크\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "gates-ledger",
+          "path": "$HARNESS_ROOT/skills/gates-ledger"
+        },
+        {
           "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -875,13 +882,6 @@
           "has_skill_md": true,
           "name": "issueops",
           "path": "$HARNESS_ROOT/skills/issueops"
-        },
-        {
-          "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "issueops-branch-worktree",
-          "path": "$HARNESS_ROOT/skills/issueops-branch-worktree"
         },
         {
           "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
@@ -917,6 +917,27 @@
           "has_skill_md": true,
           "name": "issueops-implement",
           "path": "$HARNESS_ROOT/skills/issueops-implement"
+        },
+        {
+          "description": "Give an IssueOps cycle its branch identity. Resolve and pin the exact base SHA, record it with \"issueops branch prepare\", create and verify the provider-side branch link, and move the cycle to the plan phase. Creating the worktree is not this skill's job — \"issueops execution prepare\" owns it and picks git or Orca. Use when the user says \"준비\", \"브랜치 만들어줘\", \"prepare the issue branch\", or when \"issueops next\" reports stage prepare.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-prepare",
+          "path": "$HARNESS_ROOT/skills/issueops-prepare"
+        },
+        {
+          "description": "Apply the shared IssueOps remote write protocol to any governed \"agent-harness issueops remote ...\" mutation. Polish the Korean body with fluent-korean, run the bundled Korean artifact gate, preview, confirm the identical request, read the artifact back, and reconcile instead of retrying when the result is ambiguous. Use before creating or editing issues, child tasks, PR or MR bodies, comments, or review replies inside an IssueOps cycle, or when the user says \"원격에 써줘\", \"이슈 본문 올려줘\", \"PR 본문 갱신\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-remote-write",
+          "path": "$HARNESS_ROOT/skills/issueops-remote-write"
+        },
+        {
+          "description": "Run an adversarial brooks review as a fresh sub-agent on an IssueOps plan or implementation diff, then record the verdict in the durable ledger with the plan digest or change fingerprint sealed. Owns the revise and stop loop rules shared by the plan and verify stages. Use when issueops-plan or issueops-verify needs a review, or when the user says \"계획 검토\", \"구현 리뷰\", \"brooks 돌려줘\", \"devil's advocate\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-review",
+          "path": "$HARNESS_ROOT/skills/issueops-review"
         },
         {
           "description": "Refresh the body of an issue or provider-native child this cycle already published, with drift classification, managed-section preservation, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when a linked issue's text no longer matches the cycle it describes.",
@@ -5238,15 +5259,18 @@
           "dijkstra",
           "engelbart",
           "fluent-korean",
+          "gates-ledger",
           "gitlab-usecase",
           "hopper",
           "issueops",
-          "issueops-branch-worktree",
           "issueops-cleanup",
           "issueops-complete",
           "issueops-create-issue",
           "issueops-create-pr",
           "issueops-implement",
+          "issueops-prepare",
+          "issueops-remote-write",
+          "issueops-review",
           "issueops-sync-issue",
           "issueops-sync-pr",
           "karpathy",
@@ -7209,6 +7233,13 @@
                 "path": "$HARNESS_ROOT/skills/fluent-korean"
               },
               {
+                "description": "Create, check, and report task gate ledgers with the agent-harness gates CLI. Turns acceptance criteria into G-numbered CHECK and EXPECT gates in .agent-harness/issues/\u003cn\u003e/gates.md or .agent-harness/gates/\u003cscope\u003e.md, fills EVIDENCE by running the checks through the command policy, and abandons gates honestly. Use when issueops-plan, issueops-implement, issueops-clean, issueops-verify, or turing needs a gate ledger, or when the user says \"게이트 원장\", \"gates 만들어줘\", \"수용 기준 체크\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "gates-ledger",
+                "path": "$HARNESS_ROOT/skills/gates-ledger"
+              },
+              {
                 "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7228,13 +7259,6 @@
                 "has_skill_md": true,
                 "name": "issueops",
                 "path": "$HARNESS_ROOT/skills/issueops"
-              },
-              {
-                "description": "Create an issue-based branch and isolated worktree, then register the branch on the issue (GitHub linked branch / GitLab related branch). Use when the user asks to start work from an issue, create a worktree for an issue, make an issue branch, link or register a branch to an issue, or says \"이슈 브랜치\", \"이슈 워크트리\", \"브랜치를 이슈에 등록\". Standalone slice of the full issueops cycle; when an active issueops cycle owns the work, this skill wraps `issueops branch prepare` / `link-worktree` instead of freelancing.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "issueops-branch-worktree",
-                "path": "$HARNESS_ROOT/skills/issueops-branch-worktree"
               },
               {
                 "description": "Safely finish a merged IssueOps cycle by closing its linked issue, removing its local worktree, and deleting its local branch. Use when the user asks for IssueOps cleanup, post-merge cleanup, worktree/branch deletion plus issue closure, or says \"이슈옵스 정리\", \"워크트리 지우고 브랜치 지우고 이슈 닫아줘\".",
@@ -7270,6 +7294,27 @@
                 "has_skill_md": true,
                 "name": "issueops-implement",
                 "path": "$HARNESS_ROOT/skills/issueops-implement"
+              },
+              {
+                "description": "Give an IssueOps cycle its branch identity. Resolve and pin the exact base SHA, record it with \"issueops branch prepare\", create and verify the provider-side branch link, and move the cycle to the plan phase. Creating the worktree is not this skill's job — \"issueops execution prepare\" owns it and picks git or Orca. Use when the user says \"준비\", \"브랜치 만들어줘\", \"prepare the issue branch\", or when \"issueops next\" reports stage prepare.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-prepare",
+                "path": "$HARNESS_ROOT/skills/issueops-prepare"
+              },
+              {
+                "description": "Apply the shared IssueOps remote write protocol to any governed \"agent-harness issueops remote ...\" mutation. Polish the Korean body with fluent-korean, run the bundled Korean artifact gate, preview, confirm the identical request, read the artifact back, and reconcile instead of retrying when the result is ambiguous. Use before creating or editing issues, child tasks, PR or MR bodies, comments, or review replies inside an IssueOps cycle, or when the user says \"원격에 써줘\", \"이슈 본문 올려줘\", \"PR 본문 갱신\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-remote-write",
+                "path": "$HARNESS_ROOT/skills/issueops-remote-write"
+              },
+              {
+                "description": "Run an adversarial brooks review as a fresh sub-agent on an IssueOps plan or implementation diff, then record the verdict in the durable ledger with the plan digest or change fingerprint sealed. Owns the revise and stop loop rules shared by the plan and verify stages. Use when issueops-plan or issueops-verify needs a review, or when the user says \"계획 검토\", \"구현 리뷰\", \"brooks 돌려줘\", \"devil's advocate\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-review",
+                "path": "$HARNESS_ROOT/skills/issueops-review"
               },
               {
                 "description": "Refresh the body of an issue or provider-native child this cycle already published, with drift classification, managed-section preservation, a fail-closed body compare-and-swap, and explicit good and bad examples. Use when a linked issue's text no longer matches the cycle it describes.",
@@ -8400,15 +8445,18 @@
                 "dijkstra",
                 "engelbart",
                 "fluent-korean",
+                "gates-ledger",
                 "gitlab-usecase",
                 "hopper",
                 "issueops",
-                "issueops-branch-worktree",
                 "issueops-cleanup",
                 "issueops-complete",
                 "issueops-create-issue",
                 "issueops-create-pr",
                 "issueops-implement",
+                "issueops-prepare",
+                "issueops-remote-write",
+                "issueops-review",
                 "issueops-sync-issue",
                 "issueops-sync-pr",
                 "karpathy",

@@ -10,7 +10,7 @@ TDD로 구현하고, execution lease를 지키고, 증거를 남기고, ai-slop-
 넘긴다. Issue·branch·PR publication과 전체 lifecycle 라우팅은 하지 않는다.
 
 - 전체 흐름과 phase 라우팅: [`issueops`](../issueops/SKILL.md)
-- branch·worktree 준비: [`issueops-branch-worktree`](../issueops-branch-worktree/SKILL.md)
+- 브랜치 정체성 준비: [`issueops-prepare`](../issueops-prepare/SKILL.md)
 - lease 준비·회복 체인 전문: [`execution.md`](../issueops/references/execution.md)
 - delegated child 전문: [`orchestration.md`](../issueops/references/orchestration.md)
 - PR/MR publication: [`issueops-create-pr`](../issueops-create-pr/SKILL.md)

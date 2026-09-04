@@ -815,7 +815,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs(skill): rewrite issueops-create-issue as the issue confirmation stage` | Files: 위 2개
 
-- [ ] **T4. `issueops-prepare` 신설 + `issueops-branch-worktree` 삭제 (2단계)**
+- [x] **T4. `issueops-prepare` 신설 + `issueops-branch-worktree` 삭제 (2단계)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-4-no-worktree.txt`(`git worktree add`는 금지 문맥 1건뿐), `task-4-deleted.txt`(추적 파일 0).
+
+  **실행 결과와 계획 대비 편차**: 삭제한 스킬을 가리키던 링크 여섯 곳(`skills/issueops/SKILL.md` 2곳, `skills/issueops-implement/SKILL.md`, README 둘, TECH_STACK)을 함께 고쳤다. 그 파일들의 재작성은 T11·T12가 소유하지만, 없는 스킬을 가리키는 링크를 그때까지 두면 그 사이의 세션이 존재하지 않는 문서를 읽으러 간다. 스킬 목록이 골든에 들어 있어 `response_contracts.golden.json`도 이 시점에 재생성했다(T15에서 다시 생성한다).
 
   **Files:**
   - Create: `skills/issueops-prepare/SKILL.md`

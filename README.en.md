@@ -279,7 +279,7 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 - Planning and critique: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - Execution and verification: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - Research and collaboration: `berners-lee`, `engelbart`, `slack-delegate`
-- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-branch-worktree`, `issueops-cleanup`
+- Git and workflow operations: `torvalds`, `atomic-commit-push`, `gitlab-usecase`, `issueops`, `issueops-prepare`, `issueops-cleanup`
 - Project docs: `project-bootstrap`, `project-docs-bootstrap`, `project-docs-update`, `project-docs-optimize`
 - Browser QA: `aside-functional-qa`, `aside-visual-qa`, `aside-web-qa`, `read-public-artifact`
 - Code review: `parnas`, `review-agent-feedback`
