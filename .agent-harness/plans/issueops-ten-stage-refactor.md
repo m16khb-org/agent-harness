@@ -1436,7 +1436,9 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs: list the ten-stage issueops skills in README and OPERATIONS` | Files: 위 파일
 
-- [ ] **T13. ADR 추가**
+- [x] **T13. ADR 추가** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-13-adr.txt`(2026-07-24 supersede 명시), `task-13-check.json`(`ok: true`, 문서 357개 위반 0).
+
+  **실행 결과와 계획 대비 편차**: 파일명을 `2026-09-05-issueops-ten-stage-skills-with-auto-execution-mode.md`로 했다. 계획의 `-with-worktree-adoption`은 9단계 시절 설계(준비 단계가 워크트리를 만들고 implementer가 채택)를 가리키는데, 그 설계는 `--mode auto` 결정으로 대체됐다. Decision 본문도 그에 맞춰 썼다.
 
   **Files:**
   - Create: `.agent-harness/adr/2026-09-05-issueops-ten-stage-skills-with-worktree-adoption.md`

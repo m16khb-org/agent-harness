@@ -38,6 +38,7 @@ and supersession rules live in [adr/README.md](adr/README.md).
 | Date | Decision | Record |
 |---|---|---|
 | 2026-09-02 | IssueOps binds artifacts to the code project, not the issue project | [record](adr/2026-09-02-issueops-binds-artifacts-to-the-code-project-not-the-issue-p.md) |
+| 2026-09-05 | IssueOps ten-stage skills, CLI-owned stage detection, and the auto execution mode | [record](adr/2026-09-05-issueops-ten-stage-skills-with-auto-execution-mode.md) |
 | 2026-09-02 | IssueOps publication evidence gates: project-doc reflection and conditional schema measurement | [record](adr/2026-09-02-issueops-publication-evidence-gates-project-doc-reflection-a.md) |
 | 2026-08-28 | IssueOps devil's-advocate verdicts are bound to the reviewed plan digest | [record](adr/decisions/2026-08-28-issueops-devils-advocate-plan-binding.md) |
 | 2026-08-28 | Optional upstream provisioning preserves the standalone core; partially supersedes the 2026-07-07 blanket prohibition | [record](adr/2026-08-28-optional-upstream-provisioning-preserves-the-standalone-core.md) |
