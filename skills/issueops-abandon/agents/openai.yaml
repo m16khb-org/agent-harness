@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Abandon"
+  short_description: "Pause or abandon an IssueOps cycle safely from any stage"
+  default_prompt: "Use $issueops-abandon to leave a cycle. To pause, settle the work in progress and release the execution lease from the canonical worktree so another session can resume. To abandon, ask the user which remote effects they want (close the PR/MR, close the issue, delete the remote branch), preview `cleanup abandon` with exactly those flags, confirm the listed effects, then run the returned apply command. Remote effects run before the record is deleted because no --id command works afterwards. A merged cycle belongs to $issueops-cleanup, not here."

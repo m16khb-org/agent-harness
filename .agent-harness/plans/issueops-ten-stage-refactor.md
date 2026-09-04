@@ -887,7 +887,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill)!: replace issueops-branch-worktree with the issueops-prepare stage` | Files: 위 파일
 
-- [ ] **T5. `issueops-abandon` 신설 (일시 중단·폐기)**
+- [x] **T5. `issueops-abandon` 신설 (일시 중단·폐기)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-5-paths.txt`(네 경로 25건), `task-5-shell.txt`(shell 검사기 exit 0). `rm -rf`·`gh pr close`는 나쁜 예 표 안에만 있다. 인수 체인은 복사하지 않고 시작 명령 하나(`execution replace --preview`)만 적었다.
 
   **Files:**
   - Create: `skills/issueops-abandon/SKILL.md`
