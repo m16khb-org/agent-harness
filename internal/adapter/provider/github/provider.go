@@ -707,10 +707,14 @@ func (Provider) CloseIssue(req port.IssueProviderCloseIssueRequest) (port.IssueP
 	if issueURL == "" {
 		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, fmt.Errorf("issue url is required")
 	}
+	reason, err := ghCloseIssueReason(req.Reason)
+	if err != nil {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, err
+	}
 	if !req.Confirm {
 		return port.IssueProviderCloseIssueResult{
 			OK: true, Provider: "github", IssueURL: issueURL,
-			Preview: fmt.Sprintf("[dry-run] would execute: gh issue close %s --reason completed; gh issue view %s --json state", issueURL, issueURL),
+			Preview: fmt.Sprintf("[dry-run] would execute: gh issue close %s --reason %s; gh issue view %s --json state", issueURL, ghQuoteReason(reason), issueURL),
 		}, nil
 	}
 	state, err := readGhIssueState(req.Repo, issueURL)
@@ -720,7 +724,7 @@ func (Provider) CloseIssue(req port.IssueProviderCloseIssueRequest) (port.IssueP
 	if strings.EqualFold(state, "CLOSED") {
 		return port.IssueProviderCloseIssueResult{OK: true, Provider: "github", IssueURL: issueURL, Closed: true, AlreadyClosed: true, State: state}, nil
 	}
-	closeCmd := exec.Command("gh", "issue", "close", issueURL, "--reason", "completed")
+	closeCmd := exec.Command("gh", "issue", "close", issueURL, "--reason", reason)
 	if req.Repo != "" {
 		closeCmd.Dir = req.Repo
 	}
@@ -735,6 +739,29 @@ func (Provider) CloseIssue(req port.IssueProviderCloseIssueRequest) (port.IssueP
 		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github", IssueURL: issueURL, State: state}, fmt.Errorf("issue close was not verified: state=%s", state)
 	}
 	return port.IssueProviderCloseIssueResult{OK: true, Provider: "github", IssueURL: issueURL, Closed: true, State: state}, nil
+}
+
+// ghCloseIssueReason는 포트의 reason을 gh가 받는 문자열로 옮긴다. 빈 값은
+// 기존 동작인 completed다. 알 수 없는 값은 조용히 기본값으로 떨어뜨리지 않고
+// 거부한다 — 닫는 이유는 원격에 남는 감사 기록이기 때문이다.
+func ghCloseIssueReason(raw string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "completed":
+		return "completed", nil
+	case "not_planned", "not planned":
+		return "not planned", nil
+	default:
+		return "", fmt.Errorf("close issue reason must be completed or not_planned")
+	}
+}
+
+// ghQuoteReason는 preview 문자열에서만 쓴다. 실제 실행은 exec.Command가 인자를
+// 그대로 전달하므로 따옴표가 필요 없다.
+func ghQuoteReason(reason string) string {
+	if strings.Contains(reason, " ") {
+		return `"` + reason + `"`
+	}
+	return reason
 }
 
 func readGhIssueState(repo, issueURL string) (string, error) {

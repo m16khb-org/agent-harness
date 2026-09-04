@@ -676,7 +676,13 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(issueops): add the issueopsnext stage classifier` | Files: 위 4개
 
-- [ ] **T2. `ClosePullRequest` provider port + `CloseIssue` reason + GitHub·GitLab adapter**
+- [x] **T2. `ClosePullRequest` provider port + `CloseIssue` reason + GitHub·GitLab adapter** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-2-close-pr.txt`(12 PASS).
+
+  **실행 결과와 계획 대비 편차**(T7 실행자는 반드시 읽는다):
+  - `IssueProvider` 인터페이스를 넓히지 않고, `internal/port/provider.go`의 기존 관례대로 선택적 능력 인터페이스 `IssueProviderPullRequestCloser`를 추가했다. 그래서 fake/stub 전수 수정(계획 6단계)이 필요 없었고 실제로 하지 않았다. 소비자는 `closer, ok := provider.(port.IssueProviderPullRequestCloser)`로 타입 단언하고, `ok`가 거짓이면 "이 provider는 PR/MR close를 지원하지 않는다"로 fail-closed 처리한다.
+  - 파일 배치: GitHub는 `internal/adapter/provider/github/close_pull_request.go`, GitLab은 `internal/adapter/provider/gitlab/close_merge_request.go`로 분리했다(`provider.go`가 이미 887줄이라 더 키우지 않았다). `CloseIssue`의 reason 헬퍼 `ghCloseIssueReason`·`ghQuoteReason`만 `provider.go`의 `CloseIssue` 옆에 남겼다.
+  - preview 문자열은 `gh pr view <url> --json state`다. `mergedAt`은 넣지 않았다. `state`가 이미 `MERGED`를 구분하므로 필드를 늘릴 이유가 없다.
+  - 테스트 파일명은 `close_pull_request_test.go`·`close_merge_request_test.go`다(계획의 `provider_close_pr_test.go`가 아니다). 기존 `close_issue_test.go` 명명을 따랐다.
 
   **Files:**
   - Modify: `internal/port/provider.go:227-256` (Close 요청·결과 타입 옆에 추가, `IssueProvider` 인터페이스에 메서드 추가)

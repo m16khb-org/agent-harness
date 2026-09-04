@@ -229,7 +229,11 @@ type IssueProviderUpdateIssueBodySectionResult struct {
 type IssueProviderCloseIssueRequest struct {
 	Repo     string `json:"repo"`
 	IssueURL string `json:"issue_url"`
-	Confirm  bool   `json:"confirm"`
+	// Reason is "completed" (the default when empty) or "not_planned". A cycle
+	// abandoned before merge closes its issue as not planned; the merged
+	// cleanup path keeps the completed default.
+	Reason  string `json:"reason,omitempty"`
+	Confirm bool   `json:"confirm"`
 }
 
 // IssueProviderCloseIssueResult reports the close mutation and the state
@@ -242,6 +246,40 @@ type IssueProviderCloseIssueResult struct {
 	AlreadyClosed bool   `json:"already_closed,omitempty"`
 	State         string `json:"state,omitempty"`
 	Preview       string `json:"preview,omitempty"`
+}
+
+// IssueProviderClosePullRequestRequest describes closing an unmerged PR/MR.
+// An IssueOps cycle that is abandoned before merge has to leave the draft it
+// published closed; the merged path is `cleanup finish`, not this one.
+type IssueProviderClosePullRequestRequest struct {
+	Repo        string `json:"repo"`
+	ArtifactURL string `json:"artifact_url"`
+	Kind        string `json:"kind"` // pr | mr
+	Confirm     bool   `json:"confirm"`
+}
+
+// IssueProviderClosePullRequestResult reports the close mutation and the state
+// readback that verified it. Merged reports the one state that must never be
+// closed; the caller decides what to do about it.
+type IssueProviderClosePullRequestResult struct {
+	OK            bool   `json:"ok"`
+	Provider      string `json:"provider"`
+	ArtifactURL   string `json:"artifact_url,omitempty"`
+	Kind          string `json:"kind,omitempty"`
+	Closed        bool   `json:"closed"`
+	AlreadyClosed bool   `json:"already_closed,omitempty"`
+	Merged        bool   `json:"merged,omitempty"`
+	State         string `json:"state,omitempty"`
+	Preview       string `json:"preview,omitempty"`
+}
+
+// IssueProviderPullRequestCloser is an optional capability for the same reason
+// the artifact-body capabilities below are optional: IssueProvider is
+// implemented by every provider fake in the test suite, so widening it would
+// break them all. Callers type-assert and fail closed when an adapter does not
+// implement it.
+type IssueProviderPullRequestCloser interface {
+	ClosePullRequest(IssueProviderClosePullRequestRequest) (IssueProviderClosePullRequestResult, error)
 }
 
 // IssueProvider is implemented by provider-specific adapters such as GitHub and GitLab.
