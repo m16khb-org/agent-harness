@@ -441,8 +441,11 @@ var issueOpsCommandSpecs = map[string]issueOpsSpec{
 		booleans: []string{"--preview", "--apply", "--confirm", "--json"},
 	},
 	"cleanup abandon": {
-		values:   []string{"--id", "--reason", "--fingerprint"},
-		booleans: []string{"--preview", "--apply", "--confirm", "--json"},
+		values: []string{"--id", "--reason", "--fingerprint"},
+		booleans: []string{
+			"--preview", "--apply", "--confirm", "--json",
+			"--close-pr", "--close-issue", "--delete-remote-branch",
+		},
 	},
 	"remote reflect-completion": {
 		values:   []string{"--id", "--provider"},
