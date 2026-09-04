@@ -16,8 +16,12 @@ publish는 완료가 아니다. 이 스킬이 만드는 것은 draft이며, 그 
 GitHub의 PR과 GitLab의 MR은 같은 publication 계약을 쓴다. CLI의 canonical
 동사는 `remote create-pr`이며, 별도의 `create-mr` alias는 만들지 않는다.
 
-provider 세부 규칙과 원격 본문 한국어 규칙은
+원격 쓰기 절차(fluent-korean, 한국어 게이트, preview → 동일 요청 confirm → readback,
+모호할 때의 reconcile)는 [`issueops-remote-write`](../issueops-remote-write/SKILL.md)가
+소유한다. provider별 링크·계층 규칙은
 [`remote-issue.md`](../issueops/references/remote-issue.md)가 소유한다.
+
+직전 단계는 [`issueops-verify`](../issueops-verify/SKILL.md)와 8단계 커밋·푸시다.
 
 ## 읽는 순서
 
@@ -51,6 +55,13 @@ flowchart LR
 ```
 
 ## 시작 게이트
+
+```bash
+agent-harness issueops next --id "$ISSUEOPS_ID" --json
+```
+
+`stage.key`가 `pr.create`면 이 스킬이다. 8단계 커밋·푸시가 끝나 있어야 한다 — 아직이면
+`next`가 `commit-push`를 가리킨다.
 
 다음 하나라도 없으면 이 스킬을 실행하지 않는다.
 

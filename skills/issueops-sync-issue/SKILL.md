@@ -11,7 +11,12 @@ description: Refresh the body of an issue or provider-native child this cycle al
 - 새 Issue·child 생성: [`issueops-create-issue`](../issueops-create-issue/SKILL.md)
 - PR/MR 본문 최신화: [`issueops-sync-pr`](../issueops-sync-pr/SKILL.md)
 - 전체 흐름: [`issueops`](../issueops/SKILL.md)
+- 원격 쓰기 절차: [`issueops-remote-write`](../issueops-remote-write/SKILL.md)
 - provider 세부 규칙: [`remote-issue.md`](../issueops/references/remote-issue.md)
+
+시작 전 `agent-harness issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
+확인한다. 본문 동기화는 어느 단계에서든 할 수 있지만, `next`가 가리키는 단계의 일을
+미루는 대신 하는 것이 아니다.
 
 ## 언제 쓰는가
 

@@ -21,7 +21,12 @@ decision and a separate `issueops cleanup remote-branch` flow.
 
 ## Load first
 
+- Run `agent-harness issueops next --id "$ISSUEOPS_ID" --json` first and confirm
+  `stage.key` is `done`. Anything else belongs to the stage that key names.
 - Load **`issueops`** for lifecycle and cleanup-state rules.
+- Load **`issueops-remote-write`** before the `remote reflect-completion` and
+  `remote close-issue` writes below: it owns the preview, the identical confirm, the
+  readback, and the reconcile-instead-of-retry rule for every governed remote mutation.
 - Load **`torvalds`** for worktree and branch verification.
 - For GitLab issues, also load **`gitlab-usecase`** before any provider call.
 
@@ -86,8 +91,9 @@ decision and a separate `issueops cleanup remote-branch` flow.
    refs/heads/<prepared-base>` (empty output means gone); do not reach for
    `ls-remote --symref`, which the command policy rejects.
 
-Do not use `cleanup abandon`: it intentionally avoids remote issue mutation and
-is not the merged completion path requested by this skill.
+`cleanup abandon` is not this skill's path: it retires a cycle instead of finishing a
+merged one. To retire an unmerged cycle — closing the draft PR/MR, the issue, and the
+remote branch — use [`issueops-abandon`](../issueops-abandon/SKILL.md).
 
 ## Preview the exact targets
 

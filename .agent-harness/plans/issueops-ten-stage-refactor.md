@@ -1261,7 +1261,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `docs(skill): narrow issueops-implement to implementation and the ai-slop-clean exit` | Files: 위 2개
 
-- [ ] **T10. `issueops-create-pr`·`issueops-complete`·`issueops-cleanup`·`issueops-sync-issue`·`issueops-sync-pr` cross-link 수정**
+- [x] **T10. `issueops-create-pr`·`issueops-complete`·`issueops-cleanup`·`issueops-sync-issue`·`issueops-sync-pr` cross-link 수정** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-10-cleanup.txt`, `task-10-links.txt`(skills 트리 전체 상대 링크 깨짐 0건). 다섯 스킬 모두 `issueops next`로 시작하고 원격 쓰기 절차는 `issueops-remote-write`를 가리킨다.
 
   **Files:**
   - Modify: `skills/issueops-create-pr/SKILL.md`, `skills/issueops-complete/SKILL.md`, `skills/issueops-cleanup/SKILL.md`, `skills/issueops-sync-issue/SKILL.md`, `skills/issueops-sync-pr/SKILL.md`

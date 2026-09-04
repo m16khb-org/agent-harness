@@ -9,7 +9,9 @@ description: Record IssueOps execution completion and release the generation aft
 근거로 완료 증거를 봉인하고 generation을 반납해 record를 `done`으로 옮긴다.
 PR/MR을 만들지 않고, 머지하지 않으며, 워크트리·브랜치·이슈를 정리하지 않는다.
 
-- 전체 흐름과 phase 라우팅: [`issueops`](../issueops/SKILL.md)
+- 전체 흐름과 phase 라우팅: [`issueops`](../issueops/SKILL.md). 시작 전
+  `agent-harness issueops next --id "$ISSUEOPS_ID" --json`의 `stage.key`가
+  `pr.complete`인지 확인한다
 - 직전 단계(PR/MR publication): [`issueops-create-pr`](../issueops-create-pr/SKILL.md)
 - 직후 단계(머지 후 정리): [`issueops-cleanup`](../issueops-cleanup/SKILL.md)
 - lease 회복 체인 전문: [`execution.md`](../issueops/references/execution.md)
@@ -171,8 +173,10 @@ completion은 generation을 반납하고 record를 `done`으로 옮긴다. 그�
 
 - **머지하지 않는다.** `remote create-pr`이 만드는 것은 draft다. 머지 전에
   사람이 draft를 ready로 바꾸고 머지 결정을 내린다.
-- **정리하지 않는다.** 워크트리·로컬 브랜치 삭제와 이슈 종료는 머지가 확인된
-  뒤 [`issueops-cleanup`](../issueops-cleanup/SKILL.md)이 소유한다.
+- **정리하지 않는다.** 이후 갈래는 둘이다. 머지가 확인되면
+  [`issueops-cleanup`](../issueops-cleanup/SKILL.md)이 워크트리·로컬 브랜치 삭제와 이슈
+  종료를 소유하고, 머지하지 않고 사이클을 버리기로 하면
+  [`issueops-abandon`](../issueops-abandon/SKILL.md)이 원격 정리까지 소유한다.
 - completion 이후의 리뷰 지적으로 코드를 고쳐야 하면 새 bounded execution을
   시작한다. 완료된 execution은 새 mutation lease가 아니다.
 

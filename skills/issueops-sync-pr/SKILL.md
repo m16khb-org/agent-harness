@@ -11,7 +11,11 @@ description: Refresh the body of a GitHub pull request or GitLab merge request t
 - PR/MR publication: [`issueops-create-pr`](../issueops-create-pr/SKILL.md)
 - Issue·child 본문 최신화: [`issueops-sync-issue`](../issueops-sync-issue/SKILL.md)
 - 완료 기록·generation 반납: [`issueops-complete`](../issueops-complete/SKILL.md)
+- 원격 쓰기 절차: [`issueops-remote-write`](../issueops-remote-write/SKILL.md)
 - provider 세부 규칙: [`remote-issue.md`](../issueops/references/remote-issue.md)
+
+시작 전 `agent-harness issueops next --id "$ISSUEOPS_ID" --json`으로 현재 단계를
+확인한다. 본문 동기화는 어느 단계에서든 할 수 있다.
 
 GitHub PR과 GitLab MR은 같은 계약을 쓴다. CLI의 canonical 동사는
 `remote sync-pr` 하나이며 `sync-mr` alias는 없다.
