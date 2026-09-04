@@ -926,6 +926,13 @@
           "path": "$HARNESS_ROOT/skills/issueops-create-pr"
         },
         {
+          "description": "Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .agent-harness documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when \"issueops next\" reports docs, or when the user says \"문서 반영\", \"ADR 남겨줘\", \"주의사항 기록\", \"update the project docs\".",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-docs",
+          "path": "$HARNESS_ROOT/skills/issueops-docs"
+        },
+        {
           "description": "Run the implement stage of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, a gate ledger for the RED and GREEN evidence, and delegated child cycles. Enter through link-plan, the compatibility review, and the ledger; exit by moving the cycle to ai-slop-clean. Use when \"issueops next\" reports implement.enter or implement, or when the user says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -5290,6 +5297,7 @@
           "issueops-complete",
           "issueops-create-issue",
           "issueops-create-pr",
+          "issueops-docs",
           "issueops-implement",
           "issueops-plan",
           "issueops-prepare",
@@ -7327,6 +7335,13 @@
                 "path": "$HARNESS_ROOT/skills/issueops-create-pr"
               },
               {
+                "description": "Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .agent-harness documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when \"issueops next\" reports docs, or when the user says \"문서 반영\", \"ADR 남겨줘\", \"주의사항 기록\", \"update the project docs\".",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-docs",
+                "path": "$HARNESS_ROOT/skills/issueops-docs"
+              },
+              {
                 "description": "Run the implement stage of a linked IssueOps cycle with a generation-fenced execution lease, canonical-worktree TDD, a gate ledger for the RED and GREEN evidence, and delegated child cycles. Enter through link-plan, the compatibility review, and the ledger; exit by moving the cycle to ai-slop-clean. Use when \"issueops next\" reports implement.enter or implement, or when the user says \"구현 시작\", \"구현 이어서 해줘\", \"이슈 구현해줘\", \"child로 나눠서 구현해줘\".",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8500,6 +8515,7 @@
                 "issueops-complete",
                 "issueops-create-issue",
                 "issueops-create-pr",
+                "issueops-docs",
                 "issueops-implement",
                 "issueops-plan",
                 "issueops-prepare",

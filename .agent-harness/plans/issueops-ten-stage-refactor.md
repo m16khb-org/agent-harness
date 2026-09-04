@@ -1780,7 +1780,7 @@ usage: `agent-harness issueops cleanup abandon --id ID --reason TEXT [--close-pr
 
   **Commit**: YES | `feat(skill): add issueops-verify as the verification stage before commit` | Files: 위 2개
 
-- [ ] **T26. `issueops-docs` 신설 (5단계: 프로젝트 문서 반영)**
+- [x] **T26. `issueops-docs` 신설 (6단계: 프로젝트 문서 반영)** — 완료(2026-09-05). 증거: `.agent-harness/evidence/task-26-verdicts.txt`(두 판정 형식), `task-26-order.txt`(재봉인이 판정 기록보다 앞). 절 다섯 개가 번호 순서대로 있다.
 
   **Files:**
   - Create: `skills/issueops-docs/SKILL.md`
