@@ -197,6 +197,23 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("project docs review should be persisted: %#v", docsRecord)
 	}
 
+	// publication 게이트: 구현 리뷰는 execution이 있는 모든 모드에 적용된다.
+	implReview := captureStdoutForContract(t, func() error {
+		return runIssueOps(withIssueOpsCLIActor([]string{
+			"implementation-review", "record", "--id", id, "--verdict", "pass",
+			"--finding", "변경 범위가 이슈 계약을 넘지 않는다",
+			"--evidence", "go test ./cmd/harness/issueopscli -count=1",
+			"--reviewer-host", "claude", "--json",
+		}, actor))
+	})
+	var implRecord map[string]any
+	if err := json.Unmarshal([]byte(implReview), &implRecord); err != nil {
+		t.Fatalf("implementation review should return JSON: %v\n%s", err, implReview)
+	}
+	if implRecord["implementation_review"] == nil {
+		t.Fatalf("implementation review should be persisted: %#v", implRecord)
+	}
+
 	readiness := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
 	})

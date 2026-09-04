@@ -67,20 +67,21 @@ func gitInitedRepoForReviewTest(t *testing.T) string {
 	return repo
 }
 
-// AC-05: orca 모드에만 fail-closed로 적용되고 direct 모드는 게이트 대상이 아니다.
-func TestImplementationReviewMissingScopedToOrcaMode(t *testing.T) {
+// AC-05: execution이 있는 모든 모드에 fail-closed로 적용된다. execution이 없는
+// 레코드(사이클을 준비하기 전, legacy)만 면제다.
+func TestImplementationReviewMissingAppliesToEveryExecutionMode(t *testing.T) {
 	record := issueops.IssueOpsRecord{}
 	if got := implementationReviewMissing(record, ""); got != "" {
 		t.Fatalf("record without execution must not be gated: %q", got)
 	}
-	record.Execution = &issueops.Execution{Mode: issueops.ExecutionModeDirect}
-	if got := implementationReviewMissing(record, ""); got != "" {
-		t.Fatalf("direct mode must not be gated: %q", got)
+	for _, mode := range []issueops.ExecutionMode{issueops.ExecutionModeDirect, issueops.ExecutionModeOrca} {
+		record.Execution = &issueops.Execution{Mode: mode}
+		record.ImplementationReview = nil
+		if got := implementationReviewMissing(record, ""); got != "implementation_review" {
+			t.Fatalf("%s mode without review must be gated: %q", mode, got)
+		}
 	}
-	record.Execution.Mode = issueops.ExecutionModeOrca
-	if got := implementationReviewMissing(record, ""); got != "implementation_review" {
-		t.Fatalf("orca mode without review must be gated: %q", got)
-	}
+	record.Execution = &issueops.Execution{Mode: issueops.ExecutionModeOrca}
 	record.ImplementationReview = &issueops.IssueOpsImplementationReview{Verdict: "revise"}
 	if got := implementationReviewMissing(record, ""); got != "implementation_review_verdict_revise" {
 		t.Fatalf("non-pass verdict must be gated with its verdict: %q", got)
@@ -105,6 +106,19 @@ func TestStrictPRReadinessSurfacesImplementationReview(t *testing.T) {
 	ready := IssueOpsPRReadiness(record)
 	if !containsString(ready.Missing, "implementation_review") {
 		t.Fatalf("strict readiness must surface the implementation review gate: %+v", ready.Missing)
+	}
+}
+
+// 9단계 재편에서 direct가 기본 경로가 됐다. 검증 단계가 이 기록을 만들므로
+// direct 사이클의 pr readiness도 리뷰 없이는 열리지 않아야 한다.
+func TestDirectModeRequiresImplementationReviewForPR(t *testing.T) {
+	record := issueops.IssueOpsRecord{Execution: &issueops.Execution{Mode: issueops.ExecutionModeDirect}}
+	if ready := IssueOpsPRReadiness(record); !containsString(ready.Missing, "implementation_review") {
+		t.Fatalf("direct mode must surface the implementation review gate: %+v", ready.Missing)
+	}
+	record.ImplementationReview = &issueops.IssueOpsImplementationReview{Verdict: "pass"}
+	if ready := IssueOpsPRReadiness(record); containsString(ready.Missing, "implementation_review") {
+		t.Fatalf("a recorded pass review must clear the direct gate: %+v", ready.Missing)
 	}
 }
 
@@ -139,5 +153,21 @@ func TestOwnerCommandsIncludeImplementationReviewWithPlannerModel(t *testing.T) 
 				t.Fatalf("implementation review command must match the catalog: %v", err)
 			}
 		})
+	}
+}
+
+// fingerprint를 계산할 수 없는 사이클도 판정은 기록할 수 있고, 빈 봉인은
+// fingerprint가 생기는 순간 stale로 잡힌다. project_docs_review와 같은 관용이며,
+// 게이트를 모든 모드로 넓힌 뒤 탈출구 없는 교착을 만들지 않기 위한 것이다.
+func TestImplementationReviewSealsAnEmptyFingerprintAndCatchesItLater(t *testing.T) {
+	record := issueops.IssueOpsRecord{
+		Execution:            &issueops.Execution{Mode: issueops.ExecutionModeDirect},
+		ImplementationReview: &issueops.IssueOpsImplementationReview{Verdict: "pass", ReviewedFingerprint: ""},
+	}
+	if got := implementationReviewMissing(record, ""); got != "" {
+		t.Fatalf("an empty seal with no computable fingerprint must pass: %q", got)
+	}
+	if got := implementationReviewMissing(record, "now-computable"); got != "implementation_review_stale" {
+		t.Fatalf("an empty seal must go stale once a fingerprint exists: %q", got)
 	}
 }

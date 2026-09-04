@@ -449,9 +449,9 @@ agent-harness issueops schema-evidence record --id "$ISSUEOPS_ID"   --measuremen
   `--waive --waiver-rationale "..."`로 근거를 남긴다.
 - 운영 DB에 전수 스캔을 던지지 않는다. 카탈로그 추정 row 수를 쓴다.
 
-## Implementation Review Gate (orca mode)
+## Implementation Review Gate (all execution modes)
 
-orca 모드 사이클의 owner는 publication 전에 planner급 모델 fresh 서브에이전트로
+사이클의 구현 세션은 publication 전에 planner급 모델 fresh 서브에이전트로
 구현 diff의 brooks 적대 리뷰를 수행하고 결과를 기록해야 한다:
 
 ```bash
@@ -462,8 +462,9 @@ agent-harness issueops implementation-review record --id "$ISSUEOPS_ID"   --verd
   이후에만 가능하며, 리뷰가 검토한 변경 집합 fingerprint가 봉인되어 이후 diff가
   바뀌면 `implementation_review_stale`로 create-pr·strict readiness가 거부한다.
 - `reviewer_*`는 감사 기록이다 — 하네스는 모델 자기신고를 검증하지 않는다.
-- direct 모드는 이 게이트의 대상이 아니다. direct/무-execution 사이클의 brooks
-  리뷰는 devils-advocate ledger 기록으로 남긴다.
+- execution이 있는 모든 모드가 대상이다. execution이 없는 레코드만 면제다.
+  fingerprint를 계산할 수 없는 사이클은 빈 값으로 봉인되고, fingerprint가
+  생기는 순간 stale로 잡혀 재기록을 요구한다.
 
 ## Post-Merge Cleanup Order
 

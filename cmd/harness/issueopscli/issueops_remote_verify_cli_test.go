@@ -128,6 +128,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueop
 		t.Fatalf("git push implementation failed: %s", stderr)
 	}
 	recordIssueOpsCoreProjectDocsReviewForCLITest(t, id)
+	recordIssueOpsCoreImplementationReviewForCLITest(t, id)
 	record, err = loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhasePR), actor)
 	if err != nil {
 		t.Fatal(err)
@@ -189,6 +190,20 @@ func recordIssueOpsCoreProjectDocsReviewForCLITest(t *testing.T, id string) {
 	if _, err := issueopscore.RecordIssueOpsProjectDocsReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsProjectDocsReviewRequest{
 		Verdict:  "no-change",
 		Evidence: []string{"이 변경은 운영 문서에 남길 결정을 만들지 않는다"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 구현 리뷰 게이트는 execution이 있는 모든 모드에 적용되므로 pr phase로
+// 올라가는 CLI 픽스처도 이 기록이 필요하다.
+func recordIssueOpsCoreImplementationReviewForCLITest(t *testing.T, id string) {
+	t.Helper()
+	if _, err := issueopscore.RecordIssueOpsImplementationReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsImplementationReviewRequest{
+		Verdict:      "pass",
+		Findings:     []string{"변경 범위가 이슈 계약을 넘지 않는다"},
+		Evidence:     []string{"go test ./cmd/harness/issueopscli -count=1"},
+		ReviewerHost: "claude",
 	}); err != nil {
 		t.Fatal(err)
 	}

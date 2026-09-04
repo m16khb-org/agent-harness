@@ -23,3 +23,18 @@ func recordIssueOpsProjectDocsReviewForTest(t *testing.T, stateRoot, id string) 
 		t.Fatal(err)
 	}
 }
+
+// recordIssueOpsImplementationReviewForTest는 publication 게이트가 요구하는
+// 구현 리뷰를 기록한다. 이 게이트는 execution이 있는 모든 모드에 적용되므로
+// direct 픽스처도 pr phase에 들어가기 전에 이 기록이 필요하다.
+func recordIssueOpsImplementationReviewForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := RecordIssueOpsImplementationReview(stateRoot, id, IssueOpsImplementationReviewRequest{
+		Verdict:      "pass",
+		Findings:     []string{"변경 범위가 이슈 계약을 넘지 않는다"},
+		Evidence:     []string{"go test ./internal/adapter/issueops -count=1"},
+		ReviewerHost: "claude",
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

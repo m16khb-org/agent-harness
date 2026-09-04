@@ -130,6 +130,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 		t.Fatalf("git push failed: %s", stderr)
 	}
 	recordIssueOpsProjectDocsReviewForTest(t, stateRoot, record.ID)
+	recordIssueOpsImplementationReviewForTest(t, stateRoot, record.ID)
 	if record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhasePR), issueOpsActorForTest(worktree)); err != nil {
 		t.Fatal(err)
 	}

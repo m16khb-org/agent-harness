@@ -113,6 +113,7 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	recordIssueOpsCoreProjectDocsReviewForCLITest(t, parent.ID)
+	recordIssueOpsCoreImplementationReviewForCLITest(t, parent.ID)
 
 	blockedOut, err := captureStdoutAndErrorForIssueOps(t, func() error {
 		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))

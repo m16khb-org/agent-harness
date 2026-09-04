@@ -71,6 +71,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 		t.Fatalf("git push failed: %s", stderr)
 	}
 	recordIssueOpsProjectDocsReviewForTest(t, stateRoot, record.ID)
+	recordIssueOpsImplementationReviewForTest(t, stateRoot, record.ID)
 	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhasePR), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)

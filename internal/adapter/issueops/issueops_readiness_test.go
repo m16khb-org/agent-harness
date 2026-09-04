@@ -233,6 +233,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	}
 	// publication 게이트는 커밋된 변경 집합을 대상으로 봉인한다.
 	recordIssueOpsProjectDocsReviewForTest(t, stateRoot, record.ID)
+	recordIssueOpsImplementationReviewForTest(t, stateRoot, record.ID)
 	if record, err = ReadIssueOps(stateRoot, record.ID); err != nil {
 		t.Fatal(err)
 	}

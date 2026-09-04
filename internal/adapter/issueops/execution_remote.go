@@ -96,16 +96,17 @@ func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (i
 		if record.Execution.Pending != nil {
 			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("external intent is already pending; run execution reconcile")
 		}
-		// orca 모드(이원 구조 사이클) 한정 하드 게이트: planner급 brooks 리뷰의
-		// pass 기록 없이는 publication을 열지 않는다(설계 v5 WS5). direct 모드는
-		// 단독 구현 세션의 자기리뷰가 devils-advocate ledger로 기록되므로 제외.
+		// publication 하드 게이트: planner급 brooks 리뷰의 pass 기록 없이는
+		// publication을 열지 않는다(설계 v5 WS5). execution이 있는 모든 모드가
+		// 대상이다 — 9단계 재편에서 direct가 기본 경로가 되고 검증 단계가 이
+		// 기록을 만든다.
 		currentReviewFingerprint := implementation.ChangeFingerprint(record)
 		if missing := implementationReviewMissing(record, currentReviewFingerprint); missing != "" {
 			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create requires a pass implementation review (%s); record it with `agent-harness issueops implementation-review record --id %s ...`", missing, record.ID)
 		}
 		// ai_slop_clean 선례(strict:59-61)와 동형: 리뷰가 fingerprint를 봉인했는데
 		// 현재 값을 계산할 수 없으면 staleness 판정을 조용히 끄는 대신 거부한다.
-		if record.Execution.Mode == issueops.ExecutionModeOrca && currentReviewFingerprint == "" &&
+		if currentReviewFingerprint == "" &&
 			record.ImplementationReview != nil && record.ImplementationReview.ReviewedFingerprint != "" {
 			return issueops.IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create cannot verify implementation review freshness (current_fingerprint unavailable)")
 		}
