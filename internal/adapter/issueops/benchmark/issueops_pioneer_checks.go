@@ -48,7 +48,7 @@ func issueOpsPioneerSkillEvidenceComplete(fixture issueopscontract.IssueOpsBench
 			hasStructuredClause(evidence, "index") &&
 			containsAnyFold(evidence, "write penalty", "write cost", "insert cost") &&
 			hasStructuredClause(evidence, "normalization", "normalisation", "anomaly", "bcnf", "3nf")
-	case "debugging":
+	case "issueops-debugging":
 		return hasStructuredClause(evidence, "reproduction", "reproduced") &&
 			hasStructuredClause(evidence, "failure signature", "signature") &&
 			hasStructuredClause(evidence, "root cause", "hypothesis") &&

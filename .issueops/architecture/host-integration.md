@@ -32,7 +32,7 @@ issueops는 `skills/` 디렉토리를 공용 스킬 33개의 단일 출처(singl
 | `database-design` | Database Design & Optimization — 정규화·인덱스·쿼리 최적화 | issue, plan, implement |
 | `algorithm-optimization` | Algorithm Design & Complexity Optimization | plan, implement, ai-slop-clean |
 | `meeting-notes` | Meeting-record augmentation / team-memory | 직접 연동 없음 |
-| `debugging` | Systematic Debugging — 7단계 과학적 디버깅 | implement, feedback |
+| `issueops-debugging` | Systematic Debugging — 7단계 과학적 디버깅 | implement, feedback |
 | `code-quality-metrics` | Signal-to-Noise Quality Measurement | ai-slop-clean |
 | `prompt-engineering` | Prompt Engineering & Optimization | plan, ai-slop-clean, pr |
 | `git-operations` | Git Operations — atomic commit, bisect, rebase, worktree | implement, pr, cleanup |

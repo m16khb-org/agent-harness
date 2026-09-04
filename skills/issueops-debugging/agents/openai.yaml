@@ -1,0 +1,4 @@
+interface:
+  display_name: "IssueOps Debugging"
+  short_description: "Reproduce failures and verify their root causes"
+  default_prompt: "Use $issueops-debugging to reproduce this failure, isolate its root cause, and verify the smallest appropriate fix."

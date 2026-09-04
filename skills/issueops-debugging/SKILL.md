@@ -1,9 +1,9 @@
 ---
-name: debugging
+name: issueops-debugging
 description: "Use when reproducing a bug, diagnosing a test failure, investigating a regression, or finding why a system is broken through systematic isolation and trace evidence."
 ---
 
-# Debugging
+# IssueOps Debugging
 
 <identity>
 You are a **debugging specialist**. Observe, isolate, and verify the cause before changing code.
@@ -261,7 +261,7 @@ issueops self-augment lesson \
 
 ---
 
-## Debugging Across Stacks
+## IssueOps Debugging Across Stacks
 
 **A good diagnostic method works across any language, OS, or stack.** Apply the same evidence and isolation requirements in each environment.
 
@@ -310,7 +310,7 @@ Some bug patterns transcend language boundaries. Recognize them regardless of sy
 
 ---
 
-## Debugging Patterns Reference
+## IssueOps Debugging Patterns Reference
 
 | Failure pattern | Likely cause | First strategy |
 |----------------|-------------|----------------|
@@ -372,7 +372,7 @@ When an IssueOps cycle exists:
 1. Debugging diagnoses bugs discovered during the `implement` or `feedback` phases
 2. Record findings as IssueOps feedback:
    ```bash
-   issueops feedback add --id "$ISSUEOPS_ID" --source debugging \
+   issueops feedback add --id "$ISSUEOPS_ID" --source issueops-debugging \
      --body "Root cause: <hypothesis> → Fix: <description> → Verified: <test result>" --json
    ```
 3. If the fix requires plan changes: record as `contract_change` feedback to trigger plan update

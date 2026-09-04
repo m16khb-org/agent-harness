@@ -308,7 +308,7 @@ git worktree prune
 |-------|------------------------|
 | **atomic-commit-push** | Basic commit/push workflows belong to atomic-commit-push. Git Operations handles advanced operations (rebase, bisect, conflict, recovery, cherry-pick, worktree). When atomic-commit-push's preflight detects complex state, it delegates to Git Operations. |
 | **rebase-onto-parent** | Bringing one branch up to date with the branch it was created from belongs to rebase-onto-parent: it resolves the parent from recorded evidence, proves the parent advanced, and rebases with a verified backup ref and a leased push. Git Operations handles the interactive rebase, the conflict protocol it delegates to, and any recovery beyond that skill's backup ref. |
-| **debugging** | Debugging calls Git Operations for `git bisect` during debugging. Git Operations handles the git mechanics; Debugging handles the debugging methodology and root cause determination. |
+| **issueops-debugging** | Debugging calls Git Operations for `git bisect` during debugging. Git Operations handles the git mechanics; Debugging handles the debugging methodology and root cause determination. |
 | **algorithm-optimization** | Algorithm Optimization optimizes algorithms; Git Operations commits each transformation atomically with before/after metrics in the commit message. |
 | **database-design** | Schema migration files (DDL) are committed atomically per Git Operations' protocols. |
 | **web-research** | Research reports (`.issueops/research/`) are committed as atomic commits following Git Operations' commit format. |

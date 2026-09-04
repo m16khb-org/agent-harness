@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "skill": "debugging",
+  "skill": "issueops-debugging",
   "generated_at": "2026-08-15T02:34:41Z",
   "execution_method": "fresh_context_child_task",
   "artifact_kind": "bounded_final_response_receipt",
@@ -27,7 +27,7 @@
   "cases": [
     {
       "axis": "primary",
-      "fixture_path": "debugging/TASK.md",
+      "fixture_path": "issueops-debugging/TASK.md",
       "fixture_sha256": "84a8373616856f963ad516fa3db38be61ebda4551f3ffbeb6897761a084f4452",
       "verdict": "pass",
       "blocked_reason": "",
@@ -40,7 +40,7 @@
     },
     {
       "axis": "boundary",
-      "fixture_path": "debugging/BOUNDARY.md",
+      "fixture_path": "issueops-debugging/BOUNDARY.md",
       "fixture_sha256": "c5aba09f353d3aa73a1f1c85dc5600b551b8a6a727ac91759b46f91a93eed5d8",
       "verdict": "pass",
       "blocked_reason": "",
@@ -53,7 +53,7 @@
     },
     {
       "axis": "operational",
-      "fixture_path": "debugging/OPERATIONAL.md",
+      "fixture_path": "issueops-debugging/OPERATIONAL.md",
       "fixture_sha256": "d5e128df59806cfb19a5290305f4d8660cf0863e014d720282c28b6a6702125f",
       "verdict": "pass",
       "blocked_reason": "",

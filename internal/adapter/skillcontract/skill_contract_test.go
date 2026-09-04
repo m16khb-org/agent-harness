@@ -85,7 +85,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 	if !strings.Contains(vonNeumann, "current host's delegation tool") {
 		t.Fatal("implementation-planning SKILL.md must use host-neutral delegation wording")
 	}
-	assertSkillContains(t, "debugging", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
+	assertSkillContains(t, "issueops-debugging", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
 	algorithmOptimization := readSkillForTest(t, "algorithm-optimization")
 	if !strings.Contains(algorithmOptimization, "```text\n   Equivalent in any language") {
 		t.Fatal("algorithm-optimization SKILL.md must keep scaling-test interpretation inside its fenced block")

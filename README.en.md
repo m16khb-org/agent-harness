@@ -311,7 +311,7 @@ See [`skills/issueops/SKILL.md`](skills/issueops/SKILL.md) and the [operations m
 [`skills/`](skills/) is the single source of truth for 33 shared skills. The installer links that directory into each host's user-level skill path.
 
 - Planning and critique: `implementation-planning`, `requirements-analysis`, `design-review`, `prompt-engineering`
-- Execution and verification: `verified-execution`, `debugging`, `algorithm-optimization`, `database-design`, `code-quality-metrics`
+- Execution and verification: `verified-execution`, `issueops-debugging`, `algorithm-optimization`, `database-design`, `code-quality-metrics`
 - Research and collaboration: `web-research`, `meeting-notes`, `slack-delegate`
 - Git and workflow operations: `git-operations`, `atomic-commit-push`, `gitlab-usecase`
 - IssueOps stages: `issueops` (router), `issueops-create-issue`, `issueops-prepare`, `issueops-plan`, `issueops-implement`, `issueops-clean`, `issueops-docs`, `issueops-verify`, `issueops-create-pr`, `issueops-complete`, `issueops-cleanup`, `issueops-abandon`

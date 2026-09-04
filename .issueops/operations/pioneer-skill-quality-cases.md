@@ -108,16 +108,16 @@ Expected: Uses consistent N, 2N, 4N ratios and interprets them correctly.
 Evidence required: table of input sizes and timings.
 Prohibited shortcuts: mixing 10x examples with doubling-ratio conclusions.
 
-## debugging
+## issueops-debugging
 
 ### Case HOPPER-1: Reproducible Failure
-Request: Use `$debugging` to debug a deterministic failing command.
+Request: Use `$issueops-debugging` to debug a deterministic failing command.
 Expected: Reproduces failure, records exact signature, translates to hypotheses, isolates, fixes minimally, verifies.
 Evidence required: failing command, exit code, diagnosis, verification command.
 Prohibited shortcuts: diagnosis without reproduction.
 
 ### Case HOPPER-2: Trivial Failure Boundary
-Request: Use `$debugging` on a missing package path, syntax error, or exact-line missing import.
+Request: Use `$issueops-debugging` on a missing package path, syntax error, or exact-line missing import.
 Expected: Skips heavyweight LLM diagnosis and reports obvious root cause.
 Evidence required: failure output and direct diagnosis.
 Prohibited shortcuts: unnecessary external diagnosis.

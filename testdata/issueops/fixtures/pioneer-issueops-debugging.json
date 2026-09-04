@@ -1,9 +1,9 @@
 {
-  "id": "pioneer-debugging",
+  "id": "pioneer-issueops-debugging",
   "title": "Flaky test failure needs systematic diagnosis",
   "user_prompt": "CI에서 TestWebhookRetry가 가끔 실패해. 원인 찾아서 고쳐줘",
-  "repo_context": "Go test suite where TestWebhookRetry fails intermittently on CI but rarely locally. The debugging skill must drive reproduce-first diagnosis with an isolated root cause and a verified fix.",
-  "pioneer_skill_target": "debugging",
+  "repo_context": "Go test suite where TestWebhookRetry fails intermittently on CI but rarely locally. The issueops-debugging skill must drive reproduce-first diagnosis with an isolated root cause and a verified fix.",
+  "pioneer_skill_target": "issueops-debugging",
   "expected_issue": ["records the exact failure signature", "defines acceptance criteria", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["reproduces before diagnosing", "isolates the root cause", "includes verification"],
   "expected_tasks": ["bounded ownership"],

@@ -57,7 +57,7 @@ Orca는 `exec.CommandContext`로 설치된 CLI를 호출하는 선택적 IssueOp
 | `database-design` | Database Design & Optimization |
 | `algorithm-optimization` | Algorithm Design & Complexity Optimization |
 | `meeting-notes` | Meeting-record augmentation / team-memory |
-| `debugging` | Systematic Debugging — 과학적 디버깅 |
+| `issueops-debugging` | Systematic Debugging — 과학적 디버깅 |
 | `prompt-engineering` | Prompt Engineering & Optimization |
 | `code-quality-metrics` | Signal-to-Noise Quality Measurement |
 | `git-operations` | Git Operations — rebase, bisect, conflict, reflog |

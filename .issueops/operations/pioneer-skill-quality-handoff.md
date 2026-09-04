@@ -11,7 +11,7 @@ The work has moved past the baseline documentation phase. Cycles 1-9 applied fir
 Current tracked working-tree scope:
 
 - `skills/code-quality-metrics/SKILL.md`: tracked/untracked-aware measurement, zero-input guard, and global install safety.
-- `skills/debugging/SKILL.md`: current `project lint-diagnose --json -- <command...>` CLI contract.
+- `skills/issueops-debugging/SKILL.md`: current `project lint-diagnose --json -- <command...>` CLI contract.
 - `skills/verified-execution/SKILL.md`: current state CLI syntax, IssueOps feedback path, and host-tool capability gating.
 - `skills/implementation-planning/SKILL.md`: narrower activation boundary and removal of nonexistent planning CLI claim.
 - `skills/prompt-engineering/SKILL.md`: private reasoning boundary and host-neutral tool contract guidance.

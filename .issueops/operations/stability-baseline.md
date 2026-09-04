@@ -57,7 +57,7 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 ## 갱신 규약
 
 - 측정 회차마다 위 표에 1행 추가, 측정일 명기. `quality-dashboard.md` 측정면 6 동시 갱신.
-- 회귀 의심(daemon 누수·zombie 발생·RSS 단조 증가·MCP 끊김 증가) 시 `failures[]` 원문을 비고에 인용하고 debugging 진단으로 라우팅.
+- 회귀 의심(daemon 누수·zombie 발생·RSS 단조 증가·MCP 끊김 증가) 시 `failures[]` 원문을 비고에 인용하고 `issueops-debugging` 진단으로 라우팅.
 - RSS는 단일 warmup 점프와 다회 단조 증가를 구분(스크립트 주석 규약 유지) — 1회 점프를 누수로 판정하지 않는다.
 
 ## 잔여 작업 (Q4 종결 조건)

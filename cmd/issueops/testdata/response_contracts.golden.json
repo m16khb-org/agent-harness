@@ -950,13 +950,6 @@
           "path": "$ISSUEOPS_ROOT/skills/database-design"
         },
         {
-          "description": "Use when reproducing a bug, diagnosing a test failure, investigating a regression, or finding why a system is broken through systematic isolation and trace evidence.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "debugging",
-          "path": "$ISSUEOPS_ROOT/skills/debugging"
-        },
-        {
           "description": "Use when a plan, design, architecture, or scope decision needs independent adversarial review before implementation, especially for excessive complexity or optimistic schedules. Run as an isolated sub-agent, never inline.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -1060,6 +1053,13 @@
           "has_skill_md": true,
           "name": "issueops-create-pr",
           "path": "$ISSUEOPS_ROOT/skills/issueops-create-pr"
+        },
+        {
+          "description": "Use when reproducing a bug, diagnosing a test failure, investigating a regression, or finding why a system is broken through systematic isolation and trace evidence.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "issueops-debugging",
+          "path": "$ISSUEOPS_ROOT/skills/issueops-debugging"
         },
         {
           "description": "Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .issueops documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when \"issueops next\" reports docs, or when the user says \"문서 반영\", \"ADR 남겨줘\", \"주의사항 기록\", \"update the project docs\".",
@@ -5424,7 +5424,6 @@
           "atomic-commit-push",
           "code-quality-metrics",
           "database-design",
-          "debugging",
           "design-review",
           "diagram-design",
           "fluent-korean",
@@ -5440,6 +5439,7 @@
           "issueops-complete",
           "issueops-create-issue",
           "issueops-create-pr",
+          "issueops-debugging",
           "issueops-docs",
           "issueops-implement",
           "issueops-plan",
@@ -7503,13 +7503,6 @@
                 "path": "$ISSUEOPS_ROOT/skills/database-design"
               },
               {
-                "description": "Use when reproducing a bug, diagnosing a test failure, investigating a regression, or finding why a system is broken through systematic isolation and trace evidence.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "debugging",
-                "path": "$ISSUEOPS_ROOT/skills/debugging"
-              },
-              {
                 "description": "Use when a plan, design, architecture, or scope decision needs independent adversarial review before implementation, especially for excessive complexity or optimistic schedules. Run as an isolated sub-agent, never inline.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7613,6 +7606,13 @@
                 "has_skill_md": true,
                 "name": "issueops-create-pr",
                 "path": "$ISSUEOPS_ROOT/skills/issueops-create-pr"
+              },
+              {
+                "description": "Use when reproducing a bug, diagnosing a test failure, investigating a regression, or finding why a system is broken through systematic isolation and trace evidence.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "issueops-debugging",
+                "path": "$ISSUEOPS_ROOT/skills/issueops-debugging"
               },
               {
                 "description": "Reflect a finished IssueOps implementation into the project's operating documents. Route the diff to the .issueops documents it touches, check both directions (did the change break a documented rule, and did it create a decision, pitfall, command, or convention the documents do not know yet), update ADR, CAUTIONS, CONVENTIONS, or ARCHITECTURE through the project_docs MCP contract, re-seal the ai-slop-clean fingerprint, and record the project-docs-review verdict. Use when \"issueops next\" reports docs, or when the user says \"문서 반영\", \"ADR 남겨줘\", \"주의사항 기록\", \"update the project docs\".",
@@ -8786,7 +8786,6 @@
                 "atomic-commit-push",
                 "code-quality-metrics",
                 "database-design",
-                "debugging",
                 "design-review",
                 "diagram-design",
                 "fluent-korean",
@@ -8802,6 +8801,7 @@
                 "issueops-complete",
                 "issueops-create-issue",
                 "issueops-create-pr",
+                "issueops-debugging",
                 "issueops-docs",
                 "issueops-implement",
                 "issueops-plan",

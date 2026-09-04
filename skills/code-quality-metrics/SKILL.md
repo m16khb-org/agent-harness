@@ -430,7 +430,7 @@ fi
 |-------|----------------------|
 | **verified-execution** | Measurements from Code Quality Metrics feed into Verified Execution's Final Quality Gate as `shannonAudit`. Gate fails if SNR, entropy, redundancy, or overhead metrics don't meet targets. |
 | **algorithm-optimization** | Algorithm Optimization uses Code Quality Metrics's entropy and redundancy measurements to prioritize algorithmic simplification. Code Quality Metrics's "high-entropy functions" become Algorithm Optimization's refactoring targets. |
-| **debugging** | Code Quality Metrics's "signal lines" heuristic helps Debugging isolate failure causes: if a bug appeared but signal lines didn't change, the bug is likely environmental. |
+| **issueops-debugging** | Code Quality Metrics's "signal lines" heuristic helps Debugging isolate failure causes: if a bug appeared but signal lines didn't change, the bug is likely environmental. |
 | **implementation-planning** | Code Quality Metrics's baseline measurement during planning sets quality expectations for the plan's verification strategy. |
 | **ai-slop-clean** | Code Quality Metrics measures before and after; ai-slop-clean performs the cleanup. Code Quality Metrics provides the target card; ai-slop-clean executes it. |
 

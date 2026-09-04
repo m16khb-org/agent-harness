@@ -105,8 +105,8 @@
       "receipt_bytes": 2819,
       "execution_method": "fresh_context_child_task",
       "artifact_kind": "bounded_final_response_receipt",
-      "evidence_path": "evidence-records/debugging.json",
-      "evidence_sha256": "7a3b281af314d450618c597b9dd21789b65a36856618da3829e0b7acc3a8c84c"
+      "evidence_path": "evidence-records/issueops-debugging.json",
+      "evidence_sha256": "03845f390d4d678ccab080d822e14d3cf34dfd33bd99354c91093b8f91b039c6"
     },
     {
       "task_id": "st_01a00281",
@@ -291,8 +291,8 @@
       "receipt_bytes": 7425,
       "execution_method": "fresh_context_child_task",
       "artifact_kind": "bounded_final_response_receipt",
-      "evidence_path": "evidence-records/debugging.json",
-      "evidence_sha256": "7a3b281af314d450618c597b9dd21789b65a36856618da3829e0b7acc3a8c84c"
+      "evidence_path": "evidence-records/issueops-debugging.json",
+      "evidence_sha256": "03845f390d4d678ccab080d822e14d3cf34dfd33bd99354c91093b8f91b039c6"
     },
     {
       "task_id": "st_01a002cd",
@@ -510,15 +510,15 @@
       "host_capability": "available"
     },
     {
-      "skill": "debugging",
+      "skill": "issueops-debugging",
       "axis": "primary",
-      "case_path": "debugging/TASK.md",
+      "case_path": "issueops-debugging/TASK.md",
       "case_sha256": "84a8373616856f963ad516fa3db38be61ebda4551f3ffbeb6897761a084f4452",
       "task_id": "st_01a00280",
       "verdict": "pass",
       "hidden_holdout": false,
-      "evidence_path": "evidence-records/debugging.json",
-      "evidence_sha256": "7a3b281af314d450618c597b9dd21789b65a36856618da3829e0b7acc3a8c84c",
+      "evidence_path": "evidence-records/issueops-debugging.json",
+      "evidence_sha256": "03845f390d4d678ccab080d822e14d3cf34dfd33bd99354c91093b8f91b039c6",
       "deterministic_assertions": [
         "deterministic_reproduction",
         "minimal_dependency_fix"
@@ -714,15 +714,15 @@
       "host_capability": "available"
     },
     {
-      "skill": "debugging",
+      "skill": "issueops-debugging",
       "axis": "boundary",
-      "case_path": "debugging/BOUNDARY.md",
+      "case_path": "issueops-debugging/BOUNDARY.md",
       "case_sha256": "c5aba09f353d3aa73a1f1c85dc5600b551b8a6a727ac91759b46f91a93eed5d8",
       "task_id": "st_01a002cc",
       "verdict": "pass",
       "hidden_holdout": false,
-      "evidence_path": "evidence-records/debugging.json",
-      "evidence_sha256": "7a3b281af314d450618c597b9dd21789b65a36856618da3829e0b7acc3a8c84c",
+      "evidence_path": "evidence-records/issueops-debugging.json",
+      "evidence_sha256": "03845f390d4d678ccab080d822e14d3cf34dfd33bd99354c91093b8f91b039c6",
       "deterministic_assertions": [
         "three_hypotheses",
         "event_fenced_reproduction"
@@ -919,15 +919,15 @@
       "host_capability": "content_available_external_write_prohibited"
     },
     {
-      "skill": "debugging",
+      "skill": "issueops-debugging",
       "axis": "operational",
-      "case_path": "debugging/OPERATIONAL.md",
+      "case_path": "issueops-debugging/OPERATIONAL.md",
       "case_sha256": "d5e128df59806cfb19a5290305f4d8660cf0863e014d720282c28b6a6702125f",
       "task_id": "st_01a002cc",
       "verdict": "pass",
       "hidden_holdout": false,
-      "evidence_path": "evidence-records/debugging.json",
-      "evidence_sha256": "7a3b281af314d450618c597b9dd21789b65a36856618da3829e0b7acc3a8c84c",
+      "evidence_path": "evidence-records/issueops-debugging.json",
+      "evidence_sha256": "03845f390d4d678ccab080d822e14d3cf34dfd33bd99354c91093b8f91b039c6",
       "deterministic_assertions": [
         "proxy_trace_divergence",
         "live_fix_qa"

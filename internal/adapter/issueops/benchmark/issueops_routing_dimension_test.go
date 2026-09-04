@@ -21,7 +21,7 @@ func TestSkillRoutingFidelitySameEntryPairing(t *testing.T) {
 
 	// 'plan' present (from debugging entry) and 'database-design' present (from review entry),
 	// but database-design never fired at plan -> must FAIL same-entry pairing.
-	crossPaired := issueopscontract.IssueOpsBenchmarkArtifact{RoutingTrace: []issueopscontract.SkillRouting{{Phase: "plan", Skill: "debugging"}, {Phase: "review", Skill: "database-design"}}}
+	crossPaired := issueopscontract.IssueOpsBenchmarkArtifact{RoutingTrace: []issueopscontract.SkillRouting{{Phase: "plan", Skill: "issueops-debugging"}, {Phase: "review", Skill: "database-design"}}}
 	if issueOpsSkillRoutingFidelityComplete(fixture, crossPaired) {
 		t.Fatal("cross-paired trace (right skill at wrong phase) must FAIL same-entry pairing")
 	}

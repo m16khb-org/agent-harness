@@ -302,7 +302,7 @@ cycle과 remote artifact의 세부 규칙은 [`skills/issueops/SKILL.md`](skills
 공용 스킬 원본은 [`skills/`](skills/)입니다. 설치기는 각 호스트의 사용자 수준 스킬 경로가 이 디렉터리를 참조하도록 구성합니다.
 
 - 계획과 비판: `implementation-planning`, `requirements-analysis`, `design-review`, `prompt-engineering`
-- 실행과 검증: `verified-execution`, `debugging`, `algorithm-optimization`, `database-design`, `code-quality-metrics`
+- 실행과 검증: `verified-execution`, `issueops-debugging`, `algorithm-optimization`, `database-design`, `code-quality-metrics`
 - 조사와 팀 협업: `web-research`, `meeting-notes`, `slack-delegate`, `sharing-backend-work`
 - Git과 작업 운영: `git-operations`, `atomic-commit-push`, `rebase-onto-parent`, `gitlab-usecase`
 - IssueOps 단계: `issueops`(라우터), `issueops-create-issue`, `issueops-prepare`, `issueops-plan`, `issueops-implement`, `issueops-clean`, `issueops-docs`, `issueops-verify`, `issueops-create-pr`, `issueops-complete`, `issueops-cleanup`, `issueops-abandon`

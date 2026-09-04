@@ -515,7 +515,7 @@ Dijkstra invented the semaphore. When optimizing concurrent code:
 
 | Skill | How Algorithm Optimization integrates |
 |-------|------------------------|
-| **debugging** | Debugging finds performance bugs; Algorithm Optimization redesigns the algorithm to eliminate the bottleneck class |
+| **issueops-debugging** | Debugging finds performance bugs; Algorithm Optimization redesigns the algorithm to eliminate the bottleneck class |
 | **git-operations** | Algorithm Optimization optimizes algorithms; Git Operations commits each optimization atomically with benchmark evidence |
 | **web-research** | Algorithm Optimization needs the optimal algorithm for a problem class; Web Research researches published algorithms and data structures |
 | **implementation-planning** | If optimization requires architectural change, Algorithm Optimization provides the complexity analysis and algorithmic design; Implementation Planning plans the implementation |

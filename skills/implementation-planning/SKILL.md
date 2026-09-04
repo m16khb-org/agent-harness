@@ -478,7 +478,7 @@ When an IssueOps cycle exists (`issueops status --id "$ISSUEOPS_ID" --json`):
 | Skill | How Implementation Planning integrates |
 |-------|---------------------------|
 | **verified-execution** | Implementation Planning produces the decision-complete plan; Verified Execution executes it. Plan TODOs become Verified Execution goals. Parallel execution waves in the plan map to Verified Execution's fan-out delegation for independent work. |
-| **debugging** | When debugging reveals an architectural root cause, Debugging delivers the diagnosis; Implementation Planning plans the architectural fix. |
+| **issueops-debugging** | When debugging reveals an architectural root cause, Debugging delivers the diagnosis; Implementation Planning plans the architectural fix. |
 | **algorithm-optimization** | Algorithm Optimization provides algorithmic design and complexity analysis; Implementation Planning plans the implementation of the optimized algorithm. |
 | **database-design** | Database Design audits schema during planning phase; if normalization uncovers architectural issues, escalate to Implementation Planning for planning. |
 | **web-research** | Web Research researches external context during planning; findings feed into the domain grill, gap analysis, and plan decisions. |

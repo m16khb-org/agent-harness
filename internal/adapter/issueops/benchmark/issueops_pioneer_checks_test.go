@@ -48,15 +48,15 @@ func TestPioneerSkillSignatures(t *testing.T) {
 			"Schema/row count: orders has 12M rows\nEXPLAIN evidence: seq scan before, index scan after\nIndex tradeoff: covering index, write penalty +8% insert cost", false},
 		// debugging: reproduction/failure signature AND cause hypothesis AND
 		// isolation AND minimal fix boundary AND verification.
-		{"debugging full", "debugging",
+		{"debugging full", "issueops-debugging",
 			"Reproduction: go test -run X exits 1\nFailure signature: expected 200 got 401\nRoot cause hypothesis: stale cache key\nIsolation: bisect narrowed to auth/cache.go\nMinimal fix boundary: one cache key builder\nVerification: regression test and rerun passed", true},
-		{"debugging synonyms", "debugging",
+		{"debugging synonyms", "issueops-debugging",
 			"Reproduced: command fails deterministically\nSignature: missing config file path in stderr\nHypothesis: config lookup uses cwd\nIsolated cause: trace diff points to loader\nFix scope: path resolver only\nRegression proof: test added and verified", true},
-		{"debugging missing reproduce clause", "debugging",
+		{"debugging missing reproduce clause", "issueops-debugging",
 			"Failure signature: expected 200 got 401\nRoot cause hypothesis: stale cache key\nIsolation: bisect narrowed to auth/cache.go\nMinimal fix boundary: one cache key builder\nVerification: regression test and rerun passed", false},
-		{"debugging missing cause clause", "debugging",
+		{"debugging missing cause clause", "issueops-debugging",
 			"Reproduction: go test -run X exits 1\nFailure signature: expected 200 got 401\nIsolation: bisect narrowed to auth/cache.go\nMinimal fix boundary: one cache key builder\nVerification: regression test and rerun passed", false},
-		{"debugging missing verify clause", "debugging",
+		{"debugging missing verify clause", "issueops-debugging",
 			"Reproduction: go test -run X exits 1\nFailure signature: expected 200 got 401\nRoot cause hypothesis: stale cache key\nIsolation: bisect narrowed to auth/cache.go\nMinimal fix boundary: one cache key builder", false},
 		// code-quality-metrics: scoped diff inventory AND SNR before/after AND secondary
 		// metric AND heuristic caveat AND no-input guard.
@@ -103,7 +103,7 @@ func TestPioneerSkillSignatures(t *testing.T) {
 			"complexity scaling before after invariant hot path O(n) words in no meaningful order", false},
 		{"database-design hollow keyword soup rejected", "database-design",
 			"index write penalty row count explain normal form recommendation", false},
-		{"debugging hollow keyword soup rejected", "debugging",
+		{"debugging hollow keyword soup rejected", "issueops-debugging",
 			"reproduce root cause verify regression hypothesis signature isolate fix", false},
 		{"prompt-engineering hollow keyword soup rejected", "prompt-engineering",
 			"test suite adversarial iteration input output contract hidden reasoning tool truth", false},

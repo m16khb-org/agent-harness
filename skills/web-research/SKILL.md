@@ -351,7 +351,7 @@ Write to `.issueops/research/<slug>.md`:
 |-------|---------------------------|
 | **implementation-planning** | Web Research researches external context (library docs, competitor behaviors, API references) during planning; findings feed into the domain grill and plan |
 | **verified-execution** | Research reports are Verified Execution evidence artifacts; adversarial review of research findings follows Verified Execution's reviewer gate protocol (pattern #2) |
-| **debugging** | Debugging diagnoses bugs in external libraries; Web Research researches the library's issue tracker, changelog, and known bugs to inform the diagnosis |
+| **issueops-debugging** | Debugging diagnoses bugs in external libraries; Web Research researches the library's issue tracker, changelog, and known bugs to inform the diagnosis |
 | **algorithm-optimization** | Algorithm Optimization needs the optimal algorithm for a problem; Web Research researches published algorithms and compares implementations |
 | **database-design** | Database Design optimizes database queries; Web Research researches DB engine best practices, known performance pitfalls for the specific RDBMS |
 | **git-operations** | All research reports are committed as `.issueops/research/` files following Git Operations' atomic commit protocols |

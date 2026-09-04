@@ -412,7 +412,7 @@ USAGE RULES:
 |-------|------------------------|
 | **implementation-planning** | Implementation Planning plans the work. Prompt Engineering writes the prompts that execute the plan — converting Implementation Planning's structured TODOs into precise agent instructions. |
 | **verified-execution** | Verified Execution uses Prompt Engineering-optimized prompts for QA channels and worker dispatch. Every Verified Execution sub-agent prompt passes through Prompt Engineering's adversarial testing before production use. |
-| **debugging** | Debugging diagnoses why a prompt failed. Prompt Engineering fixes the prompt based on Debugging's root cause analysis. Debugging finds the bug; Prompt Engineering rewrites the instructions. |
+| **issueops-debugging** | Debugging diagnoses why a prompt failed. Prompt Engineering fixes the prompt based on Debugging's root cause analysis. Debugging finds the bug; Prompt Engineering rewrites the instructions. |
 | **web-research** | Web Research researches prompt engineering literature, model-specific prompt guides, and community best practices. Prompt Engineering applies the findings to concrete prompts. |
 | **code-quality-metrics** | Code Quality Metrics measures generated code artifacts, not prompt quality. Prompt Engineering evaluates prompt changes with task-specific outcome metrics such as accuracy, format compliance, and failure rate. |
 | **issueops** | When an IssueOps task explicitly changes a prompt artifact, Prompt Engineering can define its outcome metrics and record the verified result as IssueOps feedback. |

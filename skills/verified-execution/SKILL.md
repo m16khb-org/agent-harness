@@ -502,7 +502,7 @@ When an IssueOps cycle exists:
 | Skill | How Verified Execution integrates |
 |-------|----------------------|
 | **implementation-planning** | Implementation Planning produces the decision-complete plan; Verified Execution executes it as evidence-bound goals. Plan TODOs map 1:1 to Verified Execution criteria. Dispatch independent read-only exploration or isolated worktree edits only when a documented net-positive pattern applies; all interdependent implementation stays in the main agent. |
-| **debugging** | Debugging is called within Verified Execution's execution loop when a criterion fails 2+ times. Debugging delivers the root cause diagnosis; Verified Execution verifies the fix through channel QA. |
+| **issueops-debugging** | Debugging is called within Verified Execution's execution loop when a criterion fails 2+ times. Debugging delivers the root cause diagnosis; Verified Execution verifies the fix through channel QA. |
 | **algorithm-optimization** | Verified Execution invokes Algorithm Optimization for "optimize," "reduce complexity," or "improve performance" criteria. Algorithm Optimization delivers the algorithmic redesign with benchmark evidence. |
 | **database-design** | Database Design's EXPLAIN ANALYZE before/after evidence becomes Verified Execution's evidence artifact. Database Design recommends; Verified Execution verifies the recommendation through channel QA. |
 | **web-research** | When a criterion requires external research, Verified Execution delegates to Web Research. Research reports are Verified Execution evidence artifacts; adversarial review of findings follows Verified Execution's reviewer gate. |
