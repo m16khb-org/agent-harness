@@ -35,7 +35,7 @@ func (Provisioner) ProbeAccess(ctx context.Context, req port.ExecutionWorkspaceR
 	if created {
 		_ = os.Remove(base)
 	}
-	command, commandErr := workspaceRelaunchCommand(host, req.SourceRoot, base)
+	command, commandErr := workspaceRelaunchCommand(host, req.SourceRoot, req.Root, base)
 	if commandErr != nil {
 		return port.ExecutionWorkspaceAccessResult{}, commandErr
 	}
@@ -177,15 +177,30 @@ func probeDirectoryReadWrite(base string) error {
 	return removeErr
 }
 
-func workspaceRelaunchCommand(host, sourceRoot, base string) (string, error) {
-	sourceRoot, base = shellQuotePath(sourceRoot), shellQuotePath(base)
+// workspaceRelaunchCommand는 접근이 막혔을 때 사용자가 실행할 정확한 재기동
+// 명령을 만든다.
+//
+// 착지점은 canonical worktree다. source root로 되돌리면 그 세션이 source
+// checkout을 작업 대상으로 오인하기 쉽고, 실제로 codex와 omo는 source root로,
+// claude는 아무 데도 가지 않아 이전 디렉터리에 머물렀다. 워크트리를 2단계가
+// 미리 만드는 흐름에서는 그 경로가 이미 존재하므로 그리로 데려간다.
+//
+// 아직 만들어지지 않은 사이클(worktree를 prepare가 만드는 경로)에서 `cd`는
+// 실패하고 `&&`가 끊겨 host가 아예 뜨지 않는다. 그래서 존재를 관측해 없으면
+// source root로 되돌린다 — 되띄운 세션은 거기서 prepare를 다시 실행하면 된다.
+func workspaceRelaunchCommand(host, sourceRoot, root, base string) (string, error) {
+	landing := strings.TrimSpace(root)
+	if info, err := os.Lstat(landing); landing == "" || err != nil || !info.IsDir() {
+		landing = sourceRoot
+	}
+	landing, base = shellQuotePath(landing), shellQuotePath(base)
 	switch strings.ToLower(strings.TrimSpace(host)) {
 	case "codex":
-		return "codex --cd " + sourceRoot + " --add-dir " + base, nil
+		return "codex --cd " + landing + " --add-dir " + base, nil
 	case "claude":
-		return "claude --add-dir " + base, nil
+		return "cd " + landing + " && claude --add-dir " + base, nil
 	case "omo":
-		return "cd " + sourceRoot + " && omo", nil
+		return "cd " + landing + " && omo", nil
 	default:
 		return "", fmt.Errorf("native actor host must be codex, claude, or omo")
 	}

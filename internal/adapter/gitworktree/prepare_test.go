@@ -123,3 +123,99 @@ func TestPrepareRejectsOccupiedNonWorktreePath(t *testing.T) {
 		t.Fatal("occupied non-worktree path must fail closed")
 	}
 }
+
+// 9단계 흐름의 핵심 기제: 2단계가 base SHA에 미리 만든 워크트리를 3단계의
+// prepare가 채택한다. 채택이 깨지면 두 번째 checkout이 생기거나 사이클이
+// 시작되지 못하므로, 여기서 성공·실패 양쪽을 고정한다(T0b 실측 1).
+func TestPrepareAdoptsPreCreatedWorktreeAtBaseSHA(t *testing.T) {
+	repo := initAccessRepo(t)
+	base := repo + ".worktrees"
+	if err := os.Mkdir(base, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(base, "74-adopt")
+	head := preflight.GitOut(repo, "rev-parse", "HEAD")
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", root, "-b", "74-adopt", head); code != 0 {
+		t.Fatalf("pre-create worktree: %s", stderr)
+	}
+	before := worktreeCount(t, repo)
+
+	req := port.ExecutionWorkspaceRequest{
+		LifecycleID: "io-74", SourceRoot: repo, Root: root,
+		Branch: "74-adopt", BaseBranch: "main", BaseHead: head, Confirm: true,
+	}
+	receipt, err := New().Prepare(context.Background(), req)
+	if err != nil {
+		t.Fatalf("adopting a pre-created worktree must succeed: %v", err)
+	}
+	if !receipt.Exists {
+		t.Fatalf("adoption must report an existing worktree: %#v", receipt)
+	}
+	if after := worktreeCount(t, repo); after != before {
+		t.Fatalf("adoption created a second checkout: before=%d after=%d", before, after)
+	}
+	if got := preflight.GitOut(root, "rev-parse", "HEAD"); got != head {
+		t.Fatalf("adopted worktree HEAD = %q want %q", got, head)
+	}
+}
+
+func TestPrepareRejectsAdoptedWorktreeThatMovedPastBaseSHA(t *testing.T) {
+	repo := initAccessRepo(t)
+	base := repo + ".worktrees"
+	if err := os.Mkdir(base, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(base, "75-moved")
+	head := preflight.GitOut(repo, "rev-parse", "HEAD")
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", root, "-b", "75-moved", head); code != 0 {
+		t.Fatalf("pre-create worktree: %s", stderr)
+	}
+	if err := os.WriteFile(filepath.Join(root, "extra.txt"), []byte("one commit past base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "extra.txt"}, {"commit", "-q", "-m", "past base"}} {
+		if code, _, stderr := preflight.GitCmd(root, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	before := worktreeCount(t, repo)
+
+	req := port.ExecutionWorkspaceRequest{
+		LifecycleID: "io-75", SourceRoot: repo, Root: root,
+		Branch: "75-moved", BaseBranch: "main", BaseHead: head, Confirm: true,
+	}
+	_, err := New().Prepare(context.Background(), req)
+	if err == nil || !strings.Contains(err.Error(), "does not match branch and base_head") {
+		t.Fatalf("a worktree past the base SHA must fail closed, got %v", err)
+	}
+	if after := worktreeCount(t, repo); after != before {
+		t.Fatalf("a rejected adoption must not change the worktree inventory: before=%d after=%d", before, after)
+	}
+}
+
+func TestPrepareRejectsAdoptedWorktreeOnAnotherBranch(t *testing.T) {
+	repo := initAccessRepo(t)
+	base := repo + ".worktrees"
+	if err := os.Mkdir(base, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(base, "76-branch")
+	head := preflight.GitOut(repo, "rev-parse", "HEAD")
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", root, "-b", "76-other", head); code != 0 {
+		t.Fatalf("pre-create worktree: %s", stderr)
+	}
+	req := port.ExecutionWorkspaceRequest{
+		LifecycleID: "io-76", SourceRoot: repo, Root: root,
+		Branch: "76-branch", BaseBranch: "main", BaseHead: head, Confirm: true,
+	}
+	if _, err := New().Prepare(context.Background(), req); err == nil ||
+		!strings.Contains(err.Error(), "does not match branch and base_head") {
+		t.Fatalf("a worktree on another branch must fail closed, got %v", err)
+	}
+}
+
+func worktreeCount(t *testing.T, repo string) int {
+	t.Helper()
+	out := preflight.GitOut(repo, "worktree", "list", "--porcelain")
+	return strings.Count(out, "worktree ")
+}
